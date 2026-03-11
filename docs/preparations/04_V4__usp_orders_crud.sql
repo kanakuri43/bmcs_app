@@ -388,7 +388,6 @@ BEGIN
         o.tax_type_id,
         tt.tax_type_name,
         o.tax_category_id,
-        tc.tax_category_name,
         o.tax_calc_unit_id,
         tu.tax_calc_unit_name,
         o.tax_fraction_id,
@@ -404,7 +403,6 @@ BEGIN
         o.row_version
     FROM orders o
     INNER JOIN tax_type_classifications      tt ON tt.tax_type_id      = o.tax_type_id
-    INNER JOIN tax_category_classifications  tc ON tc.tax_category_id  = o.tax_category_id
     INNER JOIN tax_calc_unit_classifications tu ON tu.tax_calc_unit_id = o.tax_calc_unit_id
     INNER JOIN tax_fraction_classifications  tf ON tf.tax_fraction_id  = o.tax_fraction_id
     WHERE o.is_deleted = 0

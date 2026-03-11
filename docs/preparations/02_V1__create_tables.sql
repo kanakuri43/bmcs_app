@@ -39,15 +39,6 @@ CREATE TABLE tax_type_classifications (
     CONSTRAINT UQ_tax_type_classifications_code UNIQUE (tax_type_code)
 );
 
-CREATE TABLE tax_category_classifications (
-    tax_category_id     INT             NOT NULL IDENTITY(1,1),
-    tax_category_code   NVARCHAR(20)    NOT NULL,
-    tax_category_name   NVARCHAR(50)    NOT NULL,
-    is_deleted          BIT             NOT NULL CONSTRAINT DF_tax_category_classifications_is_deleted DEFAULT 0,
-    row_version         ROWVERSION      NOT NULL,
-    CONSTRAINT PK_tax_category_classifications PRIMARY KEY (tax_category_id),
-    CONSTRAINT UQ_tax_category_classifications_code UNIQUE (tax_category_code)
-);
 
 CREATE TABLE tax_fraction_classifications (
     tax_fraction_id     INT             NOT NULL IDENTITY(1,1),
@@ -89,7 +80,7 @@ CREATE TABLE customers (
     customer_id         INT             NOT NULL IDENTITY(1,1),
     customer_code       NVARCHAR(20)    NOT NULL,
     customer_name       NVARCHAR(100)   NOT NULL,
-    closing_day         TINYINT         NOT NULL,       -- 締日（例：10, 20, 31=末日）
+    closing_day         TINYINT         NOT NULL,       -- 締日（例：10, 20, 99=月末）
     tax_fraction_id     INT             NOT NULL,
     tax_calc_unit_id    INT             NOT NULL,
     employee_id         INT             NULL,			-― 得意先担当者
@@ -104,7 +95,7 @@ CREATE TABLE customers (
     CONSTRAINT FK_customers_employees FOREIGN KEY (employee_id)
         REFERENCES employees (employee_id),
     CONSTRAINT CK_customers_closing_day
-        CHECK (closing_day BETWEEN 1 AND 31)
+        CHECK (closing_day BETWEEN 1 AND 31 OR closing_day = 99)
 );
 
 -- -----------------------------------------------------------------------------
@@ -122,26 +113,25 @@ CREATE TABLE products (
     CONSTRAINT UQ_products_code UNIQUE (product_code),
     CONSTRAINT FK_products_tax_type FOREIGN KEY (tax_type_id)
         REFERENCES tax_type_classifications (tax_type_id),
-    CONSTRAINT FK_products_tax_category FOREIGN KEY (tax_category_id)
-        REFERENCES tax_category_classifications (tax_category_id)
 );
 
 -- -----------------------------------------------------------------------------
--- 消費税率マスタ
+-- 消費税率期間マスタ
+-- 1行で通常・軽減・予備の税率を管理する。NULLは未設定。
 -- -----------------------------------------------------------------------------
-CREATE TABLE tax_rate_histories (
-    tax_rate_history_id INT             NOT NULL IDENTITY(1,1),
-    tax_category_id     INT             NOT NULL,
-    rate                DECIMAL(5, 4)   NOT NULL,       -- 例：0.1000, 0.0800
+CREATE TABLE tax_rate_periods (
+    tax_rate_period_id  INT             NOT NULL IDENTITY(1,1),
     start_date          DATE            NOT NULL,
-    end_date            DATE            NULL,           -- NULLは現在適用中
-    is_deleted          BIT             NOT NULL CONSTRAINT DF_tax_rate_histories_is_deleted DEFAULT 0,
+    end_date            DATE            NULL,               -- NULLは現在適用中
+    primary_tax_rate    DECIMAL(5, 4)   NOT NULL,           -- 通常税率
+    secondary_tax_rate  DECIMAL(5, 4)   NOT NULL,           -- 軽減税率
+    tertiary_tax_rate   DECIMAL(5, 4)   NULL,               -- 予備（未定義時はNULL）
+    is_deleted          BIT             NOT NULL CONSTRAINT DF_tax_rate_periods_is_deleted DEFAULT 0,
     row_version         ROWVERSION      NOT NULL,
-    CONSTRAINT PK_tax_rate_histories PRIMARY KEY (tax_rate_history_id),
-    CONSTRAINT FK_tax_rate_histories_tax_category FOREIGN KEY (tax_category_id)
-        REFERENCES tax_category_classifications (tax_category_id),
-    CONSTRAINT CK_tax_rate_histories_rate
-        CHECK (rate >= 0)
+    CONSTRAINT PK_tax_rate_periods PRIMARY KEY (tax_rate_period_id),
+    CONSTRAINT CK_tax_rate_periods_primary   CHECK (primary_tax_rate   >= 0),
+    CONSTRAINT CK_tax_rate_periods_secondary CHECK (secondary_tax_rate >= 0),
+    CONSTRAINT CK_tax_rate_periods_tertiary  CHECK (tertiary_tax_rate  IS NULL OR tertiary_tax_rate >= 0)
 );
 
 -- -----------------------------------------------------------------------------
@@ -178,8 +168,6 @@ CREATE TABLE orders (
         REFERENCES products (product_id),
     CONSTRAINT FK_orders_tax_type FOREIGN KEY (tax_type_id)
         REFERENCES tax_type_classifications (tax_type_id),
-    CONSTRAINT FK_orders_tax_category FOREIGN KEY (tax_category_id)
-        REFERENCES tax_category_classifications (tax_category_id),
     CONSTRAINT FK_orders_tax_calc_unit FOREIGN KEY (tax_calc_unit_id)
         REFERENCES tax_calc_unit_classifications (tax_calc_unit_id),
     CONSTRAINT FK_orders_tax_fraction FOREIGN KEY (tax_fraction_id)
@@ -232,8 +220,6 @@ CREATE TABLE sales (
         REFERENCES products (product_id),
     CONSTRAINT FK_sales_tax_type FOREIGN KEY (tax_type_id)
         REFERENCES tax_type_classifications (tax_type_id),
-    CONSTRAINT FK_sales_tax_category FOREIGN KEY (tax_category_id)
-        REFERENCES tax_category_classifications (tax_category_id),
     CONSTRAINT FK_sales_tax_calc_unit FOREIGN KEY (tax_calc_unit_id)
         REFERENCES tax_calc_unit_classifications (tax_calc_unit_id),
     CONSTRAINT FK_sales_tax_fraction FOREIGN KEY (tax_fraction_id)
@@ -336,10 +322,6 @@ INSERT INTO tax_type_classifications (tax_type_code, tax_type_name) VALUES
     ('02', '内税'),
     ('03', '非課税');
 
-INSERT INTO tax_category_classifications (tax_category_code, tax_category_name) VALUES
-    ('01', '通常'),
-    ('02', '軽減税率'),
-    ('03', '予備');
 
 INSERT INTO tax_fraction_classifications (tax_fraction_code, tax_fraction_name) VALUES
     ('01', '切捨'),
@@ -350,6 +332,5 @@ INSERT INTO tax_calc_unit_classifications (tax_calc_unit_code, tax_calc_unit_nam
     ('01', '明細'),
     ('02', '伝票');
 
-INSERT INTO tax_rate_histories (tax_category_id, rate, start_date, end_date) VALUES
-    (1, 0.1000, '2019-10-01', NULL),   -- 通常税率 10%
-    (2, 0.0800, '2019-10-01', NULL);   -- 軽減税率 8%
+INSERT INTO tax_rate_periods (start_date, end_date, primary_tax_rate, secondary_tax_rate, tertiary_tax_rate) VALUES
+    ('2019-10-01', NULL, 0.1000, 0.0800, NULL);   -- 通常10% 軽減8%（2019年10月〜現在）

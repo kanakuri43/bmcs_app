@@ -40,7 +40,7 @@ company_info               自社情報（会社名・住所・TEL・適格請�
 employees                  社員マスタ
 customers                  得意先マスタ（締日・消費税端数・消費税計算単位）
 products                   商品マスタ（課税種別・消費税種別）
-tax_rate_histories         消費税率マスタ（適用期間で管理）
+tax_rate_periods           消費税率マスタ（適用期間で管理。通常・軽減・予備を1行で保持）
 ```
 
 #### 区分マスタ群
@@ -49,7 +49,6 @@ tax_rate_histories         消費税率マスタ（適用期間で管理）
 |----------|------|----|
 | `payment_method_classifications` | 入金方法 | 現金・振込・手形・小切手・その他 |
 | `tax_type_classifications` | 課税種別 | 外税・内税・非課税 |
-| `tax_category_classifications` | 消費税種別 | 通常(10%)・軽減税率(8%)・予備 |
 | `tax_fraction_classifications` | 端数処理 | 切捨（default）・切上・四捨五入 |
 | `tax_calc_unit_classifications` | 消費税計算単位 | 明細・伝票 |
 
@@ -99,7 +98,7 @@ accounts_receivable_histories  売掛金集計履歴（得意先×月末日で�
 | 設定 | 説明 |
 |------|------|
 | **計算単位** | 得意先マスタの `tax_calc_unit_id` で「明細」or「伝票」を指定 |
-| **税率** | `tax_rate_histories` で適用期間を管理（通常10%・軽減8%） |
+| **税率** | `tax_rate_periods` で適用期間を管理（1行で通常10%・軽減8%・予備を保持） |
 | **端数処理** | 得意先マスタの `tax_fraction_id` で切捨・切上・四捨五入 |
 | **課税種別** | 商品単位で外税・内税・非課税 |
 | **明細単位計算時** | `tax_amount`（行）に消費税額を格納 |
@@ -113,7 +112,7 @@ accounts_receivable_histories  売掛金集計履歴（得意先×月末日で�
 
 ### 5.1 請求集計
 
-- 得意先の `closing_day`（1〜31、31=末日）単位で実行。
+- 得意先の `closing_day`（1〜31、99=月末）単位で実行。
 - 任意の日付での請求集計も可（仕様上の柔軟性）。
 - 集計後、`sales.invoiced_date` / `receipts.invoiced_date` に締日を書き込む。
 - **締後のルール**: 集計済み得意先はその締日以前の売上・入金の登録・変更・削除が不可。

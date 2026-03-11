@@ -482,7 +482,6 @@ BEGIN
         s.tax_type_id,
         tt.tax_type_name,
         s.tax_category_id,
-        tc.tax_category_name,
         s.tax_calc_unit_id,
         tu.tax_calc_unit_name,
         s.tax_fraction_id,
@@ -495,7 +494,6 @@ BEGIN
         s.row_version
     FROM sales s
     INNER JOIN tax_type_classifications      tt ON tt.tax_type_id      = s.tax_type_id
-    INNER JOIN tax_category_classifications  tc ON tc.tax_category_id  = s.tax_category_id
     INNER JOIN tax_calc_unit_classifications tu ON tu.tax_calc_unit_id = s.tax_calc_unit_id
     INNER JOIN tax_fraction_classifications  tf ON tf.tax_fraction_id  = s.tax_fraction_id
     WHERE s.is_deleted = 0

@@ -20,10 +20,10 @@ INSERT INTO employees (employee_code, employee_name) VALUES
 -- 得意先マスタ
 -- tax_fraction_id: 1=切捨 2=切上 3=四捨五入
 -- tax_calc_unit_id: 1=明細 2=伝票
--- closing_day: 10, 20, 31=末日
+-- closing_day: 10, 20, 99=月末
 -- -----------------------------------------------------------------------------
 INSERT INTO customers (customer_code, customer_name, closing_day, tax_fraction_id, tax_calc_unit_id, employee_id) VALUES
-    ('C001', N'東京食品株式会社',     31, 1, 2, 1),   -- 末締 切捨 伝票単位 担当:山田
+    ('C001', N'東京食品株式会社',     99, 1, 2, 1),   -- 月末締 切捨 伝票単位 担当:山田
     ('C002', N'大阪雑貨有限会社',     20, 1, 1, 2),   -- 20日締 切捨 明細単位 担当:鈴木
     ('C003', N'名古屋部品工業株式会社', 10, 3, 2, 1);  -- 10日締 四捨五入 伝票単位 担当:山田
 
