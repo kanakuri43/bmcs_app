@@ -22,15 +22,16 @@
 ## 共通ルール
 - インボイス制度対応（税率・登録番号管理）
 - 非同期は async/await 統一
-- DB操作はすべてStoredProcedure経由
+- DB操作（CRUD）はすべてStoredProcedure経由
 - DBスキーマはライブDBに直接クエリして確認する
 - null許容
 - スキーマはコードに転記せず必ず直接クエリする
 - コードビハインドにロジックを書かない
 - Prism の RegionManager でナビゲーション管理
+- 画面操作全般キーボード操作を基本とする
 
 ## 命名規則
 - C#: Microsoft推奨に合わせる
-- DB: snake case
+- DB: snake_case
 - ストアドには"usp_"プレフィックス
 

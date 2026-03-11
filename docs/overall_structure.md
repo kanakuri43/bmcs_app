@@ -31,6 +31,13 @@ bmcs_app/
 │   │   ├── Repositories/
 │   │   └── StoredProcedures/
 │   │
+│   ├── bmcs_app.Order/                // 受注登録
+│   │   ├── CLAUDE.md
+│   │   ├── bmcs_app.Order.csproj
+│   │   ├── OrderModule.cs             // Prism IModule
+│   │   ├── Views/
+│   │   └── ViewModels/
+│   │
 │   ├── bmcs_app.Sales/                // 売上登録
 │   │   ├── CLAUDE.md
 │   │   ├── bmcs_app.Sales.csproj

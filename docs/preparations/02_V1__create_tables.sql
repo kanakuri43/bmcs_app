@@ -92,7 +92,7 @@ CREATE TABLE customers (
     closing_day         TINYINT         NOT NULL,       -- 締日（例：10, 20, 31=末日）
     tax_fraction_id     INT             NOT NULL,
     tax_calc_unit_id    INT             NOT NULL,
-    employee_id         INT             NULL,
+    employee_id         INT             NULL,			-― 得意先担当者
     is_deleted          BIT             NOT NULL CONSTRAINT DF_customers_is_deleted DEFAULT 0,
     row_version         ROWVERSION      NOT NULL,
     CONSTRAINT PK_customers PRIMARY KEY (customer_id),

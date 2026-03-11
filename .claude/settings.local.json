@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import uuid; [print\\(str\\(uuid.uuid4\\(\\)\\).upper\\(\\)\\) for _ in range\\(6\\)]\")",
+      "Bash(powershell -Command \"[guid]::NewGuid\\(\\).ToString\\(\\).ToUpper\\(\\); [guid]::NewGuid\\(\\).ToString\\(\\).ToUpper\\(\\); [guid]::NewGuid\\(\\).ToString\\(\\).ToUpper\\(\\); [guid]::NewGuid\\(\\).ToString\\(\\).ToUpper\\(\\); [guid]::NewGuid\\(\\).ToString\\(\\).ToUpper\\(\\); [guid]::NewGuid\\(\\).ToString\\(\\).ToUpper\\(\\)\")",
+      "Bash(powershell -Command \"[guid]::NewGuid\\(\\).ToString\\(\\).ToUpper\\(\\)\")"
+    ]
+  }
+}
