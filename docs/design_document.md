@@ -2,7 +2,8 @@
 
 ## 1. 概要
 
-日本の卸売業（B2B）向け販売管理システム。中小零細企業の社内LAN運用を想定。
+日本の卸売業（B2B）向け販売管理システム。  
+中小零細企業の社内LAN運用を想定。
 
 ### 技術スタック
 
@@ -38,8 +39,8 @@
 ```
 company_info               自社情報（会社名・住所・TEL・適格請求書番号）
 employees                  社員マスタ
-customers                  得意先マスタ（締日・消費税端数・消費税計算単位）
-products                   商品マスタ（課税種別・消費税種別）
+customers                  得意先マスタ（締日・消費税端数処理・消費税計算単位）
+products                   商品マスタ（課税種別・税率種別）
 tax_rate_periods           消費税率マスタ（適用期間で管理。通常・軽減・予備を1行で保持）
 ```
 
@@ -48,9 +49,9 @@ tax_rate_periods           消費税率マスタ（適用期間で管理。通�
 | テーブル | 内容 | 値 |
 |----------|------|----|
 | `payment_method_classifications` | 入金方法 | 現金・振込・手形・小切手・その他 |
-| `tax_type_classifications` | 課税種別 | 外税・内税・非課税 |
-| `tax_fraction_classifications` | 端数処理 | 切捨（default）・切上・四捨五入 |
-| `tax_calc_unit_classifications` | 消費税計算単位 | 明細・伝票 |
+| `tax_type_classifications` | 課税種別 | 外税(01)・内税(02)・非課税(03) |
+| `tax_fraction_classifications` | 税端数処理 | 切捨(01)・切上(02)・四捨五入(03) |
+| `tax_calc_unit_classifications` | 消費税計算単位 | 明細(01)・伝票(02) |
 
 ### 3.2 ジャーナル系
 
@@ -76,7 +77,7 @@ accounts_receivable_histories  売掛金集計履歴（得意先×月末日で�
 - **論理削除**: 全テーブルで `is_deleted = 1` による論理削除。物理削除なし。
 - **楽観的排他制御**: `row_version`（ROWVERSION型）による更新衝突検知。
 - **外部キー**: テーブル間のFK必須。
-- **ジャーナル保持**: 登録時点のコード・名称をジャーナル側に複写（マスタ変更の影響を受けない）。
+- **ジャーナル保持**: 登録時点のコード・名称・税率をジャーナル側に複写（マスタ変更の影響を受けない）。
 
 ### 4.2 伝票構造
 
@@ -95,14 +96,23 @@ accounts_receivable_histories  売掛金集計履歴（得意先×月末日で�
 
 ### 4.4 消費税の計算
 
-| 設定 | 説明 |
-|------|------|
-| **計算単位** | 得意先マスタの `tax_calc_unit_id` で「明細」or「伝票」を指定 |
-| **税率** | `tax_rate_periods` で適用期間を管理（1行で通常10%・軽減8%・予備を保持） |
-| **端数処理** | 得意先マスタの `tax_fraction_id` で切捨・切上・四捨五入 |
-| **課税種別** | 商品単位で外税・内税・非課税 |
-| **明細単位計算時** | `tax_amount`（行）に消費税額を格納 |
-| **伝票単位計算時** | `slip_tax_amount`（全行同値）に消費税額を格納 |
+| 設定 | カラム | 説明 |
+|------|--------|------|
+| **課税種別** | `tax_type_id` | 商品単位で外税・内税・非課税を指定 |
+| **税率種別** | `tax_rate_type` | 明細行単位で使用する税率を指定（1=通常, 2=軽減, 3=予備） |
+| **適用税率** | `applied_tax_rate` | 登録時点の税率をジャーナル保持（例: 0.1000） |
+| **計算単位** | `tax_calc_unit_id` | 得意先マスタで「明細」or「伝票」を指定 |
+| **端数処理** | `tax_fraction_id` | 得意先マスタで切捨・切上・四捨五入を指定 |
+| **明細単位計算時** | `line_tax_amount` | 行ごとの消費税額を格納 |
+| **伝票単位計算時** | `slip_tax_amount` | 伝票全行同値で消費税額を格納 |
+
+#### 税率種別と `tax_rate_periods` の対応
+
+| `tax_rate_type` | 意味 | `tax_rate_periods` カラム | 現行値 |
+|-----------------|------|---------------------------|--------|
+| 1 | 通常税率 | `primary_tax_rate` | 10% |
+| 2 | 軽減税率 | `secondary_tax_rate` | 8% |
+| 3 | 予備 | `tertiary_tax_rate` | NULL（未定義） |
 
 インボイス制度（適格請求書等保存方式）対応のため、計算単位は**明細または伝票**。請求単位は不可。
 
@@ -112,7 +122,7 @@ accounts_receivable_histories  売掛金集計履歴（得意先×月末日で�
 
 ### 5.1 請求集計
 
-- 得意先の `closing_day`（1〜31、99=月末）単位で実行。
+- 得意先の `closing_day`（1〜27、99=月末）単位で実行。
 - 任意の日付での請求集計も可（仕様上の柔軟性）。
 - 集計後、`sales.invoiced_date` / `receipts.invoiced_date` に締日を書き込む。
 - **締後のルール**: 集計済み得意先はその締日以前の売上・入金の登録・変更・削除が不可。
@@ -156,6 +166,27 @@ accounts_receivable_histories  売掛金集計履歴（得意先×月末日で�
 - バリデーション → `BEGIN TRANSACTION` → INSERT/UPDATE → `COMMIT` の順。
 - `SET XACT_ABORT ON` によりエラー時は自動ロールバック。
 
+#### `@lines` JSONスキーマ（受注・売上共通）
+
+```json
+[
+  {
+    "line_no"          : 1,
+    "product_id"       : 1,
+    "product_code"     : "P001",
+    "product_name"     : "コーヒー豆 1kg",
+    "quantity"         : 10.00,
+    "unit_price"       : 2000.00,
+    "tax_type_id"      : 1,
+    "tax_rate_type"    : 2,
+    "applied_tax_rate" : 0.0800,
+    "line_tax_amount"  : null,
+    "slip_tax_amount"  : 1760.00,
+    "line_remarks"     : null
+  }
+]
+```
+
 ---
 
 ## 7. バリデーション方針（共通）
@@ -180,4 +211,4 @@ accounts_receivable_histories  売掛金集計履歴（得意先×月末日で�
 | 納品書 | A4縦 | 売上登録時（後から再発行も可） |
 | 請求書 | A4縦 | 請求集計後（全得意先一括 or 任意1社） |
 
-請求書印字項目: 前回請求額・入金額・売上額・消費税額・今回請求額。
+請求書印字項目: 前回請求額・入金額・売上額（標準税率/軽減税率）・消費税額（標準税率/軽減税率）・今回請求額。
