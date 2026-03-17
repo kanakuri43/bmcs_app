@@ -11,16 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="MahApps.Metro" Version="2.4.10" />
-    <PackageReference Include="Prism.Unity" Version="9.0.537" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\bmcs_app.Core\bmcs_app.Core.csproj" />
-    <ProjectReference Include="..\bmcs_app.Infrastructure\bmcs_app.Infrastructure.csproj" />
-    <ProjectReference Include="..\bmcs_app.Order\bmcs_app.Order.csproj" />
-    <ProjectReference Include="..\bmcs_app.Sales\bmcs_app.Sales.csproj" />
-    <ProjectReference Include="..\bmcs_app.Payment\bmcs_app.Payment.csproj" />
-    <ProjectReference Include="..\bmcs_app.Closing\bmcs_app.Closing.csproj" />
+    <PackageReference Include="Prism.Wpf" Version="9.0.537" />
   </ItemGroup>
 
 </Project>

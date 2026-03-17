@@ -144,20 +144,41 @@ accounts_receivable_histories  売掛金集計履歴（得意先×月末日で�
 
 ### 命名規則: `usp_{エンティティ}_{操作}`
 
+#### ジャーナル系
+
 | プロシージャ | 処理概要 |
 |-------------|----------|
-| `usp_orders_insert` | 受注登録（JSON明細配列受け取り） |
-| `usp_orders_update` | 受注更新（論理削除→再INSERT） |
+| `usp_orders_upsert` | 受注登録・更新（伝票番号が存在すれば更新、なければ登録。売上登録済みは更新不可） |
 | `usp_orders_delete` | 受注論理削除（売上登録済みは不可） |
 | `usp_orders_select` | 受注照会（伝票番号・得意先・期間で絞込） |
-| `usp_sales_insert` | 売上登録（受注参照は任意） |
-| `usp_sales_update` | 売上更新（請求集計済みは不可） |
+| `usp_sales_upsert` | 売上登録・更新（伝票番号が存在すれば更新、なければ登録。請求集計済みは更新不可） |
 | `usp_sales_delete` | 売上論理削除（請求集計済みは不可） |
 | `usp_sales_select` | 売上照会 |
-| `usp_receipts_insert` | 入金登録 |
-| `usp_receipts_update` | 入金更新（請求集計済みは不可） |
+| `usp_receipts_upsert` | 入金登録・更新（伝票番号が存在すれば更新、なければ登録。請求集計済みは更新不可） |
 | `usp_receipts_delete` | 入金論理削除（請求集計済みは不可） |
 | `usp_receipts_select` | 入金照会 |
+
+#### マスタ系
+
+| プロシージャ | 処理概要 |
+|-------------|----------|
+| `usp_employees_upsert` | 社員登録・更新（`@employee_id=NULL` で新規） |
+| `usp_employees_delete` | 社員論理削除（売上・得意先担当者参照チェック） |
+| `usp_products_upsert` | 商品登録・更新（`@product_id=NULL` で新規） |
+| `usp_products_delete` | 商品論理削除（受注・売上参照チェック） |
+| `usp_customers_upsert` | 得意先登録・更新（`@customer_id=NULL` で新規） |
+| `usp_customers_delete` | 得意先論理削除（受注・売上・入金参照チェック） |
+| `usp_tax_rate_periods_upsert` | 消費税率期間登録・更新（`@tax_rate_period_id=NULL` で新規） |
+| `usp_tax_rate_periods_delete` | 消費税率期間論理削除 |
+| `usp_payment_method_classifications_upsert` | 入金方法区分登録・更新 |
+| `usp_payment_method_classifications_delete` | 入金方法区分論理削除（入金参照チェック） |
+| `usp_tax_type_classifications_upsert` | 課税種別区分登録・更新 |
+| `usp_tax_type_classifications_delete` | 課税種別区分論理削除（商品参照チェック） |
+| `usp_tax_fraction_classifications_upsert` | 端数処理区分登録・更新 |
+| `usp_tax_fraction_classifications_delete` | 端数処理区分論理削除（得意先参照チェック） |
+| `usp_tax_calc_unit_classifications_upsert` | 計算単位区分登録・更新 |
+| `usp_tax_calc_unit_classifications_delete` | 計算単位区分論理削除（得意先参照チェック） |
+| `usp_company_info_upsert` | 自社情報登録・更新（単一行。deleteなし） |
 
 ### 共通インターフェース仕様
 
@@ -165,6 +186,12 @@ accounts_receivable_histories  売掛金集計履歴（得意先×月末日で�
 - `OPENJSON` + `WITH` 句でパース後、一時テーブル `#lines` に展開。
 - バリデーション → `BEGIN TRANSACTION` → INSERT/UPDATE → `COMMIT` の順。
 - `SET XACT_ABORT ON` によりエラー時は自動ロールバック。
+
+#### マスタupsertの共通仕様
+
+- `@{entity}_id = NULL` → INSERT（IDENTITY自動採番）
+- `@{entity}_id IS NOT NULL` → UPDATE（存在確認後）
+- コード列の重複は `is_deleted = 0` のレコード間でのみチェック（他IDとの衝突防止）
 
 #### `@lines` JSONスキーマ（受注・売上共通）
 
@@ -191,16 +218,33 @@ accounts_receivable_histories  売掛金集計履歴（得意先×月末日で�
 
 ## 7. バリデーション方針（共通）
 
+### ジャーナル系 upsert
+
 | チェック | タイミング |
 |----------|-----------|
 | JSON形式チェック | 最初に実施 |
-| 伝票番号重複（INSERT時）/ 存在（UPDATE/DELETE時） | マスタチェック前 |
+| 請求集計済み／売上登録済みチェック（更新時のみ） | JSONパース後、他チェック前 |
 | 得意先の存在・削除チェック | 都度 |
 | 請求集計済み期間チェック | 売上・入金の登録・更新時 |
 | 担当社員の存在・削除チェック | 売上のみ |
-| 参照受注の存在チェック | 売上登録時・`order_id` 指定時のみ |
+| 参照受注の存在チェック | 売上・`order_id` 指定時のみ |
 | 商品・入金方法の存在チェック | 明細展開後 |
 | 明細行の件数チェック（0件不可） | 明細展開後 |
+
+### マスタ系 upsert
+
+| チェック | タイミング |
+|----------|-----------|
+| 区分マスタの存在・削除チェック（FK先） | 最初に実施 |
+| コード重複チェック（`is_deleted=0` かつ他ID） | 区分チェック後 |
+| ID存在・削除チェック（UPDATE時のみ） | INSERT/UPDATE分岐後 |
+
+### マスタ系 delete
+
+| チェック | タイミング |
+|----------|-----------|
+| 対象レコードの存在・削除チェック | 最初に実施 |
+| 参照先ジャーナル・マスタの存在チェック | 存在確認後 |
 
 ---
 

@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <!-- 全プロジェクトの出力先を統一 -->
+    <!-- 個別ビルド時に $(Configuration) が空になるのを防ぐ -->
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <OutputPath>$(MSBuildThisFileDirectory)..\bin\$(Configuration)\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+</Project>

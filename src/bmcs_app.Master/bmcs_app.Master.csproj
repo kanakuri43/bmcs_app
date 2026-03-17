@@ -6,7 +6,7 @@
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>bmcs_app.Sales</RootNamespace>
+    <RootNamespace>bmcs_app.Master</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
