@@ -17,18 +17,18 @@
 
 ## 待機中
 
-### [ ] 画面構成の確定 → CLAUDE.md 作成
+### Phase 1: [x] 画面構成の確定 → CLAUDE.md 作成
 - 社員マスタを動かして画面パターンを確定させる
 - Layout・ViewModel・Repository の共通ルールを CLAUDE.md に書き起こす
 
-### [ ] 残りのマスタメンテ
+### Phase 2: [ ] 残りのマスタメンテ
 - 得意先マスタ
 - 商品マスタ
 - 消費税率マスタ
 - 区分マスタ群（入金方法・課税種別・端数処理・計算単位）
 - 自社情報
 
-### [ ] 各処理画面
+### Phase 3: [ ] 各処理画面
 - 受注登録（bmcs_app.Order）
 - 売上登録（bmcs_app.Sales）
 - 入金登録（bmcs_app.Payment）

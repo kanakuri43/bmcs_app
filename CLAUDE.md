@@ -54,15 +54,19 @@
 
 ### レイアウト構成
 ```
-[ToolBar: 新規(F3) | 保存(F10) | 削除(F8)]
-┌──────────────────────┬────────────┐
-│ [キーワード検索 TextBox] │            │
-│ DataGrid（一覧）       │ 編集フォーム │
-│                      │            │
-│ [ページセレクタ]       │            │
-└──────────────────────┴────────────┘
+[ToolBar: 新規(F3)]
+┌──────────────────────┬────────────────────────────┐
+│ [キーワード検索 TextBox] │ 編集フォーム                 │
+│ DataGrid（一覧）       │                            │
+│                      │  [削除(F8)]  [保存(F10) ▶]  │
+│ [ページセレクタ]       │                            │
+└──────────────────────┴────────────────────────────┘
 [StatusBar: 件数・状態メッセージ]
 ```
+
+- ToolBar には **新規(F3) のみ**
+- 保存(F10)・削除(F8) は **編集フォーム右下**にボタン配置
+- 保存ボタンは `MahApps.Styles.Button.Square.Accent` スタイルで強調
 
 ### キーボードショートカット
 - F3: 新規
@@ -73,44 +77,73 @@
 ### 検索・ページネーション
 - 一覧上部にキーワード検索（Enter で適用）
 - 1ページ100件、リスト下部にページセレクタ
-- データフロー: `_allEmployees` → `_filteredEmployees`（検索）→ `Employees`（ページスライス）
+- データフロー: `_allItems` → `_filteredItems`（検索）→ `Items`（ページスライス）
 - 検索適用時はページ1にリセット
 - ページボタンラベル: `|◀` `◀` `▶` `▶|`（Unicode 記号は使わない・豆腐になる）
+
+### DataGrid 設定
+```xml
+<DataGrid ItemsSource="{Binding Items}"
+          SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+          AutoGenerateColumns="False"
+          IsReadOnly="True"
+          SelectionMode="Single"
+          CanUserAddRows="False"
+          CanUserDeleteRows="False"
+          GridLinesVisibility="Horizontal"
+          HeadersVisibility="Column" />
+```
 
 ### ViewModel 基本構造
 ```csharp
 public class XxxMaintViewModel : BindableBase
 {
     private readonly IXxxRepository _repo;
-    private List<Xxx> _allItems = new();
+    private List<Xxx> _allItems      = new();
     private List<Xxx> _filteredItems = new();
     public ObservableCollection<Xxx> Items { get; } = new();
 
     // 検索
     public string SearchKeyword { get; set; }
-    public DelegateCommand SearchCommand { get; }  // → ApplyFilter() → ページ1リセット
+    public DelegateCommand SearchCommand { get; }  // → CurrentPage=1; ApplyFilter()
 
     // ページネーション
     private const int PageSize = 100;
     public int CurrentPage { get; }
-    public int TotalPages { get; }
-    public string PageLabel { get; }   // "1 / 3 ページ"
-    public string RangeLabel { get; }  // "1〜100 件 / 全 251 件"
+    public int TotalPages  => _filteredItems.Count == 0 ? 1 : (int)Math.Ceiling(_filteredItems.Count / (double)PageSize);
+    public string PageLabel  => $"{CurrentPage} / {TotalPages} ページ";
+    public string RangeLabel => /* "1〜100 件 / 全 251 件" or "0 件" */;
     public DelegateCommand FirstPageCommand { get; }
     public DelegateCommand PrevPageCommand  { get; }
     public DelegateCommand NextPageCommand  { get; }
     public DelegateCommand LastPageCommand  { get; }
+    // First/Prev: CanExecute = CurrentPage > 1
+    // Next/Last:  CanExecute = CurrentPage < TotalPages
+    // すべて .ObservesProperty(() => CurrentPage)
 
     // 編集
-    public Xxx? SelectedItem { get; set; }  // 選択 → フォームへ転写
+    private int? _editingId;
+    public Xxx? SelectedItem { get; set; }  // セット時に LoadToForm() でフォームへ転写
     public string EditCode { get; set; }
     // ...
+
     public DelegateCommand NewCommand    { get; }
     public DelegateCommand SaveCommand   { get; }
-    public DelegateCommand DeleteCommand { get; }
+    public DelegateCommand DeleteCommand { get; }  // CanExecute: SelectedItem is not null
+    // DeleteCommand = new DelegateCommand(...).ObservesProperty(() => SelectedItem)
+
     public string StatusMessage { get; set; }
+    // ページ切替後: StatusMessage = RangeLabel
+    // 操作後:      StatusMessage = "登録しました" / "更新しました" / "削除しました" 等
 }
 ```
+
+### ViewModel ライフサイクル
+1. コンストラクタ末尾で `_ = LoadAsync()` を呼ぶ（fire-and-forget）
+2. `LoadAsync()`: リポジトリからデータ取得 → `_allItems` セット → `CurrentPage=1; ApplyFilter()`
+3. 保存・削除後に `LoadAsync()` を再呼び出し（リストリフレッシュ）
+4. `ApplyFilter()` → `RaisePropertyChanged(nameof(TotalPages))` → `ApplyPage()`
+5. `ApplyPage()` → `Employees.Clear()` + `foreach Add` → `RaisePropertyChanged(PageLabel/RangeLabel)` → `StatusMessage = RangeLabel`
 
 ### View（MetroWindow）基本構造
 ```xml
@@ -122,12 +155,14 @@ public class XxxMaintViewModel : BindableBase
         <KeyBinding Key="F8"  Command="{Binding DeleteCommand}" />
         <KeyBinding Key="F10" Command="{Binding SaveCommand}" />
     </Window.InputBindings>
-    <!-- ToolBar / Grid（一覧+フォーム） / StatusBar -->
+    <!-- ToolBar / Grid（左:一覧+ページ / GridSplitter / 右:編集フォーム） / StatusBar -->
 </mah:MetroWindow>
 ```
 - `prism:ViewModelLocator.AutoWireViewModel` は使わない（App.xaml.cs で DataContext を明示セット）
 - コードビハインドは `InitializeComponent()` のみ
 - 全ウィンドウに `WindowTransitionsEnabled="False"`
+- 左右分割は `Grid` + `GridSplitter`（Width=5, Background=MahApps.Brushes.Gray8）
+- 編集フォームは `Border`（BorderThickness=1, BorderBrush=MahApps.Brushes.Gray8）で囲む
 
 ## Infrastructure パターン
 
