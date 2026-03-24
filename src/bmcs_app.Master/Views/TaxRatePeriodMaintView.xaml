@@ -1,0 +1,205 @@
+<mah:MetroWindow x:Class="bmcs_app.Master.Views.TaxRatePeriodMaintView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+    Title="消費税率マスタ"
+    Height="720" Width="1280"
+    WindowStartupLocation="CenterScreen"
+    WindowTransitionsEnabled="False">
+
+    <Window.InputBindings>
+        <KeyBinding Key="F3"  Command="{Binding NewCommand}" />
+        <KeyBinding Key="F8"  Command="{Binding DeleteCommand}" />
+        <KeyBinding Key="F10" Command="{Binding SaveCommand}" />
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*"    />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ツールバー -->
+        <ToolBar Grid.Row="0" ToolBarTray.IsLocked="True">
+            <Button Command="{Binding NewCommand}"
+                    Content="新規 (F3)"
+                    ToolTip="新規入力モードにします (F3)" />
+        </ToolBar>
+
+        <!-- メインコンテンツ: 一覧 | 編集フォーム -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"   />
+                <ColumnDefinition Width="5"   />
+                <ColumnDefinition Width="300" />
+            </Grid.ColumnDefinitions>
+
+            <!-- 一覧列 -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*"    />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- キーワード検索 -->
+                <TextBox Grid.Row="0"
+                         Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
+                         mah:TextBoxHelper.Watermark="キーワード検索（Enter で絞り込み）"
+                         mah:TextBoxHelper.ClearTextButton="True"
+                         Margin="4,4,4,2">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+                    </TextBox.InputBindings>
+                </TextBox>
+
+                <!-- 一覧 -->
+                <DataGrid Grid.Row="1"
+                          ItemsSource="{Binding Periods}"
+                          SelectedItem="{Binding SelectedPeriod, Mode=TwoWay}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          GridLinesVisibility="Horizontal"
+                          HeadersVisibility="Column"
+                          Margin="4">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="適用開始日"
+                                            Binding="{Binding StartDate, StringFormat=yyyy/MM/dd}"
+                                            Width="120" />
+                        <DataGridTextColumn Header="適用終了日"
+                                            Binding="{Binding EndDate, StringFormat=yyyy/MM/dd}"
+                                            Width="120" />
+                        <DataGridTextColumn Header="標準税率"
+                                            Binding="{Binding PrimaryTaxRate, StringFormat={}{0:0.##%}}"
+                                            Width="100" />
+                        <DataGridTextColumn Header="軽減税率"
+                                            Binding="{Binding SecondaryTaxRate, StringFormat={}{0:0.##%}}"
+                                            Width="100" />
+                        <DataGridTextColumn Header="第3税率"
+                                            Binding="{Binding TertiaryTaxRate, StringFormat={}{0:0.##%}}"
+                                            Width="*" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- ページセレクタ -->
+                <Border Grid.Row="2"
+                        BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                        BorderThickness="0,1,0,0"
+                        Padding="4,3">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*"    />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <Button Content="|◀"
+                                    Command="{Binding FirstPageCommand}"
+                                    ToolTip="先頭ページ"
+                                    Padding="6,0" Margin="0,0,2,0"
+                                    Style="{DynamicResource MahApps.Styles.Button.Flat}" />
+                            <Button Content="◀"
+                                    Command="{Binding PrevPageCommand}"
+                                    ToolTip="前のページ"
+                                    Padding="6,0"
+                                    Style="{DynamicResource MahApps.Styles.Button.Flat}" />
+                        </StackPanel>
+
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding PageLabel}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   FontSize="12" />
+
+                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <Button Content="▶"
+                                    Command="{Binding NextPageCommand}"
+                                    ToolTip="次のページ"
+                                    Padding="6,0" Margin="0,0,2,0"
+                                    Style="{DynamicResource MahApps.Styles.Button.Flat}" />
+                            <Button Content="▶|"
+                                    Command="{Binding LastPageCommand}"
+                                    ToolTip="最終ページ"
+                                    Padding="6,0"
+                                    Style="{DynamicResource MahApps.Styles.Button.Flat}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <GridSplitter Grid.Column="1"
+                          Width="5"
+                          HorizontalAlignment="Stretch"
+                          Background="{DynamicResource MahApps.Brushes.Gray8}" />
+
+            <!-- 編集フォーム -->
+            <Border Grid.Column="2"
+                    Margin="4"
+                    Padding="12"
+                    BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                    BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"    />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0">
+                        <Label Content="適用開始日" />
+                        <DatePicker SelectedDate="{Binding EditStartDate}"
+                                    Margin="0,0,0,8" />
+
+                        <Label Content="適用終了日（未選択=現在適用中）" />
+                        <DatePicker SelectedDate="{Binding EditEndDate}"
+                                    Margin="0,0,0,8" />
+
+                        <Label Content="標準税率（%）" />
+                        <TextBox Text="{Binding EditPrimaryTaxRate, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="例: 10"
+                                 MaxLength="6"
+                                 Margin="0,0,0,8" />
+
+                        <Label Content="軽減税率（%）" />
+                        <TextBox Text="{Binding EditSecondaryTaxRate, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="例: 8"
+                                 MaxLength="6"
+                                 Margin="0,0,0,8" />
+
+                        <Label Content="第3税率（%）（任意）" />
+                        <TextBox Text="{Binding EditTertiaryTaxRate, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="未使用の場合は空欄"
+                                 MaxLength="6"
+                                 Margin="0,0,0,8" />
+                    </StackPanel>
+
+                    <!-- 保存・削除ボタン（右下） -->
+                    <StackPanel Grid.Row="1"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                Margin="0,8,0,0">
+                        <Button Command="{Binding DeleteCommand}"
+                                Content="削除 (F8)"
+                                ToolTip="選択中のレコードを削除します (F8)"
+                                Margin="0,0,8,0" />
+                        <Button Command="{Binding SaveCommand}"
+                                Content="保存 (F10)"
+                                ToolTip="入力内容を保存します (F10)"
+                                Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ステータスバー -->
+        <StatusBar Grid.Row="2">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" />
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</mah:MetroWindow>

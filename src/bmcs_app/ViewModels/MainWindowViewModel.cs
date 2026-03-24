@@ -15,8 +15,12 @@ public class MainWindowViewModel : BindableBase
         LaunchCommand = new DelegateCommand<string>(Launch);
     }
 
-    private static void Launch(string exeName)
+    private static void Launch(string exeNameWithArgs)
     {
+        var parts   = exeNameWithArgs.Split(' ', 2);
+        var exeName = parts[0];
+        var args    = parts.Length > 1 ? parts[1] : "";
+
         var dir  = AppDomain.CurrentDomain.BaseDirectory;
         var path = Path.Combine(dir, exeName);
 
@@ -27,6 +31,10 @@ public class MainWindowViewModel : BindableBase
             return;
         }
 
-        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo(path)
+        {
+            UseShellExecute = true,
+            Arguments       = args,
+        });
     }
 }
