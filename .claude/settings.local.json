@@ -130,7 +130,12 @@
       "Bash(powershell.exe -Command \"Get-Module -ListAvailable -Name SqlServer,SQLPS 2>/dev/null | Select-Object Name,Version\" 2>&1)",
       "Bash(powershell.exe -Command \"Get-Module -ListAvailable -Name SqlServer,SQLPS | Select-Object Name,Version\")",
       "Bash(powershell.exe -Command \"\n\\\\$conn = New-Object System.Data.SqlClient.SqlConnection\\('Server=172.16.6.11;Database=bmcs_db;User Id=sa;Password=Sapassword1;TrustServerCertificate=True;'\\)\n\\\\$conn.Open\\(\\)\nWrite-Host 'Connected: ' \\\\$conn.State\n\\\\$conn.Close\\(\\)\n\")",
-      "Bash(powershell.exe -ExecutionPolicy Bypass -File \"tasks/extract_schema.ps1\" -OutFile \"database_definition.sql\")"
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File \"tasks/extract_schema.ps1\" -OutFile \"database_definition.sql\")",
+      "Bash(bash /c/Users/User3292/.claude/statusline-command.sh)",
+      "Bash(bash ~/.claude/statusline-command.sh)",
+      "Bash(powershell:*)",
+      "Bash(mkdir -p /tmp/DbQuery)",
+      "Read(//tmp/**)"
     ]
   }
 }

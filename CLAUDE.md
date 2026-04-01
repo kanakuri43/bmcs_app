@@ -164,6 +164,123 @@ public class XxxMaintViewModel : BindableBase
 - 左右分割は `Grid` + `GridSplitter`（Width=5, Background=MahApps.Brushes.Gray8）
 - 編集フォームは `Border`（BorderThickness=1, BorderBrush=MahApps.Brushes.Gray8）で囲む
 
+## 伝票入力画面パターン（bmcs_app.Sales を基準）
+
+### レイアウト構成
+```
+[ToolBar: 新規(F3) | 伝票No.検索(Space/Enter) | 前後ナビ | 登録件数]
+┌────────────────────────────────────────────────────────────┐
+│ ヘッダー                                                    │
+│  売上日付 [DatePicker]  伝票No. [TextBox]  受注No. [TextBox] │
+│  得意先   [コード TextBox] [名称 TextBox(readonly)]          │
+│  担当者   [コード TextBox] [名称 TextBox(readonly)]          │
+│  摘要     [TextBox]                                         │
+├────────────────────────────────────────────────────────────┤
+│ 明細 DataGrid（編集可）                                      │
+│  行 | 商品コード | 商品名 | 数量 | 単価 | 金額 | 税種 | 税率 | 税額 | 行摘要 │
+│  [行追加(F2)] [行削除]                                       │
+├────────────────────────────────────────────────────────────┤
+│ 《税抜金額》[値]  《消費税計》[値]   (外税)[値]  合計[値]  (内税)[値] │
+│                                      [削除(F8)] [保存(F10)] │
+└────────────────────────────────────────────────────────────┘
+[StatusBar]
+```
+
+### キーボードショートカット
+- F2: 行追加
+- F3: 新規
+- F8: 伝票削除
+- F10: 保存
+- Space（コード欄）: マスタ検索ダイアログを開く
+- Enter（コード欄）: コードで直接補完 → 次フィールドへ自動フォーカス
+
+### マスタ参照フィールドパターン（コード + 名称）
+ComboBox は使わず、コード入力欄 + 名称表示欄の2欄構成にする。
+
+```xml
+<TextBox x:Name="CustomerCodeBox"
+         Text="{Binding EditCustomerCode, UpdateSourceTrigger=PropertyChanged}"
+         mah:TextBoxHelper.Watermark="コード"
+         mah:TextBoxHelper.ClearTextButton="True">
+    <TextBox.InputBindings>
+        <KeyBinding Key="Space"  Command="{Binding OpenCustomerLookupCommand}" />
+        <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />
+    </TextBox.InputBindings>
+</TextBox>
+<TextBox Text="{Binding EditCustomerName, Mode=OneWay}"
+         IsReadOnly="True"
+         Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+```
+
+### MasterSearchDialog（共通マスタ検索ダイアログ）
+- `Sales/Views/MasterSearchDialog.xaml` — コード / 名称の2列リスト
+- `ILookupService`（Core/Interfaces）経由でダイアログを開く
+- `LookupService`（Sales/Services）が実装を担う
+- 操作: キーワード入力でリアルタイム絞り込み / `↓` でリスト移動 / Enter or ダブルクリックで確定 / Esc でキャンセル
+- 受注・入金でも同じ `MasterSearchDialog` と `LookupService` を再利用する
+
+```csharp
+// LookupService のエンティティ登録（App.xaml.cs）
+var lookupService = new LookupService();
+lookupService.Initialize(customers, employees, products);
+var vm = new SalesMainViewModel(lookupService, saleRepo);
+```
+
+### フォーカス移動パターン（コード確定後）
+ViewModel が `event Action<string>? FocusField` を発火 → View のコードビハインドがフォーカスを移動。
+フォーカス移動は純 UI 挙動なのでコードビハインドに書いてよい。
+
+```csharp
+// View.xaml.cs
+private void OnFocusField(string target)
+{
+    Dispatcher.BeginInvoke(() =>
+    {
+        switch (target)
+        {
+            case SalesMainViewModel.FocusTargets.EmployeeCode: FocusTextBox(EmployeeCodeBox); break;
+            case SalesMainViewModel.FocusTargets.LineQuantity: FocusDataGridColumn(LinesGrid, 3); break;
+            // ...
+        }
+    }, DispatcherPriority.Input);
+}
+```
+
+フォーカスフロー（売上登録）:
+```
+受注No. Enter → 得意先コード
+得意先 確定   → 担当者コード
+担当者 確定   → 摘要
+商品コード 確定 → 数量セル（DataGrid）
+```
+
+### ViewModel 構造（伝票画面）
+```csharp
+public class SalesMainViewModel : BindableBase
+{
+    private readonly ILookupService  _lookup;
+    private readonly ISaleRepository _saleRepo;
+
+    // ヘッダー: コード + 名称 + 内部ID を対で持つ
+    public string EditCustomerCode { get; set; }
+    public string EditCustomerName { get; set; }  // readonly 表示用
+    private int? _editCustomerId;                 // 保存時に使用
+
+    // 明細: SaleLineViewModel の ObservableCollection
+    public ObservableCollection<SaleLineViewModel> Lines { get; } = new();
+
+    // 集計: Lines を集計した計算プロパティ
+    public decimal TaxExcludedTotal => Lines.Sum(l => l.LineAmount);
+    // ...
+
+    // フォーカス移動イベント（View のコードビハインドがハンドル）
+    public event Action<string>? FocusField;
+
+    // フォーカスターゲット定数
+    public static class FocusTargets { ... }
+}
+```
+
 ## Infrastructure パターン
 
 ### リポジトリ
@@ -185,6 +302,35 @@ public async Task UpsertAsync(int? id, ...)
     // ...
     await cmd.ExecuteNonQueryAsync();
 }
+```
+
+## 伝票ロック方針
+
+### 対象テーブル
+`sales` / `receipts` の両テーブルに以下のカラムを持つ：
+
+| カラム | 型 | 意味 |
+|---|---|---|
+| `invoiced_at` | `datetime NULL` | 請求集計に取り込まれた日時 |
+| `ar_aggregated_at` | `datetime NULL` | 売掛金集計に取り込まれた日時 |
+
+### ロック判定
+```sql
+-- どちらか一方でも集計済みなら編集・削除不可
+(invoiced_at IS NOT NULL OR ar_aggregated_at IS NOT NULL)
+```
+
+- SP（usp_sales_upsert / usp_sales_delete / usp_receipts_upsert / usp_receipts_delete）でチェック済み
+- ロック解除は集計処理の再実行で当該カラムをNULLに戻す
+
+### 集計処理でのセット
+集計日時はシステム日付ではなく、締め処理が対象とする日付をパラメータで渡す
+（当日より前の日付で締め処理を行うケースがあるため）。
+
+```sql
+-- @process_date: 締め処理の対象日付（任意・GETDATE()は使わない）
+UPDATE sales SET invoiced_at = @process_date
+WHERE customer_id = @customer_id AND sale_date <= @closing_date AND invoiced_at IS NULL;
 ```
 
 ## 共通ルール
