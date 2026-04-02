@@ -8,6 +8,13 @@ BEGIN
     BEGIN TRANSACTION;
     BEGIN TRY
 
+        -- Remove accounts_receivable_histories created by the closing
+        DELETE FROM accounts_receivable_histories
+        WHERE  closing_date = @process_date
+          AND  is_deleted   = 0
+          AND  (@customer_id IS NULL OR customer_id = @customer_id);
+
+        -- Reset ar_aggregated_at on receipts and sales
         UPDATE receipts
         SET    ar_aggregated_at = NULL
         WHERE  is_deleted        = 0

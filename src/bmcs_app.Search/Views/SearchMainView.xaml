@@ -1,0 +1,140 @@
+<mah:MetroWindow x:Class="bmcs_app.Search.Views.SearchMainView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+    Title="伝票検索"
+    Height="720" Width="1100"
+    WindowStartupLocation="CenterScreen"
+    WindowTransitionsEnabled="False">
+
+    <Window.InputBindings>
+        <KeyBinding Key="F5" Command="{Binding SearchCommand}" />
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 検索条件パネル -->
+        <Border Grid.Row="0"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                Margin="8,8,8,4">
+            <Grid Margin="10,8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- 行1: 種別 / 日付 / 集計状態 -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
+
+                    <TextBlock Text="種別:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <RadioButton Content="両方" GroupName="SlipType"
+                                 IsChecked="{Binding SlipTypeBoth}"
+                                 VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <RadioButton Content="売上" GroupName="SlipType"
+                                 IsChecked="{Binding SlipTypeSalesOnly}"
+                                 VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <RadioButton Content="入金" GroupName="SlipType"
+                                 IsChecked="{Binding SlipTypeReceiptsOnly}"
+                                 VerticalAlignment="Center" Margin="0,0,28,0" />
+
+                    <TextBlock Text="日付:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <DatePicker SelectedDate="{Binding DateFrom}" Width="114" />
+                    <TextBlock Text="～" VerticalAlignment="Center" Margin="6,0" />
+                    <DatePicker SelectedDate="{Binding DateTo}" Width="114" Margin="0,0,28,0" />
+
+                    <TextBlock Text="集計状態:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <ComboBox ItemsSource="{Binding AggregationStatuses}"
+                              SelectedItem="{Binding SelectedAggregationStatus}"
+                              Width="110" />
+
+                </StackPanel>
+
+                <!-- 行2: キーワード / 得意先コード / 検索ボタン -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal">
+
+                    <TextBlock Text="キーワード:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBox Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
+                             mah:TextBoxHelper.Watermark="得意先名・商品名・摘要"
+                             mah:TextBoxHelper.ClearTextButton="True"
+                             Width="220" Margin="0,0,18,0">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding SearchCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+
+                    <TextBlock Text="得意先コード:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBox Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
+                             mah:TextBoxHelper.ClearTextButton="True"
+                             Width="100" Margin="0,0,18,0">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding SearchCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+
+                    <Button Content="検索 (F5)"
+                            Command="{Binding SearchCommand}"
+                            Style="{DynamicResource MahApps.Styles.Button.Square.Accent}"
+                            Width="90" />
+
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 検索結果 DataGrid -->
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding Results}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  SelectionMode="Single"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  GridLinesVisibility="Horizontal"
+                  HeadersVisibility="Column"
+                  Margin="8,0,8,0">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="種別"
+                                    Binding="{Binding SlipType}"
+                                    Width="60" />
+                <DataGridTextColumn Header="日付"
+                                    Binding="{Binding SlipDate, StringFormat=yyyy/MM/dd}"
+                                    Width="90" />
+                <DataGridTextColumn Header="伝票No."
+                                    Binding="{Binding SlipNo}"
+                                    Width="120" />
+                <DataGridTextColumn Header="得意先名"
+                                    Binding="{Binding CustomerName}"
+                                    Width="200" />
+                <DataGridTextColumn Header="金額（税抜）"
+                                    Binding="{Binding AmountStr}"
+                                    Width="100">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="TextAlignment" Value="Right" />
+                            <Setter Property="Padding" Value="0,0,6,0" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="状態"
+                                    Binding="{Binding Status}"
+                                    Width="90" />
+                <DataGridTextColumn Header="摘要"
+                                    Binding="{Binding Remarks}"
+                                    Width="*" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- ステータスバー -->
+        <StatusBar Grid.Row="2">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" />
+            </StatusBarItem>
+        </StatusBar>
+
+    </Grid>
+</mah:MetroWindow>

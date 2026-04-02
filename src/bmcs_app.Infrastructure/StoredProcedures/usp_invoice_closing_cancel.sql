@@ -8,6 +8,13 @@ BEGIN
     BEGIN TRANSACTION;
     BEGIN TRY
 
+        -- Remove invoice_headers created by the closing
+        DELETE FROM invoice_headers
+        WHERE  invoice_date = @process_date
+          AND  is_deleted   = 0
+          AND  (@customer_id IS NULL OR customer_id = @customer_id);
+
+        -- Reset invoiced_at on sales
         UPDATE sales
         SET    invoiced_at = NULL
         WHERE  is_deleted  = 0

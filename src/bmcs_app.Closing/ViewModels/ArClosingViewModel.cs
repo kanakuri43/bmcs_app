@@ -1,11 +1,15 @@
 using Prism.Commands;
 using Prism.Mvvm;
+using bmcs_app.Core.Interfaces;
+using bmcs_app.Core.Models;
 
 namespace bmcs_app.Closing.ViewModels;
 
-/// <summary>売掛金集計タブ</summary>
 public class ArClosingViewModel : BindableBase
 {
+    private readonly IClosingRepository _repo;
+    private readonly List<Customer>     _customers;
+
     // ===== 処理日付 =====
 
     private DateTime? _processDate = EndOfMonth(DateTime.Today);
@@ -58,15 +62,63 @@ public class ArClosingViewModel : BindableBase
     public DelegateCommand AggregateCommand         { get; }
     public DelegateCommand CancelAggregationCommand { get; }
 
-    public ArClosingViewModel()
+    public ArClosingViewModel(IEnumerable<Customer> customers, IClosingRepository repo)
     {
-        AggregateCommand         = new DelegateCommand(OnAggregate);
-        CancelAggregationCommand = new DelegateCommand(OnCancelAggregation);
+        _repo      = repo;
+        _customers = customers.ToList();
+
+        AggregateCommand         = new DelegateCommand(async () => await OnAggregateAsync());
+        CancelAggregationCommand = new DelegateCommand(async () => await OnCancelAggregationAsync());
     }
 
     private static DateTime EndOfMonth(DateTime d)
         => new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month));
 
-    private void OnAggregate()         { /* TODO */ }
-    private void OnCancelAggregation() { /* TODO */ }
+    private async Task OnAggregateAsync()
+    {
+        if (ProcessDate is null) { StatusMessage = "処理日付を入力してください。"; return; }
+
+        int? customerId = ResolveCustomerId();
+        if (IsSpecificCustomer && customerId is null) { StatusMessage = "得意先コードが見つかりません。"; return; }
+
+        try
+        {
+            StatusMessage = "売掛金集計中...";
+            await _repo.ArClosingAsync(
+                DateOnly.FromDateTime(ProcessDate.Value),
+                customerId);
+            StatusMessage = $"売掛金集計が完了しました。（{ProcessDate.Value:yyyy/MM/dd}）";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"エラー: {ex.Message}";
+        }
+    }
+
+    private async Task OnCancelAggregationAsync()
+    {
+        if (ProcessDate is null) { StatusMessage = "処理日付を入力してください。"; return; }
+
+        int? customerId = ResolveCustomerId();
+        if (IsSpecificCustomer && customerId is null) { StatusMessage = "得意先コードが見つかりません。"; return; }
+
+        try
+        {
+            StatusMessage = "集計取り消し中...";
+            await _repo.ArClosingCancelAsync(
+                DateOnly.FromDateTime(ProcessDate.Value),
+                customerId);
+            StatusMessage = $"集計取り消しが完了しました。（{ProcessDate.Value:yyyy/MM/dd}）";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"エラー: {ex.Message}";
+        }
+    }
+
+    private int? ResolveCustomerId()
+    {
+        if (IsAllCustomers) return null;
+        return _customers.FirstOrDefault(c => c.CustomerCode == CustomerCode)?.CustomerId;
+    }
 }

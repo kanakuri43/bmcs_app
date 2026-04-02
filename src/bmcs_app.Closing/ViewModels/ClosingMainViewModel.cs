@@ -1,5 +1,6 @@
 using Prism.Commands;
 using Prism.Mvvm;
+using bmcs_app.Core.Interfaces;
 using bmcs_app.Core.Models;
 
 namespace bmcs_app.Closing.ViewModels;
@@ -24,12 +25,13 @@ public class ClosingMainViewModel : BindableBase
     public DelegateCommand CancelAggregationCommand { get; }
     public DelegateCommand PrintCommand             { get; }
 
-    public ClosingMainViewModel(IEnumerable<Customer> customers)
+    public ClosingMainViewModel(IEnumerable<Customer> customers, IClosingRepository repo)
     {
-        var closingDays = customers.Select(c => c.ClosingDay);
+        var customerList = customers.ToList();
+        var closingDays  = customerList.Select(c => c.ClosingDay);
 
-        InvoiceTab = new InvoiceClosingViewModel(closingDays);
-        ArTab      = new ArClosingViewModel();
+        InvoiceTab = new InvoiceClosingViewModel(closingDays, customerList, repo);
+        ArTab      = new ArClosingViewModel(customerList, repo);
 
         AggregateCommand = new DelegateCommand(() =>
         {

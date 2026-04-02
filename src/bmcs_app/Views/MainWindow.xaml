@@ -3,7 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
     Title="bmcs"
-    Height="480" Width="320"
+    Height="560" Width="320"
     ResizeMode="CanMinimize"
     WindowStartupLocation="CenterScreen"
     WindowTransitionsEnabled="False">
@@ -45,6 +45,19 @@
         <Button Content="請求集計"
                 Command="{Binding LaunchCommand}"
                 CommandParameter="bmcs_app.Closing.exe"
+                HorizontalAlignment="Stretch"
+                Margin="0,0,0,16" />
+
+        <!-- 照会 -->
+        <TextBlock Text="照会"
+                   FontSize="12"
+                   FontWeight="Bold"
+                   Foreground="{DynamicResource MahApps.Brushes.Gray3}"
+                   Margin="0,0,0,4" />
+
+        <Button Content="伝票検索"
+                Command="{Binding LaunchCommand}"
+                CommandParameter="bmcs_app.Search.exe"
                 HorizontalAlignment="Stretch"
                 Margin="0,0,0,16" />
 
