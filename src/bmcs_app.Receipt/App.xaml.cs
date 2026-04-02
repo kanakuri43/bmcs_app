@@ -30,5 +30,11 @@ public partial class App : Application
 
         var win = new ReceiptMainView { DataContext = vm };
         win.Show();
+
+        var initialSlipNo = e.Args
+            .Select(a => a.StartsWith("--slip-no=") ? a["--slip-no=".Length..] : null)
+            .FirstOrDefault(v => v is not null);
+        if (initialSlipNo is not null)
+            _ = vm.LoadInitialSlipAsync(initialSlipNo);
     }
 }

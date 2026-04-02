@@ -292,6 +292,13 @@ public class SalesMainViewModel : BindableBase
         catch { /* ナビ情報取得失敗は無視 */ }
     }
 
+    // ── 外部からの伝票呼び出し（検索画面からのダブルクリック起動）────
+    public async Task LoadInitialSlipAsync(string slipNo)
+    {
+        EditSaleNo = slipNo;
+        await OnSearchAsync();
+    }
+
     // ── 伝票検索 ─────────────────────────────────────────────
     private async Task OnSearchAsync()
     {

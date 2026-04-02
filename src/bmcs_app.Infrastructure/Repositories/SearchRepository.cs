@@ -100,14 +100,16 @@ public class SearchRepository : ISearchRepository
         if (dateTo.HasValue)                          where.Add("receipt_date <= @date_to");
         if (!string.IsNullOrWhiteSpace(keyword))      where.Add("(customer_name LIKE @keyword OR slip_remarks LIKE @keyword OR line_remarks LIKE @keyword)");
         if (!string.IsNullOrWhiteSpace(customerCode)) where.Add("customer_code = @customer_code");
-        if (aggregationStatus == "unprocessed")       where.Add("ar_aggregated_at IS NULL");
-        else if (aggregationStatus == "processed")    where.Add("ar_aggregated_at IS NOT NULL");
+        if (aggregationStatus == "unprocessed")       where.Add("invoiced_at IS NULL AND ar_aggregated_at IS NULL");
+        else if (aggregationStatus == "processed")    where.Add("(invoiced_at IS NOT NULL OR ar_aggregated_at IS NOT NULL)");
 
         return $"""
             SELECT N'入金' AS slip_type, receipt_no AS slip_no,
                    MIN(receipt_date) AS slip_date, MAX(customer_name) AS customer_name,
                    SUM(amount) AS amount,
                    MAX(CASE
+                       WHEN invoiced_at IS NOT NULL AND ar_aggregated_at IS NOT NULL THEN N'請求・集計済'
+                       WHEN invoiced_at IS NOT NULL  THEN N'請求済'
                        WHEN ar_aggregated_at IS NOT NULL THEN N'集計済'
                        ELSE N'未処理'
                    END) AS status,

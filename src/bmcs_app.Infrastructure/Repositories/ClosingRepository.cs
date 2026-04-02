@@ -160,6 +160,41 @@ public class ClosingRepository : IClosingRepository
         return list;
     }
 
+    public async Task<IEnumerable<InvoiceReceiptDetail>> GetInvoiceReceiptDetailsAsync(
+        DateOnly invoiceDate, int customerId)
+    {
+        var list = new List<InvoiceReceiptDetail>();
+        await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT MIN(receipt_date) AS receipt_date,
+                   receipt_no,
+                   MAX(ISNULL(slip_remarks, '')) AS slip_remarks,
+                   SUM(amount) AS amount
+            FROM   receipts
+            WHERE  is_deleted  = 0
+              AND  CAST(invoiced_at AS date) = @invoice_date
+              AND  customer_id = @customer_id
+            GROUP BY receipt_no
+            ORDER BY MIN(receipt_date), receipt_no
+            """;
+        cmd.Parameters.AddWithValue("@invoice_date", invoiceDate.ToDateTime(TimeOnly.MinValue));
+        cmd.Parameters.AddWithValue("@customer_id",  customerId);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            list.Add(new InvoiceReceiptDetail
+            {
+                ReceiptDate = DateOnly.FromDateTime(reader.GetDateTime(0)),
+                ReceiptNo   = reader.GetString(1),
+                Remarks     = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                Amount      = reader.GetDecimal(3),
+            });
+        }
+        return list;
+    }
+
     public async Task<IEnumerable<InvoiceTaxGroup>> GetInvoiceTaxGroupsAsync(
         DateOnly invoiceDate, int customerId)
     {

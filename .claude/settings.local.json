@@ -140,7 +140,11 @@
       "Bash(powershell.exe -Command ':*)",
       "Bash(git mv:*)",
       "Bash(/opt/mssql-tools18/bin/sqlcmd:*)",
-      "Bash(powershell.exe:*)"
+      "Bash(powershell.exe:*)",
+      "Bash(where /r \"C:\\\\Program Files\" sqlcmd.exe)",
+      "Bash(Get-Command sqlcmd:*)",
+      "Bash(Select-Object -ExpandProperty Source)",
+      "Read(//c/Program Files/Microsoft SQL Server/**)"
     ]
   }
 }

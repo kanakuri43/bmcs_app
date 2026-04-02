@@ -28,9 +28,12 @@ public static class InvoicePrintHelper
     private const double FooterH        = 80.0;   // 税率別集計+注記
 
     // ── 明細テーブルの列幅 ─────────────────────────────────────────
-    // { 売上日, 伝票No., 摘要(*=残余), 税抜金額, 消費税 }
+    // { 日付, 伝票No., 摘要(*=残余), 税抜金額/入金額, 消費税 }
     private static readonly double[] ColFixed = { 72, 96, 0, 90, 76 };
     private static double StarWidth => CW - ColFixed.Where(w => w > 0).Sum();  // ≒ 363
+
+    // ── 印刷行（売上行・入金行・セクション区切りを統一）─────────────
+    private record PrintRow(string C0, string C1, string C2, string C3, string C4, bool IsSection = false);
 
     // ── フォント ──────────────────────────────────────────────────
     private static readonly FontFamily JFont = new("Meiryo UI");
@@ -68,6 +71,23 @@ public static class InvoicePrintHelper
         return doc;
     }
 
+    private static List<PrintRow> BuildPrintRows(InvoicePrintData data)
+    {
+        var rows = new List<PrintRow>();
+
+        foreach (var l in data.Lines)
+            rows.Add(new PrintRow(l.SaleDate, l.SaleNo, l.Remarks, l.TaxExcluded, l.TaxAmount));
+
+        if (data.ReceiptLines.Count > 0)
+        {
+            rows.Add(new PrintRow("", "-- 入金 --", "", "", "", IsSection: true));
+            foreach (var r in data.ReceiptLines)
+                rows.Add(new PrintRow(r.ReceiptDate, r.ReceiptNo, r.Remarks, r.AmountStr, ""));
+        }
+
+        return rows;
+    }
+
     private static void AddInvoicePages(FixedDocument doc, InvoicePrintData data)
     {
         var available1 = CH - FullHeaderH - SummaryH - TableHeaderH - FooterH;
@@ -75,7 +95,7 @@ public static class InvoicePrintHelper
         int linesPage1 = Math.Max(1, (int)(available1 / LineH));
         int linesPageN = Math.Max(1, (int)(availableN / LineH));
 
-        var remaining = new List<InvoiceSlipLine>(data.Lines);
+        var remaining = BuildPrintRows(data);
 
         var first    = remaining.Take(linesPage1).ToList();
         remaining    = remaining.Skip(linesPage1).ToList();
@@ -99,7 +119,7 @@ public static class InvoicePrintHelper
     }
 
     private static void AddFixedPage(FixedDocument doc, InvoicePrintData data,
-        List<InvoiceSlipLine> lines, bool isFirst, bool isLast, int pageNum, int totalPages)
+        List<PrintRow> lines, bool isFirst, bool isLast, int pageNum, int totalPages)
     {
         var fp = new FixedPage
         {
@@ -127,7 +147,7 @@ public static class InvoicePrintHelper
     // ─────────────────────────────────────────────────────────────
 
     private static StackPanel BuildPageContent(InvoicePrintData data,
-        List<InvoiceSlipLine> lines, bool isFirst, bool isLast, int pageNum, int totalPages)
+        List<PrintRow> lines, bool isFirst, bool isLast, int pageNum, int totalPages)
     {
         var root = new StackPanel { Width = CW, Background = Brushes.White };
 
@@ -353,7 +373,7 @@ public static class InvoicePrintHelper
     //  明細テーブル
     // ─────────────────────────────────────────────────────────────
 
-    private static readonly string[] Headers = { "売上日", "伝票No.", "摘要", "税抜金額", "消費税" };
+    private static readonly string[] Headers = { "日付", "伝票No.", "摘要", "税抜/入金額", "消費税" };
 
     private static readonly TextAlignment[] ColAlign =
     {
@@ -361,7 +381,7 @@ public static class InvoicePrintHelper
         TextAlignment.Right,  TextAlignment.Right,
     };
 
-    private static FrameworkElement BuildLinesTable(List<InvoiceSlipLine> lines)
+    private static FrameworkElement BuildLinesTable(List<PrintRow> rows)
     {
         var container = new StackPanel();
 
@@ -373,9 +393,15 @@ public static class InvoicePrintHelper
         container.Children.Add(HLine(0.5));
 
         bool alt = false;
-        foreach (var line in lines)
+        foreach (var row in rows)
         {
-            var cells = new[] { line.SaleDate, line.SaleNo, line.Remarks, line.TaxExcluded, line.TaxAmount };
+            if (row.IsSection)
+            {
+                container.Children.Add(BuildSectionRow(row.C1));
+                alt = false;
+                continue;
+            }
+            var cells = new[] { row.C0, row.C1, row.C2, row.C3, row.C4 };
             var bg    = alt
                 ? new SolidColorBrush(Color.FromRgb(248, 248, 248))
                 : Brushes.White;
@@ -383,15 +409,37 @@ public static class InvoicePrintHelper
             alt = !alt;
         }
 
-        if (lines.Count < 5)
+        int nonSectionCount = rows.Count(r => !r.IsSection);
+        if (nonSectionCount < 5)
         {
-            for (int i = lines.Count; i < 5; i++)
+            for (int i = nonSectionCount; i < 5; i++)
                 container.Children.Add(
                     BuildTableRow(isHeader: false, background: Brushes.White,
                         cells: new string[Headers.Length]));
         }
 
         return container;
+    }
+
+    private static FrameworkElement BuildSectionRow(string label)
+    {
+        var grid = new Grid
+        {
+            Background = new SolidColorBrush(Color.FromRgb(230, 230, 240)),
+            Height     = LineH,
+        };
+        var tb = new TextBlock
+        {
+            Text              = label,
+            FontFamily        = JFont,
+            FontSize          = 9.0,
+            FontWeight        = FontWeights.Bold,
+            TextAlignment     = TextAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+            Padding           = new Thickness(6, 0, 3, 0),
+        };
+        grid.Children.Add(tb);
+        return grid;
     }
 
     private static FrameworkElement BuildTableRow(bool isHeader, Brush background, string?[] cells)

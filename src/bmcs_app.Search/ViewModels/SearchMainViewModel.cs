@@ -1,4 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
+using System.Windows;
 using Prism.Commands;
 using Prism.Mvvm;
 using bmcs_app.Core.Interfaces;
@@ -85,6 +88,17 @@ public class SearchMainViewModel : BindableBase
 
     public ObservableCollection<SearchResultItem> Results { get; } = new();
 
+    private SearchResultItem? _selectedResult;
+    public SearchResultItem? SelectedResult
+    {
+        get => _selectedResult;
+        set
+        {
+            SetProperty(ref _selectedResult, value);
+            OpenSlipCommand.RaiseCanExecuteChanged();
+        }
+    }
+
     // ===== ステータス =====
 
     private string _statusMessage = "条件を指定して検索してください。";
@@ -97,11 +111,38 @@ public class SearchMainViewModel : BindableBase
     // ===== コマンド =====
 
     public DelegateCommand SearchCommand { get; }
+    public DelegateCommand OpenSlipCommand { get; }
 
     public SearchMainViewModel(ISearchRepository repo)
     {
-        _repo         = repo;
-        SearchCommand = new DelegateCommand(async () => await OnSearchAsync());
+        _repo          = repo;
+        SearchCommand  = new DelegateCommand(async () => await OnSearchAsync());
+        OpenSlipCommand = new DelegateCommand(OnOpenSlip, () => SelectedResult is not null);
+    }
+
+    private void OnOpenSlip()
+    {
+        if (SelectedResult is null) return;
+
+        var exeName = SelectedResult.SlipType == "売上"
+            ? "bmcs_app.Sales.exe"
+            : "bmcs_app.Receipt.exe";
+
+        var dir  = AppDomain.CurrentDomain.BaseDirectory;
+        var path = Path.Combine(dir, exeName);
+
+        if (!File.Exists(path))
+        {
+            MessageBox.Show($"{exeName} が見つかりません。\n\n{path}",
+                            "起動エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo(path)
+        {
+            UseShellExecute = true,
+            Arguments       = $"--slip-no={SelectedResult.SlipNo}",
+        });
     }
 
     private async Task OnSearchAsync()

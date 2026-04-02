@@ -20,7 +20,7 @@ BEGIN
     BEGIN TRANSACTION;
     BEGIN TRY
 
-        -- Step 1: invoiced_at をセット
+        -- Step 1: Set invoiced_at on sales
         UPDATE sales
         SET    invoiced_at = @process_date
         WHERE  is_deleted   = 0
@@ -32,8 +32,7 @@ BEGIN
                    WHERE  closing_day = @closing_day AND is_deleted = 0
                );
 
-        -- Step 2: invoice_headers を作成
-        --   再実行時は同一 customer_id + invoice_date の既存レコードを先に削除
+        -- Step 2: Remove existing invoice_headers for re-run
         DELETE FROM invoice_headers
         WHERE  invoice_date = @process_date
           AND  is_deleted   = 0
@@ -44,8 +43,33 @@ BEGIN
                      AND  (@customer_id IS NULL OR customer_id = @customer_id)
                );
 
+        -- Step 3: Set invoiced_at on receipts
+        --   Range: after the previous invoice_date through closing_date
+        --   Target: customers who have sales in this closing run
+        --   (After Step 2, prev invoice_date subquery correctly finds the prior period)
+        UPDATE r
+        SET    r.invoiced_at = @process_date
+        FROM   receipts r
+        WHERE  r.is_deleted    = 0
+          AND  r.invoiced_at  IS NULL
+          AND  r.receipt_date <= @closing_date
+          AND  r.receipt_date  > ISNULL((
+                   SELECT TOP 1 h.invoice_date
+                   FROM   invoice_headers h
+                   WHERE  h.customer_id = r.customer_id AND h.is_deleted = 0
+                   ORDER BY h.invoice_date DESC
+               ), '19000101')
+          AND  r.customer_id IN (
+                   SELECT DISTINCT customer_id FROM sales
+                   WHERE  is_deleted   = 0
+                     AND  invoiced_at  = @process_date
+                     AND  (@customer_id IS NULL OR customer_id = @customer_id)
+               )
+          AND  (@customer_id IS NULL OR r.customer_id = @customer_id);
+
+        -- Step 4: Insert invoice_headers via CTE chain
         ;WITH
-        -- 今回 invoiced_at がセットされた得意先
+        -- Customers included in this closing run
         affected AS (
             SELECT DISTINCT customer_id, customer_code, customer_name
             FROM   sales
@@ -53,7 +77,7 @@ BEGIN
               AND  invoiced_at = @process_date
               AND  (@customer_id IS NULL OR customer_id = @customer_id)
         ),
-        -- 直近の invoice_headers レコード（前残・前回請求日を取得）
+        -- Most recent previous invoice_headers record per customer
         prev_inv AS (
             SELECT customer_id, current_invoice_amount, invoice_date
             FROM (
@@ -64,7 +88,7 @@ BEGIN
             ) t
             WHERE rn = 1
         ),
-        -- 伝票×税率グループ単位で集計（伝票単位・明細単位どちらも同じ計算になる）
+        -- Per-slip tax group aggregation
         slip_groups AS (
             SELECT
                 s.customer_id,
@@ -79,7 +103,7 @@ BEGIN
               AND  (@customer_id IS NULL OR s.customer_id = @customer_id)
             GROUP BY s.customer_id, s.sale_no, s.tax_rate_type, s.tax_type_id, s.applied_tax_rate
         ),
-        -- 得意先×税率種別で集計
+        -- Per-customer sales and tax totals by rate type
         sales_agg AS (
             SELECT
                 customer_id,
@@ -98,16 +122,14 @@ BEGIN
             FROM   slip_groups
             GROUP BY customer_id
         ),
-        -- 入金集計: 前回請求日より後〜締め日までの入金（初回は全入金を対象）
+        -- Receipts in this closing period (invoiced_at = @process_date)
         receipt_agg AS (
-            SELECT r.customer_id, SUM(r.amount) AS receipt_total
-            FROM   receipts r
-            LEFT JOIN prev_inv pi ON r.customer_id = pi.customer_id
-            WHERE  r.is_deleted    = 0
-              AND  r.receipt_date  > ISNULL(pi.invoice_date, '19000101')
-              AND  r.receipt_date <= @closing_date
-              AND  (@customer_id IS NULL OR r.customer_id = @customer_id)
-            GROUP BY r.customer_id
+            SELECT customer_id, SUM(amount) AS receipt_total
+            FROM   receipts
+            WHERE  is_deleted    = 0
+              AND  CAST(invoiced_at AS date) = @process_date
+              AND  (@customer_id IS NULL OR customer_id = @customer_id)
+            GROUP BY customer_id
         )
         INSERT INTO invoice_headers (
             customer_id, customer_code, customer_name,
@@ -130,7 +152,7 @@ BEGIN
             ISNULL(sa.sales_reduced,  0),
             ISNULL(sa.tax_standard,   0),
             ISNULL(sa.tax_reduced,    0),
-            -- 今回請求額 = 前残 - 入金 + 税抜売上 + 消費税
+            -- current_invoice_amount = previous - receipts + sales + tax
             ISNULL(pi.current_invoice_amount, 0)
             - ISNULL(ra.receipt_total,        0)
             + ISNULL(sa.sales_standard,       0) + ISNULL(sa.tax_standard, 0)

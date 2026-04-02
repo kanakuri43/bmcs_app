@@ -87,8 +87,10 @@
         </Border>
 
         <!-- 検索結果 DataGrid -->
-        <DataGrid Grid.Row="1"
+        <DataGrid x:Name="ResultsGrid"
+                  Grid.Row="1"
                   ItemsSource="{Binding Results}"
+                  SelectedItem="{Binding SelectedResult, Mode=TwoWay}"
                   AutoGenerateColumns="False"
                   IsReadOnly="True"
                   SelectionMode="Single"
@@ -96,7 +98,8 @@
                   CanUserDeleteRows="False"
                   GridLinesVisibility="Horizontal"
                   HeadersVisibility="Column"
-                  Margin="8,0,8,0">
+                  Margin="8,0,8,0"
+                  MouseDoubleClick="OnGridDoubleClick">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="種別"
                                     Binding="{Binding SlipType}"

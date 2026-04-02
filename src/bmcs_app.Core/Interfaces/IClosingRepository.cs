@@ -9,7 +9,8 @@ public interface IClosingRepository
     Task ArClosingAsync(DateOnly processDate, int? customerId = null);
     Task ArClosingCancelAsync(DateOnly processDate, int? customerId = null);
 
-    Task<IEnumerable<InvoiceHeader>>    GetInvoiceHeadersAsync(DateOnly invoiceDate, byte closingDay, int? customerId = null);
-    Task<IEnumerable<InvoiceSlipDetail>> GetInvoiceSlipDetailsAsync(DateOnly invoiceDate, int customerId);
-    Task<IEnumerable<InvoiceTaxGroup>>  GetInvoiceTaxGroupsAsync(DateOnly invoiceDate, int customerId);
+    Task<IEnumerable<InvoiceHeader>>        GetInvoiceHeadersAsync(DateOnly invoiceDate, byte closingDay, int? customerId = null);
+    Task<IEnumerable<InvoiceSlipDetail>>    GetInvoiceSlipDetailsAsync(DateOnly invoiceDate, int customerId);
+    Task<IEnumerable<InvoiceTaxGroup>>      GetInvoiceTaxGroupsAsync(DateOnly invoiceDate, int customerId);
+    Task<IEnumerable<InvoiceReceiptDetail>> GetInvoiceReceiptDetailsAsync(DateOnly invoiceDate, int customerId);
 }

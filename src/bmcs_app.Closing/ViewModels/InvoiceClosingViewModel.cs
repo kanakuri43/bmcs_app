@@ -173,8 +173,9 @@ public class InvoiceClosingViewModel : BindableBase
             {
                 var slips     = (await _repo.GetInvoiceSlipDetailsAsync(invoiceDate, h.CustomerId)).ToList();
                 var taxGroups = (await _repo.GetInvoiceTaxGroupsAsync(invoiceDate, h.CustomerId)).ToList();
+                var receipts  = (await _repo.GetInvoiceReceiptDetailsAsync(invoiceDate, h.CustomerId)).ToList();
 
-                printDataList.Add(BuildPrintData(h, slips, taxGroups));
+                printDataList.Add(BuildPrintData(h, slips, taxGroups, receipts));
             }
 
             StatusMessage = "印刷中...";
@@ -190,7 +191,8 @@ public class InvoiceClosingViewModel : BindableBase
     private InvoicePrintData BuildPrintData(
         InvoiceHeader header,
         List<bmcs_app.Core.Models.InvoiceSlipDetail> slips,
-        List<bmcs_app.Core.Models.InvoiceTaxGroup> taxGroups)
+        List<bmcs_app.Core.Models.InvoiceTaxGroup> taxGroups,
+        List<bmcs_app.Core.Models.InvoiceReceiptDetail> receipts)
     {
         static string Fmt(decimal v) => v.ToString("#,##0");
 
@@ -220,6 +222,14 @@ public class InvoiceClosingViewModel : BindableBase
             Remarks     = s.Remarks ?? "",
             TaxExcluded = Fmt(s.TaxExcluded),
             TaxAmount   = Fmt(s.TaxAmount),
+        }).ToList();
+
+        data.ReceiptLines = receipts.Select(r => new InvoiceReceiptLine
+        {
+            ReceiptDate = r.ReceiptDate.ToString("yyyy/MM/dd"),
+            ReceiptNo   = r.ReceiptNo,
+            Remarks     = r.Remarks ?? "",
+            AmountStr   = Fmt(r.Amount),
         }).ToList();
 
         data.TaxBreakdowns = taxGroups.Select(g =>

@@ -4,7 +4,7 @@
     xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
     xmlns:h="clr-namespace:bmcs_app.Receipt.Helpers"
     Title="入金伝票"
-    Height="620" Width="900"
+    Height="720" Width="1100"
     WindowStartupLocation="CenterScreen"
     WindowTransitionsEnabled="False"
     FocusManager.FocusedElement="{Binding ElementName=ReceiptNoBox}">
