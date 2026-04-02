@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 
-namespace bmcs_app.Payment.Helpers;
+namespace bmcs_app.Receipt.Helpers;
 
 /// <summary>
 /// Enter キー押下後に次のフォーカス可能要素へ移動する添付プロパティ。

@@ -1,4 +1,4 @@
-# bmcs_app.Payment（入金登録モジュール）
+# bmcs_app.Receipt（入金登録モジュール）
 
 ## 役割
 入金伝票の新規登録・検索・更新・削除を行う単独 exe。
@@ -55,9 +55,9 @@ Sales のように別途 SQL でチェックする必要はない（`ReceiptRepo
 1. CustomerRepository / PaymentMethodRepository を同期ロード
 2. LookupService.Initialize(customers, paymentMethods)
 3. ReceiptRepository を生成
-4. PaymentMainViewModel(lookupService, receiptRepo) を生成
+4. ReceiptMainViewModel(lookupService, receiptRepo) を生成
 5. PaymentMethods コレクションに入金区分を追加（DataGrid ComboBox 用）
-6. PaymentMainView を Show
+6. ReceiptMainView を Show
 ```
 
 ## フォーカスフロー

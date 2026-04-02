@@ -137,7 +137,10 @@
       "Bash(mkdir -p /tmp/DbQuery)",
       "Read(//tmp/**)",
       "Bash(python3 /tmp/query_db.py)",
-      "Bash(powershell.exe -Command ':*)"
+      "Bash(powershell.exe -Command ':*)",
+      "Bash(git mv:*)",
+      "Bash(/opt/mssql-tools18/bin/sqlcmd:*)",
+      "Bash(powershell.exe:*)"
     ]
   }
 }

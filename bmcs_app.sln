@@ -13,7 +13,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bmcs_app.Order", "src\bmcs_
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bmcs_app.Sales", "src\bmcs_app.Sales\bmcs_app.Sales.csproj", "{8E34E36B-1F47-497A-B9CC-B0DA5B61C1C9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bmcs_app.Payment", "src\bmcs_app.Payment\bmcs_app.Payment.csproj", "{00D51CA8-798E-411F-B702-BCB1ED5258C1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bmcs_app.Receipt", "src\bmcs_app.Receipt\bmcs_app.Receipt.csproj", "{00D51CA8-798E-411F-B702-BCB1ED5258C1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bmcs_app.Closing", "src\bmcs_app.Closing\bmcs_app.Closing.csproj", "{61B95C11-CEBC-458C-B840-9712C687442D}"
 EndProject

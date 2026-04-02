@@ -1,11 +1,11 @@
 using System.Windows;
 using bmcs_app.Core.Models;
 using bmcs_app.Infrastructure.Repositories;
-using bmcs_app.Payment.Services;
-using bmcs_app.Payment.ViewModels;
-using bmcs_app.Payment.Views;
+using bmcs_app.Receipt.Services;
+using bmcs_app.Receipt.ViewModels;
+using bmcs_app.Receipt.Views;
 
-namespace bmcs_app.Payment;
+namespace bmcs_app.Receipt;
 
 public partial class App : Application
 {
@@ -23,12 +23,12 @@ public partial class App : Application
         lookupService.Initialize(customers, paymentMethods);
 
         var receiptRepo = new ReceiptRepository();
-        var vm = new PaymentMainViewModel(lookupService, receiptRepo);
+        var vm = new ReceiptMainViewModel(lookupService, receiptRepo);
 
         foreach (var pm in paymentMethods)
             vm.PaymentMethods.Add(pm);
 
-        var win = new PaymentMainView { DataContext = vm };
+        var win = new ReceiptMainView { DataContext = vm };
         win.Show();
     }
 }

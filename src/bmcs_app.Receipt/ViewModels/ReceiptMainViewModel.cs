@@ -4,13 +4,13 @@ using System.ComponentModel;
 using System.Windows;
 using bmcs_app.Core.Interfaces;
 using bmcs_app.Core.Models;
-using bmcs_app.Payment.Services;
+using bmcs_app.Receipt.Services;
 using Prism.Commands;
 using Prism.Mvvm;
 
-namespace bmcs_app.Payment.ViewModels;
+namespace bmcs_app.Receipt.ViewModels;
 
-public class PaymentMainViewModel : BindableBase
+public class ReceiptMainViewModel : BindableBase
 {
     private readonly LookupService      _lookup;
     private readonly IReceiptRepository _receiptRepo;
@@ -116,7 +116,7 @@ public class PaymentMainViewModel : BindableBase
     public DelegateCommand LookupCustomerByCodeCommand  { get; }
 
     // ── コンストラクタ ──────────────────────────────────────────
-    public PaymentMainViewModel(LookupService lookup, IReceiptRepository receiptRepo)
+    public ReceiptMainViewModel(LookupService lookup, IReceiptRepository receiptRepo)
     {
         _lookup      = lookup;
         _receiptRepo = receiptRepo;

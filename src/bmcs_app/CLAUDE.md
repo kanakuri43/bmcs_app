@@ -12,4 +12,4 @@
 ## 参照プロジェクト
 - bmcs_app.Core
 - bmcs_app.Infrastructure
-- bmcs_app.Sales / bmcs_app.Payment / bmcs_app.Closing
+- bmcs_app.Sales / bmcs_app.Receipt / bmcs_app.Closing

@@ -21,7 +21,7 @@
 | bmcs_app.Master | WinExe | マスタ保守（社員・得意先・商品等） |
 | bmcs_app.Order | WinExe | 受注登録 |
 | bmcs_app.Sales | WinExe | 売上登録 |
-| bmcs_app.Payment | WinExe | 入金登録 |
+| bmcs_app.Receipt | WinExe | 入金登録 |
 | bmcs_app.Closing | WinExe | 請求集計・締め処理 |
 
 ## アーキテクチャ方針

@@ -38,7 +38,7 @@
 
         <Button Content="入金登録"
                 Command="{Binding LaunchCommand}"
-                CommandParameter="bmcs_app.Payment.exe"
+                CommandParameter="bmcs_app.Receipt.exe"
                 HorizontalAlignment="Stretch"
                 Margin="0,0,0,4" />
 

@@ -1,4 +1,4 @@
-<Application x:Class="bmcs_app.Payment.App"
+<Application x:Class="bmcs_app.Receipt.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>

@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace bmcs_app.Payment.Views;
+namespace bmcs_app.Receipt.Views;
 
 public partial class MasterSearchDialog : MahApps.Metro.Controls.MetroWindow
 {

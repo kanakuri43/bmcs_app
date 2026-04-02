@@ -1,7 +1,7 @@
 using bmcs_app.Core.Models;
-using bmcs_app.Payment.Views;
+using bmcs_app.Receipt.Views;
 
-namespace bmcs_app.Payment.Services;
+namespace bmcs_app.Receipt.Services;
 
 /// <summary>
 /// 入金登録画面で使用するマスタ検索サービス。

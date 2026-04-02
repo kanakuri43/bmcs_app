@@ -1,7 +1,7 @@
 using bmcs_app.Core.Models;
 using Prism.Mvvm;
 
-namespace bmcs_app.Payment.ViewModels;
+namespace bmcs_app.Receipt.ViewModels;
 
 /// <summary>入金明細 DataGrid の1行分（編集可能）</summary>
 public class ReceiptLineViewModel : BindableBase

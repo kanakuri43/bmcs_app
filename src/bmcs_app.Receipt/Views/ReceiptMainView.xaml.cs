@@ -2,13 +2,13 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using MahApps.Metro.Controls;
-using bmcs_app.Payment.ViewModels;
+using bmcs_app.Receipt.ViewModels;
 
-namespace bmcs_app.Payment.Views;
+namespace bmcs_app.Receipt.Views;
 
-public partial class PaymentMainView : MetroWindow
+public partial class ReceiptMainView : MetroWindow
 {
-    public PaymentMainView()
+    public ReceiptMainView()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
@@ -16,15 +16,15 @@ public partial class PaymentMainView : MetroWindow
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (e.OldValue is PaymentMainViewModel oldVm)
+        if (e.OldValue is ReceiptMainViewModel oldVm)
             oldVm.FocusField -= OnFocusField;
-        if (e.NewValue is PaymentMainViewModel newVm)
+        if (e.NewValue is ReceiptMainViewModel newVm)
             newVm.FocusField += OnFocusField;
     }
 
     private void OnFocusField(string target)
     {
-        if (target != PaymentMainViewModel.FocusTargets.LinePaymentMethod) return;
+        if (target != ReceiptMainViewModel.FocusTargets.LinePaymentMethod) return;
 
         Dispatcher.BeginInvoke(() =>
         {
