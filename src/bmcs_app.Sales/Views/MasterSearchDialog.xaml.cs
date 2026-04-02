@@ -79,7 +79,12 @@ public partial class MasterSearchDialog : MahApps.Metro.Controls.MetroWindow
     }
 
     private void ResultGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        => Confirm();
+    {
+        // DataGridRow 上のクリックのみ確定（ヘッダ・空白行は無視）
+        if (e.OriginalSource is DependencyObject src &&
+            ItemsControl.ContainerFromElement(ResultGrid, src) is DataGridRow)
+            Confirm();
+    }
 
     private void ResultGrid_KeyDown(object sender, KeyEventArgs e)
     {

@@ -230,28 +230,82 @@ var vm = new SalesMainViewModel(lookupService, saleRepo);
 ViewModel が `event Action<string>? FocusField` を発火 → View のコードビハインドがフォーカスを移動。
 フォーカス移動は純 UI 挙動なのでコードビハインドに書いてよい。
 
+**2通りの方法を使い分ける:**
+
+1. **`h:FocusHelper.MoveNextOnEnter="True"`**（TextBox 間の単純な移動）
+   - `AddHandler(KeyDownEvent, handler, handledEventsToo: true)` で登録（KeyBinding 後も発火）
+   - readonly 名称欄は `IsTabStop="False"`、DataGrid readonly 列は `DataGridCell.IsTabStop=False` でスキップ
+
+2. **`FocusField` イベント**（DataGrid セルへの移動など特殊なケース）
+
 ```csharp
 // View.xaml.cs
+private void OnDataContextChanged(...)
+{
+    if (e.NewValue is SalesMainViewModel vm)
+        vm.FocusField += OnFocusField;
+}
+
 private void OnFocusField(string target)
 {
+    if (target != SalesMainViewModel.FocusTargets.LineProductCode) return;
     Dispatcher.BeginInvoke(() =>
     {
-        switch (target)
-        {
-            case SalesMainViewModel.FocusTargets.EmployeeCode: FocusTextBox(EmployeeCodeBox); break;
-            case SalesMainViewModel.FocusTargets.LineQuantity: FocusDataGridColumn(LinesGrid, 3); break;
-            // ...
-        }
+        var row = LinesGrid.Items[0];
+        LinesGrid.SelectedItem = row;
+        LinesGrid.ScrollIntoView(row);
+        LinesGrid.CurrentCell = new DataGridCellInfo(row, LinesGrid.Columns[1]); // 商品コード列
+        LinesGrid.BeginEdit();
     }, DispatcherPriority.Input);
 }
 ```
 
 フォーカスフロー（売上登録）:
 ```
-受注No. Enter → 得意先コード
-得意先 確定   → 担当者コード
-担当者 確定   → 摘要
-商品コード 確定 → 数量セル（DataGrid）
+[伝票No.] Enter   → DBから伝票取得（SearchCommand）
+[受注No.] Enter   → [得意先コード]（FocusHelper.MoveNextOnEnter）
+[得意先コード] 確定 → [担当者コード]（FocusHelper.MoveNextOnEnter）
+[担当者コード] 確定 → [摘要]（FocusHelper.MoveNextOnEnter）
+[摘要] Enter      → 行追加（必要時）→ DataGrid 商品コードセル（FocusField イベント）
+```
+
+### Space キーとダイアログの注意点
+Space キーで開くコマンドを **async DelegateCommand** にすると race condition が発生し、TextBox の Space 入力がコマンドより先に処理されてダイアログが開かない。
+
+**解決策**: 起動時にデータをキャッシュし、コマンドを同期メソッドにする。
+
+```csharp
+// NG: async DelegateCommand は Space キー時に race condition
+OpenSlipLookupCommand = new DelegateCommand(async () => await OnOpenSlipLookupAsync());
+
+// OK: 起動時キャッシュ済みデータを使い同期で開く
+OpenSlipLookupCommand = new DelegateCommand(OnOpenSlipLookup); // 同期
+
+private void OnOpenSlipLookup()
+{
+    var selected = _lookup.OpenSlipSearch(_slipSummaries, EditSaleNo); // _slipSummaries はキャッシュ済み
+    if (selected is not null) { EditSaleNo = selected; _ = OnSearchAsync(); }
+}
+```
+
+### DataGrid 税種別列（RelativeSource 問題）
+`DataGridComboBoxColumn` は Visual Tree 外のため `RelativeSource` が効かない。
+**必ず `DataGridTemplateColumn` + `CellEditingTemplate` を使う。**
+
+```xml
+<DataGridTemplateColumn Header="税種別" Width="80">
+    <DataGridTemplateColumn.CellTemplate>
+        <DataTemplate><TextBlock Text="{Binding TaxType.TaxTypeName}" /></DataTemplate>
+    </DataGridTemplateColumn.CellTemplate>
+    <DataGridTemplateColumn.CellEditingTemplate>
+        <DataTemplate>
+            <ComboBox ItemsSource="{Binding DataContext.TaxTypes,
+                                   RelativeSource={RelativeSource AncestorType=Window}}"
+                      SelectedItem="{Binding TaxType}"
+                      DisplayMemberPath="TaxTypeName" />
+        </DataTemplate>
+    </DataGridTemplateColumn.CellEditingTemplate>
+</DataGridTemplateColumn>
 ```
 
 ### ViewModel 構造（伝票画面）

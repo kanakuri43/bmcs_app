@@ -7,4 +7,55 @@
 ## ルール
 - 外部ライブラリへの依存を持たない
 - DB・UI に依存しない純粋な C# クラスのみ配置
-- Models/ にドメインモデル、Interfaces/ にインターフェース
+- `Models/` にドメインモデル、`Interfaces/` にインターフェース
+
+---
+
+## Models
+
+| クラス | 用途 |
+|---|---|
+| `Employee` | 社員マスタ |
+| `Customer` | 得意先マスタ（`TaxCalcUnitId`: 1=明細単位 / 2=伝票単位） |
+| `Product` | 商品マスタ（`TaxTypeId`, `TaxRateType`） |
+| `TaxTypeClassification` | 税種別（`TaxTypeId`: 1=外税 / 2=内税） |
+| `TaxCalcUnitClassification` | 税計算単位区分（システム区分: 1=明細単位 / 2=伝票単位、固定） |
+| `TaxFractionClassification` | 税端数区分（切捨・切上・四捨五入） |
+| `TaxRatePeriod` | 税率期間マスタ（`StartDate`, `EndDate?`, `PrimaryTaxRate`, `SecondaryTaxRate`, `TertiaryTaxRate?`） |
+| `SlipSummary` | 伝票一覧用サマリ（`SlipNo`, `SlipDate`, `CustomerName`） |
+| `SaleSlip` | 売上伝票読み込みモデル（ヘッダ + `List<SaleLine>` + `IsLocked`） |
+| `SaleLine` | 売上明細読み込みモデル（`usp_sales_select` 結果1行） |
+| `SaleLineInput` | 売上明細書き込み用レコード（`usp_sales_upsert` の @lines JSON に使用） |
+
+## Interfaces
+
+| インターフェース | 実装 |
+|---|---|
+| `IEmployeeRepository` | `EmployeeRepository` |
+| `ICustomerRepository` | `CustomerRepository` |
+| `IProductRepository` | `ProductRepository` |
+| `ITaxRatePeriodRepository` | `TaxRatePeriodRepository` |
+| `ISaleRepository` | `SaleRepository` |
+| `ILookupService` | `LookupService`（bmcs_app.Sales） |
+
+### ISaleRepository メソッド
+```csharp
+Task<IEnumerable<SlipSummary>> GetSummariesAsync();
+Task<SaleSlip?> GetBySlipNoAsync(string saleNo);
+Task UpsertAsync(string saleNo, DateOnly saleDate, int customerId,
+    int? orderId, string? orderNo, int employeeId,
+    string? slipRemarks, IEnumerable<SaleLineInput> lines);
+Task DeleteAsync(string saleNo);
+```
+
+### ILookupService メソッド
+```csharp
+void Initialize(IEnumerable<Customer>, IEnumerable<Employee>, IEnumerable<Product>);
+Customer?  OpenCustomerSearch(string initialKeyword = "");
+Employee?  OpenEmployeeSearch(string initialKeyword = "");
+Product?   OpenProductSearch(string initialKeyword = "");
+string?    OpenSlipSearch(IEnumerable<SlipSummary> slips, string initialKeyword = "");
+Customer?  FindCustomerByCode(string code);
+Employee?  FindEmployeeByCode(string code);
+Product?   FindProductByCode(string code);
+```

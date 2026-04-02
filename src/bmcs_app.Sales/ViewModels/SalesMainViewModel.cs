@@ -1,4 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Windows;
 using bmcs_app.Core.Interfaces;
 using bmcs_app.Core.Models;
 using Prism.Commands;
@@ -10,8 +13,14 @@ public class SalesMainViewModel : BindableBase
 {
     private readonly ILookupService  _lookup;
     private readonly ISaleRepository _saleRepo;
+    private List<TaxRatePeriod> _taxRatePeriods = new();
+    private bool _isLineTaxCalc = true;
 
     // ── 検索・ナビゲーション ─────────────────────────────────
+    private List<string> _slipNos       = new();
+    private int          _currentSlipIndex = -1;
+    private bool         _isLocked      = false;
+
     private int _totalSlipCount;
     public int TotalSlipCount
     {
@@ -100,11 +109,38 @@ public class SalesMainViewModel : BindableBase
     }
 
     // ── 集計（明細変更のたびに再計算） ──────────────────────
-    public decimal TaxExcludedTotal  => Lines.Sum(l => l.LineAmount);
-    public decimal ExternalTaxTotal  => Lines.Where(l => l.TaxType?.TaxTypeId == 1).Sum(l => l.LineTaxAmount);
-    public decimal InternalTaxTotal  => Lines.Where(l => l.TaxType?.TaxTypeId == 2).Sum(l => l.LineTaxAmount);
-    public decimal TaxTotal          => ExternalTaxTotal + InternalTaxTotal;
-    public decimal GrandTotal        => TaxExcludedTotal + ExternalTaxTotal;
+    public decimal TaxExcludedTotal => Lines.Sum(l => l.LineAmount);
+
+    public decimal ExternalTaxTotal
+    {
+        get
+        {
+            var externalLines = Lines.Where(l => l.TaxType?.TaxTypeId == 1 && l.AppliedTaxRate > 0);
+            if (_isLineTaxCalc)
+                return externalLines.Sum(l => l.LineTaxAmount);
+            // 伝票単位: 税率ごとに合計金額を集計してから floor
+            return externalLines
+                .GroupBy(l => l.AppliedTaxRate)
+                .Sum(g => Math.Floor(g.Sum(l => l.LineAmount) * g.Key));
+        }
+    }
+
+    public decimal InternalTaxTotal
+    {
+        get
+        {
+            var internalLines = Lines.Where(l => l.TaxType?.TaxTypeId == 2 && l.AppliedTaxRate > 0);
+            if (_isLineTaxCalc)
+                return internalLines.Sum(l => l.LineTaxAmount);
+            // 伝票単位: 税率ごとに合計金額を集計してから floor
+            return internalLines
+                .GroupBy(l => l.AppliedTaxRate)
+                .Sum(g => Math.Floor(g.Sum(l => l.LineAmount) * g.Key / (1 + g.Key)));
+        }
+    }
+
+    public decimal TaxTotal   => ExternalTaxTotal + InternalTaxTotal;
+    public decimal GrandTotal => TaxExcludedTotal + ExternalTaxTotal;
 
     // ── ステータス ───────────────────────────────────────────
     private string _statusMessage = "準備完了";
@@ -153,9 +189,9 @@ public class SalesMainViewModel : BindableBase
         _saleRepo = saleRepo;
 
         NewCommand        = new DelegateCommand(OnNew);
-        SearchCommand     = new DelegateCommand(OnSearch);
-        PrevSlipCommand   = new DelegateCommand(OnPrevSlip);
-        NextSlipCommand   = new DelegateCommand(OnNextSlip);
+        SearchCommand     = new DelegateCommand(async () => await OnSearchAsync());
+        PrevSlipCommand   = new DelegateCommand(async () => await OnPrevSlipAsync());
+        NextSlipCommand   = new DelegateCommand(async () => await OnNextSlipAsync());
         SaveCommand       = new DelegateCommand(async () => await OnSaveAsync());
         DeleteSlipCommand = new DelegateCommand(async () => await OnDeleteSlipAsync());
         AddLineCommand        = new DelegateCommand(OnAddLine);
@@ -167,16 +203,41 @@ public class SalesMainViewModel : BindableBase
         OpenEmployeeLookupCommand   = new DelegateCommand(OnOpenEmployeeLookup);
         OpenProductLookupCommand    = new DelegateCommand(OnOpenProductLookup);
         OpenOrderLookupCommand      = new DelegateCommand(OnOpenOrderLookup);
-        OpenSlipLookupCommand       = new DelegateCommand(async () => await OnOpenSlipLookupAsync());
+        OpenSlipLookupCommand       = new DelegateCommand(OnOpenSlipLookup);
         LookupCustomerByCodeCommand = new DelegateCommand(OnLookupCustomerByCode);
         LookupEmployeeByCodeCommand = new DelegateCommand(OnLookupEmployeeByCode);
         LookupOrderByNoCommand      = new DelegateCommand(OnLookupOrderByNo);
         LookupProductByCodeCommand  = new DelegateCommand(OnLookupProductByCode);
+
+        Lines.CollectionChanged += OnLinesCollectionChanged;
+
+        _ = LoadSlipListAsync();
+    }
+
+    // ── 行VM のプロパティ変更を購読して集計を再通知 ────────────
+    private void OnLinesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems is not null)
+            foreach (SaleLineViewModel line in e.NewItems)
+                line.PropertyChanged += OnLinePropertyChanged;
+        if (e.OldItems is not null)
+            foreach (SaleLineViewModel line in e.OldItems)
+                line.PropertyChanged -= OnLinePropertyChanged;
+    }
+
+    private void OnLinePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(SaleLineViewModel.LineAmount)
+                           or nameof(SaleLineViewModel.LineTaxAmount)
+                           or nameof(SaleLineViewModel.TaxType))
+            RaiseTotalsChanged();
     }
 
     // ── 新規 ─────────────────────────────────────────────────
     private void OnNew()
     {
+        _isLocked         = false;
+        _currentSlipIndex = -1;
         EditSaleNo       = "";
         EditOrderNo      = "";
         EditSaleDate     = DateTime.Today;
@@ -210,10 +271,110 @@ public class SalesMainViewModel : BindableBase
         set => _editOrderId = value;
     }
 
-    // ── 検索・ナビ（TODO） ───────────────────────────────────
-    private void OnSearch()   { /* TODO */ }
-    private void OnPrevSlip() { /* TODO */ }
-    private void OnNextSlip() { /* TODO */ }
+    // ── 伝票リスト読み込み（ナビ・ルックアップ共用） ──────────
+    private List<SlipSummary> _slipSummaries = new();
+
+    private async Task LoadSlipListAsync()
+    {
+        try
+        {
+            _slipSummaries = (await _saleRepo.GetSummariesAsync()).ToList();
+            _slipNos       = _slipSummaries.Select(s => s.SlipNo).ToList();
+            TotalSlipCount = _slipNos.Count;
+            if (!string.IsNullOrWhiteSpace(EditSaleNo))
+                _currentSlipIndex = _slipNos.IndexOf(EditSaleNo);
+        }
+        catch { /* ナビ情報取得失敗は無視 */ }
+    }
+
+    // ── 伝票検索 ─────────────────────────────────────────────
+    private async Task OnSearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(EditSaleNo))
+        {
+            StatusMessage = "伝票No.を入力してください";
+            return;
+        }
+        try
+        {
+            var slip = await _saleRepo.GetBySlipNoAsync(EditSaleNo.Trim());
+            if (slip is null)
+            {
+                StatusMessage = $"伝票No. '{EditSaleNo}' が見つかりません";
+                return;
+            }
+            LoadSlip(slip);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"伝票取得エラー: {ex.Message}";
+        }
+    }
+
+    private void LoadSlip(SaleSlip slip)
+    {
+        _isLocked        = slip.IsLocked;
+        // 得意先の税計算単位を解決（CustomerCode でキャッシュから検索）
+        var customer = _lookup.FindCustomerByCode(slip.CustomerCode);
+        _isLineTaxCalc = customer is not null
+            ? ResolveIsLineTaxCalc(customer.TaxCalcUnitId)
+            : true;
+        EditSaleNo       = slip.SaleNo;
+        EditSaleDate     = slip.SaleDate.ToDateTime(TimeOnly.MinValue);
+        EditCustomerCode = slip.CustomerCode;
+        EditCustomerName = slip.CustomerName;
+        _editCustomerId  = slip.CustomerId;
+        EditEmployeeCode = slip.EmployeeCode;
+        EditEmployeeName = slip.EmployeeName;
+        _editEmployeeId  = slip.EmployeeId;
+        EditOrderNo      = slip.OrderNo ?? "";
+        _editOrderId     = slip.OrderId;
+        EditSlipRemarks  = slip.SlipRemarks ?? "";
+
+        Lines.Clear();
+        foreach (var l in slip.Lines)
+        {
+            var taxType = TaxTypes.FirstOrDefault(t => t.TaxTypeId == l.TaxTypeId);
+            Lines.Add(new SaleLineViewModel
+            {
+                LineNo         = l.LineNo,
+                ProductId      = l.ProductId,
+                ProductCode    = l.ProductCode,
+                ProductName    = l.ProductName,
+                Quantity       = l.Quantity,
+                UnitPrice      = l.UnitPrice,
+                TaxType        = taxType,
+                TaxRateType    = l.TaxRateType,
+                AppliedTaxRate = l.AppliedTaxRate,
+                IsLineTaxCalc  = _isLineTaxCalc,
+                LineRemarks    = l.LineRemarks ?? "",
+            });
+        }
+
+        RaiseTotalsChanged();
+        _currentSlipIndex = _slipNos.IndexOf(slip.SaleNo);
+
+        StatusMessage = _isLocked
+            ? $"伝票No. {slip.SaleNo}（請求済み・編集不可）"
+            : $"伝票No. {slip.SaleNo}";
+    }
+
+    // ── ナビゲーション ───────────────────────────────────────
+    private async Task OnPrevSlipAsync()
+    {
+        if (_currentSlipIndex <= 0) return;
+        _currentSlipIndex--;
+        EditSaleNo = _slipNos[_currentSlipIndex];
+        await OnSearchAsync();
+    }
+
+    private async Task OnNextSlipAsync()
+    {
+        if (_currentSlipIndex >= _slipNos.Count - 1) return;
+        _currentSlipIndex++;
+        EditSaleNo = _slipNos[_currentSlipIndex];
+        await OnSearchAsync();
+    }
 
     // ── ルックアップ: 得意先 ─────────────────────────────────
     private void OnOpenCustomerLookup()
@@ -238,7 +399,9 @@ public class SalesMainViewModel : BindableBase
         EditCustomerCode = c.CustomerCode;
         EditCustomerName = c.CustomerName;
         _editCustomerId  = c.CustomerId;
-        StatusMessage    = $"得意先: {c.CustomerName}";
+        _isLineTaxCalc   = ResolveIsLineTaxCalc(c.TaxCalcUnitId);
+        PropagateLineTaxCalcToLines();
+        StatusMessage = $"得意先: {c.CustomerName}";
     }
 
     // ── ルックアップ: 担当者 ─────────────────────────────────
@@ -281,12 +444,29 @@ public class SalesMainViewModel : BindableBase
         line.ProductId   = p.ProductId;
         line.ProductCode = p.ProductCode;
         line.ProductName = p.ProductName;
+        line.TaxRateType = p.TaxRateType;
         var taxType = TaxTypes.FirstOrDefault(t => t.TaxTypeId == p.TaxTypeId);
         line.TaxType = taxType;
+
+        var saleDate = EditSaleDate.HasValue
+            ? DateOnly.FromDateTime(EditSaleDate.Value)
+            : DateOnly.FromDateTime(DateTime.Today);
+        line.AppliedTaxRate = GetAppliedTaxRate(p.TaxRateType, saleDate);
+
         RaiseTotalsChanged();
     }
 
     // ── ルックアップ: 伝票番号 ──────────────────────────────
+    private void OnOpenSlipLookup()
+    {
+        var selected = _lookup.OpenSlipSearch(_slipSummaries, EditSaleNo);
+        if (selected is not null)
+        {
+            EditSaleNo = selected;
+            _ = OnSearchAsync();
+        }
+    }
+
     private async Task OnOpenSlipLookupAsync()
     {
         try
@@ -296,7 +476,7 @@ public class SalesMainViewModel : BindableBase
             if (selected is not null)
             {
                 EditSaleNo = selected;
-                OnSearch();
+                await OnSearchAsync();
             }
         }
         catch (Exception ex)
@@ -335,7 +515,7 @@ public class SalesMainViewModel : BindableBase
     // ── 明細行操作 ──────────────────────────────────────────
     private void OnAddLine()
     {
-        var line = new SaleLineViewModel { LineNo = Lines.Count + 1 };
+        var line = new SaleLineViewModel { LineNo = Lines.Count + 1, IsLineTaxCalc = _isLineTaxCalc };
         Lines.Add(line);
         SelectedLine = line;
         RaiseTotalsChanged();
@@ -351,9 +531,147 @@ public class SalesMainViewModel : BindableBase
         StatusMessage = "行を削除しました";
     }
 
-    // ── 保存・削除（TODO） ───────────────────────────────────
-    private Task OnSaveAsync()       => Task.CompletedTask;
-    private Task OnDeleteSlipAsync() => Task.CompletedTask;
+    // ── 保存 ─────────────────────────────────────────────────
+    private async Task OnSaveAsync()
+    {
+        if (_isLocked)
+        {
+            StatusMessage = "請求済み伝票は編集できません";
+            return;
+        }
+        if (!EditSaleDate.HasValue)
+        {
+            StatusMessage = "売上日付を入力してください";
+            return;
+        }
+        if (_editCustomerId is null)
+        {
+            StatusMessage = "得意先を指定してください";
+            return;
+        }
+        if (_editEmployeeId is null)
+        {
+            StatusMessage = "担当者を指定してください";
+            return;
+        }
+        if (Lines.Count == 0)
+        {
+            StatusMessage = "明細行を1件以上入力してください";
+            return;
+        }
+        if (Lines.Any(l => l.ProductId == 0))
+        {
+            StatusMessage = "商品が未設定の行があります";
+            return;
+        }
+
+        var saleDate  = DateOnly.FromDateTime(EditSaleDate.Value);
+        var saleNo    = string.IsNullOrWhiteSpace(EditSaleNo)
+                            ? GenerateSlipNo(saleDate)
+                            : EditSaleNo.Trim();
+
+        var slipTaxTotal = Lines.Sum(l => l.LineTaxAmount);
+        var lineInputs = Lines.Select(l => new SaleLineInput(
+            l.LineNo, l.ProductId, l.ProductCode, l.ProductName,
+            l.Quantity, l.UnitPrice,
+            l.TaxType?.TaxTypeId ?? 0, l.TaxRateType, l.AppliedTaxRate,
+            l.LineTaxAmount, slipTaxTotal,
+            string.IsNullOrWhiteSpace(l.LineRemarks) ? null : l.LineRemarks));
+
+        try
+        {
+            await _saleRepo.UpsertAsync(
+                saleNo,
+                DateOnly.FromDateTime(EditSaleDate.Value),
+                _editCustomerId.Value,
+                _editOrderId,
+                string.IsNullOrWhiteSpace(EditOrderNo)      ? null : EditOrderNo,
+                _editEmployeeId.Value,
+                string.IsNullOrWhiteSpace(EditSlipRemarks)  ? null : EditSlipRemarks,
+                lineInputs);
+
+            EditSaleNo    = saleNo;
+            StatusMessage = "登録しました";
+            await LoadSlipListAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"保存エラー: {ex.Message}";
+        }
+    }
+
+    // ── 削除 ─────────────────────────────────────────────────
+    private async Task OnDeleteSlipAsync()
+    {
+        if (string.IsNullOrWhiteSpace(EditSaleNo)) return;
+        if (_isLocked)
+        {
+            StatusMessage = "請求済み伝票は削除できません";
+            return;
+        }
+
+        var result = MessageBox.Show(
+            $"伝票No. {EditSaleNo} を削除しますか？",
+            "削除確認",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (result != MessageBoxResult.Yes) return;
+
+        try
+        {
+            await _saleRepo.DeleteAsync(EditSaleNo.Trim());
+            StatusMessage = "削除しました";
+            OnNew();
+            await LoadSlipListAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"削除エラー: {ex.Message}";
+        }
+    }
+
+    // ── 税率期間マスタ ───────────────────────────────────────
+    public void SetTaxRatePeriods(IEnumerable<TaxRatePeriod> periods)
+        => _taxRatePeriods = periods.ToList();
+
+    // ── 税計算単位 ───────────────────────────────────────────
+    /// <summary>1=明細単位, 2=伝票単位（固定）</summary>
+    private static bool ResolveIsLineTaxCalc(int taxCalcUnitId) => taxCalcUnitId == 1;
+
+    /// <summary>現在の _isLineTaxCalc をすべての明細行に反映する</summary>
+    private void PropagateLineTaxCalcToLines()
+    {
+        foreach (var line in Lines)
+            line.IsLineTaxCalc = _isLineTaxCalc;
+        RaiseTotalsChanged();
+    }
+
+    /// <summary>売上日付と税率タイプから適用税率を求める。該当なしは 0</summary>
+    private decimal GetAppliedTaxRate(byte taxRateType, DateOnly saleDate)
+    {
+        var period = _taxRatePeriods
+            .Where(p => p.StartDate <= saleDate && (p.EndDate is null || p.EndDate >= saleDate))
+            .OrderByDescending(p => p.StartDate)
+            .FirstOrDefault();
+        if (period is null) return 0m;
+
+        return taxRateType switch
+        {
+            1 => period.PrimaryTaxRate,
+            2 => period.SecondaryTaxRate,
+            3 => period.TertiaryTaxRate ?? 0m,
+            _ => 0m,
+        };
+    }
+
+    // ── 伝票番号自動生成 ─────────────────────────────────────
+    /// <summary>yyyyMMddnnn 形式で当日の連番を生成する</summary>
+    private string GenerateSlipNo(DateOnly date)
+    {
+        var prefix = date.ToString("yyyyMMdd");
+        var count  = _slipNos.Count(n => n.StartsWith(prefix));
+        return $"{prefix}{count + 1:000}";
+    }
 
     // ── 集計再通知 ───────────────────────────────────────────
     public void RaiseTotalsChanged()

@@ -27,8 +27,12 @@ public partial class App : Application
         var lookupService = new LookupService();
         lookupService.Initialize(customers, employees, products);
 
+        var taxRatePeriodRepo = new TaxRatePeriodRepository();
+        var taxRatePeriods    = Task.Run(() => taxRatePeriodRepo.GetAllAsync()).Result;
+
         var saleRepo = new SaleRepository();
         var vm = new SalesMainViewModel(lookupService, saleRepo);
+        vm.SetTaxRatePeriods(taxRatePeriods);
 
         // 税種別を VM の TaxTypes コレクションにセット（ダイアログとの照合用）
         _ = InitTaxTypesAsync(vm);

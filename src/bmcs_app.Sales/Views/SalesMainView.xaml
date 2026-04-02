@@ -299,11 +299,23 @@
                     </DataGridTextColumn>
 
                     <!-- 税種別 -->
-                    <DataGridComboBoxColumn Header="税種別"
-                                            ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=DataContext.TaxTypes}"
-                                            SelectedItemBinding="{Binding TaxType}"
-                                            DisplayMemberPath="TaxTypeName"
-                                            Width="80" />
+                    <DataGridTemplateColumn Header="税種別" Width="80">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding TaxType.TaxTypeName}"
+                                           Padding="4,0"
+                                           VerticalAlignment="Center" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <ComboBox ItemsSource="{Binding DataContext.TaxTypes,
+                                                        RelativeSource={RelativeSource AncestorType=Window}}"
+                                          SelectedItem="{Binding TaxType}"
+                                          DisplayMemberPath="TaxTypeName" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
 
                     <!-- 税率 (readonly) -->
                     <DataGridTextColumn Header="税率"

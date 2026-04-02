@@ -29,7 +29,8 @@ public class LookupService : ILookupService
     {
         var items = _customers.Select(c =>
             new MasterSearchDialog.SearchItem(c.CustomerCode, c.CustomerName, c));
-        var dlg = new MasterSearchDialog("得意先検索", items, initialKeyword);
+        var dlg = new MasterSearchDialog("得意先検索", items, initialKeyword)
+            { Owner = System.Windows.Application.Current.MainWindow };
         return dlg.ShowDialog() == true
             ? (Customer)dlg.SelectedSearchItem!.Source
             : null;
@@ -39,7 +40,8 @@ public class LookupService : ILookupService
     {
         var items = _employees.Select(e =>
             new MasterSearchDialog.SearchItem(e.EmployeeCode, e.EmployeeName, e));
-        var dlg = new MasterSearchDialog("担当者検索", items, initialKeyword);
+        var dlg = new MasterSearchDialog("担当者検索", items, initialKeyword)
+            { Owner = System.Windows.Application.Current.MainWindow };
         return dlg.ShowDialog() == true
             ? (Employee)dlg.SelectedSearchItem!.Source
             : null;
@@ -49,7 +51,8 @@ public class LookupService : ILookupService
     {
         var items = _products.Select(p =>
             new MasterSearchDialog.SearchItem(p.ProductCode, p.ProductName, p));
-        var dlg = new MasterSearchDialog("商品検索", items, initialKeyword);
+        var dlg = new MasterSearchDialog("商品検索", items, initialKeyword)
+            { Owner = System.Windows.Application.Current.MainWindow };
         return dlg.ShowDialog() == true
             ? (Product)dlg.SelectedSearchItem!.Source
             : null;
@@ -62,7 +65,8 @@ public class LookupService : ILookupService
                 s.SlipNo,
                 $"{s.SlipDate:yyyy/MM/dd}  {s.CustomerName}",
                 s.SlipNo));
-        var dlg = new MasterSearchDialog("伝票検索", items, initialKeyword);
+        var dlg = new MasterSearchDialog("伝票検索", items, initialKeyword)
+            { Owner = System.Windows.Application.Current.MainWindow };
         return dlg.ShowDialog() == true
             ? (string)dlg.SelectedSearchItem!.Source
             : null;

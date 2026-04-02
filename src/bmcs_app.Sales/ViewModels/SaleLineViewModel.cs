@@ -13,8 +13,9 @@ public class SaleLineViewModel : BindableBase
     private decimal _quantity;
     private decimal _unitPrice;
     private TaxTypeClassification? _taxType;
+    private byte    _taxRateType;
     private decimal _appliedTaxRate;
-    private decimal _lineTaxAmount;
+    private bool    _isLineTaxCalc = true;
     private string  _lineRemarks = "";
 
     public int LineNo
@@ -49,6 +50,7 @@ public class SaleLineViewModel : BindableBase
             if (SetProperty(ref _quantity, value))
             {
                 RaisePropertyChanged(nameof(LineAmount));
+                RaisePropertyChanged(nameof(LineTaxAmount));
             }
         }
     }
@@ -61,6 +63,7 @@ public class SaleLineViewModel : BindableBase
             if (SetProperty(ref _unitPrice, value))
             {
                 RaisePropertyChanged(nameof(LineAmount));
+                RaisePropertyChanged(nameof(LineTaxAmount));
             }
         }
     }
@@ -71,7 +74,28 @@ public class SaleLineViewModel : BindableBase
     public TaxTypeClassification? TaxType
     {
         get => _taxType;
-        set => SetProperty(ref _taxType, value);
+        set
+        {
+            if (SetProperty(ref _taxType, value))
+                RaisePropertyChanged(nameof(LineTaxAmount));
+        }
+    }
+
+    /// <summary>true = 明細単位で税額計算、false = 伝票単位（明細税額は 0）</summary>
+    public bool IsLineTaxCalc
+    {
+        get => _isLineTaxCalc;
+        set
+        {
+            if (SetProperty(ref _isLineTaxCalc, value))
+                RaisePropertyChanged(nameof(LineTaxAmount));
+        }
+    }
+
+    public byte TaxRateType
+    {
+        get => _taxRateType;
+        set => SetProperty(ref _taxRateType, value);
     }
 
     public decimal AppliedTaxRate
@@ -80,7 +104,10 @@ public class SaleLineViewModel : BindableBase
         set
         {
             if (SetProperty(ref _appliedTaxRate, value))
+            {
                 RaisePropertyChanged(nameof(AppliedTaxRateDisplay));
+                RaisePropertyChanged(nameof(LineTaxAmount));
+            }
         }
     }
 
@@ -89,10 +116,21 @@ public class SaleLineViewModel : BindableBase
         ? "—"
         : $"{_appliedTaxRate * 100:0.##}%";
 
+    /// <summary>
+    /// 行税額（自動計算）。
+    /// 伝票単位（IsLineTaxCalc=false）の場合は 0。
+    /// 明細単位の場合: 外税=金額×税率, 内税=金額×税率÷(1+税率)、切り捨て。
+    /// </summary>
     public decimal LineTaxAmount
     {
-        get => _lineTaxAmount;
-        set => SetProperty(ref _lineTaxAmount, value);
+        get
+        {
+            if (!_isLineTaxCalc) return 0m;
+            if (_appliedTaxRate == 0) return 0m;
+            if (_taxType?.TaxTypeId == 2)
+                return Math.Floor(LineAmount * _appliedTaxRate / (1 + _appliedTaxRate));
+            return Math.Floor(LineAmount * _appliedTaxRate);
+        }
     }
 
     public string LineRemarks
