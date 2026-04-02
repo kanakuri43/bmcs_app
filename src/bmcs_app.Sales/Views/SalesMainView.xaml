@@ -14,6 +14,7 @@
         <KeyBinding Key="F3"  Command="{Binding NewCommand}" />
         <KeyBinding Key="F8"  Command="{Binding DeleteSlipCommand}" />
         <KeyBinding Key="F10" Command="{Binding SaveCommand}" />
+        <KeyBinding Key="F11" Command="{Binding PrintCommand}" />
     </Window.InputBindings>
 
     <Grid>
@@ -470,18 +471,23 @@
                     </Grid>
                 </Border>
 
-                <!-- 操作ボタン -->
+                <!-- 操作ボタン（縦並び: 保存 / 印刷 / 削除） -->
                 <StackPanel Grid.Column="5"
-                            Orientation="Horizontal"
-                            VerticalAlignment="Center">
-                    <Button Command="{Binding DeleteSlipCommand}"
-                            Content="削除 (F8)"
-                            ToolTip="この伝票を削除します (F8)"
-                            Margin="0,0,8,0" />
+                            Orientation="Vertical"
+                            VerticalAlignment="Center"
+                            Width="110">
                     <Button Command="{Binding SaveCommand}"
                             Content="保存 (F10)"
                             ToolTip="伝票を保存します (F10)"
+                            Margin="0,0,0,4"
                             Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" />
+                    <Button Command="{Binding PrintCommand}"
+                            Content="印刷 (F11)"
+                            ToolTip="表示中の伝票を印刷します (F11)"
+                            Margin="0,0,0,4" />
+                    <Button Command="{Binding DeleteSlipCommand}"
+                            Content="削除 (F8)"
+                            ToolTip="この伝票を削除します (F8)" />
                 </StackPanel>
             </Grid>
         </Border>

@@ -29,6 +29,41 @@
 | `TaxTypeRepository` | — | GetAllAsync（インターフェースなし） |
 | `TaxRatePeriodRepository` | `ITaxRatePeriodRepository` | GetAllAsync |
 | `SaleRepository` | `ISaleRepository` | GetSummariesAsync / GetBySlipNoAsync / UpsertAsync / DeleteAsync |
+| `CompanyInfoRepository` | — | GetAsync（インターフェースなし）|
+
+## CompanyInfoRepository
+
+`company_info` テーブルから自社情報を取得する。インターフェースなし。
+
+```sql
+SELECT TOP 1 company_name, address, tel, fax, invoice_no
+FROM company_info
+ORDER BY company_info_id
+```
+
+戻り値: `CompanyInfo`（`bmcs_app.Infrastructure` 名前空間）
+
+```csharp
+public class CompanyInfo
+{
+    public string Name                  { get; set; }  // company_name
+    public string Address               { get; set; }  // address
+    public string Phone                 { get; set; }  // tel
+    public string Fax                   { get; set; }  // fax
+    public string InvoiceRegistrationNo { get; set; }  // invoice_no（T + 13桁）
+}
+```
+
+テーブルスキーマ（`company_info`）:
+
+| 列名 | 型 | NULL |
+|---|---|---|
+| company_info_id | int | NO |
+| company_name | nvarchar(100) | NO |
+| address | nvarchar(200) | YES |
+| tel | nvarchar(20) | YES |
+| fax | nvarchar(20) | YES |
+| invoice_no | nvarchar(20) | YES |
 
 ---
 

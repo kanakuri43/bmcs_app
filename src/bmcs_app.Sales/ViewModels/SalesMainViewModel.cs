@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.Windows;
 using bmcs_app.Core.Interfaces;
 using bmcs_app.Core.Models;
+using bmcs_app.Infrastructure;
+using bmcs_app.Sales.Services;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -14,6 +16,7 @@ public class SalesMainViewModel : BindableBase
     private readonly ILookupService  _lookup;
     private readonly ISaleRepository _saleRepo;
     private List<TaxRatePeriod> _taxRatePeriods = new();
+    private CompanyInfo _companyInfo = new();
     private bool _isLineTaxCalc = true;
 
     // ── 検索・ナビゲーション ─────────────────────────────────
@@ -164,6 +167,7 @@ public class SalesMainViewModel : BindableBase
     public DelegateCommand PrevSlipCommand             { get; }
     public DelegateCommand NextSlipCommand             { get; }
     public DelegateCommand SaveCommand                 { get; }
+    public DelegateCommand PrintCommand                { get; }
     public DelegateCommand DeleteSlipCommand           { get; }
     public DelegateCommand AddLineCommand              { get; }
     public DelegateCommand DeleteLineCommand           { get; }
@@ -193,6 +197,7 @@ public class SalesMainViewModel : BindableBase
         PrevSlipCommand   = new DelegateCommand(async () => await OnPrevSlipAsync());
         NextSlipCommand   = new DelegateCommand(async () => await OnNextSlipAsync());
         SaveCommand       = new DelegateCommand(async () => await OnSaveAsync());
+        PrintCommand      = new DelegateCommand(OnPrint);
         DeleteSlipCommand = new DelegateCommand(async () => await OnDeleteSlipAsync());
         AddLineCommand        = new DelegateCommand(OnAddLine);
         DeleteLineCommand     = new DelegateCommand(OnDeleteLine, () => SelectedLine is not null)
@@ -628,6 +633,108 @@ public class SalesMainViewModel : BindableBase
         {
             StatusMessage = $"削除エラー: {ex.Message}";
         }
+    }
+
+    // ── 印刷 ─────────────────────────────────────────────────────
+    private void OnPrint()
+    {
+        if (string.IsNullOrWhiteSpace(EditSaleNo) || Lines.Count == 0)
+        {
+            StatusMessage = "印刷する伝票を読み込んでください";
+            return;
+        }
+        var data = CreatePrintData();
+        SalesPrintHelper.Print(data);
+    }
+
+    public SalePrintData CreatePrintData()
+    {
+        return new SalePrintData
+        {
+            SaleNo       = EditSaleNo,
+            SaleDate     = EditSaleDate.HasValue
+                ? EditSaleDate.Value.ToString("yyyy年MM月dd日")
+                : "",
+            CustomerName = EditCustomerName,
+            EmployeeName = EditEmployeeName,
+            SlipRemarks  = EditSlipRemarks,
+            CompanyName         = _companyInfo.Name,
+            CompanyAddress      = _companyInfo.Address,
+            CompanyPhone        = _companyInfo.Phone,
+            CompanyFax          = _companyInfo.Fax,
+            CompanyInvoiceRegNo = _companyInfo.InvoiceRegistrationNo,
+            Lines = Lines.Select(l => new SalePrintLine
+            {
+                LineNo      = l.LineNo,
+                ProductCode = l.ProductCode,
+                ProductName = l.ProductName,
+                Quantity    = l.Quantity.ToString("0.##"),
+                UnitPrice   = l.UnitPrice.ToString("N0"),
+                LineAmount  = l.LineAmount.ToString("N0"),
+                TaxTypeName = l.TaxType?.TaxTypeName ?? "",
+                TaxRate     = l.AppliedTaxRateDisplay,
+                LineRemarks = l.LineRemarks ?? "",
+            }).ToList(),
+            TaxBreakdowns       = BuildTaxBreakdowns(),
+            TaxExcludedTotalStr = TaxExcludedTotal.ToString("N0"),
+            TaxTotalStr         = TaxTotal.ToString("N0"),
+            GrandTotalStr       = GrandTotal.ToString("N0"),
+        };
+    }
+
+    public void SetCompanyInfo(CompanyInfo info) => _companyInfo = info;
+
+    private List<TaxRateBreakdown> BuildTaxBreakdowns()
+    {
+        var result = new List<TaxRateBreakdown>();
+
+        // 外税（TaxTypeId == 1）税率別
+        var externalGroups = Lines
+            .Where(l => l.TaxType?.TaxTypeId == 1 && l.AppliedTaxRate > 0)
+            .GroupBy(l => l.AppliedTaxRate)
+            .OrderByDescending(g => g.Key);
+
+        foreach (var g in externalGroups)
+        {
+            var baseAmount = g.Sum(l => l.LineAmount);
+            var taxAmount  = _isLineTaxCalc
+                ? g.Sum(l => l.LineTaxAmount)
+                : Math.Floor(baseAmount * g.Key);
+            var rateLabel  = g.Key == 0.08m
+                ? $"{g.Key:P0}対象（軽減税率）"
+                : $"{g.Key:P0}対象";
+            result.Add(new TaxRateBreakdown
+            {
+                Label             = rateLabel,
+                TaxExcludedAmount = baseAmount.ToString("N0"),
+                TaxAmount         = taxAmount.ToString("N0"),
+            });
+        }
+
+        // 内税（TaxTypeId == 2）税率別
+        var internalGroups = Lines
+            .Where(l => l.TaxType?.TaxTypeId == 2 && l.AppliedTaxRate > 0)
+            .GroupBy(l => l.AppliedTaxRate)
+            .OrderByDescending(g => g.Key);
+
+        foreach (var g in internalGroups)
+        {
+            var baseAmount = g.Sum(l => l.LineAmount);
+            var taxAmount  = _isLineTaxCalc
+                ? g.Sum(l => l.LineTaxAmount)
+                : Math.Floor(baseAmount * g.Key / (1 + g.Key));
+            var rateLabel  = g.Key == 0.08m
+                ? $"{g.Key:P0}内税（軽減税率）"
+                : $"{g.Key:P0}内税";
+            result.Add(new TaxRateBreakdown
+            {
+                Label             = rateLabel,
+                TaxExcludedAmount = baseAmount.ToString("N0"),
+                TaxAmount         = taxAmount.ToString("N0"),
+            });
+        }
+
+        return result;
     }
 
     // ── 税率期間マスタ ───────────────────────────────────────

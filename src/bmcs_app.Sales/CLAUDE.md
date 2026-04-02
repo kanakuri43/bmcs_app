@@ -12,6 +12,7 @@
 - 消費税計算（明細単位 / 伝票単位）
 - リアルタイム合計更新（Lines の CollectionChanged + PropertyChanged）
 - 伝票ロック（invoiced_at / ar_aggregated_at が NULL でない場合、保存・削除不可）
+- **印刷（F11）: インボイス制度準拠 A4 納品書。自社情報は `company_info` テーブルから取得**
 
 ---
 
@@ -23,6 +24,7 @@
 | F3 | 新規伝票 |
 | F8 | 伝票削除（確認ダイアログあり） |
 | F10 | 保存 |
+| F11 | 印刷 |
 | Space（コード欄） | マスタ検索ダイアログを開く |
 | Enter（コード欄） | コードで直接補完 → 次フィールドへ移動 |
 | Enter（伝票No.欄） | 伝票を検索して読み込む |
@@ -202,14 +204,63 @@ private string GenerateSlipNo(DateOnly date)
 1. CustomerRepository / EmployeeRepository / ProductRepository を同期ロード
 2. TaxRatePeriodRepository を同期ロード
 3. LookupService.Initialize(customers, employees, products)
-4. SalesMainViewModel(lookupService, saleRepo) を生成
-5. vm.SetTaxRatePeriods(taxRatePeriods)
-6. TaxTypeRepository を非同期ロード → vm.TaxTypes に追加（InitTaxTypesAsync）
-7. SalesMainView を Show
+4. CompanyInfoRepository.GetAsync() を同期ロード
+5. SalesMainViewModel(lookupService, saleRepo) を生成
+6. vm.SetTaxRatePeriods(taxRatePeriods)
+7. vm.SetCompanyInfo(companyInfo)
+8. TaxTypeRepository を非同期ロード → vm.TaxTypes に追加（InitTaxTypesAsync）
+9. SalesMainView を Show
 ```
 
 税種別（TaxTypes）は非同期で追加されるが、DataGrid の ComboBox は遅延表示でも問題ない。
 伝票読み込み時に `TaxTypes.FirstOrDefault(t => t.TaxTypeId == l.TaxTypeId)` で照合する。
+
+---
+
+## 印刷（インボイス制度準拠 A4 納品書）
+
+### 実装クラス
+- `Sales/Services/SalesPrintHelper.cs` — FixedDocument 構築・印刷実行
+- `Sales/Services/SalePrintData.cs` — 印刷用データモデル（`SalePrintData` / `SalePrintLine` / `TaxRateBreakdown`）
+
+### 印刷レイアウト（A4 縦）
+```
+タイトル「納　品　書」
+────────────────────────────────
+得意先名 御中           自社名
+伝票No. / 担当者        住所 / TEL / FAX
+摘要                   登録番号: T...
+────────────────────────────────
+行 | 商品コード | 商品名 | 数量 | 単価 | 金額 | 税種 | 税率 | 摘要
+────────────────────────────────
+※10%対象   税抜金額: xxx   消費税: xxx
+※8%対象（軽減税率）...
+税込合計: xxx
+```
+
+### インボイス制度 必須記載事項の対応
+| 要件 | 対応箇所 |
+|---|---|
+| 発行事業者の名称・登録番号 | 右上ボックス（`company_info.invoice_no`） |
+| 取引年月日 | タイトル下左側 |
+| 取引内容 | 明細テーブル |
+| 税率別 税抜金額・適用税率 | フッター税率別集計 |
+| 税率別 消費税額 | フッター税率別集計 |
+| 受取事業者の名称 | 左上「得意先名 御中」 |
+
+### 自社情報
+`company_info` テーブル（`SELECT TOP 1 ORDER BY company_info_id`）から取得。
+`App.xaml.cs` 起動時に `CompanyInfoRepository.GetAsync()` でロードし、`vm.SetCompanyInfo()` で注入。
+
+### 複数ページ対応
+- 1 ページあたり約 25 行（A4 高さから自動計算）
+- 続紙はコンパクトヘッダー（「納品書（続き）」＋伝票No.＋ページ番号）
+- 税率別集計・合計は最終ページのみ表示
+
+### `BuildTaxBreakdowns()` ロジック
+`_isLineTaxCalc`（明細単位 / 伝票単位）に応じて税額を計算し、`TaxRateBreakdown` リストを返す。
+- 外税（TaxTypeId=1）: 税率ごとにグループ → `LineAmount` 合計 + 税額計算
+- 内税（TaxTypeId=2）: 同様に内税計算
 
 ---
 
