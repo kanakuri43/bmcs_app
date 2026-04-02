@@ -135,7 +135,9 @@
       "Bash(bash ~/.claude/statusline-command.sh)",
       "Bash(powershell:*)",
       "Bash(mkdir -p /tmp/DbQuery)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(python3 /tmp/query_db.py)",
+      "Bash(powershell.exe -Command ':*)"
     ]
   }
 }

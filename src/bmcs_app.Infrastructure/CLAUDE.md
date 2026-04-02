@@ -30,6 +30,8 @@
 | `TaxRatePeriodRepository` | `ITaxRatePeriodRepository` | GetAllAsync |
 | `SaleRepository` | `ISaleRepository` | GetSummariesAsync / GetBySlipNoAsync / UpsertAsync / DeleteAsync |
 | `CompanyInfoRepository` | — | GetAsync（インターフェースなし）|
+| `ReceiptRepository` | `IReceiptRepository` | GetSummariesAsync / GetByReceiptNoAsync / UpsertAsync / DeleteAsync |
+| `PaymentMethodRepository` | `IPaymentMethodRepository` | GetAllAsync |
 
 ## CompanyInfoRepository
 
@@ -84,6 +86,37 @@ public class CompanyInfo
 - JSON フィールド: `line_no`, `product_id`, `product_code`, `product_name`, `quantity`,
   `unit_price`, `tax_type_id`, `tax_rate_type`, `applied_tax_rate`, `line_tax_amount`,
   `slip_tax_amount`, `line_remarks`
+
+### sales テーブルの更新パターン（重要）
+`usp_sales_upsert` は **論理削除 + 再 INSERT** で更新を実現する：
+1. 既存行を `UPDATE sales SET is_deleted = 1`（論理削除）
+2. 同じ `sale_no + line_no` で新規 INSERT
+
+このため `UQ_sales_line` は **フィルター付きユニークインデックス**（`WHERE is_deleted = 0`）でなければならない。
+通常の UNIQUE CONSTRAINT（全行対象）にすると、更新時に UNIQUE KEY 違反が発生する。
+
+```sql
+-- 正しい定義
+CREATE UNIQUE NONCLUSTERED INDEX UQ_sales_line
+    ON dbo.sales (sale_no, line_no)
+    WHERE (is_deleted = 0);
+
+-- NG: UNIQUE CONSTRAINT は全行対象になるため更新で違反する
+-- ALTER TABLE dbo.sales ADD CONSTRAINT UQ_sales_line UNIQUE (sale_no, line_no);
+```
+
+---
+
+## ReceiptRepository 実装メモ
+
+### GetByReceiptNoAsync
+- `usp_receipts_select`（@receipt_no のみ）を呼び出す
+- **IsLocked は SP 結果に含まれる**（invoiced_at / ar_aggregated_at が SELECT に含まれる）→ Sales のような別途 SQL 不要
+- SP 呼び出し後、最初の行で `invoiced_at IS NOT NULL OR ar_aggregated_at IS NOT NULL` をチェック
+
+### UpsertAsync
+- `@lines` パラメータに `System.Text.Json.JsonSerializer` で JSON 配列を渡す
+- JSON フィールド: `line_no`, `payment_method_id`, `amount`, `line_remarks`
 
 ---
 
