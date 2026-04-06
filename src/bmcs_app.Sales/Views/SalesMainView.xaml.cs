@@ -1,5 +1,5 @@
 using System.Windows;
-using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using MahApps.Metro.Controls;
 using bmcs_app.Sales.ViewModels;
@@ -24,17 +24,27 @@ public partial class SalesMainView : MetroWindow
 
     private void OnFocusField(string target)
     {
-        if (target != SalesMainViewModel.FocusTargets.LineProductCode) return;
-
         Dispatcher.BeginInvoke(() =>
         {
-            if (LinesGrid.Items.Count == 0) return;
-            var row = LinesGrid.Items[0];
-            LinesGrid.SelectedItem = row;
-            LinesGrid.ScrollIntoView(row);
-            // 商品コード列 (index=1)
-            LinesGrid.CurrentCell = new DataGridCellInfo(row, LinesGrid.Columns[1]);
-            LinesGrid.BeginEdit();
+            var controls = FindVisualChildren<SaleLineControl>(LinesContainer).ToList();
+            SaleLineControl? ctrl = target switch
+            {
+                SalesMainViewModel.FocusTargets.LineProductCode     => controls.FirstOrDefault(),
+                SalesMainViewModel.FocusTargets.LineProductCodeLast => controls.LastOrDefault(),
+                _ => null,
+            };
+            ctrl?.FocusProductCode();
         }, DispatcherPriority.Input);
+    }
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T result) yield return result;
+            foreach (var descendant in FindVisualChildren<T>(child))
+                yield return descendant;
+        }
     }
 }

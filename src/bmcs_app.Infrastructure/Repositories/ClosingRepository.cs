@@ -58,6 +58,35 @@ public class ClosingRepository : IClosingRepository
         await cmd.ExecuteNonQueryAsync();
     }
 
+    public async Task<IEnumerable<InvoiceHistorySummary>> GetInvoiceHistorySummariesAsync()
+    {
+        var list = new List<InvoiceHistorySummary>();
+        await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT ih.invoice_date,
+                   MIN(c.closing_day)         AS closing_day,
+                   COUNT(DISTINCT ih.customer_id) AS customer_count
+            FROM   invoice_headers ih
+            JOIN   customers c ON ih.customer_id = c.customer_id AND c.is_deleted = 0
+            WHERE  ih.is_deleted = 0
+            GROUP BY ih.invoice_date
+            ORDER BY ih.invoice_date DESC
+            """;
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            list.Add(new InvoiceHistorySummary
+            {
+                InvoiceDate   = DateOnly.FromDateTime(reader.GetDateTime(0)),
+                ClosingDay    = reader.GetByte(1),
+                CustomerCount = reader.GetInt32(2),
+            });
+        }
+        return list;
+    }
+
     public async Task<IEnumerable<InvoiceHeader>> GetInvoiceHeadersAsync(
         DateOnly invoiceDate, byte closingDay, int? customerId = null)
     {

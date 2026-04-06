@@ -35,7 +35,11 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="20" />
+                            <RowDefinition Height="8" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="12" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="8" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
@@ -95,7 +99,7 @@
                                      Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                         </StackPanel>
 
-                        <!-- ボタン群 -->
+                        <!-- 集計実行ボタン -->
                         <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2"
                                     Orientation="Horizontal"
                                     HorizontalAlignment="Right">
@@ -103,10 +107,40 @@
                                     Content="集計実行 (F10)"
                                     Width="130"
                                     Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" />
+                        </StackPanel>
+
+                        <!-- 集計履歴リスト -->
+                        <DataGrid Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2"
+                                  ItemsSource="{Binding InvoiceTab.HistoryItems}"
+                                  SelectedItem="{Binding InvoiceTab.SelectedHistoryItem, Mode=TwoWay}"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  SelectionMode="Single"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  GridLinesVisibility="Horizontal"
+                                  HeadersVisibility="Column">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="対象締日"   Binding="{Binding ClosingDayLabel}"  Width="90" />
+                                <DataGridTextColumn Header="処理日付"   Binding="{Binding InvoiceDateLabel}" Width="110" />
+                                <DataGridTextColumn Header="得意先件数" Binding="{Binding CustomerCount}"    Width="90">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right" />
+                                            <Setter Property="Margin" Value="0,0,8,0" />
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- 印刷・締め解除ボタン -->
+                        <StackPanel Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right">
                             <Button Command="{Binding InvoiceTab.PrintCommand}"
                                     Content="請求書印刷 (F11)"
-                                    Width="140"
-                                    Margin="8,0,0,0" />
+                                    Width="140" />
                             <Button Command="{Binding InvoiceTab.CancelAggregationCommand}"
                                     Content="締め解除 (F8)"
                                     Width="140"

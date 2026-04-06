@@ -2,11 +2,11 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace bmcs_app.Sales.Views;
+namespace bmcs_app.Shared.Views;
 
 /// <summary>
 /// コード欄 Space キー押下時に表示するマスタ検索ダイアログ。
-/// 得意先・担当者・商品など全エンティティで共用。
+/// 得意先・担当者・商品・入金区分など全エンティティで共用。
 /// </summary>
 public partial class MasterSearchDialog : MahApps.Metro.Controls.MetroWindow
 {
@@ -20,7 +20,7 @@ public partial class MasterSearchDialog : MahApps.Metro.Controls.MetroWindow
     public MasterSearchDialog(string title, IEnumerable<SearchItem> items, string initialKeyword = "")
     {
         InitializeComponent();
-        Title    = title;
+        Title     = title;
         _allItems = items.ToList();
 
         KeywordBox.Text = initialKeyword;

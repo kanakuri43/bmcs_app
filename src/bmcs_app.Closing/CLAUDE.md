@@ -22,8 +22,12 @@
 │  処理日付 [DatePicker（月末デフォルト）]               │
 │  得意先   (◎) 全得意先  ( ) 指定 [コード][名称]        │
 │                              [集計実行(F10)]           │
-│                              [印刷(F11)]               │
-│                              [締め解除]                │
+│ ┌────────────────────────────────────────┐            │
+│ │ 対象締日 │ 処理日付   │ 得意先件数      │  ← 集計履歴 │
+│ │ 末日    │ 2026/03/31 │ 5               │            │
+│ │ ...     │ ...        │ ...             │            │
+│ └────────────────────────────────────────┘            │
+│                   [請求書印刷(F11)]  [締め解除(F8)]    │
 ├──────────────────────────────────────────────────────┤
 │ 【売掛金集計タブ】                                     │
 │  処理日付 [DatePicker（月末デフォルト）]               │
@@ -46,7 +50,52 @@
 | キー | 効果 |
 |---|---|
 | F10 | 集計実行（アクティブタブへ委譲） |
-| F11 | 請求書印刷（請求処理タブのみ） |
+| F11 | 請求書印刷（履歴選択行の invoice_date で実行） |
+| F8  | 締め解除（履歴選択行の invoice_date で実行・確認ダイアログあり） |
+
+---
+
+## 請求処理タブの履歴リスト
+
+集計実行後、実行済みの集計履歴を DataGrid で一覧表示する。
+
+```
+列: 対象締日（ClosingDayLabel）/ 処理日付（InvoiceDateLabel）/ 得意先件数（CustomerCount）
+```
+
+- 起動時および集計実行・締め解除後に自動リフレッシュ（`LoadHistoryAsync()`）
+- **印刷・締め解除は履歴リストで選択した行の日付を使用**（ProcessDate 入力欄は使わない）
+- 選択なしの場合、印刷・締め解除ボタンは CanExecute=false（グレーアウト）
+
+### 締め解除の確認ダイアログ
+- コードビハインドで `ConfirmCancel` コールバックをセット（MVVM ConfirmCancel パターン）
+- `MessageBoxButton.OKCancel` / `MessageBoxResult.Cancel` をデフォルトにする（誤操作防止）
+
+```csharp
+// ClosingMainView.xaml.cs
+vm.InvoiceTab.ConfirmCancel = message =>
+{
+    var result = MessageBox.Show(message, "締め解除の確認",
+        MessageBoxButton.OKCancel,
+        MessageBoxImage.Warning,
+        MessageBoxResult.Cancel);       // ← デフォルト Cancel
+    return result == MessageBoxResult.OK;
+};
+```
+
+### InvoiceHistorySummary（Core/Models）
+```csharp
+public class InvoiceHistorySummary
+{
+    public DateOnly InvoiceDate    { get; set; }
+    public byte     ClosingDay     { get; set; }
+    public int      CustomerCount  { get; set; }
+    public string ClosingDayLabel  => ClosingDay is 0 or 99 ? "末日" : $"{ClosingDay}日";
+    public string InvoiceDateLabel => InvoiceDate.ToString("yyyy/MM/dd");
+}
+```
+
+`ClosingDay` は `invoice_headers JOIN customers` から `MIN(c.closing_day)` で取得。
 
 ---
 
@@ -61,12 +110,29 @@
   - 対象: Step 1 で集計対象になった得意先の入金伝票
   - 範囲: `前回 invoice_date < receipt_date <= @closing_date`（Step 2 後なので prev_inv が正確に前回を指す）
 - Step 4: CTE chain → `invoice_headers` INSERT:
-  - `affected`: 今回集計された得意先（sales.invoiced_at = @process_date）
+  - `affected`: 今回集計された得意先（**`sales JOIN customers` で取得**。sales の customer_code/name は不変でない）
   - `prev_inv`: 直近の `invoice_headers`（ROW_NUMBER で最新1件）
   - `slip_groups`: `(sale_no, tax_rate_type, tax_type_id, applied_tax_rate)` 単位で集計
   - `sales_agg`: 得意先×税率種別で集計（外税 FLOOR(base×rate)、内税 FLOOR(base×rate/(1+rate))）
   - `receipt_agg`: `receipts.invoiced_at = @process_date` の入金合計（Step 3 でセット済みを参照）
   - `current_invoice_amount = 前残 − 入金 + 売上（標準）+ 税（標準）+ 売上（軽減）+ 税（軽減）`
+
+#### 重要: affected CTE は必ず customers テーブルと JOIN すること
+`sales` テーブルの `customer_code` / `customer_name` は更新履歴が残るため同一 `customer_id` で複数種類存在しうる。
+`DISTINCT customer_id, customer_code, customer_name` では重複行になり `UQ_invoice_headers` 違反が発生する。
+
+```sql
+-- NG: sales の非正規化列をそのまま使う
+affected AS (SELECT DISTINCT customer_id, customer_code, customer_name FROM sales WHERE ...)
+
+-- OK: customers テーブルから現在の正しいコード・名称を取得
+affected AS (
+    SELECT DISTINCT s.customer_id, c.customer_code, c.customer_name
+    FROM   sales s
+    JOIN   customers c ON s.customer_id = c.customer_id AND c.is_deleted = 0
+    WHERE  s.is_deleted = 0 AND s.invoiced_at = @process_date ...
+)
+```
 
 ### 請求集計取り消し（usp_invoice_closing_cancel）
 1. `DELETE FROM invoice_headers WHERE invoice_date = @process_date`
@@ -180,6 +246,7 @@
 | 請求集計取り消し | `usp_invoice_closing_cancel` | invoice_headers 削除 + sales・receipts の invoiced_at NULL |
 | 売掛金集計 | `usp_ar_closing` | @process_date / @customer_id |
 | 売掛金集計取り消し | `usp_ar_closing_cancel` | ar_histories 削除 + ar_aggregated_at NULL |
+| 集計履歴取得 | 直接 SQL（invoice_headers GROUP BY invoice_date） | InvoiceHistorySummary のリスト |
 | 請求ヘッダー取得 | 直接 SQL（invoice_headers JOIN customers） | closingDay で得意先絞り込み |
 | 売上明細取得 | 直接 SQL（CTE で伝票別集計） | invoiced_at = @invoice_date |
 | 入金明細取得 | 直接 SQL（receipt_no で GROUP BY） | invoiced_at = @invoice_date |
@@ -202,5 +269,5 @@
 ## ルール
 - DB 操作はすべて bmcs_app.Infrastructure 経由（StoredProcedure または直接 SQL）
 - ViewModel に async/await でデータ取得
-- コードビハインドにロジックを書かない
+- コードビハインドにロジックを書かない（ConfirmCancel コールバックのセットのみ許容）
 - SQLファイルは英語コメントのみ（日本語コメントは ADO.NET エンコードエラーの原因になる）

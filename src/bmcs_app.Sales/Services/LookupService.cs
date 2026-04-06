@@ -1,6 +1,6 @@
 using bmcs_app.Core.Interfaces;
 using bmcs_app.Core.Models;
-using bmcs_app.Sales.Views;
+using bmcs_app.Shared.Views;
 
 namespace bmcs_app.Sales.Services;
 

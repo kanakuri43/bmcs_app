@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Prism.Commands;
 using Prism.Mvvm;
 using bmcs_app.Closing.Services;
@@ -67,6 +68,22 @@ public class InvoiceClosingViewModel : BindableBase
         set => SetProperty(ref _customerName, value);
     }
 
+    // ===== 集計履歴 =====
+
+    public ObservableCollection<InvoiceHistorySummary> HistoryItems { get; } = new();
+
+    private InvoiceHistorySummary? _selectedHistoryItem;
+    public InvoiceHistorySummary? SelectedHistoryItem
+    {
+        get => _selectedHistoryItem;
+        set
+        {
+            SetProperty(ref _selectedHistoryItem, value);
+            PrintCommand.RaiseCanExecuteChanged();
+            CancelAggregationCommand.RaiseCanExecuteChanged();
+        }
+    }
+
     // ===== ステータス =====
 
     private string _statusMessage = string.Empty;
@@ -75,6 +92,11 @@ public class InvoiceClosingViewModel : BindableBase
         get => _statusMessage;
         set => SetProperty(ref _statusMessage, value);
     }
+
+    // ===== 確認ダイアログ（View がセット） =====
+
+    /// <summary>締め解除前の確認。true を返した場合のみ処理を続行する。</summary>
+    public Func<string, bool>? ConfirmCancel { get; set; }
 
     // ===== コマンド =====
 
@@ -93,14 +115,33 @@ public class InvoiceClosingViewModel : BindableBase
         SelectedClosingDay = ClosingDays.FirstOrDefault();
 
         AggregateCommand         = new DelegateCommand(async () => await OnAggregateAsync());
-        CancelAggregationCommand = new DelegateCommand(async () => await OnCancelAggregationAsync());
-        PrintCommand             = new DelegateCommand(async () => await OnPrintAsync());
+        CancelAggregationCommand = new DelegateCommand(async () => await OnCancelAggregationAsync(),
+                                                       () => SelectedHistoryItem is not null);
+        PrintCommand             = new DelegateCommand(async () => await OnPrintAsync(),
+                                                       () => SelectedHistoryItem is not null);
+
+        _ = LoadHistoryAsync();
     }
 
     public void SetCompanyInfo(CompanyInfo info) => _companyInfo = info;
 
     private static DateTime EndOfMonth(DateTime d)
         => new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month));
+
+    private async Task LoadHistoryAsync()
+    {
+        try
+        {
+            var items = await _repo.GetInvoiceHistorySummariesAsync();
+            HistoryItems.Clear();
+            foreach (var item in items)
+                HistoryItems.Add(item);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"履歴取得エラー: {ex.Message}";
+        }
+    }
 
     private async Task OnAggregateAsync()
     {
@@ -118,6 +159,7 @@ public class InvoiceClosingViewModel : BindableBase
                 DateOnly.FromDateTime(ProcessDate.Value),
                 customerId);
             StatusMessage = $"請求集計が完了しました。（{ProcessDate.Value:yyyy/MM/dd}）";
+            await LoadHistoryAsync();
         }
         catch (Exception ex)
         {
@@ -127,7 +169,10 @@ public class InvoiceClosingViewModel : BindableBase
 
     private async Task OnCancelAggregationAsync()
     {
-        if (ProcessDate is null) { StatusMessage = "処理日付を入力してください。"; return; }
+        if (SelectedHistoryItem is null) return;
+
+        var message = $"{SelectedHistoryItem.InvoiceDateLabel} の請求集計を解除します。よろしいですか？";
+        if (ConfirmCancel is not null && !ConfirmCancel(message)) return;
 
         int? customerId = ResolveCustomerId();
         if (IsSpecificCustomer && customerId is null) { StatusMessage = "得意先コードが見つかりません。"; return; }
@@ -135,10 +180,10 @@ public class InvoiceClosingViewModel : BindableBase
         try
         {
             StatusMessage = "締め解除中...";
-            await _repo.InvoiceClosingCancelAsync(
-                DateOnly.FromDateTime(ProcessDate.Value),
-                customerId);
-            StatusMessage = $"締め解除が完了しました。（{ProcessDate.Value:yyyy/MM/dd}）";
+            await _repo.InvoiceClosingCancelAsync(SelectedHistoryItem.InvoiceDate, customerId);
+            StatusMessage = $"締め解除が完了しました。（{SelectedHistoryItem.InvoiceDateLabel}）";
+            SelectedHistoryItem = null;
+            await LoadHistoryAsync();
         }
         catch (Exception ex)
         {
@@ -148,8 +193,7 @@ public class InvoiceClosingViewModel : BindableBase
 
     private async Task OnPrintAsync()
     {
-        if (SelectedClosingDay is null) { StatusMessage = "締め日を選択してください。"; return; }
-        if (ProcessDate is null)        { StatusMessage = "処理日付を入力してください。"; return; }
+        if (SelectedHistoryItem is null) return;
 
         int? customerId = ResolveCustomerId();
         if (IsSpecificCustomer && customerId is null) { StatusMessage = "得意先コードが見つかりません。"; return; }
@@ -158,13 +202,13 @@ public class InvoiceClosingViewModel : BindableBase
         {
             StatusMessage = "印刷データ取得中...";
 
-            var invoiceDate = DateOnly.FromDateTime(ProcessDate.Value);
-            var headers     = (await _repo.GetInvoiceHeadersAsync(
-                invoiceDate, SelectedClosingDay.Day, customerId)).ToList();
+            var invoiceDate = SelectedHistoryItem.InvoiceDate;
+            var closingDay  = SelectedHistoryItem.ClosingDay;
+            var headers     = (await _repo.GetInvoiceHeadersAsync(invoiceDate, closingDay, customerId)).ToList();
 
             if (headers.Count == 0)
             {
-                StatusMessage = "印刷する請求データがありません。先に請求集計を実行してください。";
+                StatusMessage = "印刷する請求データがありません。";
                 return;
             }
 
@@ -175,12 +219,12 @@ public class InvoiceClosingViewModel : BindableBase
                 var taxGroups = (await _repo.GetInvoiceTaxGroupsAsync(invoiceDate, h.CustomerId)).ToList();
                 var receipts  = (await _repo.GetInvoiceReceiptDetailsAsync(invoiceDate, h.CustomerId)).ToList();
 
-                printDataList.Add(BuildPrintData(h, slips, taxGroups, receipts));
+                printDataList.Add(BuildPrintData(h, slips, taxGroups, receipts, closingDay));
             }
 
             StatusMessage = "印刷中...";
             InvoicePrintHelper.Print(printDataList);
-            StatusMessage = $"印刷が完了しました。（{ProcessDate.Value:yyyy/MM/dd}  {headers.Count} 件）";
+            StatusMessage = $"印刷が完了しました。（{invoiceDate:yyyy/MM/dd}  {headers.Count} 件）";
         }
         catch (Exception ex)
         {
@@ -192,15 +236,18 @@ public class InvoiceClosingViewModel : BindableBase
         InvoiceHeader header,
         List<bmcs_app.Core.Models.InvoiceSlipDetail> slips,
         List<bmcs_app.Core.Models.InvoiceTaxGroup> taxGroups,
-        List<bmcs_app.Core.Models.InvoiceReceiptDetail> receipts)
+        List<bmcs_app.Core.Models.InvoiceReceiptDetail> receipts,
+        byte closingDay)
     {
         static string Fmt(decimal v) => v.ToString("#,##0");
+
+        var closingDayLabel = closingDay is 0 or 99 ? "末日" : $"{closingDay}日";
 
         var data = new InvoicePrintData
         {
             CustomerName        = header.CustomerName,
             InvoiceDate         = header.InvoiceDate.ToString("yyyy年MM月dd日"),
-            ClosingDayLabel     = SelectedClosingDay!.Label,
+            ClosingDayLabel     = closingDayLabel,
             PreviousAmountStr   = Fmt(header.PreviousInvoiceAmount),
             ReceiptAmountStr    = Fmt(header.ReceiptAmount),
             SalesStandardStr    = Fmt(header.SalesAmountStandard),

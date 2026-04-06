@@ -1,11 +1,17 @@
 using bmcs_app.Core.Models;
+using Prism.Commands;
 using Prism.Mvvm;
 
 namespace bmcs_app.Sales.ViewModels;
 
-/// <summary>売上明細DataGrid の1行分（編集可能）</summary>
+/// <summary>売上明細の1行分（UserControl で表示）</summary>
 public class SaleLineViewModel : BindableBase
 {
+    private readonly Action<SaleLineViewModel> _onOpenProductLookup;
+    private readonly Action<SaleLineViewModel> _onLookupProductByCode;
+    private readonly Action<SaleLineViewModel> _onDelete;
+    private readonly Action<SaleLineViewModel> _onLineRemarksEnter;
+
     private int    _lineNo;
     private string _productCode = "";
     private string _productName = "";
@@ -17,6 +23,34 @@ public class SaleLineViewModel : BindableBase
     private decimal _appliedTaxRate;
     private bool    _isLineTaxCalc = true;
     private string  _lineRemarks = "";
+
+    public DelegateCommand OpenProductLookupCommand   { get; }
+    public DelegateCommand LookupProductByCodeCommand { get; }
+    public DelegateCommand DeleteCommand              { get; }
+    public DelegateCommand LineRemarksEnterCommand    { get; }
+
+    /// <summary>商品確定後に数量欄へフォーカスを移動するよう要求するイベント（Viewコードビハインドがハンドル）</summary>
+    public event Action? MoveToQuantityRequested;
+
+    public SaleLineViewModel(
+        Action<SaleLineViewModel> onOpenProductLookup,
+        Action<SaleLineViewModel> onLookupProductByCode,
+        Action<SaleLineViewModel> onDelete,
+        Action<SaleLineViewModel> onLineRemarksEnter)
+    {
+        _onOpenProductLookup   = onOpenProductLookup;
+        _onLookupProductByCode = onLookupProductByCode;
+        _onDelete              = onDelete;
+        _onLineRemarksEnter    = onLineRemarksEnter;
+
+        OpenProductLookupCommand   = new DelegateCommand(() => _onOpenProductLookup(this));
+        LookupProductByCodeCommand = new DelegateCommand(() => _onLookupProductByCode(this));
+        DeleteCommand              = new DelegateCommand(() => _onDelete(this));
+        LineRemarksEnterCommand    = new DelegateCommand(() => _onLineRemarksEnter(this));
+    }
+
+    /// <summary>商品確定後、View に数量欄へのフォーカス移動を依頼する</summary>
+    public void RequestMoveToQuantity() => MoveToQuantityRequested?.Invoke();
 
     public int LineNo
     {

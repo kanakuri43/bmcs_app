@@ -3,6 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
     xmlns:h="clr-namespace:bmcs_app.Sales.Helpers"
+    xmlns:local="clr-namespace:bmcs_app.Sales.Views"
     Title="売上伝票"
     Height="720" Width="1100"
     WindowStartupLocation="CenterScreen"
@@ -187,192 +188,68 @@
             </StackPanel>
         </Border>
 
-        <!-- ===== 明細DataGrid ===== -->
+        <!-- ===== 明細 ===== -->
         <Grid Grid.Row="2">
             <Grid.RowDefinitions>
-                <RowDefinition Height="*"    />
-                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />  <!-- 列ヘッダー -->
+                <RowDefinition Height="*"    />  <!-- 明細行リスト -->
+                <RowDefinition Height="Auto" />  <!-- 行追加ボタン -->
             </Grid.RowDefinitions>
 
-            <DataGrid x:Name="LinesGrid"
-                      Grid.Row="0"
-                      ItemsSource="{Binding Lines}"
-                      SelectedItem="{Binding SelectedLine, Mode=TwoWay}"
-                      AutoGenerateColumns="False"
-                      CanUserAddRows="False"
-                      CanUserDeleteRows="False"
-                      SelectionMode="Single"
-                      GridLinesVisibility="Horizontal"
-                      HeadersVisibility="Column"
-                      Margin="4,4,4,0">
+            <!-- 列ヘッダー（SaleLineControl の列幅と一致させる） -->
+            <Border Grid.Row="0"
+                    BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                    BorderThickness="0,1,0,1"
+                    Background="{DynamicResource MahApps.Brushes.Gray10}"
+                    Padding="0,3">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="36"  />
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="*"   />
+                        <ColumnDefinition Width="72"  />
+                        <ColumnDefinition Width="88"  />
+                        <ColumnDefinition Width="96"  />
+                        <ColumnDefinition Width="80"  />
+                        <ColumnDefinition Width="56"  />
+                        <ColumnDefinition Width="80"  />
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="28"  />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="行"     HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="1" Text="商品コード" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="2" Text="商品名"   Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="3" Text="数量"     HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="4" Text="単価"     HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="5" Text="金額"     HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="6" Text="税種別"   Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="7" Text="税率"     HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="8" Text="税額"     HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="9" Text="行摘要"   Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                </Grid>
+            </Border>
 
-                <DataGrid.Columns>
-                    <!-- 行番号 (readonly) -->
-                    <DataGridTextColumn Header="行"
-                                        Binding="{Binding LineNo}"
-                                        IsReadOnly="True"
-                                        Width="36">
-                        <DataGridTextColumn.CellStyle>
-                            <Style TargetType="DataGridCell">
-                                <Setter Property="IsTabStop" Value="False" />
-                            </Style>
-                        </DataGridTextColumn.CellStyle>
-                    </DataGridTextColumn>
+            <!-- 明細行リスト -->
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl x:Name="LinesContainer"
+                              ItemsSource="{Binding Lines}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <local:SaleLineControl />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
 
-                    <!-- 商品コード: Space キーで検索ダイアログを開く -->
-                    <DataGridTemplateColumn Header="商品コード" Width="120">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding ProductCode}" Padding="4,0" />
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                        <DataGridTemplateColumn.CellEditingTemplate>
-                            <DataTemplate>
-                                <TextBox h:FocusHelper.MoveNextOnEnter="True"
-                                         Text="{Binding ProductCode, UpdateSourceTrigger=PropertyChanged}"
-                                         mah:TextBoxHelper.Watermark="コード">
-                                    <TextBox.InputBindings>
-                                        <KeyBinding Key="Space"
-                                                    Command="{Binding DataContext.OpenProductLookupCommand,
-                                                              RelativeSource={RelativeSource AncestorType=Window}}" />
-                                        <KeyBinding Key="Return"
-                                                    Command="{Binding DataContext.LookupProductByCodeCommand,
-                                                              RelativeSource={RelativeSource AncestorType=Window}}" />
-                                    </TextBox.InputBindings>
-                                </TextBox>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellEditingTemplate>
-                    </DataGridTemplateColumn>
-
-                    <!-- 商品名 (readonly) -->
-                    <DataGridTextColumn Header="商品名"
-                                        Binding="{Binding ProductName}"
-                                        IsReadOnly="True"
-                                        Width="*">
-                        <DataGridTextColumn.CellStyle>
-                            <Style TargetType="DataGridCell">
-                                <Setter Property="IsTabStop" Value="False" />
-                            </Style>
-                        </DataGridTextColumn.CellStyle>
-                    </DataGridTextColumn>
-
-                    <!-- 数量 -->
-                    <DataGridTextColumn Header="数量"
-                                        Binding="{Binding Quantity, StringFormat={}{0:0.##}}"
-                                        Width="72">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="TextAlignment" Value="Right" />
-                                <Setter Property="Padding" Value="4,0" />
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-
-                    <!-- 単価 -->
-                    <DataGridTextColumn Header="単価"
-                                        Binding="{Binding UnitPrice, StringFormat={}{0:N0}}"
-                                        Width="88">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="TextAlignment" Value="Right" />
-                                <Setter Property="Padding" Value="4,0" />
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-
-                    <!-- 金額 (readonly) -->
-                    <DataGridTextColumn Header="金額"
-                                        Binding="{Binding LineAmount, StringFormat={}{0:N0}}"
-                                        IsReadOnly="True"
-                                        Width="96">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="TextAlignment" Value="Right" />
-                                <Setter Property="Padding" Value="4,0" />
-                                <Setter Property="FontWeight" Value="SemiBold" />
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                        <DataGridTextColumn.CellStyle>
-                            <Style TargetType="DataGridCell">
-                                <Setter Property="IsTabStop" Value="False" />
-                            </Style>
-                        </DataGridTextColumn.CellStyle>
-                    </DataGridTextColumn>
-
-                    <!-- 税種別 -->
-                    <DataGridTemplateColumn Header="税種別" Width="80">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding TaxType.TaxTypeName}"
-                                           Padding="4,0"
-                                           VerticalAlignment="Center" />
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                        <DataGridTemplateColumn.CellEditingTemplate>
-                            <DataTemplate>
-                                <ComboBox ItemsSource="{Binding DataContext.TaxTypes,
-                                                        RelativeSource={RelativeSource AncestorType=Window}}"
-                                          SelectedItem="{Binding TaxType}"
-                                          DisplayMemberPath="TaxTypeName" />
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellEditingTemplate>
-                    </DataGridTemplateColumn>
-
-                    <!-- 税率 (readonly) -->
-                    <DataGridTextColumn Header="税率"
-                                        Binding="{Binding AppliedTaxRateDisplay}"
-                                        IsReadOnly="True"
-                                        Width="56">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="TextAlignment" Value="Right" />
-                                <Setter Property="Padding" Value="4,0" />
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                        <DataGridTextColumn.CellStyle>
-                            <Style TargetType="DataGridCell">
-                                <Setter Property="IsTabStop" Value="False" />
-                            </Style>
-                        </DataGridTextColumn.CellStyle>
-                    </DataGridTextColumn>
-
-                    <!-- 行税額 (readonly) -->
-                    <DataGridTextColumn Header="税額"
-                                        Binding="{Binding LineTaxAmount, StringFormat={}{0:N0}}"
-                                        IsReadOnly="True"
-                                        Width="80">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="TextAlignment" Value="Right" />
-                                <Setter Property="Padding" Value="4,0" />
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                        <DataGridTextColumn.CellStyle>
-                            <Style TargetType="DataGridCell">
-                                <Setter Property="IsTabStop" Value="False" />
-                            </Style>
-                        </DataGridTextColumn.CellStyle>
-                    </DataGridTextColumn>
-
-                    <!-- 行摘要 -->
-                    <DataGridTextColumn Header="行摘要"
-                                        Binding="{Binding LineRemarks}"
-                                        Width="120" />
-                </DataGrid.Columns>
-            </DataGrid>
-
-            <!-- 行操作ボタン -->
-            <StackPanel Grid.Row="1"
+            <!-- 行追加ボタン -->
+            <StackPanel Grid.Row="2"
                         Orientation="Horizontal"
                         Margin="4,2,4,4">
                 <Button Command="{Binding AddLineCommand}"
                         Content="行追加 (F2)"
                         ToolTip="明細行を追加します (F2)"
-                        Padding="8,2"
-                        Margin="0,0,4,0" />
-                <Button Command="{Binding DeleteLineCommand}"
-                        Content="行削除"
-                        ToolTip="選択行を削除します"
                         Padding="8,2" />
             </StackPanel>
         </Grid>

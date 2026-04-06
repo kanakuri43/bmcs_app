@@ -1,5 +1,5 @@
 using bmcs_app.Core.Models;
-using bmcs_app.Receipt.Views;
+using bmcs_app.Shared.Views;
 
 namespace bmcs_app.Receipt.Services;
 

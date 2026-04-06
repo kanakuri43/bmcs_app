@@ -23,6 +23,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bmcs_app.Search", "src\bmcs_app.Search\bmcs_app.Search.csproj", "{D86D020C-A62D-45B1-98C0-8BD9EEE96D6C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bmcs_app.Shared", "src\bmcs_app.Shared\bmcs_app.Shared.csproj", "{99B64F2D-F334-4ED3-B1F2-422253FA57EE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -141,11 +143,24 @@ Global
 		{D86D020C-A62D-45B1-98C0-8BD9EEE96D6C}.Release|x64.Build.0 = Release|Any CPU
 		{D86D020C-A62D-45B1-98C0-8BD9EEE96D6C}.Release|x86.ActiveCfg = Release|Any CPU
 		{D86D020C-A62D-45B1-98C0-8BD9EEE96D6C}.Release|x86.Build.0 = Release|Any CPU
+		{99B64F2D-F334-4ED3-B1F2-422253FA57EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{99B64F2D-F334-4ED3-B1F2-422253FA57EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{99B64F2D-F334-4ED3-B1F2-422253FA57EE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{99B64F2D-F334-4ED3-B1F2-422253FA57EE}.Debug|x64.Build.0 = Debug|Any CPU
+		{99B64F2D-F334-4ED3-B1F2-422253FA57EE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{99B64F2D-F334-4ED3-B1F2-422253FA57EE}.Debug|x86.Build.0 = Debug|Any CPU
+		{99B64F2D-F334-4ED3-B1F2-422253FA57EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{99B64F2D-F334-4ED3-B1F2-422253FA57EE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{99B64F2D-F334-4ED3-B1F2-422253FA57EE}.Release|x64.ActiveCfg = Release|Any CPU
+		{99B64F2D-F334-4ED3-B1F2-422253FA57EE}.Release|x64.Build.0 = Release|Any CPU
+		{99B64F2D-F334-4ED3-B1F2-422253FA57EE}.Release|x86.ActiveCfg = Release|Any CPU
+		{99B64F2D-F334-4ED3-B1F2-422253FA57EE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{D86D020C-A62D-45B1-98C0-8BD9EEE96D6C} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{99B64F2D-F334-4ED3-B1F2-422253FA57EE} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

@@ -8,7 +8,8 @@
 - 伝票No. 自動採番（yyyyMMddnnn 形式）
 - 前後ナビゲーション（`|◀` / `▶|`）
 - 全コード欄: Space→ダイアログ検索 / Enter→コード補完
-- 摘要 Enter → 明細 DataGrid 商品コードセルへフォーカス移動
+- 摘要 Enter → 明細1行目の商品コードへフォーカス移動
+- 行摘要 Enter → 行追加 → 新規行の商品コードへフォーカス移動
 - 消費税計算（明細単位 / 伝票単位）
 - リアルタイム合計更新（Lines の CollectionChanged + PropertyChanged）
 - 伝票ロック（invoiced_at / ar_aggregated_at が NULL でない場合、保存・削除不可）
@@ -28,7 +29,8 @@
 | Space（コード欄） | マスタ検索ダイアログを開く |
 | Enter（コード欄） | コードで直接補完 → 次フィールドへ移動 |
 | Enter（伝票No.欄） | 伝票を検索して読み込む |
-| Enter（摘要欄） | 明細ゼロなら行追加 → 商品コードセルへ移動 |
+| Enter（摘要欄） | 明細ゼロなら行追加 → 1行目の商品コードへ移動 |
+| Enter（行摘要欄） | 行追加 → 新規行の商品コードへ移動 |
 
 ---
 
@@ -39,38 +41,135 @@
 [受注No.] Enter → [得意先コード]（FocusHelper.MoveNextOnEnter）
 [得意先コード] Enter → 補完後 [担当者コード]（FocusHelper.MoveNextOnEnter）
 [担当者コード] Enter → 補完後 [摘要]（FocusHelper.MoveNextOnEnter）
-[摘要] Enter → 行追加（必要時）→ DataGrid 商品コードセル（FocusField イベント）
-[商品コード] Enter → 商品補完 → [数量]セル（FocusHelper.MoveNextOnEnter）
+[摘要] Enter → 行追加（必要時）→ 1行目[商品コード]（FocusField: LineProductCode）
+[商品コード] Enter → 商品補完 → [数量]（MoveToQuantityRequested イベント）
+[数量] Enter → [単価]（FocusHelper.MoveNextOnEnter）
+[単価] Enter → [税種別]（FocusHelper.MoveNextOnEnter）
+[税種別] → [行摘要]（FocusHelper.MoveNextOnEnter）
+[行摘要] Enter → 行追加 → 新規行[商品コード]（FocusField: LineProductCodeLast）
 ```
 
-- `h:FocusHelper.MoveNextOnEnter="True"`: `FocusScope` 内の次の `IsTabStop` 要素へ移動
-- DataGrid readonly 列はすべて `DataGridCell.IsTabStop="False"` → Tab スキップ
-- readonly 名称欄は `IsTabStop="False"` → Tab スキップ
+- `h:FocusHelper.MoveNextOnEnter="True"`: FocusScope 内の次の IsTabStop 要素へ移動
+- readonly 欄（商品名・金額・税率・税額）は TextBlock または IsTabStop 省略 → Tab スキップ
+
+---
+
+## 明細行 UserControl（SaleLineControl）
+
+DataGrid の代わりに **ItemsControl + UserControl** を使用。
+
+### 採用理由
+- DataGrid はセル単位のフォーカス制御・条件付き Enable・RelativeSource 参照が困難
+- 行数が少ない（通常10〜20行）ため仮想化不要
+- UserControl は通常の VisualTree 上にあるため全バインディングが素直に動く
+
+### 構造（SalesMainView.xaml の明細エリア）
+```
+列ヘッダー（固定 Grid）
+ScrollViewer
+  └─ ItemsControl[ItemsSource=Lines]
+       └─ DataTemplate: SaleLineControl（行ごと）
+行追加ボタン (F2)
+```
+
+### SaleLineControl の列幅（ヘッダーと一致させること）
+| 列 | 幅 |
+|---|---|
+| 行番号 | 36 |
+| 商品コード | 110 |
+| 商品名 | * |
+| 数量 | 72 |
+| 単価 | 88 |
+| 金額 | 96 |
+| 税種別 | 80 |
+| 税率 | 56 |
+| 税額 | 80 |
+| 行摘要 | 130 |
+| 削除 | 28 |
+
+### RelativeSource で TaxTypes を参照
+UserControl は通常の VisualTree 上にあるため `AncestorType=Window` が動く:
+```xml
+<ComboBox ItemsSource="{Binding DataContext.TaxTypes,
+                        RelativeSource={RelativeSource AncestorType=Window}}"
+          SelectedItem="{Binding TaxType}"
+          DisplayMemberPath="TaxTypeName" />
+```
+
+---
+
+## SaleLineViewModel の構造
+
+コールバックをコンストラクタで受け取り、行 VM が自律してコマンドを持つ。
+
+```csharp
+public SaleLineViewModel(
+    Action<SaleLineViewModel> onOpenProductLookup,
+    Action<SaleLineViewModel> onLookupProductByCode,
+    Action<SaleLineViewModel> onDelete,
+    Action<SaleLineViewModel> onLineRemarksEnter)
+
+// コマンド（行ごとに独立）
+OpenProductLookupCommand   // Space → 親のコールバックを呼ぶ
+LookupProductByCodeCommand // Enter → 親のコールバックを呼ぶ
+DeleteCommand              // × ボタン
+LineRemarksEnterCommand    // 行摘要 Enter → 親に行追加＋フォーカス依頼
+
+// イベント（View コードビハインドが購読）
+event Action? MoveToQuantityRequested  // 商品確定後に数量欄へ移動を依頼
+```
+
+### SalesMainViewModel のファクトリ
+```csharp
+private SaleLineViewModel CreateLineVm(int lineNo) => new SaleLineViewModel(
+    onOpenProductLookup:   line => { var r = _lookup.OpenProductSearch(line.ProductCode); if (r is not null) ApplyProductToLine(line, r); },
+    onLookupProductByCode: line => { var r = _lookup.FindProductByCode(line.ProductCode); if (r is not null) ApplyProductToLine(line, r); ... },
+    onDelete:              OnDeleteLine,
+    onLineRemarksEnter:    _ => { OnAddLine(); FocusField?.Invoke(FocusTargets.LineProductCodeLast); }
+)
+{ LineNo = lineNo, IsLineTaxCalc = _isLineTaxCalc };
+```
 
 ---
 
 ## フォーカス移動イベント（ViewModel → View）
 
-ViewModelが `event Action<string>? FocusField` を発火し、View のコードビハインドが処理する。
-フォーカス移動は純 UI 挙動なのでコードビハインドに書いてよい（MVVM 例外）。
+`SalesMainViewModel` が `event Action<string>? FocusField` を発火し、コードビハインドが処理。
+
+```csharp
+public static class FocusTargets
+{
+    public const string LineProductCode     = "LineProductCode";      // 1行目の商品コード
+    public const string LineProductCodeLast = "LineProductCodeLast";  // 最終行の商品コード
+}
+```
 
 ```csharp
 // SalesMainView.xaml.cs
 private void OnFocusField(string target)
 {
-    if (target != SalesMainViewModel.FocusTargets.LineProductCode) return;
     Dispatcher.BeginInvoke(() =>
     {
-        var row = LinesGrid.Items[0];
-        LinesGrid.SelectedItem = row;
-        LinesGrid.ScrollIntoView(row);
-        LinesGrid.CurrentCell = new DataGridCellInfo(row, LinesGrid.Columns[1]); // 商品コード列
-        LinesGrid.BeginEdit();
+        var controls = FindVisualChildren<SaleLineControl>(LinesContainer).ToList();
+        SaleLineControl? ctrl = target switch
+        {
+            FocusTargets.LineProductCode     => controls.FirstOrDefault(),
+            FocusTargets.LineProductCodeLast => controls.LastOrDefault(),
+            _ => null,
+        };
+        ctrl?.FocusProductCode();
     }, DispatcherPriority.Input);
 }
 ```
 
-`FocusTargets.LineProductCode` = `"LineProductCode"`（定数）
+商品確定後の数量欄フォーカスは `SaleLineViewModel.MoveToQuantityRequested` イベントを `SaleLineControl.xaml.cs` が購読:
+```csharp
+private void OnMoveToQuantity()
+{
+    QuantityBox.Focus();
+    QuantityBox.SelectAll();
+}
+```
 
 ---
 
@@ -145,29 +244,6 @@ return internalLines.GroupBy(l => l.AppliedTaxRate)
 
 ---
 
-## 税種別列（DataGridTemplateColumn）
-
-`DataGridComboBoxColumn` は列が Visual Tree 外のため `RelativeSource` が効かない。
-**必ず `DataGridTemplateColumn` + `CellEditingTemplate` の `ComboBox` を使う。**
-
-```xml
-<DataGridTemplateColumn Header="税種別" Width="80">
-    <DataGridTemplateColumn.CellTemplate>
-        <DataTemplate><TextBlock Text="{Binding TaxType.TaxTypeName}" /></DataTemplate>
-    </DataGridTemplateColumn.CellTemplate>
-    <DataGridTemplateColumn.CellEditingTemplate>
-        <DataTemplate>
-            <ComboBox ItemsSource="{Binding DataContext.TaxTypes,
-                                   RelativeSource={RelativeSource AncestorType=Window}}"
-                      SelectedItem="{Binding TaxType}"
-                      DisplayMemberPath="TaxTypeName" />
-        </DataTemplate>
-    </DataGridTemplateColumn.CellEditingTemplate>
-</DataGridTemplateColumn>
-```
-
----
-
 ## 伝票ロック
 
 `SaleRepository.GetBySlipNoAsync` でSP読み込み後、別途 SQL で判定：
@@ -212,7 +288,7 @@ private string GenerateSlipNo(DateOnly date)
 9. SalesMainView を Show
 ```
 
-税種別（TaxTypes）は非同期で追加されるが、DataGrid の ComboBox は遅延表示でも問題ない。
+TaxTypes は非同期で追加されるが、UserControl の ComboBox は遅延表示でも問題ない。
 伝票読み込み時に `TaxTypes.FirstOrDefault(t => t.TaxTypeId == l.TaxTypeId)` で照合する。
 
 ---

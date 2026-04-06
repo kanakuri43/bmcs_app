@@ -18,6 +18,7 @@
 | bmcs_app | WinExe | ランチャーメニュー |
 | bmcs_app.Core | ライブラリ | 共通モデル・インターフェース |
 | bmcs_app.Infrastructure | ライブラリ | DB接続・リポジトリ |
+| bmcs_app.Shared | WPF ライブラリ | 共通 WPF コンポーネント（MasterSearchDialog 等） |
 | bmcs_app.Master | WinExe | マスタ保守（社員・得意先・商品等） |
 | bmcs_app.Order | WinExe | 受注登録 |
 | bmcs_app.Sales | WinExe | 売上登録 |
@@ -216,11 +217,11 @@ ComboBox は使わず、コード入力欄 + 名称表示欄の2欄構成にす�
 ```
 
 ### MasterSearchDialog（共通マスタ検索ダイアログ）
-- `Sales/Views/MasterSearchDialog.xaml` — コード / 名称の2列リスト
+- `bmcs_app.Shared/Views/MasterSearchDialog.xaml` — コード / 名称の2列リスト（全プロジェクト共用）
 - `ILookupService`（Core/Interfaces）経由でダイアログを開く
-- `LookupService`（Sales/Services）が実装を担う
+- 各プロジェクトの `LookupService`（Services/）が実装を担う（エンティティ種別はプロジェクトごとに異なる）
 - 操作: キーワード入力でリアルタイム絞り込み / `↓` でリスト移動 / Enter or ダブルクリックで確定 / Esc でキャンセル
-- 受注・入金でも同じ `MasterSearchDialog` と `LookupService` を再利用する
+- 新規プロジェクト（仕入・支払等）は `bmcs_app.Shared` を参照するだけで使用可能
 
 ```csharp
 // LookupService のエンティティ登録（App.xaml.cs）

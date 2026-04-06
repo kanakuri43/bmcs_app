@@ -104,13 +104,6 @@ public class SalesMainViewModel : BindableBase
     // ── 明細 ─────────────────────────────────────────────────
     public ObservableCollection<SaleLineViewModel> Lines { get; } = new();
 
-    private SaleLineViewModel? _selectedLine;
-    public SaleLineViewModel? SelectedLine
-    {
-        get => _selectedLine;
-        set => SetProperty(ref _selectedLine, value);
-    }
-
     // ── 集計（明細変更のたびに再計算） ──────────────────────
     public decimal TaxExcludedTotal => Lines.Sum(l => l.LineAmount);
 
@@ -158,7 +151,8 @@ public class SalesMainViewModel : BindableBase
 
     public static class FocusTargets
     {
-        public const string LineProductCode = "LineProductCode";
+        public const string LineProductCode     = "LineProductCode";      // 1行目の商品コード
+        public const string LineProductCodeLast = "LineProductCodeLast";  // 最終行の商品コード
     }
 
     // ── コマンド ─────────────────────────────────────────────
@@ -170,13 +164,11 @@ public class SalesMainViewModel : BindableBase
     public DelegateCommand PrintCommand                { get; }
     public DelegateCommand DeleteSlipCommand           { get; }
     public DelegateCommand AddLineCommand              { get; }
-    public DelegateCommand DeleteLineCommand           { get; }
     public DelegateCommand RemarksEnterCommand         { get; }
 
     // ルックアップ（Space キー）
     public DelegateCommand OpenCustomerLookupCommand   { get; }
     public DelegateCommand OpenEmployeeLookupCommand   { get; }
-    public DelegateCommand OpenProductLookupCommand    { get; }
     public DelegateCommand OpenOrderLookupCommand      { get; }
     public DelegateCommand OpenSlipLookupCommand       { get; }
 
@@ -184,7 +176,6 @@ public class SalesMainViewModel : BindableBase
     public DelegateCommand LookupCustomerByCodeCommand { get; }
     public DelegateCommand LookupEmployeeByCodeCommand { get; }
     public DelegateCommand LookupOrderByNoCommand      { get; }
-    public DelegateCommand LookupProductByCodeCommand  { get; }
 
     // ── コンストラクタ ─────────────────────────────────────
     public SalesMainViewModel(ILookupService lookup, ISaleRepository saleRepo)
@@ -199,25 +190,45 @@ public class SalesMainViewModel : BindableBase
         SaveCommand       = new DelegateCommand(async () => await OnSaveAsync());
         PrintCommand      = new DelegateCommand(OnPrint);
         DeleteSlipCommand = new DelegateCommand(async () => await OnDeleteSlipAsync());
-        AddLineCommand        = new DelegateCommand(OnAddLine);
-        DeleteLineCommand     = new DelegateCommand(OnDeleteLine, () => SelectedLine is not null)
-                                    .ObservesProperty(() => SelectedLine);
-        RemarksEnterCommand   = new DelegateCommand(OnRemarksEnter);
+        AddLineCommand    = new DelegateCommand(OnAddLine);
+        RemarksEnterCommand = new DelegateCommand(OnRemarksEnter);
 
         OpenCustomerLookupCommand   = new DelegateCommand(OnOpenCustomerLookup);
         OpenEmployeeLookupCommand   = new DelegateCommand(OnOpenEmployeeLookup);
-        OpenProductLookupCommand    = new DelegateCommand(OnOpenProductLookup);
         OpenOrderLookupCommand      = new DelegateCommand(OnOpenOrderLookup);
         OpenSlipLookupCommand       = new DelegateCommand(OnOpenSlipLookup);
         LookupCustomerByCodeCommand = new DelegateCommand(OnLookupCustomerByCode);
         LookupEmployeeByCodeCommand = new DelegateCommand(OnLookupEmployeeByCode);
         LookupOrderByNoCommand      = new DelegateCommand(OnLookupOrderByNo);
-        LookupProductByCodeCommand  = new DelegateCommand(OnLookupProductByCode);
 
         Lines.CollectionChanged += OnLinesCollectionChanged;
 
         _ = LoadSlipListAsync();
     }
+
+    // ── 行VM ファクトリ ──────────────────────────────────────
+    private SaleLineViewModel CreateLineVm(int lineNo) => new SaleLineViewModel(
+        onOpenProductLookup: line =>
+        {
+            var result = _lookup.OpenProductSearch(line.ProductCode);
+            if (result is not null) ApplyProductToLine(line, result);
+        },
+        onLookupProductByCode: line =>
+        {
+            var result = _lookup.FindProductByCode(line.ProductCode);
+            if (result is not null)
+                ApplyProductToLine(line, result);
+            else if (!string.IsNullOrWhiteSpace(line.ProductCode))
+                StatusMessage = $"商品コード '{line.ProductCode}' が見つかりません";
+        },
+        onDelete: OnDeleteLine,
+        onLineRemarksEnter: _ =>
+        {
+            OnAddLine();
+            FocusField?.Invoke(FocusTargets.LineProductCodeLast);
+        }
+    )
+    { LineNo = lineNo, IsLineTaxCalc = _isLineTaxCalc };
 
     // ── 行VM のプロパティ変更を購読して集計を再通知 ────────────
     private void OnLinesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -347,20 +358,17 @@ public class SalesMainViewModel : BindableBase
         foreach (var l in slip.Lines)
         {
             var taxType = TaxTypes.FirstOrDefault(t => t.TaxTypeId == l.TaxTypeId);
-            Lines.Add(new SaleLineViewModel
-            {
-                LineNo         = l.LineNo,
-                ProductId      = l.ProductId,
-                ProductCode    = l.ProductCode,
-                ProductName    = l.ProductName,
-                Quantity       = l.Quantity,
-                UnitPrice      = l.UnitPrice,
-                TaxType        = taxType,
-                TaxRateType    = l.TaxRateType,
-                AppliedTaxRate = l.AppliedTaxRate,
-                IsLineTaxCalc  = _isLineTaxCalc,
-                LineRemarks    = l.LineRemarks ?? "",
-            });
+            var vm = CreateLineVm(l.LineNo);
+            vm.ProductId      = l.ProductId;
+            vm.ProductCode    = l.ProductCode;
+            vm.ProductName    = l.ProductName;
+            vm.Quantity       = l.Quantity;
+            vm.UnitPrice      = l.UnitPrice;
+            vm.TaxType        = taxType;
+            vm.TaxRateType    = l.TaxRateType;
+            vm.AppliedTaxRate = l.AppliedTaxRate;
+            vm.LineRemarks    = l.LineRemarks ?? "";
+            Lines.Add(vm);
         }
 
         RaiseTotalsChanged();
@@ -442,15 +450,7 @@ public class SalesMainViewModel : BindableBase
         StatusMessage    = $"担当者: {e.EmployeeName}";
     }
 
-    // ── ルックアップ: 商品（明細行） ────────────────────────
-    private void OnOpenProductLookup()
-    {
-        if (SelectedLine is null) return;
-        var result = _lookup.OpenProductSearch(SelectedLine.ProductCode);
-        if (result is not null)
-            ApplyProductToLine(SelectedLine, result);
-    }
-
+    // ── ルックアップ: 商品（明細行コールバック） ─────────────
     private void ApplyProductToLine(SaleLineViewModel line, Product p)
     {
         line.ProductId   = p.ProductId;
@@ -466,6 +466,7 @@ public class SalesMainViewModel : BindableBase
         line.AppliedTaxRate = GetAppliedTaxRate(p.TaxRateType, saleDate);
 
         RaiseTotalsChanged();
+        line.RequestMoveToQuantity();
     }
 
     // ── ルックアップ: 伝票番号 ──────────────────────────────
@@ -477,35 +478,6 @@ public class SalesMainViewModel : BindableBase
             EditSaleNo = selected;
             _ = OnSearchAsync();
         }
-    }
-
-    private async Task OnOpenSlipLookupAsync()
-    {
-        try
-        {
-            var summaries = await _saleRepo.GetSummariesAsync();
-            var selected  = _lookup.OpenSlipSearch(summaries, EditSaleNo);
-            if (selected is not null)
-            {
-                EditSaleNo = selected;
-                await OnSearchAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"伝票一覧の取得エラー: {ex.Message}";
-        }
-    }
-
-    // ── ルックアップ: 商品コード Enter（明細行） ─────────────
-    private void OnLookupProductByCode()
-    {
-        if (SelectedLine is null) return;
-        var result = _lookup.FindProductByCode(SelectedLine.ProductCode);
-        if (result is not null)
-            ApplyProductToLine(SelectedLine, result);
-        else if (!string.IsNullOrWhiteSpace(SelectedLine.ProductCode))
-            StatusMessage = $"商品コード '{SelectedLine.ProductCode}' が見つかりません";
     }
 
     // ── ルックアップ: 受注No. ───────────────────────────────
@@ -527,16 +499,14 @@ public class SalesMainViewModel : BindableBase
     // ── 明細行操作 ──────────────────────────────────────────
     private void OnAddLine()
     {
-        var line = new SaleLineViewModel { LineNo = Lines.Count + 1, IsLineTaxCalc = _isLineTaxCalc };
+        var line = CreateLineVm(Lines.Count + 1);
         Lines.Add(line);
-        SelectedLine = line;
         RaiseTotalsChanged();
     }
 
-    private void OnDeleteLine()
+    private void OnDeleteLine(SaleLineViewModel line)
     {
-        if (SelectedLine is null) return;
-        Lines.Remove(SelectedLine);
+        Lines.Remove(line);
         for (int i = 0; i < Lines.Count; i++)
             Lines[i].LineNo = i + 1;
         RaiseTotalsChanged();
