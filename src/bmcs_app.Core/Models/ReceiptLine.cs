@@ -7,4 +7,5 @@ public class ReceiptLine
     public string  PaymentMethodName { get; set; } = "";
     public decimal Amount            { get; set; }
     public string? LineRemarks       { get; set; }
+    public DateOnly? BillDueDate     { get; set; }
 }

@@ -18,13 +18,13 @@ BEGIN
         UPDATE receipts
         SET    ar_aggregated_at = NULL
         WHERE  is_deleted        = 0
-          AND  CAST(ar_aggregated_at AS date) = @process_date
+          AND  ar_aggregated_at  = @process_date
           AND  (@customer_id IS NULL OR customer_id = @customer_id);
 
         UPDATE sales
         SET    ar_aggregated_at = NULL
         WHERE  is_deleted        = 0
-          AND  CAST(ar_aggregated_at AS date) = @process_date
+          AND  ar_aggregated_at  = @process_date
           AND  (@customer_id IS NULL OR customer_id = @customer_id);
 
         COMMIT TRANSACTION;

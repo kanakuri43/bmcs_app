@@ -18,14 +18,14 @@ BEGIN
         UPDATE sales
         SET    invoiced_at = NULL
         WHERE  is_deleted  = 0
-          AND  CAST(invoiced_at AS date) = @process_date
+          AND  invoiced_at = @process_date
           AND  (@customer_id IS NULL OR customer_id = @customer_id);
 
         -- Reset invoiced_at on receipts
         UPDATE receipts
         SET    invoiced_at = NULL
         WHERE  is_deleted  = 0
-          AND  CAST(invoiced_at AS date) = @process_date
+          AND  invoiced_at = @process_date
           AND  (@customer_id IS NULL OR customer_id = @customer_id);
 
         COMMIT TRANSACTION;

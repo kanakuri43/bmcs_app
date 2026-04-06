@@ -9,7 +9,8 @@ public class ReceiptLineViewModel : BindableBase
     private int            _lineNo;
     private PaymentMethod? _paymentMethod;
     private decimal        _amount;
-    private string         _lineRemarks = "";
+    private string         _lineRemarks  = "";
+    private DateTime?      _billDueDate;
 
     public int LineNo
     {
@@ -40,5 +41,11 @@ public class ReceiptLineViewModel : BindableBase
     {
         get => _lineRemarks;
         set => SetProperty(ref _lineRemarks, value);
+    }
+
+    public DateTime? BillDueDate
+    {
+        get => _billDueDate;
+        set => SetProperty(ref _billDueDate, value);
     }
 }

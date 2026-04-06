@@ -22,7 +22,7 @@
 | bmcs_app.Order | WinExe | 受注登録 |
 | bmcs_app.Sales | WinExe | 売上登録 |
 | bmcs_app.Receipt | WinExe | 入金登録 |
-| bmcs_app.Closing | WinExe | 請求集計・締め処理 |
+| bmcs_app.Closing | WinExe | 請求集計・売掛金集計 |
 
 ## アーキテクチャ方針
 
@@ -368,8 +368,11 @@ public async Task UpsertAsync(int? id, ...)
 
 | カラム | 型 | 意味 |
 |---|---|---|
-| `invoiced_at` | `datetime NULL` | 請求集計に取り込まれた日時 |
-| `ar_aggregated_at` | `datetime NULL` | 売掛金集計に取り込まれた日時 |
+| `invoiced_at` | `date NULL` | どの請求締めに取り込まれたかを示す締め日付（例: 2026-03-31） |
+| `ar_aggregated_at` | `date NULL` | どの売掛金集計に取り込まれたかを示す締め日付 |
+
+**重要**: これらは「処理を実行した日時」ではなく「どの締め期間の集計に属するか」を示す締め日付。
+例: 2026/03/31締の請求書に集計された売上なら `invoiced_at = '2026-03-31'`。
 
 ### ロック判定
 ```sql
@@ -381,14 +384,19 @@ public async Task UpsertAsync(int? id, ...)
 - ロック解除は集計処理の再実行で当該カラムをNULLに戻す
 
 ### 集計処理でのセット
-集計日時はシステム日付ではなく、締め処理が対象とする日付をパラメータで渡す
-（当日より前の日付で締め処理を行うケースがあるため）。
+締め日付は `@process_date`（締め処理の対象日付）をそのまま格納する。
+`GETDATE()` は使わない（締め日付 ≠ 処理実行日時）。
 
 ```sql
--- @process_date: 締め処理の対象日付（任意・GETDATE()は使わない）
+-- @process_date: 締め日付（例: '2026-03-31'）
 UPDATE sales SET invoiced_at = @process_date
 WHERE customer_id = @customer_id AND sale_date <= @closing_date AND invoiced_at IS NULL;
 ```
+
+### receipts.invoiced_at のセットタイミング
+`usp_invoice_closing` は sales だけでなく、同じ締め期間内の入金伝票にも `invoiced_at` をセットする。
+対象範囲: `前回 invoice_date < receipt_date <= @closing_date`（invoice_headers の削除後に決定）。
+取り消し時（`usp_invoice_closing_cancel`）は sales・receipts 両方の `invoiced_at` を NULL に戻す。
 
 ## 共通ルール
 - インボイス制度対応（税率・登録番号管理）

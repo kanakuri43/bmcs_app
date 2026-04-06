@@ -5,7 +5,7 @@
 
 ## 実装済み機能（完成）
 - 請求集計（F10）: `usp_invoice_closing` 呼び出し → `invoice_headers` 作成
-- 請求集計取り消し（締め解除）: `usp_invoice_closing_cancel` → `invoice_headers` 削除 + `invoiced_at` NULL 戻し
+- 請求集計取り消し（締め解除）: `usp_invoice_closing_cancel` → `invoice_headers` 削除 + `invoiced_at` NULL 戻し（sales・receipts 両方）
 - 請求書印刷（F11）: インボイス制度準拠 A4 請求書。自社情報は `company_info` テーブルから取得
 - 売掛金集計（F10）: `usp_ar_closing` → `accounts_receivable_histories` 作成
 - 売掛金集計取り消し: `usp_ar_closing_cancel` → `accounts_receivable_histories` 削除 + `ar_aggregated_at` NULL 戻し
@@ -57,17 +57,21 @@
 - 締め日計算: `closing_day IN (0, 99)` → 月末、それ以外 → DATEFROMPARTS（月末超えは月末丸め）
 - Step 1: `sales.invoiced_at = @process_date`（締め日以前の未集計売上）
 - Step 2: 再実行時に同一 `customer_id + invoice_date` の `invoice_headers` を先に削除
-- Step 3: CTE chain → `invoice_headers` INSERT:
-  - `affected`: 今回集計された得意先
+- Step 3: `receipts.invoiced_at = @process_date`（Step 2 後に実行）
+  - 対象: Step 1 で集計対象になった得意先の入金伝票
+  - 範囲: `前回 invoice_date < receipt_date <= @closing_date`（Step 2 後なので prev_inv が正確に前回を指す）
+- Step 4: CTE chain → `invoice_headers` INSERT:
+  - `affected`: 今回集計された得意先（sales.invoiced_at = @process_date）
   - `prev_inv`: 直近の `invoice_headers`（ROW_NUMBER で最新1件）
   - `slip_groups`: `(sale_no, tax_rate_type, tax_type_id, applied_tax_rate)` 単位で集計
   - `sales_agg`: 得意先×税率種別で集計（外税 FLOOR(base×rate)、内税 FLOOR(base×rate/(1+rate))）
-  - `receipt_agg`: 前回請求日より後〜締め日までの入金（初回は全入金）
+  - `receipt_agg`: `receipts.invoiced_at = @process_date` の入金合計（Step 3 でセット済みを参照）
   - `current_invoice_amount = 前残 − 入金 + 売上（標準）+ 税（標準）+ 売上（軽減）+ 税（軽減）`
 
 ### 請求集計取り消し（usp_invoice_closing_cancel）
 1. `DELETE FROM invoice_headers WHERE invoice_date = @process_date`
-2. `UPDATE sales SET invoiced_at = NULL WHERE CAST(invoiced_at AS date) = @process_date`
+2. `UPDATE sales SET invoiced_at = NULL WHERE invoiced_at = @process_date`
+3. `UPDATE receipts SET invoiced_at = NULL WHERE invoiced_at = @process_date`
 
 ### 売掛金集計（usp_ar_closing）
 - パラメータ: `@process_date date`, `@customer_id int = NULL`
@@ -84,15 +88,15 @@
 
 ### 売掛金集計取り消し（usp_ar_closing_cancel）
 1. `DELETE FROM accounts_receivable_histories WHERE closing_date = @process_date`
-2. `UPDATE receipts SET ar_aggregated_at = NULL WHERE CAST(ar_aggregated_at AS date) = @process_date`
-3. `UPDATE sales SET ar_aggregated_at = NULL WHERE CAST(ar_aggregated_at AS date) = @process_date`
+2. `UPDATE receipts SET ar_aggregated_at = NULL WHERE ar_aggregated_at = @process_date`
+3. `UPDATE sales SET ar_aggregated_at = NULL WHERE ar_aggregated_at = @process_date`
 
 ---
 
 ## 請求書印刷（インボイス制度準拠 A4）
 
 ### 実装クラス
-- `Closing/Services/InvoicePrintData.cs` — 印刷用データモデル（`InvoicePrintData` / `InvoiceSlipLine` / `InvoiceTaxBreakdown`）
+- `Closing/Services/InvoicePrintData.cs` — 印刷用データモデル（`InvoicePrintData` / `InvoiceSlipLine` / `InvoiceReceiptLine` / `InvoiceTaxBreakdown`）
 - `Closing/Services/InvoicePrintHelper.cs` — FixedDocument 構築・印刷実行
 
 ### 印刷レイアウト（A4 縦）
@@ -114,7 +118,10 @@
   ─────────────────
   今回請求額      ¥ xxx,xxx
 ────────────────────────────────
-売上日 | 伝票No. | 摘要 | 税抜金額 | 消費税
+日付 | 伝票No. | 摘要 | 税抜/入金額 | 消費税
+  ...売上伝票行...
+-- 入金 --（セパレータ行）
+  ...入金伝票行...（消費税列は空）
 ────────────────────────────────
 ※10%対象   税抜金額: xxx   消費税: xxx
 ※8%対象（軽減税率）...
@@ -126,21 +133,29 @@
 |---|---|
 | 発行事業者の名称・登録番号 | 右上ボックス（`company_info.invoice_no`） |
 | 取引年月日 | 請求日 |
-| 取引内容 | 明細テーブル（売上伝票一覧） |
+| 取引内容 | 明細テーブル（売上伝票 + 入金伝票） |
 | 税率別 税抜金額・適用税率 | フッター税率別集計 |
 | 税率別 消費税額 | フッター税率別集計 |
 | 受取事業者の名称 | 左上「得意先名 御中」 |
 
 ### 複数ページ対応
+- ページネーションは売上行＋セパレータ行＋入金行の合計で計算（`PrintRow` リストに統合）
 - 1ページ目: フルヘッダー（196px）+ 集計サマリー（178px）+ テーブルヘッダー + フッター（80px）差し引き後の行数
 - 続紙: コンパクトヘッダー「請求書（続き）」（34px）+ テーブルヘッダー + フッター差し引き後の行数
 - 税率別集計・注記は最終ページのみ表示
 - 全得意先指定時は得意先ごとに独立したページセット
 
-### 明細テーブル（InvoiceSlipDetail）
+### PrintRow（InvoicePrintHelper 内部型）
+売上行・入金行・セクション区切り行を `private record PrintRow(...)` で統一管理。
+`IsSection=true` のとき `BuildSectionRow()` でグレー背景のセパレータとして描画。
+
+### 売上明細（InvoiceSlipDetail）
 伝票単位サマリー。税計算は `(sale_no, tax_type_id, applied_tax_rate)` でグループ化：
 - 外税 (tax_type_id=1): `FLOOR(group_base × rate)`
 - 内税 (tax_type_id=2): `FLOOR(group_base × rate / (1 + rate))`
+
+### 入金明細（InvoiceReceiptDetail）
+`invoiced_at = @invoice_date` で特定。`receipt_no` 単位で GROUP BY して合計金額を取得。
 
 ---
 
@@ -162,11 +177,12 @@
 | 操作 | SP名 / クエリ | 備考 |
 |---|---|---|
 | 請求集計 | `usp_invoice_closing` | @closing_day / @process_date / @customer_id |
-| 請求集計取り消し | `usp_invoice_closing_cancel` | invoice_headers 削除 + invoiced_at NULL |
+| 請求集計取り消し | `usp_invoice_closing_cancel` | invoice_headers 削除 + sales・receipts の invoiced_at NULL |
 | 売掛金集計 | `usp_ar_closing` | @process_date / @customer_id |
 | 売掛金集計取り消し | `usp_ar_closing_cancel` | ar_histories 削除 + ar_aggregated_at NULL |
 | 請求ヘッダー取得 | 直接 SQL（invoice_headers JOIN customers） | closingDay で得意先絞り込み |
-| 伝票明細取得 | 直接 SQL（CTE で伝票別集計） | invoiced_at = @invoice_date |
+| 売上明細取得 | 直接 SQL（CTE で伝票別集計） | invoiced_at = @invoice_date |
+| 入金明細取得 | 直接 SQL（receipt_no で GROUP BY） | invoiced_at = @invoice_date |
 | 税率別集計取得 | 直接 SQL（CTE で税率別集計） | invoiced_at = @invoice_date |
 
 ---
@@ -178,7 +194,7 @@
 | `invoice_headers` | 請求集計結果（前残/入金/売上/税/今回請求額） |
 | `accounts_receivable_histories` | 売掛金集計結果（前残/売上/入金/今月売掛金） |
 | `sales` | invoiced_at / ar_aggregated_at でロック管理 |
-| `receipts` | ar_aggregated_at でロック管理 |
+| `receipts` | invoiced_at（請求集計）/ ar_aggregated_at（売掛金集計）でロック管理 |
 | `company_info` | 自社情報（印刷用）|
 
 ---

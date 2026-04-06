@@ -45,7 +45,7 @@
 
                         <!-- 締め日 -->
                         <TextBlock Grid.Row="0" Grid.Column="0"
-                                   Text="締め日"
+                                   Text="対象締日"
                                    VerticalAlignment="Center"
                                    Margin="0,0,0,12" />
                         <ComboBox Grid.Row="0" Grid.Column="1"

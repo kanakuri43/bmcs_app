@@ -55,8 +55,9 @@ public class ReceiptRepository : IReceiptRepository
             if (slip is null)
             {
                 // usp_receipts_select は invoiced_at / ar_aggregated_at を含む → ロック判定はここで完結
-                var invoicedAt     = reader.IsDBNull(reader.GetOrdinal("invoiced_at"))      ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("invoiced_at"));
-                var arAggregatedAt = reader.IsDBNull(reader.GetOrdinal("ar_aggregated_at")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("ar_aggregated_at"));
+                // invoiced_at / ar_aggregated_at は締め日付（date型）: どの締め期間に取り込まれたかを示す
+                var invoicedAt     = reader.IsDBNull(reader.GetOrdinal("invoiced_at"))      ? (DateOnly?)null : DateOnly.FromDateTime(reader.GetDateTime(reader.GetOrdinal("invoiced_at")));
+                var arAggregatedAt = reader.IsDBNull(reader.GetOrdinal("ar_aggregated_at")) ? (DateOnly?)null : DateOnly.FromDateTime(reader.GetDateTime(reader.GetOrdinal("ar_aggregated_at")));
 
                 slip = new ReceiptSlip
                 {
@@ -70,6 +71,7 @@ public class ReceiptRepository : IReceiptRepository
                 };
             }
 
+            var billDueDateOrd = reader.GetOrdinal("bill_due_date");
             slip.Lines.Add(new ReceiptLine
             {
                 LineNo            = reader.GetInt32(reader.GetOrdinal("line_no")),
@@ -77,6 +79,7 @@ public class ReceiptRepository : IReceiptRepository
                 PaymentMethodName = reader.GetString(reader.GetOrdinal("payment_method_name")),
                 Amount            = reader.GetDecimal(reader.GetOrdinal("amount")),
                 LineRemarks       = reader.IsDBNull(reader.GetOrdinal("line_remarks")) ? null : reader.GetString(reader.GetOrdinal("line_remarks")),
+                BillDueDate       = reader.IsDBNull(billDueDateOrd) ? null : DateOnly.FromDateTime(reader.GetDateTime(billDueDateOrd)),
             });
         }
 
@@ -93,6 +96,7 @@ public class ReceiptRepository : IReceiptRepository
             payment_method_id = l.PaymentMethodId,
             amount            = l.Amount,
             line_remarks      = l.LineRemarks,
+            bill_due_date     = l.BillDueDate.HasValue ? l.BillDueDate.Value.ToString("yyyy-MM-dd") : (string?)null,
         }));
 
         await using var conn = new SqlConnection(ConnectionString);

@@ -124,7 +124,7 @@ accounts_receivable_histories  売掛金集計履歴（得意先×月末日で�
 
 - 得意先の `closing_day`（1〜27、99=月末）単位で実行。
 - 任意の日付での請求集計も可（仕様上の柔軟性）。
-- 集計後、`sales.invoiced_date` / `receipts.invoiced_date` に締日を書き込む。
+- 集計後、`sales.invoiced_at` / `receipts.invoiced_at` に締日（`date`型）を書き込む。
 - **締後のルール**: 集計済み得意先はその締日以前の売上・入金の登録・変更・削除が不可。
 - `invoice_headers` に以下を記録：前回請求額・入金額・売上額（標準/軽減）・消費税額（標準/軽減）・今回請求額。
 

@@ -239,6 +239,9 @@ public class ReceiptMainViewModel : BindableBase
                 PaymentMethod = pm,
                 Amount        = l.Amount,
                 LineRemarks   = l.LineRemarks ?? "",
+                BillDueDate   = l.BillDueDate.HasValue
+                                    ? l.BillDueDate.Value.ToDateTime(TimeOnly.MinValue)
+                                    : null,
             });
         }
 
@@ -374,7 +377,8 @@ public class ReceiptMainViewModel : BindableBase
             l.LineNo,
             l.PaymentMethod!.PaymentMethodId,
             l.Amount,
-            string.IsNullOrWhiteSpace(l.LineRemarks) ? null : l.LineRemarks));
+            string.IsNullOrWhiteSpace(l.LineRemarks) ? null : l.LineRemarks,
+            l.BillDueDate.HasValue ? DateOnly.FromDateTime(l.BillDueDate.Value) : null));
 
         try
         {

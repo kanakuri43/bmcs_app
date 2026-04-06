@@ -127,7 +127,7 @@ BEGIN
             SELECT customer_id, SUM(amount) AS receipt_total
             FROM   receipts
             WHERE  is_deleted    = 0
-              AND  CAST(invoiced_at AS date) = @process_date
+              AND  invoiced_at   = @process_date
               AND  (@customer_id IS NULL OR customer_id = @customer_id)
             GROUP BY customer_id
         )

@@ -3,7 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
     Title="bmcs"
-    Height="560" Width="240"
+    Height="500" Width="200"
     ResizeMode="CanMinimize"
     WindowStartupLocation="CenterScreen"
     WindowTransitionsEnabled="False">

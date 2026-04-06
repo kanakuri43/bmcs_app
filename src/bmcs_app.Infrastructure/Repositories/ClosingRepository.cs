@@ -115,7 +115,7 @@ public class ClosingRepository : IClosingRepository
                        SUM(s.quantity * s.unit_price) AS group_base
                 FROM   sales s
                 WHERE  s.is_deleted        = 0
-                  AND  CAST(s.invoiced_at AS date) = @invoice_date
+                  AND  s.invoiced_at = @invoice_date
                   AND  s.customer_id       = @customer_id
                 GROUP BY s.sale_no, s.tax_type_id, s.applied_tax_rate
             ),
@@ -138,7 +138,7 @@ public class ClosingRepository : IClosingRepository
             FROM   slip_tax st
             JOIN   sales s ON st.sale_no = s.sale_no
                            AND s.is_deleted = 0
-                           AND CAST(s.invoiced_at AS date) = @invoice_date
+                           AND s.invoiced_at = @invoice_date
                            AND s.customer_id = @customer_id
             GROUP BY st.sale_no, st.tax_excluded, st.tax_amount
             ORDER BY MIN(s.sale_date), st.sale_no
@@ -174,7 +174,7 @@ public class ClosingRepository : IClosingRepository
                    SUM(amount) AS amount
             FROM   receipts
             WHERE  is_deleted  = 0
-              AND  CAST(invoiced_at AS date) = @invoice_date
+              AND  invoiced_at = @invoice_date
               AND  customer_id = @customer_id
             GROUP BY receipt_no
             ORDER BY MIN(receipt_date), receipt_no
@@ -208,7 +208,7 @@ public class ClosingRepository : IClosingRepository
                        SUM(s.quantity * s.unit_price) AS group_base
                 FROM   sales s
                 WHERE  s.is_deleted        = 0
-                  AND  CAST(s.invoiced_at AS date) = @invoice_date
+                  AND  s.invoiced_at = @invoice_date
                   AND  s.customer_id       = @customer_id
                 GROUP BY s.sale_no, s.tax_rate_type, s.tax_type_id, s.applied_tax_rate
             )
