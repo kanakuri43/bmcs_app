@@ -5,8 +5,11 @@ public class SaleSlip
     public string         SaleNo       { get; set; } = "";
     public DateOnly       SaleDate     { get; set; }
     public int            CustomerId   { get; set; }
-    public string         CustomerCode { get; set; } = "";
-    public string         CustomerName { get; set; } = "";
+    public string         CustomerCode       { get; set; } = "";
+    public string         CustomerName       { get; set; } = "";
+    public string?        CustomerPostalCode { get; set; }
+    public string?        CustomerAddress1   { get; set; }
+    public string?        CustomerAddress2   { get; set; }
     public int?           OrderId      { get; set; }
     public string?        OrderNo      { get; set; }
     public int            EmployeeId   { get; set; }

@@ -160,7 +160,11 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="20" />
+                            <RowDefinition Height="8"    />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="12"   />
+                            <RowDefinition Height="*"    />
+                            <RowDefinition Height="8"    />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
@@ -207,7 +211,7 @@
                                      Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                         </StackPanel>
 
-                        <!-- ボタン群 -->
+                        <!-- 集計実行ボタン -->
                         <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
                                     Orientation="Horizontal"
                                     HorizontalAlignment="Right">
@@ -215,10 +219,39 @@
                                     Content="集計実行 (F10)"
                                     Width="130"
                                     Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" />
+                        </StackPanel>
+
+                        <!-- 集計履歴リスト -->
+                        <DataGrid Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2"
+                                  ItemsSource="{Binding ArTab.HistoryItems}"
+                                  SelectedItem="{Binding ArTab.SelectedHistoryItem, Mode=TwoWay}"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  SelectionMode="Single"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  GridLinesVisibility="Horizontal"
+                                  HeadersVisibility="Column">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="処理日付"   Binding="{Binding ClosingDateLabel}" Width="110" />
+                                <DataGridTextColumn Header="得意先件数" Binding="{Binding CustomerCount}"    Width="90">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right" />
+                                            <Setter Property="Margin" Value="0,0,8,0" />
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- 集計取り消しボタン -->
+                        <StackPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right">
                             <Button Command="{Binding ArTab.CancelAggregationCommand}"
-                                    Content="締め解除 (F8)"
-                                    Width="140"
-                                    Margin="8,0,0,0" />
+                                    Content="集計取り消し (F8)"
+                                    Width="160" />
                         </StackPanel>
                     </Grid>
                 </Border>

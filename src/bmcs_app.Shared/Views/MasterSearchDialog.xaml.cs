@@ -10,7 +10,7 @@ namespace bmcs_app.Shared.Views;
 /// </summary>
 public partial class MasterSearchDialog : MahApps.Metro.Controls.MetroWindow
 {
-    public record SearchItem(string Code, string Name, object Source);
+    public record SearchItem(string Code, string Name, object Source, string Date = "");
 
     private readonly List<SearchItem> _allItems;
 
@@ -22,6 +22,11 @@ public partial class MasterSearchDialog : MahApps.Metro.Controls.MetroWindow
         InitializeComponent();
         Title     = title;
         _allItems = items.ToList();
+
+        // 日付列はアイテムに日付データがある場合のみ表示
+        DateColumn.Visibility = _allItems.Any(i => !string.IsNullOrEmpty(i.Date))
+            ? System.Windows.Visibility.Visible
+            : System.Windows.Visibility.Collapsed;
 
         KeywordBox.Text = initialKeyword;
         ApplyFilter(initialKeyword);
@@ -39,7 +44,8 @@ public partial class MasterSearchDialog : MahApps.Metro.Controls.MetroWindow
             ? _allItems
             : _allItems.Where(i =>
                 i.Code.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
-                i.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                i.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
+                i.Date.Contains(keyword, StringComparison.OrdinalIgnoreCase))
               .ToList();
 
         ResultGrid.ItemsSource = filtered;

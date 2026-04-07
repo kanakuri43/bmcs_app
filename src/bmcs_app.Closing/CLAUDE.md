@@ -111,6 +111,7 @@ public class InvoiceHistorySummary
   - 範囲: `前回 invoice_date < receipt_date <= @closing_date`（Step 2 後なので prev_inv が正確に前回を指す）
 - Step 4: CTE chain → `invoice_headers` INSERT:
   - `affected`: 今回集計された得意先（**`sales JOIN customers` で取得**。sales の customer_code/name は不変でない）
+    - `customers` から `postal_code`, `address1`, `address2` も取得して INSERT（住所の再発行固定化）
   - `prev_inv`: 直近の `invoice_headers`（ROW_NUMBER で最新1件）
   - `slip_groups`: `(sale_no, tax_rate_type, tax_type_id, applied_tax_rate)` 単位で集計
   - `sales_agg`: 得意先×税率種別で集計（外税 FLOOR(base×rate)、内税 FLOOR(base×rate/(1+rate))）
@@ -165,13 +166,29 @@ affected AS (
 - `Closing/Services/InvoicePrintData.cs` — 印刷用データモデル（`InvoicePrintData` / `InvoiceSlipLine` / `InvoiceReceiptLine` / `InvoiceTaxBreakdown`）
 - `Closing/Services/InvoicePrintHelper.cs` — FixedDocument 構築・印刷実行
 
+### プリンタ選択ロジック
+`PrinterSettingsConfig.Load()` で `bmcs_printer_settings.json` を読み込む。
+- `InvoicePrinter` が設定済み → そのプリンタへダイアログなしで直接印刷
+- 未設定（null/空）または送信失敗 → 従来の印刷ダイアログを表示（フォールバック）
+
+### 得意先住所の取得元
+`BuildPrintData` では `InvoiceHeader.CustomerPostalCode/Address1/Address2` を使用する。
+`_customers` キャッシュ（現在マスタ）は**使わない**。
+
+```
+集計実行時 → usp_invoice_closing が customers から住所を読み取り invoice_headers に保存
+再発行時   → invoice_headers の保存済み住所を使用（マスタ変更の影響を受けない）
+```
+
 ### 印刷レイアウト（A4 縦）
 ```
 タイトル「請  求  書」
 ────────────────────────────────
-得意先名 御中           自社名
-請求日 / 締め日         住所 / TEL / FAX
-                        登録番号: T...
+〒 000-0000（郵便番号があれば）  自社名
+住所1（あれば）                   住所 / TEL / FAX
+住所2（あれば）                   登録番号: T...
+得意先名 御中
+請求日 / 締め日
 ────────────────────────────────
 【集計サマリー】
   前回請求額      ¥ xxx,xxx          ┌──────────────┐
@@ -258,7 +275,7 @@ affected AS (
 
 | テーブル | 用途 |
 |---|---|
-| `invoice_headers` | 請求集計結果（前残/入金/売上/税/今回請求額） |
+| `invoice_headers` | 請求集計結果（前残/入金/売上/税/今回請求額）。`customer_postal_code` / `customer_address1` / `customer_address2` を集計時点で保存 |
 | `accounts_receivable_histories` | 売掛金集計結果（前残/売上/入金/今月売掛金） |
 | `sales` | invoiced_at / ar_aggregated_at でロック管理 |
 | `receipts` | invoiced_at（請求集計）/ ar_aggregated_at（売掛金集計）でロック管理 |

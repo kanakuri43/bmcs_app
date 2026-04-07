@@ -13,6 +13,7 @@
                 <ColumnDefinition Width="*"   />  <!-- 商品名 -->
                 <ColumnDefinition Width="72"  />  <!-- 数量 -->
                 <ColumnDefinition Width="88"  />  <!-- 単価 -->
+                <ColumnDefinition Width="80"  />  <!-- 原価 -->
                 <ColumnDefinition Width="96"  />  <!-- 金額 -->
                 <ColumnDefinition Width="80"  />  <!-- 税種別 -->
                 <ColumnDefinition Width="56"  />  <!-- 税率 -->
@@ -34,6 +35,7 @@
                      Text="{Binding ProductCode, UpdateSourceTrigger=PropertyChanged}"
                      mah:TextBoxHelper.Watermark="コード"
                      h:FocusHelper.MoveNextOnEnter="True"
+                     GotKeyboardFocus="OnTextBoxGotKeyboardFocus"
                      Margin="1,1,0,1">
                 <TextBox.InputBindings>
                     <KeyBinding Key="Space"  Command="{Binding OpenProductLookupCommand}" />
@@ -42,12 +44,12 @@
             </TextBox>
 
             <!-- 商品名（表示のみ） -->
-            <TextBox Grid.Column="2"
-                     Text="{Binding ProductName, Mode=OneWay}"
-                     IsReadOnly="True"
-                     IsTabStop="False"
-                     Foreground="{DynamicResource MahApps.Brushes.Gray3}"
-                     Margin="2,1,0,1" />
+            <TextBlock Grid.Column="2"
+                       Text="{Binding ProductName}"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource MahApps.Brushes.Gray3}"
+                       Padding="4,0"
+                       TextTrimming="CharacterEllipsis" />
 
             <!-- 数量 -->
             <TextBox x:Name="QuantityBox"
@@ -55,6 +57,7 @@
                      Text="{Binding Quantity, StringFormat={}{0:0.##}}"
                      TextAlignment="Right"
                      h:FocusHelper.MoveNextOnEnter="True"
+                     GotKeyboardFocus="OnTextBoxGotKeyboardFocus"
                      Margin="2,1,0,1" />
 
             <!-- 単価 -->
@@ -62,43 +65,53 @@
                      Text="{Binding UnitPrice, StringFormat={}{0:N0}}"
                      TextAlignment="Right"
                      h:FocusHelper.MoveNextOnEnter="True"
+                     GotKeyboardFocus="OnTextBoxGotKeyboardFocus"
                      Margin="2,1,0,1" />
+
+            <!-- 原価（表示のみ） -->
+            <TextBlock Grid.Column="5"
+                       Text="{Binding CostPrice, StringFormat={}{0:N0}}"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Right"
+                       Foreground="{DynamicResource MahApps.Brushes.Gray3}"
+                       Padding="4,0" />
 
             <!-- 金額（表示のみ） -->
-            <TextBox Grid.Column="5"
-                     Text="{Binding LineAmount, StringFormat={}{0:N0}, Mode=OneWay}"
-                     IsReadOnly="True"
-                     IsTabStop="False"
-                     TextAlignment="Right"
-                     FontWeight="SemiBold"
-                     Margin="2,1,0,1" />
+            <TextBlock Grid.Column="6"
+                       Text="{Binding LineAmount, StringFormat={}{0:N0}}"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Right"
+                       FontWeight="SemiBold"
+                       Padding="4,0" />
 
             <!-- 税種別 ComboBox（RelativeSource で Window.DataContext.TaxTypes を参照） -->
-            <ComboBox Grid.Column="6"
+            <ComboBox Grid.Column="7"
                       ItemsSource="{Binding DataContext.TaxTypes,
                                    RelativeSource={RelativeSource AncestorType=Window}}"
                       SelectedItem="{Binding TaxType}"
                       DisplayMemberPath="TaxTypeName"
+                      h:FocusHelper.MoveNextOnEnter="True"
                       Margin="2,1,0,1" />
 
             <!-- 税率（表示のみ） -->
-            <TextBlock Grid.Column="7"
+            <TextBlock Grid.Column="8"
                        Text="{Binding AppliedTaxRateDisplay}"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Right"
                        Padding="4,0" />
 
             <!-- 税額（表示のみ） -->
-            <TextBlock Grid.Column="8"
+            <TextBlock Grid.Column="9"
                        Text="{Binding LineTaxAmount, StringFormat={}{0:N0}}"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Right"
                        Padding="4,0" />
 
             <!-- 行摘要 -->
-            <TextBox Grid.Column="9"
+            <TextBox Grid.Column="10"
                      Text="{Binding LineRemarks, UpdateSourceTrigger=PropertyChanged}"
                      mah:TextBoxHelper.Watermark="（任意）"
+                     GotKeyboardFocus="OnTextBoxGotKeyboardFocus"
                      Margin="2,1,0,1">
                 <TextBox.InputBindings>
                     <KeyBinding Key="Return" Command="{Binding LineRemarksEnterCommand}" />
@@ -106,7 +119,7 @@
             </TextBox>
 
             <!-- 行削除ボタン -->
-            <Button Grid.Column="10"
+            <Button Grid.Column="11"
                     Command="{Binding DeleteCommand}"
                     Content="×"
                     IsTabStop="False"

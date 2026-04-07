@@ -196,6 +196,24 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
+
+                        <Label Content="郵便番号" />
+                        <TextBox Text="{Binding EditPostalCode, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="例: 060-0001"
+                                 MaxLength="8"
+                                 Margin="0,0,0,8" />
+
+                        <Label Content="住所1" />
+                        <TextBox Text="{Binding EditAddress1, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="例: 北海道札幌市中央区北1条西2丁目"
+                                 MaxLength="100"
+                                 Margin="0,0,0,8" />
+
+                        <Label Content="住所2" />
+                        <TextBox Text="{Binding EditAddress2, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="例: ○○ビル 3F"
+                                 MaxLength="100"
+                                 Margin="0,0,0,8" />
                     </StackPanel>
 
                     <!-- 保存・削除ボタン（右下） -->

@@ -233,16 +233,14 @@ public class ReceiptMainViewModel : BindableBase
         foreach (var l in slip.Lines)
         {
             var pm = PaymentMethods.FirstOrDefault(p => p.PaymentMethodId == l.PaymentMethodId);
-            Lines.Add(new ReceiptLineViewModel
-            {
-                LineNo        = l.LineNo,
-                PaymentMethod = pm,
-                Amount        = l.Amount,
-                LineRemarks   = l.LineRemarks ?? "",
-                BillDueDate   = l.BillDueDate.HasValue
-                                    ? l.BillDueDate.Value.ToDateTime(TimeOnly.MinValue)
-                                    : null,
-            });
+            var vm = CreateLineVm(l.LineNo);
+            vm.PaymentMethod = pm;
+            vm.Amount        = l.Amount;
+            vm.LineRemarks   = l.LineRemarks ?? "";
+            vm.BillDueDate   = l.BillDueDate.HasValue
+                                   ? l.BillDueDate.Value.ToDateTime(TimeOnly.MinValue)
+                                   : null;
+            Lines.Add(vm);
         }
 
         RaisePropertyChanged(nameof(GrandTotal));
@@ -315,23 +313,35 @@ public class ReceiptMainViewModel : BindableBase
         FocusField?.Invoke(FocusTargets.LinePaymentMethod);
     }
 
+    // ── 明細行ファクトリ ──────────────────────────────────────
+    private ReceiptLineViewModel CreateLineVm(int lineNo) => new ReceiptLineViewModel(
+        onDelete:           vm => OnDeleteLineVm(vm),
+        onLineRemarksEnter: vm => { OnAddLine(); FocusField?.Invoke(FocusTargets.LinePaymentMethod); }
+    )
+    { LineNo = lineNo };
+
     // ── 明細行操作 ────────────────────────────────────────────
     private void OnAddLine()
     {
-        var line = new ReceiptLineViewModel { LineNo = Lines.Count + 1 };
+        var line = CreateLineVm(Lines.Count + 1);
         Lines.Add(line);
         SelectedLine = line;
         RaisePropertyChanged(nameof(GrandTotal));
     }
 
-    private void OnDeleteLine()
+    private void OnDeleteLineVm(ReceiptLineViewModel vm)
     {
-        if (SelectedLine is null) return;
-        Lines.Remove(SelectedLine);
+        Lines.Remove(vm);
         for (int i = 0; i < Lines.Count; i++)
             Lines[i].LineNo = i + 1;
         RaisePropertyChanged(nameof(GrandTotal));
         StatusMessage = "行を削除しました";
+    }
+
+    private void OnDeleteLine()
+    {
+        if (SelectedLine is null) return;
+        OnDeleteLineVm(SelectedLine);
     }
 
     // ── 保存 ──────────────────────────────────────────────────

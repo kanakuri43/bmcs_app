@@ -1,9 +1,11 @@
+using System.Printing;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using bmcs_app.Infrastructure;
 
 namespace bmcs_app.Closing.Services;
 
@@ -52,11 +54,32 @@ public static class InvoicePrintHelper
             return;
         }
 
-        var dlg = new PrintDialog();
-        if (dlg.ShowDialog() != true) return;
+        var doc         = BuildDocument(list);
+        var settings    = PrinterSettingsConfig.Load();
+        var printerName = settings.InvoicePrinter;
 
-        var doc = BuildDocument(list);
-        dlg.PrintDocument(doc.DocumentPaginator, "請求書");
+        if (!string.IsNullOrWhiteSpace(printerName))
+        {
+            try
+            {
+                var dlg = new PrintDialog
+                {
+                    PrintQueue = new PrintQueue(new LocalPrintServer(), printerName),
+                };
+                dlg.PrintDocument(doc.DocumentPaginator, "請求書");
+                return;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"設定されたプリンタへの送信に失敗しました。\n{ex.Message}\n\n印刷ダイアログで再試行します。",
+                    "印刷エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        var fallback = new PrintDialog();
+        if (fallback.ShowDialog() != true) return;
+        fallback.PrintDocument(doc.DocumentPaginator, "請求書");
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -217,6 +240,12 @@ public static class InvoicePrintHelper
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
 
         var leftSp = new StackPanel();
+        if (!string.IsNullOrWhiteSpace(data.CustomerPostalCode))
+            leftSp.Children.Add(Tb($"〒 {data.CustomerPostalCode}", 9));
+        if (!string.IsNullOrWhiteSpace(data.CustomerAddress1))
+            leftSp.Children.Add(Tb(data.CustomerAddress1, 9));
+        if (!string.IsNullOrWhiteSpace(data.CustomerAddress2))
+            leftSp.Children.Add(Tb(data.CustomerAddress2, 9));
         leftSp.Children.Add(Tb($"{data.CustomerName}　御中", 16, FontWeights.Bold));
         Grid.SetColumn(leftSp, 0);
         grid.Children.Add(leftSp);

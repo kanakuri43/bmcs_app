@@ -16,16 +16,18 @@ public partial class ClosingMainView : MetroWindow
     {
         if (e.NewValue is ClosingMainViewModel vm)
         {
-            vm.InvoiceTab.ConfirmCancel = message =>
+            static bool Confirm(string message, string title)
             {
                 var result = System.Windows.MessageBox.Show(
-                    message,
-                    "締め解除の確認",
+                    message, title,
                     System.Windows.MessageBoxButton.OKCancel,
                     System.Windows.MessageBoxImage.Warning,
                     System.Windows.MessageBoxResult.Cancel);
                 return result == System.Windows.MessageBoxResult.OK;
-            };
+            }
+
+            vm.InvoiceTab.ConfirmCancel = msg => Confirm(msg, "締め解除の確認");
+            vm.ArTab.ConfirmCancel      = msg => Confirm(msg, "集計取り消しの確認");
         }
     }
 }

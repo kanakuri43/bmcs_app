@@ -25,7 +25,7 @@
 |---|---|---|
 | `EmployeeRepository` | `IEmployeeRepository` | GetAllAsync |
 | `CustomerRepository` | `ICustomerRepository` | GetAllAsync（TaxCalcUnitId 含む） |
-| `ProductRepository` | `IProductRepository` | GetAllAsync |
+| `ProductRepository` | `IProductRepository` | GetAllAsync / UpsertAsync / DeleteAsync |
 | `TaxTypeRepository` | — | GetAllAsync（インターフェースなし） |
 | `TaxRatePeriodRepository` | `ITaxRatePeriodRepository` | GetAllAsync |
 | `SaleRepository` | `ISaleRepository` | GetSummariesAsync / GetBySlipNoAsync / UpsertAsync / DeleteAsync |
@@ -84,8 +84,10 @@ public class CompanyInfo
 ### UpsertAsync
 - `@lines` パラメータに `System.Text.Json.JsonSerializer` で JSON 配列を渡す
 - JSON フィールド: `line_no`, `product_id`, `product_code`, `product_name`, `quantity`,
-  `unit_price`, `tax_type_id`, `tax_rate_type`, `applied_tax_rate`, `line_tax_amount`,
+  `unit_price`, `cost_price`, `tax_type_id`, `tax_rate_type`, `applied_tax_rate`, `line_tax_amount`,
   `slip_tax_amount`, `line_remarks`
+- 得意先住所（`customer_postal_code`, `customer_address1`, `customer_address2`）は
+  SP が `customers` テーブルから自動取得して INSERT する（C# 側からパラメータ渡し不要）
 
 ### sales テーブルの更新パターン（重要）
 `usp_sales_upsert` は **論理削除 + 再 INSERT** で更新を実現する：
@@ -116,7 +118,61 @@ CREATE UNIQUE NONCLUSTERED INDEX UQ_sales_line
 
 ### UpsertAsync
 - `@lines` パラメータに `System.Text.Json.JsonSerializer` で JSON 配列を渡す
-- JSON フィールド: `line_no`, `payment_method_id`, `amount`, `line_remarks`
+- JSON フィールド: `line_no`, `payment_method_id`, `amount`, `line_remarks`, `bill_due_date`
+- 得意先住所（`customer_postal_code`, `customer_address1`, `customer_address2`）は
+  SP が `customers` テーブルから自動取得して INSERT する（C# 側からパラメータ渡し不要）
+
+---
+
+## ClosingRepository 実装メモ
+
+### GetInvoiceHeadersAsync
+- `usp_invoice_headers_select`（@invoice_date / @closing_day / @customer_id）を呼び出す
+- 列名ベース（`reader.GetOrdinal`）で読み取る（序数ベース不可：列追加後に序数がずれるため）
+- `customer_postal_code`, `customer_address1`, `customer_address2` を読み取り `InvoiceHeader` に格納
+- **住所は集計実行時点のものが保存済み** → マスタ変更後の再発行でも住所は不変
+
+---
+
+## ProductRepository 実装メモ
+
+### UpsertAsync / DeleteAsync
+- `usp_products_upsert`（@product_id / @product_code / @product_name / @tax_type_id / @tax_rate_type / @cost_price）
+- `usp_products_delete`（@product_id）→ 論理削除（`is_deleted = 1`）
+
+---
+
+## CustomerRepository 実装メモ
+
+### GetAllAsync
+- `postal_code`, `address1`, `address2` を SELECT に含む（NULL 許容）
+
+### UpsertAsync
+- `usp_customers_upsert`（追加パラメータ: @postal_code / @address1 / @address2、すべて NULL 許容）
+
+---
+
+## PrinterSettingsConfig
+
+`bmcs_printer_settings.json`（`bmcs_config.json` と同フォルダ）からプリンタ設定を読み書きする。DB 不使用。
+
+```csharp
+public class PrinterSettingsConfig
+{
+    public string? DeliverySlipPrinter { get; set; }  // 納品書プリンタ名（null = ダイアログ表示）
+    public string? InvoicePrinter      { get; set; }  // 請求書プリンタ名（null = ダイアログ表示）
+
+    public static PrinterSettingsConfig Load();  // ファイルなし / エラー → デフォルト(null)返却
+    public static void Save(PrinterSettingsConfig config);
+}
+```
+
+```json
+{
+  "deliverySlipPrinter": "プリンタ名",
+  "invoicePrinter": "プリンタ名"
+}
+```
 
 ---
 
@@ -124,3 +180,4 @@ CREATE UNIQUE NONCLUSTERED INDEX UQ_sales_line
 - SELECT は SP がない場合は直接クエリ可
 - INSERT / UPDATE / DELETE は必ず SP 経由（`usp_{entity}_{operation}`）
 - null 許容パラメータは `(object?)value ?? DBNull.Value` で渡す
+- **`OnStartup`（UI スレッド）で `GetAllAsync().GetAwaiter().GetResult()` は禁止**（デッドロック）。代わりに ViewModel の `_ = LoadAsync()` で非同期ロードする

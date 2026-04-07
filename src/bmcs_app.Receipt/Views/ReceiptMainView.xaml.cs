@@ -1,5 +1,5 @@
 using System.Windows;
-using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using MahApps.Metro.Controls;
 using bmcs_app.Receipt.ViewModels;
@@ -28,13 +28,19 @@ public partial class ReceiptMainView : MetroWindow
 
         Dispatcher.BeginInvoke(() =>
         {
-            if (LinesGrid.Items.Count == 0) return;
-            var row = LinesGrid.Items[LinesGrid.Items.Count - 1];
-            LinesGrid.SelectedItem = row;
-            LinesGrid.ScrollIntoView(row);
-            // 入金区分列 (index=1)
-            LinesGrid.CurrentCell = new DataGridCellInfo(row, LinesGrid.Columns[1]);
-            LinesGrid.BeginEdit();
+            var controls = FindVisualChildren<ReceiptLineControl>(LinesContainer).ToList();
+            controls.LastOrDefault()?.FocusPaymentMethod();
         }, DispatcherPriority.Input);
+    }
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T result) yield return result;
+            foreach (var descendant in FindVisualChildren<T>(child))
+                yield return descendant;
+        }
     }
 }

@@ -10,21 +10,53 @@ public class SaleRepository : ISaleRepository
 {
     private static string ConnectionString => AppConfig.ConnectionString;
 
+    /// <summary>
+    /// 伝票検索ダイアログ用。売上明細を非正規化した全行を返す（直接 SQL）。
+    /// 列順: 伝票日付, 伝票番号, 得意先コード, 得意先名, 行番号, 商品コード, 商品名, 数量, 単価, 金額
+    /// </summary>
+    public async Task<IEnumerable<string[]>> GetAllFlatAsync()
+    {
+        var rows = new List<string[]>();
+        await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT s.sale_date, s.sale_no,
+                   s.customer_code, s.customer_name,
+                   s.line_no, s.product_code, s.product_name,
+                   s.quantity, s.unit_price,
+                   s.quantity * s.unit_price AS line_amount
+            FROM   sales s
+            WHERE  s.is_deleted = 0
+            ORDER  BY s.sale_date DESC, s.sale_no, s.line_no";
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            rows.Add(new[]
+            {
+                DateOnly.FromDateTime(reader.GetDateTime(0)).ToString("yyyy/MM/dd"),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.GetString(3),
+                reader.GetInt32(4).ToString(),
+                reader.GetString(5),
+                reader.GetString(6),
+                reader.GetDecimal(7).ToString("#,##0.##"),
+                reader.GetDecimal(8).ToString("#,##0"),
+                reader.GetDecimal(9).ToString("#,##0"),
+            });
+        }
+        return rows;
+    }
+
     public async Task<IEnumerable<SlipSummary>> GetSummariesAsync()
     {
         var list = new List<SlipSummary>();
         await using var conn = new SqlConnection(ConnectionString);
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = """
-            SELECT sale_no,
-                   MIN(sale_date)     AS sale_date,
-                   MAX(customer_name) AS customer_name
-            FROM sales
-            WHERE is_deleted = 0
-            GROUP BY sale_no
-            ORDER BY sale_no
-            """;
+        cmd.CommandText = "usp_sales_summaries_select";
+        cmd.CommandType = CommandType.StoredProcedure;
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
@@ -58,31 +90,35 @@ public class SaleRepository : ISaleRepository
                 {
                     slip = new SaleSlip
                     {
-                        SaleNo       = reader.GetString(reader.GetOrdinal("sale_no")),
-                        SaleDate     = DateOnly.FromDateTime(reader.GetDateTime(reader.GetOrdinal("sale_date"))),
-                        CustomerId   = reader.GetInt32(reader.GetOrdinal("customer_id")),
-                        CustomerCode = reader.GetString(reader.GetOrdinal("customer_code")),
-                        CustomerName = reader.GetString(reader.GetOrdinal("customer_name")),
-                        OrderId      = reader.IsDBNull(reader.GetOrdinal("order_id"))   ? null : reader.GetInt32(reader.GetOrdinal("order_id")),
-                        OrderNo      = reader.IsDBNull(reader.GetOrdinal("order_no"))   ? null : reader.GetString(reader.GetOrdinal("order_no")),
-                        EmployeeId   = reader.GetInt32(reader.GetOrdinal("employee_id")),
-                        EmployeeCode = reader.GetString(reader.GetOrdinal("employee_code")),
-                        EmployeeName = reader.GetString(reader.GetOrdinal("employee_name")),
-                        SlipRemarks  = reader.IsDBNull(reader.GetOrdinal("slip_remarks")) ? null : reader.GetString(reader.GetOrdinal("slip_remarks")),
+                        SaleNo             = reader.GetString(reader.GetOrdinal("sale_no")),
+                        SaleDate           = DateOnly.FromDateTime(reader.GetDateTime(reader.GetOrdinal("sale_date"))),
+                        CustomerId         = reader.GetInt32(reader.GetOrdinal("customer_id")),
+                        CustomerCode       = reader.GetString(reader.GetOrdinal("customer_code")),
+                        CustomerName       = reader.GetString(reader.GetOrdinal("customer_name")),
+                        CustomerPostalCode = reader.IsDBNull(reader.GetOrdinal("customer_postal_code")) ? null : reader.GetString(reader.GetOrdinal("customer_postal_code")),
+                        CustomerAddress1   = reader.IsDBNull(reader.GetOrdinal("customer_address1"))    ? null : reader.GetString(reader.GetOrdinal("customer_address1")),
+                        CustomerAddress2   = reader.IsDBNull(reader.GetOrdinal("customer_address2"))    ? null : reader.GetString(reader.GetOrdinal("customer_address2")),
+                        OrderId            = reader.IsDBNull(reader.GetOrdinal("order_id"))   ? null : reader.GetInt32(reader.GetOrdinal("order_id")),
+                        OrderNo            = reader.IsDBNull(reader.GetOrdinal("order_no"))   ? null : reader.GetString(reader.GetOrdinal("order_no")),
+                        EmployeeId         = reader.GetInt32(reader.GetOrdinal("employee_id")),
+                        EmployeeCode       = reader.GetString(reader.GetOrdinal("employee_code")),
+                        EmployeeName       = reader.GetString(reader.GetOrdinal("employee_name")),
+                        SlipRemarks        = reader.IsDBNull(reader.GetOrdinal("slip_remarks")) ? null : reader.GetString(reader.GetOrdinal("slip_remarks")),
                     };
                 }
 
             slip.Lines.Add(new SaleLine
             {
-                LineNo        = reader.GetInt32(reader.GetOrdinal("line_no")),
-                ProductId     = reader.GetInt32(reader.GetOrdinal("product_id")),
-                ProductCode   = reader.GetString(reader.GetOrdinal("product_code")),
-                ProductName   = reader.GetString(reader.GetOrdinal("product_name")),
-                Quantity      = reader.GetDecimal(reader.GetOrdinal("quantity")),
-                UnitPrice     = reader.GetDecimal(reader.GetOrdinal("unit_price")),
-                TaxTypeId     = reader.GetInt32(reader.GetOrdinal("tax_type_id")),
-                TaxTypeName   = reader.GetString(reader.GetOrdinal("tax_type_name")),
-                TaxRateType   = reader.GetByte(reader.GetOrdinal("tax_rate_type")),
+                LineNo         = reader.GetInt32(reader.GetOrdinal("line_no")),
+                ProductId      = reader.GetInt32(reader.GetOrdinal("product_id")),
+                ProductCode    = reader.GetString(reader.GetOrdinal("product_code")),
+                ProductName    = reader.GetString(reader.GetOrdinal("product_name")),
+                Quantity       = reader.GetDecimal(reader.GetOrdinal("quantity")),
+                UnitPrice      = reader.GetDecimal(reader.GetOrdinal("unit_price")),
+                CostPrice      = reader.GetDecimal(reader.GetOrdinal("cost_price")),
+                TaxTypeId      = reader.GetInt32(reader.GetOrdinal("tax_type_id")),
+                TaxTypeName    = reader.GetString(reader.GetOrdinal("tax_type_name")),
+                TaxRateType    = reader.GetByte(reader.GetOrdinal("tax_rate_type")),
                 AppliedTaxRate = reader.IsDBNull(reader.GetOrdinal("applied_tax_rate")) ? 0m : reader.GetDecimal(reader.GetOrdinal("applied_tax_rate")),
                 LineTaxAmount  = reader.IsDBNull(reader.GetOrdinal("line_tax_amount"))  ? 0m : reader.GetDecimal(reader.GetOrdinal("line_tax_amount")),
                 LineRemarks    = reader.IsDBNull(reader.GetOrdinal("line_remarks"))      ? null : reader.GetString(reader.GetOrdinal("line_remarks")),
@@ -122,6 +158,7 @@ public class SaleRepository : ISaleRepository
             product_name     = l.ProductName,
             quantity         = l.Quantity,
             unit_price       = l.UnitPrice,
+            cost_price       = l.CostPrice,
             tax_type_id      = l.TaxTypeId,
             tax_rate_type    = l.TaxRateType,
             applied_tax_rate = l.AppliedTaxRate,

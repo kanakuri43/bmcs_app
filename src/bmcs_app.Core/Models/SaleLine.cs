@@ -8,6 +8,7 @@ public class SaleLine
     public string  ProductName    { get; set; } = "";
     public decimal Quantity       { get; set; }
     public decimal UnitPrice      { get; set; }
+    public decimal CostPrice      { get; set; }
     public int     TaxTypeId      { get; set; }
     public string  TaxTypeName    { get; set; } = "";
     public byte    TaxRateType    { get; set; }

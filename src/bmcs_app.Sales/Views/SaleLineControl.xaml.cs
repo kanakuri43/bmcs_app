@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using bmcs_app.Sales.ViewModels;
 
 namespace bmcs_app.Sales.Views;
@@ -31,5 +32,11 @@ public partial class SaleLineControl : UserControl
     {
         ProductCodeBox.Focus();
         ProductCodeBox.SelectAll();
+    }
+
+    private void OnTextBoxGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is TextBox tb && tb.Text.Length > 0)
+            Dispatcher.BeginInvoke(() => tb.SelectAll());
     }
 }

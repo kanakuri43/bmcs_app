@@ -7,6 +7,7 @@ public record SaleLineInput(
     string  ProductName,
     decimal Quantity,
     decimal UnitPrice,
+    decimal CostPrice,
     int     TaxTypeId,
     byte    TaxRateType,
     decimal AppliedTaxRate,

@@ -209,6 +209,7 @@
                         <ColumnDefinition Width="*"   />
                         <ColumnDefinition Width="72"  />
                         <ColumnDefinition Width="88"  />
+                        <ColumnDefinition Width="80"  />
                         <ColumnDefinition Width="96"  />
                         <ColumnDefinition Width="80"  />
                         <ColumnDefinition Width="56"  />
@@ -216,16 +217,17 @@
                         <ColumnDefinition Width="130" />
                         <ColumnDefinition Width="28"  />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="行"     HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="1" Text="商品コード" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="2" Text="商品名"   Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="3" Text="数量"     HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="4" Text="単価"     HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="5" Text="金額"     HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="6" Text="税種別"   Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="7" Text="税率"     HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="8" Text="税額"     HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="9" Text="行摘要"   Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="0"  Text="行"       HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="1"  Text="商品コード" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="2"  Text="商品名"    Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="3"  Text="数量"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="4"  Text="単価"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="5"  Text="原価"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="6"  Text="金額"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="7"  Text="税種別"    Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="8"  Text="税率"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="9"  Text="税額"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="10" Text="行摘要"    Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                 </Grid>
             </Border>
 
@@ -262,7 +264,7 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="32"   />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*"    />
                     <ColumnDefinition Width="Auto" />
@@ -276,6 +278,20 @@
                                Foreground="{DynamicResource MahApps.Brushes.Gray3}"
                                Margin="0,0,0,2" />
                     <TextBox Text="{Binding TaxExcludedTotal, StringFormat={}{0:N0}, Mode=OneWay}"
+                             IsReadOnly="True"
+                             TextAlignment="Right"
+                             FontWeight="Bold"
+                             FontSize="14"
+                             Width="120" />
+                </StackPanel>
+
+                <!-- 粗利 -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,20,0">
+                    <TextBlock Text="《粗利》"
+                               FontSize="11"
+                               Foreground="{DynamicResource MahApps.Brushes.Gray3}"
+                               Margin="0,0,0,2" />
+                    <TextBox Text="{Binding GrossProfit, StringFormat={}{0:N0}, Mode=OneWay}"
                              IsReadOnly="True"
                              TextAlignment="Right"
                              FontWeight="Bold"

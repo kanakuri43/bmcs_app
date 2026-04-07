@@ -3,7 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
     Title="検索"
-    Height="420" Width="520"
+    Height="420" Width="600"
     WindowStartupLocation="CenterOwner"
     WindowTransitionsEnabled="False"
     ShowInTaskbar="False"
@@ -42,6 +42,11 @@
                 <DataGridTextColumn Header="コード"
                                     Binding="{Binding Code}"
                                     Width="120" />
+                <DataGridTextColumn x:Name="DateColumn"
+                                    Header="日付"
+                                    Binding="{Binding Date}"
+                                    Width="90"
+                                    Visibility="Collapsed" />
                 <DataGridTextColumn Header="名称"
                                     Binding="{Binding Name}"
                                     Width="*" />

@@ -146,6 +146,12 @@ public class XxxMaintViewModel : BindableBase
 4. `ApplyFilter()` → `RaisePropertyChanged(nameof(TotalPages))` → `ApplyPage()`
 5. `ApplyPage()` → `Employees.Clear()` + `foreach Add` → `RaisePropertyChanged(PageLabel/RangeLabel)` → `StatusMessage = RangeLabel`
 
+### App.xaml.cs での DB 呼び出し禁止（重要）
+`OnStartup` は UI スレッド上で実行される。ここで `GetAllAsync().GetAwaiter().GetResult()` を呼ぶと WPF の SynchronizationContext でデッドロックし、ウィンドウが表示されない。
+
+- **マスタデータ（コンボボックス用など）は ViewModel の `_ = LoadAsync()` で非同期ロードする**
+- ComboBox の初期値が一瞬空になる場合があるが、通常の DB レイテンシでは問題にならない
+
 ### View（MetroWindow）基本構造
 ```xml
 <mah:MetroWindow ...

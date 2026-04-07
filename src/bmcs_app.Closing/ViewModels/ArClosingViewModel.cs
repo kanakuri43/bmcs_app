@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Prism.Commands;
 using Prism.Mvvm;
 using bmcs_app.Core.Interfaces;
@@ -48,6 +49,26 @@ public class ArClosingViewModel : BindableBase
         set => SetProperty(ref _customerName, value);
     }
 
+    // ===== 集計履歴 =====
+
+    public ObservableCollection<ArHistorySummary> HistoryItems { get; } = new();
+
+    private ArHistorySummary? _selectedHistoryItem;
+    public ArHistorySummary? SelectedHistoryItem
+    {
+        get => _selectedHistoryItem;
+        set
+        {
+            SetProperty(ref _selectedHistoryItem, value);
+            CancelAggregationCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    // ===== 確認ダイアログ（View がセット） =====
+
+    /// <summary>集計取り消し前の確認。true を返した場合のみ処理を続行する。</summary>
+    public Func<string, bool>? ConfirmCancel { get; set; }
+
     // ===== ステータス =====
 
     private string _statusMessage = string.Empty;
@@ -68,11 +89,29 @@ public class ArClosingViewModel : BindableBase
         _customers = customers.ToList();
 
         AggregateCommand         = new DelegateCommand(async () => await OnAggregateAsync());
-        CancelAggregationCommand = new DelegateCommand(async () => await OnCancelAggregationAsync());
+        CancelAggregationCommand = new DelegateCommand(async () => await OnCancelAggregationAsync(),
+                                                       () => SelectedHistoryItem is not null);
+
+        _ = LoadHistoryAsync();
     }
 
     private static DateTime EndOfMonth(DateTime d)
         => new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month));
+
+    private async Task LoadHistoryAsync()
+    {
+        try
+        {
+            var items = await _repo.GetArHistorySummariesAsync();
+            HistoryItems.Clear();
+            foreach (var item in items)
+                HistoryItems.Add(item);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"履歴取得エラー: {ex.Message}";
+        }
+    }
 
     private async Task OnAggregateAsync()
     {
@@ -88,6 +127,7 @@ public class ArClosingViewModel : BindableBase
                 DateOnly.FromDateTime(ProcessDate.Value),
                 customerId);
             StatusMessage = $"売掛金集計が完了しました。（{ProcessDate.Value:yyyy/MM/dd}）";
+            await LoadHistoryAsync();
         }
         catch (Exception ex)
         {
@@ -97,7 +137,10 @@ public class ArClosingViewModel : BindableBase
 
     private async Task OnCancelAggregationAsync()
     {
-        if (ProcessDate is null) { StatusMessage = "処理日付を入力してください。"; return; }
+        if (SelectedHistoryItem is null) return;
+
+        var message = $"{SelectedHistoryItem.ClosingDateLabel} の売掛金集計を解除します。よろしいですか？";
+        if (ConfirmCancel is not null && !ConfirmCancel(message)) return;
 
         int? customerId = ResolveCustomerId();
         if (IsSpecificCustomer && customerId is null) { StatusMessage = "得意先コードが見つかりません。"; return; }
@@ -105,10 +148,10 @@ public class ArClosingViewModel : BindableBase
         try
         {
             StatusMessage = "集計取り消し中...";
-            await _repo.ArClosingCancelAsync(
-                DateOnly.FromDateTime(ProcessDate.Value),
-                customerId);
-            StatusMessage = $"集計取り消しが完了しました。（{ProcessDate.Value:yyyy/MM/dd}）";
+            await _repo.ArClosingCancelAsync(SelectedHistoryItem.ClosingDate, customerId);
+            StatusMessage = $"集計取り消しが完了しました。（{SelectedHistoryItem.ClosingDateLabel}）";
+            SelectedHistoryItem = null;
+            await LoadHistoryAsync();
         }
         catch (Exception ex)
         {

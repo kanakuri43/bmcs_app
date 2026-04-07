@@ -3,7 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
     Title="bmcs"
-    Height="500" Width="200"
+    Height="600" Width="200"
     ResizeMode="CanMinimize"
     WindowStartupLocation="CenterScreen"
     WindowTransitionsEnabled="False">
@@ -82,7 +82,8 @@
                 Margin="0,0,0,4" />
 
         <Button Content="商品マスタ"
-                IsEnabled="False"
+                Command="{Binding LaunchCommand}"
+                CommandParameter="bmcs_app.Master.exe --master=product"
                 HorizontalAlignment="Stretch"
                 Margin="0,0,0,4" />
 
@@ -90,7 +91,19 @@
                 Command="{Binding LaunchCommand}"
                 CommandParameter="bmcs_app.Master.exe --master=taxrate"
                 HorizontalAlignment="Stretch"
-                Margin="0,0,0,4" />
+                Margin="0,0,0,16" />
+
+        <!-- 設定 -->
+        <TextBlock Text="設定"
+                   FontSize="12"
+                   FontWeight="Bold"
+                   Foreground="{DynamicResource MahApps.Brushes.Gray3}"
+                   Margin="0,0,0,4" />
+
+        <Button Content="プリンタ設定"
+                Command="{Binding OpenPrinterSettingsCommand}"
+                HorizontalAlignment="Stretch"
+                Margin="0,0,0,16" />
 
     </StackPanel>
 </mah:MetroWindow>

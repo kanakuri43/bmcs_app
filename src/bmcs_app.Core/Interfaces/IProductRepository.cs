@@ -5,4 +5,6 @@ namespace bmcs_app.Core.Interfaces;
 public interface IProductRepository
 {
     Task<IEnumerable<Product>> GetAllAsync();
+    Task UpsertAsync(int? productId, string code, string name, int taxTypeId, byte taxRateType, decimal costPrice);
+    Task DeleteAsync(int productId);
 }

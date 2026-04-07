@@ -34,14 +34,28 @@ return dlg.ShowDialog() == true
 
 ### SearchItem record
 ```csharp
-public record SearchItem(string Code, string Name, object Source);
+public record SearchItem(string Code, string Name, object Source, string Date = "");
 ```
 `Source` に元のドメインオブジェクトを格納し、確定後に型キャストして取得する。
+`Date` は省略可能（デフォルト空文字）。値が設定されているアイテムが1件でもある場合、
+ダイアログに「日付」列（Width=90）が自動表示される。伝票検索ダイアログで使用。
+
+```csharp
+// 伝票検索（Date あり → 日付列表示）
+var items = slips.Select(s =>
+    new MasterSearchDialog.SearchItem(s.SlipNo, s.CustomerName, s.SlipNo, s.SlipDate.ToString("yyyy/MM/dd")));
+
+// 得意先検索（Date なし → 日付列非表示）
+var items = _customers.Select(c =>
+    new MasterSearchDialog.SearchItem(c.CustomerCode, c.CustomerName, c));
+```
+
+絞り込みは Code・Name・Date の3フィールドすべてを対象とする。
 
 ### 操作
 | 操作 | 効果 |
 |---|---|
-| キーワード入力 | リアルタイム絞り込み（Code・Name 部分一致） |
+| キーワード入力 | リアルタイム絞り込み（Code・Name・Date 部分一致） |
 | ↓ キー | 検索ボックスからリストへフォーカス移動 |
 | Enter（検索ボックス） | 先頭行を確定 |
 | Enter（リスト行）| 選択行を確定 |
@@ -56,3 +70,58 @@ var dlg = new MasterSearchDialog(title, items);
 // OK
 var dlg = new MasterSearchDialog(title, items) { Owner = Application.Current.MainWindow };
 ```
+
+---
+
+## Views/SlipSearchDialog
+
+### 概要
+伝票番号欄 Space キー押下時に表示する伝票検索ダイアログ。
+`MasterSearchDialog` とは独立したクラスで、**単一の非正規化 DataGrid** に全情報を表示する。
+
+### 設計方針（非正規化）
+- 1行 = 明細1行（ヘッダー情報を繰り返す非正規化ビュー）
+- 全列を対象にキーワード絞り込み（商品名などでも検索可能）
+- 起動時に `GetAllFlatAsync()` でキャッシュ → ダイアログ表示は即時
+
+### コンストラクタ
+```csharp
+public SlipSearchDialog(
+    string title,
+    string[] columns,               // 列ヘッダー
+    IEnumerable<string[]> rows,     // 非正規化済みの全行（起動時キャッシュ）
+    int keyColumnIndex = 1,         // 確定時に返す列インデックス（伝票番号は index 1）
+    string initialKeyword = "")
+```
+
+### 使い方
+```csharp
+// App.xaml.cs で起動時に一括ロードして LookupService に渡す
+var saleFlat = Task.Run(() => saleRepo.GetAllFlatAsync()).Result;
+lookupService.SetSlipData(
+    new[] { "伝票日付", "伝票番号", "得意先コード", "得意先名", "行番号",
+            "商品コード", "商品名", "数量", "単価", "金額" },
+    saleFlat);
+// → LookupService.OpenSlipSearch が SlipSearchDialog を開く（自動）
+```
+
+### 各モジュールの列定義
+| モジュール | columns |
+|---|---|
+| Sales | 伝票日付 / 伝票番号 / 得意先コード / 得意先名 / 行番号 / 商品コード / 商品名 / 数量 / 単価 / 金額 |
+| Receipt | 伝票日付 / 伝票番号 / 得意先コード / 得意先名 / 行番号 / 入金区分 / 金額 / 手形期日 / 行摘要 |
+
+`keyColumnIndex = 1`（伝票番号）固定。
+
+### 操作
+| 操作 | 効果 |
+|---|---|
+| キーワード入力 | 全列を対象にリアルタイム絞り込み |
+| ↓ キー | 検索ボックスからリストへフォーカス移動 |
+| Enter（検索ボックス） | 先頭行を確定 |
+| Enter（リスト行）| 選択行を確定 |
+| ダブルクリック | 選択行を確定（DataGridRow 上のみ有効） |
+| Esc | キャンセル |
+
+### Owner を必ず設定すること
+`MasterSearchDialog` と同じ。`LookupService.OpenSlipSearch` 内で設定済み。

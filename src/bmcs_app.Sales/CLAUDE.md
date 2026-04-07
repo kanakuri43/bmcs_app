@@ -8,12 +8,15 @@
 - 伝票No. 自動採番（yyyyMMddnnn 形式）
 - 前後ナビゲーション（`|◀` / `▶|`）
 - 全コード欄: Space→ダイアログ検索 / Enter→コード補完
+- **得意先選択時に得意先マスタの EmployeeId から担当者を自動セット**（`ILookupService.FindEmployeeById`）
 - 摘要 Enter → 明細1行目の商品コードへフォーカス移動
 - 行摘要 Enter → 行追加 → 新規行の商品コードへフォーカス移動
 - 消費税計算（明細単位 / 伝票単位）
 - リアルタイム合計更新（Lines の CollectionChanged + PropertyChanged）
 - 伝票ロック（invoiced_at / ar_aggregated_at が NULL でない場合、保存・削除不可）
 - **印刷（F11）: インボイス制度準拠 A4 納品書。自社情報は `company_info` テーブルから取得**
+- **明細フォーカス取得時に既存テキストを全選択**（商品コード・数量・単価・行摘要）
+- **原価表示（商品選択時に商品マスタから自動セット・修正不可）・フッターに粗利表示**
 
 ---
 
@@ -50,7 +53,9 @@
 ```
 
 - `h:FocusHelper.MoveNextOnEnter="True"`: FocusScope 内の次の IsTabStop 要素へ移動
-- readonly 欄（商品名・金額・税率・税額）は TextBlock または IsTabStop 省略 → Tab スキップ
+- 表示専用欄（商品名・金額・税率・税額）は **TextBlock** で実装（TextBox IsReadOnly は使わない）
+  - TextBlock はボーダーなし・カーソルなしで入力不可と一目でわかる
+  - TextBox IsReadOnly は見た目が入力欄と変わらないため混乱を招く
 
 ---
 
@@ -80,6 +85,7 @@ ScrollViewer
 | 商品名 | * |
 | 数量 | 72 |
 | 単価 | 88 |
+| 原価 | 80 |（表示のみ・TextBlock。商品選択時に商品マスタから自動セット） |
 | 金額 | 96 |
 | 税種別 | 80 |
 | 税率 | 56 |
@@ -299,13 +305,21 @@ TaxTypes は非同期で追加されるが、UserControl の ComboBox は遅延�
 - `Sales/Services/SalesPrintHelper.cs` — FixedDocument 構築・印刷実行
 - `Sales/Services/SalePrintData.cs` — 印刷用データモデル（`SalePrintData` / `SalePrintLine` / `TaxRateBreakdown`）
 
+### プリンタ選択ロジック
+`PrinterSettingsConfig.Load()` で `bmcs_printer_settings.json` を読み込む。
+- `DeliverySlipPrinter` が設定済み → そのプリンタへダイアログなしで直接印刷
+- 未設定（null/空）または送信失敗 → 従来の印刷ダイアログを表示（フォールバック）
+
 ### 印刷レイアウト（A4 縦）
 ```
 タイトル「納　品　書」
 ────────────────────────────────
-得意先名 御中           自社名
-伝票No. / 担当者        住所 / TEL / FAX
-摘要                   登録番号: T...
+〒 000-0000（郵便番号があれば）  自社名
+住所1（あれば）                   住所 / TEL / FAX
+住所2（あれば）                   登録番号: T...
+得意先名 御中
+伝票No. / 担当者
+摘要
 ────────────────────────────────
 行 | 商品コード | 商品名 | 数量 | 単価 | 金額 | 税種 | 税率 | 摘要
 ────────────────────────────────
@@ -350,8 +364,12 @@ TaxTypes は非同期で追加されるが、UserControl の ComboBox は遅延�
 | 一覧取得 | 直接 SQL（SELECT GROUP BY sale_no） | SP なし |
 
 `@lines` JSON フィールド一覧:
-`line_no`, `product_id`, `product_code`, `product_name`, `quantity`, `unit_price`,
+`line_no`, `product_id`, `product_code`, `product_name`, `quantity`, `unit_price`, `cost_price`,
 `tax_type_id`, `tax_rate_type`, `applied_tax_rate`, `line_tax_amount`, `slip_tax_amount`, `line_remarks`
+
+得意先住所（`customer_postal_code`, `customer_address1`, `customer_address2`）はSPが `customers`
+テーブルから自動取得して INSERT する。`SaleSlip` モデルに保持され、印刷用に `LoadSlip` 時に
+`slip.CustomerPostalCode` 等から取得（得意先マスタキャッシュの参照は不要）。
 
 ---
 

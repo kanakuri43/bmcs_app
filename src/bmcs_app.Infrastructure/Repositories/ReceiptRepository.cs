@@ -10,21 +10,56 @@ public class ReceiptRepository : IReceiptRepository
 {
     private static string ConnectionString => AppConfig.ConnectionString;
 
+    /// <summary>
+    /// 伝票検索ダイアログ用。入金明細を非正規化した全行を返す（直接 SQL）。
+    /// 列順: 伝票日付, 伝票番号, 得意先コード, 得意先名, 行番号, 入金区分, 金額, 手形期日, 行摘要
+    /// </summary>
+    public async Task<IEnumerable<string[]>> GetAllFlatAsync()
+    {
+        var rows = new List<string[]>();
+        await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT r.receipt_date, r.receipt_no,
+                   r.customer_code, r.customer_name,
+                   r.line_no, pm.payment_method_name, r.amount,
+                   r.bill_due_date, r.line_remarks
+            FROM   receipts r
+            LEFT   JOIN payment_method_classifications pm
+                   ON r.payment_method_id = pm.payment_method_id
+            WHERE  r.is_deleted = 0
+            ORDER  BY r.receipt_date DESC, r.receipt_no, r.line_no";
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var billDueDate = reader.IsDBNull(7)
+                ? ""
+                : DateOnly.FromDateTime(reader.GetDateTime(7)).ToString("yyyy/MM/dd");
+            rows.Add(new[]
+            {
+                DateOnly.FromDateTime(reader.GetDateTime(0)).ToString("yyyy/MM/dd"),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.GetString(3),
+                reader.GetInt32(4).ToString(),
+                reader.IsDBNull(5) ? "" : reader.GetString(5),
+                reader.GetDecimal(6).ToString("#,##0"),
+                billDueDate,
+                reader.IsDBNull(8) ? "" : reader.GetString(8),
+            });
+        }
+        return rows;
+    }
+
     public async Task<IEnumerable<SlipSummary>> GetSummariesAsync()
     {
         var list = new List<SlipSummary>();
         await using var conn = new SqlConnection(ConnectionString);
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = """
-            SELECT receipt_no,
-                   MIN(receipt_date)   AS receipt_date,
-                   MAX(customer_name)  AS customer_name
-            FROM receipts
-            WHERE is_deleted = 0
-            GROUP BY receipt_no
-            ORDER BY receipt_no
-            """;
+        cmd.CommandText = "usp_receipts_summaries_select";
+        cmd.CommandType = CommandType.StoredProcedure;
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
@@ -61,13 +96,16 @@ public class ReceiptRepository : IReceiptRepository
 
                 slip = new ReceiptSlip
                 {
-                    ReceiptNo    = reader.GetString(reader.GetOrdinal("receipt_no")),
-                    ReceiptDate  = DateOnly.FromDateTime(reader.GetDateTime(reader.GetOrdinal("receipt_date"))),
-                    CustomerId   = reader.GetInt32(reader.GetOrdinal("customer_id")),
-                    CustomerCode = reader.GetString(reader.GetOrdinal("customer_code")),
-                    CustomerName = reader.GetString(reader.GetOrdinal("customer_name")),
-                    SlipRemarks  = reader.IsDBNull(reader.GetOrdinal("slip_remarks")) ? null : reader.GetString(reader.GetOrdinal("slip_remarks")),
-                    IsLocked     = invoicedAt.HasValue || arAggregatedAt.HasValue,
+                    ReceiptNo          = reader.GetString(reader.GetOrdinal("receipt_no")),
+                    ReceiptDate        = DateOnly.FromDateTime(reader.GetDateTime(reader.GetOrdinal("receipt_date"))),
+                    CustomerId         = reader.GetInt32(reader.GetOrdinal("customer_id")),
+                    CustomerCode       = reader.GetString(reader.GetOrdinal("customer_code")),
+                    CustomerName       = reader.GetString(reader.GetOrdinal("customer_name")),
+                    CustomerPostalCode = reader.IsDBNull(reader.GetOrdinal("customer_postal_code")) ? null : reader.GetString(reader.GetOrdinal("customer_postal_code")),
+                    CustomerAddress1   = reader.IsDBNull(reader.GetOrdinal("customer_address1"))    ? null : reader.GetString(reader.GetOrdinal("customer_address1")),
+                    CustomerAddress2   = reader.IsDBNull(reader.GetOrdinal("customer_address2"))    ? null : reader.GetString(reader.GetOrdinal("customer_address2")),
+                    SlipRemarks        = reader.IsDBNull(reader.GetOrdinal("slip_remarks")) ? null : reader.GetString(reader.GetOrdinal("slip_remarks")),
+                    IsLocked           = invoicedAt.HasValue || arAggregatedAt.HasValue,
                 };
             }
 

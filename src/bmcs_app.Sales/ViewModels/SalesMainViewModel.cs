@@ -68,7 +68,10 @@ public class SalesMainViewModel : BindableBase
         set => SetProperty(ref _editCustomerName, value);
     }
 
-    private int? _editCustomerId;
+    private int?   _editCustomerId;
+    private string _editCustomerPostalCode = "";
+    private string _editCustomerAddress1   = "";
+    private string _editCustomerAddress2   = "";
 
     // ── ヘッダー: 担当者（コード + 名称） ─────────────────────
     private string _editEmployeeCode = "";
@@ -135,8 +138,9 @@ public class SalesMainViewModel : BindableBase
         }
     }
 
-    public decimal TaxTotal   => ExternalTaxTotal + InternalTaxTotal;
-    public decimal GrandTotal => TaxExcludedTotal + ExternalTaxTotal;
+    public decimal TaxTotal    => ExternalTaxTotal + InternalTaxTotal;
+    public decimal GrandTotal  => TaxExcludedTotal + ExternalTaxTotal;
+    public decimal GrossProfit => TaxExcludedTotal - Lines.Sum(l => l.LineCostTotal);
 
     // ── ステータス ───────────────────────────────────────────
     private string _statusMessage = "準備完了";
@@ -245,7 +249,8 @@ public class SalesMainViewModel : BindableBase
     {
         if (e.PropertyName is nameof(SaleLineViewModel.LineAmount)
                            or nameof(SaleLineViewModel.LineTaxAmount)
-                           or nameof(SaleLineViewModel.TaxType))
+                           or nameof(SaleLineViewModel.TaxType)
+                           or nameof(SaleLineViewModel.LineCostTotal))
             RaiseTotalsChanged();
     }
 
@@ -342,6 +347,9 @@ public class SalesMainViewModel : BindableBase
         _isLineTaxCalc = customer is not null
             ? ResolveIsLineTaxCalc(customer.TaxCalcUnitId)
             : true;
+        _editCustomerPostalCode = slip.CustomerPostalCode ?? "";
+        _editCustomerAddress1   = slip.CustomerAddress1   ?? "";
+        _editCustomerAddress2   = slip.CustomerAddress2   ?? "";
         EditSaleNo       = slip.SaleNo;
         EditSaleDate     = slip.SaleDate.ToDateTime(TimeOnly.MinValue);
         EditCustomerCode = slip.CustomerCode;
@@ -364,6 +372,7 @@ public class SalesMainViewModel : BindableBase
             vm.ProductName    = l.ProductName;
             vm.Quantity       = l.Quantity;
             vm.UnitPrice      = l.UnitPrice;
+            vm.CostPrice      = l.CostPrice;
             vm.TaxType        = taxType;
             vm.TaxRateType    = l.TaxRateType;
             vm.AppliedTaxRate = l.AppliedTaxRate;
@@ -416,11 +425,21 @@ public class SalesMainViewModel : BindableBase
 
     private void ApplyCustomer(Customer c)
     {
-        EditCustomerCode = c.CustomerCode;
-        EditCustomerName = c.CustomerName;
-        _editCustomerId  = c.CustomerId;
-        _isLineTaxCalc   = ResolveIsLineTaxCalc(c.TaxCalcUnitId);
+        EditCustomerCode          = c.CustomerCode;
+        EditCustomerName          = c.CustomerName;
+        _editCustomerId           = c.CustomerId;
+        _editCustomerPostalCode   = c.PostalCode ?? "";
+        _editCustomerAddress1     = c.Address1   ?? "";
+        _editCustomerAddress2     = c.Address2   ?? "";
+        _isLineTaxCalc            = ResolveIsLineTaxCalc(c.TaxCalcUnitId);
         PropagateLineTaxCalcToLines();
+
+        if (c.EmployeeId.HasValue)
+        {
+            var emp = _lookup.FindEmployeeById(c.EmployeeId.Value);
+            if (emp is not null) ApplyEmployee(emp);
+        }
+
         StatusMessage = $"得意先: {c.CustomerName}";
     }
 
@@ -456,6 +475,7 @@ public class SalesMainViewModel : BindableBase
         line.ProductId   = p.ProductId;
         line.ProductCode = p.ProductCode;
         line.ProductName = p.ProductName;
+        line.CostPrice   = p.CostPrice;
         line.TaxRateType = p.TaxRateType;
         var taxType = TaxTypes.FirstOrDefault(t => t.TaxTypeId == p.TaxTypeId);
         line.TaxType = taxType;
@@ -555,7 +575,7 @@ public class SalesMainViewModel : BindableBase
         var slipTaxTotal = Lines.Sum(l => l.LineTaxAmount);
         var lineInputs = Lines.Select(l => new SaleLineInput(
             l.LineNo, l.ProductId, l.ProductCode, l.ProductName,
-            l.Quantity, l.UnitPrice,
+            l.Quantity, l.UnitPrice, l.CostPrice,
             l.TaxType?.TaxTypeId ?? 0, l.TaxRateType, l.AppliedTaxRate,
             l.LineTaxAmount, slipTaxTotal,
             string.IsNullOrWhiteSpace(l.LineRemarks) ? null : l.LineRemarks));
@@ -628,12 +648,15 @@ public class SalesMainViewModel : BindableBase
     {
         return new SalePrintData
         {
-            SaleNo       = EditSaleNo,
-            SaleDate     = EditSaleDate.HasValue
+            SaleNo               = EditSaleNo,
+            SaleDate             = EditSaleDate.HasValue
                 ? EditSaleDate.Value.ToString("yyyy年MM月dd日")
                 : "",
-            CustomerName = EditCustomerName,
-            EmployeeName = EditEmployeeName,
+            CustomerName         = EditCustomerName,
+            CustomerPostalCode   = _editCustomerPostalCode,
+            CustomerAddress1     = _editCustomerAddress1,
+            CustomerAddress2     = _editCustomerAddress2,
+            EmployeeName         = EditEmployeeName,
             SlipRemarks  = EditSlipRemarks,
             CompanyName         = _companyInfo.Name,
             CompanyAddress      = _companyInfo.Address,
@@ -765,5 +788,6 @@ public class SalesMainViewModel : BindableBase
         RaisePropertyChanged(nameof(InternalTaxTotal));
         RaisePropertyChanged(nameof(TaxTotal));
         RaisePropertyChanged(nameof(GrandTotal));
+        RaisePropertyChanged(nameof(GrossProfit));
     }
 }

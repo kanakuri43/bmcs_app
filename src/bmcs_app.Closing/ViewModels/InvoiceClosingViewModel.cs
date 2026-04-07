@@ -246,6 +246,9 @@ public class InvoiceClosingViewModel : BindableBase
         var data = new InvoicePrintData
         {
             CustomerName        = header.CustomerName,
+            CustomerPostalCode  = header.CustomerPostalCode ?? "",
+            CustomerAddress1    = header.CustomerAddress1   ?? "",
+            CustomerAddress2    = header.CustomerAddress2   ?? "",
             InvoiceDate         = header.InvoiceDate.ToString("yyyy年MM月dd日"),
             ClosingDayLabel     = closingDayLabel,
             PreviousAmountStr   = Fmt(header.PreviousInvoiceAmount),

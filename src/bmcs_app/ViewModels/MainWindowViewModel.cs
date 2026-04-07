@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using bmcs_app.Views;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -8,11 +9,24 @@ namespace bmcs_app.ViewModels;
 
 public class MainWindowViewModel : BindableBase
 {
-    public DelegateCommand<string> LaunchCommand { get; }
+    public DelegateCommand<string> LaunchCommand              { get; }
+    public DelegateCommand         OpenPrinterSettingsCommand { get; }
 
     public MainWindowViewModel()
     {
-        LaunchCommand = new DelegateCommand<string>(Launch);
+        LaunchCommand              = new DelegateCommand<string>(Launch);
+        OpenPrinterSettingsCommand = new DelegateCommand(OpenPrinterSettings);
+    }
+
+    private static void OpenPrinterSettings()
+    {
+        var vm  = new PrinterSettingsViewModel();
+        var win = new PrinterSettingsWindow
+        {
+            DataContext = vm,
+            Owner       = Application.Current.MainWindow,
+        };
+        win.ShowDialog();
     }
 
     private static void Launch(string exeNameWithArgs)

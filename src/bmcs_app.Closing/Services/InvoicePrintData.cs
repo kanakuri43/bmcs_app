@@ -3,6 +3,9 @@ namespace bmcs_app.Closing.Services;
 public class InvoicePrintData
 {
     public string CustomerName        { get; set; } = "";
+    public string CustomerPostalCode  { get; set; } = "";
+    public string CustomerAddress1    { get; set; } = "";
+    public string CustomerAddress2    { get; set; } = "";
     public string InvoiceDate         { get; set; } = "";
     public string ClosingDayLabel     { get; set; } = "";
 

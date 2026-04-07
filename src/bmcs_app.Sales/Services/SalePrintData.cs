@@ -4,8 +4,11 @@ public class SalePrintData
 {
     public string SaleNo         { get; set; } = "";
     public string SaleDate       { get; set; } = "";
-    public string CustomerName   { get; set; } = "";
-    public string EmployeeName   { get; set; } = "";
+    public string CustomerName       { get; set; } = "";
+    public string CustomerPostalCode { get; set; } = "";
+    public string CustomerAddress1   { get; set; } = "";
+    public string CustomerAddress2   { get; set; } = "";
+    public string EmployeeName       { get; set; } = "";
     public string SlipRemarks    { get; set; } = "";
 
     // 自社情報（company_info テーブル）

@@ -26,6 +26,7 @@ public partial class App : Application
         {
             "customer" => CreateCustomerWindow(),
             "taxrate"  => CreateTaxRatePeriodWindow(),
+            "product"  => CreateProductWindow(),
             _          => CreateEmployeeWindow(),
         };
 
@@ -51,5 +52,13 @@ public partial class App : Application
         var repo = new TaxRatePeriodRepository();
         var vm   = new TaxRatePeriodMaintViewModel(repo);
         return new TaxRatePeriodMaintView { DataContext = vm };
+    }
+
+    private static Window CreateProductWindow()
+    {
+        var repo    = new ProductRepository();
+        var taxRepo = new TaxTypeRepository();
+        var vm      = new ProductMaintViewModel(repo, taxRepo);
+        return new ProductMaintView { DataContext = vm };
     }
 }

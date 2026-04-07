@@ -58,22 +58,34 @@ public class ClosingRepository : IClosingRepository
         await cmd.ExecuteNonQueryAsync();
     }
 
+    public async Task<IEnumerable<ArHistorySummary>> GetArHistorySummariesAsync()
+    {
+        var list = new List<ArHistorySummary>();
+        await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "usp_ar_closing_history_select";
+        cmd.CommandType = CommandType.StoredProcedure;
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            list.Add(new ArHistorySummary
+            {
+                ClosingDate   = DateOnly.FromDateTime(reader.GetDateTime(0)),
+                CustomerCount = reader.GetInt32(1),
+            });
+        }
+        return list;
+    }
+
     public async Task<IEnumerable<InvoiceHistorySummary>> GetInvoiceHistorySummariesAsync()
     {
         var list = new List<InvoiceHistorySummary>();
         await using var conn = new SqlConnection(ConnectionString);
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = """
-            SELECT ih.invoice_date,
-                   MIN(c.closing_day)         AS closing_day,
-                   COUNT(DISTINCT ih.customer_id) AS customer_count
-            FROM   invoice_headers ih
-            JOIN   customers c ON ih.customer_id = c.customer_id AND c.is_deleted = 0
-            WHERE  ih.is_deleted = 0
-            GROUP BY ih.invoice_date
-            ORDER BY ih.invoice_date DESC
-            """;
+        cmd.CommandText = "usp_invoice_closing_history_select";
+        cmd.CommandType = CommandType.StoredProcedure;
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
@@ -94,20 +106,8 @@ public class ClosingRepository : IClosingRepository
         await using var conn = new SqlConnection(ConnectionString);
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = """
-            SELECT ih.customer_id, ih.customer_name, ih.invoice_date,
-                   ih.previous_invoice_amount, ih.receipt_amount,
-                   ih.sales_amount_standard, ih.sales_amount_reduced,
-                   ih.tax_amount_standard,   ih.tax_amount_reduced,
-                   ih.current_invoice_amount
-            FROM   invoice_headers ih
-            JOIN   customers c ON ih.customer_id = c.customer_id AND c.is_deleted = 0
-            WHERE  ih.invoice_date = @invoice_date
-              AND  ih.is_deleted   = 0
-              AND  c.closing_day   = @closing_day
-              AND  (@customer_id IS NULL OR ih.customer_id = @customer_id)
-            ORDER BY ih.customer_code
-            """;
+        cmd.CommandText = "usp_invoice_headers_select";
+        cmd.CommandType = CommandType.StoredProcedure;
         cmd.Parameters.AddWithValue("@invoice_date", invoiceDate.ToDateTime(TimeOnly.MinValue));
         cmd.Parameters.AddWithValue("@closing_day",  closingDay);
         cmd.Parameters.AddWithValue("@customer_id",  (object?)customerId ?? DBNull.Value);
@@ -116,16 +116,19 @@ public class ClosingRepository : IClosingRepository
         {
             list.Add(new InvoiceHeader
             {
-                CustomerId            = reader.GetInt32(0),
-                CustomerName          = reader.GetString(1),
-                InvoiceDate           = DateOnly.FromDateTime(reader.GetDateTime(2)),
-                PreviousInvoiceAmount = reader.GetDecimal(3),
-                ReceiptAmount         = reader.GetDecimal(4),
-                SalesAmountStandard   = reader.GetDecimal(5),
-                SalesAmountReduced    = reader.GetDecimal(6),
-                TaxAmountStandard     = reader.GetDecimal(7),
-                TaxAmountReduced      = reader.GetDecimal(8),
-                CurrentInvoiceAmount  = reader.GetDecimal(9),
+                CustomerId            = reader.GetInt32(reader.GetOrdinal("customer_id")),
+                CustomerName          = reader.GetString(reader.GetOrdinal("customer_name")),
+                InvoiceDate           = DateOnly.FromDateTime(reader.GetDateTime(reader.GetOrdinal("invoice_date"))),
+                PreviousInvoiceAmount = reader.GetDecimal(reader.GetOrdinal("previous_invoice_amount")),
+                ReceiptAmount         = reader.GetDecimal(reader.GetOrdinal("receipt_amount")),
+                SalesAmountStandard   = reader.GetDecimal(reader.GetOrdinal("sales_amount_standard")),
+                SalesAmountReduced    = reader.GetDecimal(reader.GetOrdinal("sales_amount_reduced")),
+                TaxAmountStandard     = reader.GetDecimal(reader.GetOrdinal("tax_amount_standard")),
+                TaxAmountReduced      = reader.GetDecimal(reader.GetOrdinal("tax_amount_reduced")),
+                CurrentInvoiceAmount  = reader.GetDecimal(reader.GetOrdinal("current_invoice_amount")),
+                CustomerPostalCode    = reader.IsDBNull(reader.GetOrdinal("customer_postal_code")) ? null : reader.GetString(reader.GetOrdinal("customer_postal_code")),
+                CustomerAddress1      = reader.IsDBNull(reader.GetOrdinal("customer_address1"))    ? null : reader.GetString(reader.GetOrdinal("customer_address1")),
+                CustomerAddress2      = reader.IsDBNull(reader.GetOrdinal("customer_address2"))    ? null : reader.GetString(reader.GetOrdinal("customer_address2")),
             });
         }
         return list;
@@ -138,40 +141,8 @@ public class ClosingRepository : IClosingRepository
         await using var conn = new SqlConnection(ConnectionString);
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = """
-            ;WITH line_groups AS (
-                SELECT s.sale_no, s.tax_type_id, s.applied_tax_rate,
-                       SUM(s.quantity * s.unit_price) AS group_base
-                FROM   sales s
-                WHERE  s.is_deleted        = 0
-                  AND  s.invoiced_at = @invoice_date
-                  AND  s.customer_id       = @customer_id
-                GROUP BY s.sale_no, s.tax_type_id, s.applied_tax_rate
-            ),
-            slip_tax AS (
-                SELECT sale_no,
-                       SUM(group_base) AS tax_excluded,
-                       SUM(CASE WHEN tax_type_id = 1
-                                THEN FLOOR(group_base * applied_tax_rate)
-                                WHEN tax_type_id = 2
-                                THEN FLOOR(group_base * applied_tax_rate / (1 + applied_tax_rate))
-                                ELSE 0 END) AS tax_amount
-                FROM   line_groups
-                GROUP BY sale_no
-            )
-            SELECT st.sale_no,
-                   MIN(s.sale_date)     AS sale_date,
-                   MAX(s.slip_remarks)  AS slip_remarks,
-                   st.tax_excluded,
-                   st.tax_amount
-            FROM   slip_tax st
-            JOIN   sales s ON st.sale_no = s.sale_no
-                           AND s.is_deleted = 0
-                           AND s.invoiced_at = @invoice_date
-                           AND s.customer_id = @customer_id
-            GROUP BY st.sale_no, st.tax_excluded, st.tax_amount
-            ORDER BY MIN(s.sale_date), st.sale_no
-            """;
+        cmd.CommandText = "usp_invoice_slip_details_select";
+        cmd.CommandType = CommandType.StoredProcedure;
         cmd.Parameters.AddWithValue("@invoice_date", invoiceDate.ToDateTime(TimeOnly.MinValue));
         cmd.Parameters.AddWithValue("@customer_id",  customerId);
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -196,18 +167,8 @@ public class ClosingRepository : IClosingRepository
         await using var conn = new SqlConnection(ConnectionString);
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = """
-            SELECT MIN(receipt_date) AS receipt_date,
-                   receipt_no,
-                   MAX(ISNULL(slip_remarks, '')) AS slip_remarks,
-                   SUM(amount) AS amount
-            FROM   receipts
-            WHERE  is_deleted  = 0
-              AND  invoiced_at = @invoice_date
-              AND  customer_id = @customer_id
-            GROUP BY receipt_no
-            ORDER BY MIN(receipt_date), receipt_no
-            """;
+        cmd.CommandText = "usp_invoice_receipt_details_select";
+        cmd.CommandType = CommandType.StoredProcedure;
         cmd.Parameters.AddWithValue("@invoice_date", invoiceDate.ToDateTime(TimeOnly.MinValue));
         cmd.Parameters.AddWithValue("@customer_id",  customerId);
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -231,27 +192,8 @@ public class ClosingRepository : IClosingRepository
         await using var conn = new SqlConnection(ConnectionString);
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = """
-            ;WITH line_groups AS (
-                SELECT s.tax_rate_type, s.tax_type_id, s.applied_tax_rate,
-                       SUM(s.quantity * s.unit_price) AS group_base
-                FROM   sales s
-                WHERE  s.is_deleted        = 0
-                  AND  s.invoiced_at = @invoice_date
-                  AND  s.customer_id       = @customer_id
-                GROUP BY s.sale_no, s.tax_rate_type, s.tax_type_id, s.applied_tax_rate
-            )
-            SELECT tax_rate_type, tax_type_id, applied_tax_rate,
-                   SUM(group_base) AS tax_excluded,
-                   SUM(CASE WHEN tax_type_id = 1
-                            THEN FLOOR(group_base * applied_tax_rate)
-                            WHEN tax_type_id = 2
-                            THEN FLOOR(group_base * applied_tax_rate / (1 + applied_tax_rate))
-                            ELSE 0 END) AS tax_amount
-            FROM   line_groups
-            GROUP BY tax_rate_type, tax_type_id, applied_tax_rate
-            ORDER BY tax_rate_type, tax_type_id
-            """;
+        cmd.CommandText = "usp_invoice_tax_groups_select";
+        cmd.CommandType = CommandType.StoredProcedure;
         cmd.Parameters.AddWithValue("@invoice_date", invoiceDate.ToDateTime(TimeOnly.MinValue));
         cmd.Parameters.AddWithValue("@customer_id",  customerId);
         await using var reader = await cmd.ExecuteReaderAsync();

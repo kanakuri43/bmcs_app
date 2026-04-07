@@ -18,6 +18,8 @@ public interface ILookupService
     Customer? FindCustomerByCode(string code);
     /// <summary>コードで担当者を直接検索</summary>
     Employee? FindEmployeeByCode(string code);
+    /// <summary>IDで担当者を直接検索（得意先デフォルト担当者の自動セット用）</summary>
+    Employee? FindEmployeeById(int id);
     /// <summary>コードで商品を直接検索</summary>
     Product?  FindProductByCode(string code);
 }

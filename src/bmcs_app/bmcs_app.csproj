@@ -14,4 +14,8 @@
     <PackageReference Include="Prism.Wpf" Version="9.0.537" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\bmcs_app.Infrastructure\bmcs_app.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>

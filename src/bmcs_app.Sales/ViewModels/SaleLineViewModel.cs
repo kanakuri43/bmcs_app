@@ -18,6 +18,7 @@ public class SaleLineViewModel : BindableBase
     private int    _productId;
     private decimal _quantity;
     private decimal _unitPrice;
+    private decimal _costPrice;
     private TaxTypeClassification? _taxType;
     private byte    _taxRateType;
     private decimal _appliedTaxRate;
@@ -85,9 +86,24 @@ public class SaleLineViewModel : BindableBase
             {
                 RaisePropertyChanged(nameof(LineAmount));
                 RaisePropertyChanged(nameof(LineTaxAmount));
+                RaisePropertyChanged(nameof(LineCostTotal));
             }
         }
     }
+
+    /// <summary>原価（商品マスタから取得、修正不可）</summary>
+    public decimal CostPrice
+    {
+        get => _costPrice;
+        set
+        {
+            if (SetProperty(ref _costPrice, value))
+                RaisePropertyChanged(nameof(LineCostTotal));
+        }
+    }
+
+    /// <summary>行原価合計 = 原価 × 数量</summary>
+    public decimal LineCostTotal => CostPrice * Quantity;
 
     public decimal UnitPrice
     {

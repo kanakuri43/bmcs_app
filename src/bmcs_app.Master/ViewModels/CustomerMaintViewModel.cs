@@ -115,6 +115,27 @@ public class CustomerMaintViewModel : BindableBase
         set => SetProperty(ref _editEmployee, value);
     }
 
+    private string _editPostalCode = "";
+    public string EditPostalCode
+    {
+        get => _editPostalCode;
+        set => SetProperty(ref _editPostalCode, value);
+    }
+
+    private string _editAddress1 = "";
+    public string EditAddress1
+    {
+        get => _editAddress1;
+        set => SetProperty(ref _editAddress1, value);
+    }
+
+    private string _editAddress2 = "";
+    public string EditAddress2
+    {
+        get => _editAddress2;
+        set => SetProperty(ref _editAddress2, value);
+    }
+
     private string _statusMessage = "準備完了";
     public string StatusMessage
     {
@@ -224,6 +245,9 @@ public class CustomerMaintViewModel : BindableBase
         EditTaxFraction  = TaxFractions.FirstOrDefault();
         EditTaxCalcUnit  = TaxCalcUnits.FirstOrDefault();
         EditEmployee     = null;
+        EditPostalCode   = "";
+        EditAddress1     = "";
+        EditAddress2     = "";
         _selectedCustomer = null;
         RaisePropertyChanged(nameof(SelectedCustomer));
         StatusMessage = "新規入力";
@@ -238,6 +262,9 @@ public class CustomerMaintViewModel : BindableBase
         EditTaxFraction = TaxFractions.FirstOrDefault(f => f.TaxFractionId == c.TaxFractionId);
         EditTaxCalcUnit = TaxCalcUnits.FirstOrDefault(u => u.TaxCalcUnitId  == c.TaxCalcUnitId);
         EditEmployee    = Employees.FirstOrDefault(e => e?.EmployeeId == c.EmployeeId);
+        EditPostalCode  = c.PostalCode ?? "";
+        EditAddress1    = c.Address1   ?? "";
+        EditAddress2    = c.Address2   ?? "";
         StatusMessage   = $"編集中: {c.CustomerName}";
     }
 
@@ -277,7 +304,10 @@ public class CustomerMaintViewModel : BindableBase
                 cd,
                 EditTaxFraction.TaxFractionId,
                 EditTaxCalcUnit.TaxCalcUnitId,
-                EditEmployee?.EmployeeId);
+                EditEmployee?.EmployeeId,
+                string.IsNullOrWhiteSpace(EditPostalCode) ? null : EditPostalCode.Trim(),
+                string.IsNullOrWhiteSpace(EditAddress1)   ? null : EditAddress1.Trim(),
+                string.IsNullOrWhiteSpace(EditAddress2)   ? null : EditAddress2.Trim());
 
             StatusMessage = _editingId is null ? "登録しました" : "更新しました";
             await LoadAsync();
