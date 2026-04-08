@@ -236,7 +236,7 @@ public static class InvoicePrintHelper
             leftSp.Children.Add(Tb(data.CustomerAddress1, 9));
         if (!string.IsNullOrWhiteSpace(data.CustomerAddress2))
             leftSp.Children.Add(Tb(data.CustomerAddress2, 9));
-        leftSp.Children.Add(Tb($"{data.CustomerName}　御中", 12, FontWeights.Bold));
+        leftSp.Children.Add(Tb($"{data.CustomerName}　御中", 16, FontWeights.Bold));
 
         Grid.SetColumn(leftSp, 0);
         grid.Children.Add(leftSp);
