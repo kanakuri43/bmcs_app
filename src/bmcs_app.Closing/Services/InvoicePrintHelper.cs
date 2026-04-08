@@ -25,17 +25,17 @@ public static class InvoicePrintHelper
 
     // ── 各セクション高さ ──────────────────────────────────────────
     private const double FullHeaderH    = 196.0;  // タイトル+区切り+情報行+メタ+区切り
-    private const double SummaryH       = 178.0;  // 請求額集計ブロック
+    private const double SummaryH       = 82.0;   // 請求額集計ブロック（横表）
     private const double CompactHeaderH = 34.0;
     private const double FooterH        = 80.0;   // 税率別集計+注記
 
     // ── 明細テーブルの列幅 ─────────────────────────────────────────
-    // { 日付, 伝票No., 摘要(*=残余), 税抜金額/入金額, 消費税 }
-    private static readonly double[] ColFixed = { 72, 96, 0, 90, 76 };
-    private static double StarWidth => CW - ColFixed.Where(w => w > 0).Sum();  // ≒ 363
+    // { 日付, 伝票No., 商品名/支払方法(*=残余), 数量, 単価, 金額 }
+    private static readonly double[] ColFixed = { 72, 80, 0, 60, 80, 80 };
+    private static double StarWidth => CW - ColFixed.Where(w => w > 0).Sum();  // ≒ 325
 
-    // ── 印刷行（売上行・入金行・セクション区切りを統一）─────────────
-    private record PrintRow(string C0, string C1, string C2, string C3, string C4, bool IsSection = false);
+    // ── 印刷行 ────────────────────────────────────────────────────
+    private record PrintRow(string C0, string C1, string C2, string C3, string C4, string C5);
 
     // ── フォント ──────────────────────────────────────────────────
     private static readonly FontFamily JFont = new("Meiryo UI");
@@ -95,21 +95,11 @@ public static class InvoicePrintHelper
     }
 
     private static List<PrintRow> BuildPrintRows(InvoicePrintData data)
-    {
-        var rows = new List<PrintRow>();
-
-        foreach (var l in data.Lines)
-            rows.Add(new PrintRow(l.SaleDate, l.SaleNo, l.Remarks, l.TaxExcluded, l.TaxAmount));
-
-        if (data.ReceiptLines.Count > 0)
-        {
-            rows.Add(new PrintRow("", "-- 入金 --", "", "", "", IsSection: true));
-            foreach (var r in data.ReceiptLines)
-                rows.Add(new PrintRow(r.ReceiptDate, r.ReceiptNo, r.Remarks, r.AmountStr, ""));
-        }
-
-        return rows;
-    }
+        => data.MixedLines
+            .Select(l => new PrintRow(
+                l.DateStr, l.SlipNo, l.Description,
+                l.QuantityStr, l.UnitPriceStr, l.AmountStr))
+            .ToList();
 
     private static void AddInvoicePages(FixedDocument doc, InvoicePrintData data)
     {
@@ -212,7 +202,7 @@ public static class InvoicePrintHelper
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        var dateTb = Tb(data.InvoiceDate, 9);
+        var dateTb = Tb(data.InvoiceDate + " 締切分 ", 10);
         dateTb.VerticalAlignment = VerticalAlignment.Bottom;
         Grid.SetColumn(dateTb, 0);
         grid.Children.Add(dateTb);
@@ -237,7 +227,7 @@ public static class InvoicePrintHelper
     {
         var grid = new Grid { Margin = new Thickness(0, 6, 0, 6) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
 
         var leftSp = new StackPanel();
         if (!string.IsNullOrWhiteSpace(data.CustomerPostalCode))
@@ -246,22 +236,24 @@ public static class InvoicePrintHelper
             leftSp.Children.Add(Tb(data.CustomerAddress1, 9));
         if (!string.IsNullOrWhiteSpace(data.CustomerAddress2))
             leftSp.Children.Add(Tb(data.CustomerAddress2, 9));
-        leftSp.Children.Add(Tb($"{data.CustomerName}　御中", 16, FontWeights.Bold));
+        leftSp.Children.Add(Tb($"{data.CustomerName}　御中", 12, FontWeights.Bold));
+
         Grid.SetColumn(leftSp, 0);
         grid.Children.Add(leftSp);
 
         var rightSp = new StackPanel { Margin = new Thickness(4, 0, 0, 0) };
-        rightSp.Children.Add(Tb(data.CompanyName, 11, FontWeights.Bold, TextAlignment.Right));
+        rightSp.Children.Add(Tb(data.CompanyName, 14, FontWeights.Bold, TextAlignment.Left));   // 隙間開ける
+        rightSp.Children.Add(new Rectangle { Height = 4, Fill = Brushes.Transparent });
         if (!string.IsNullOrWhiteSpace(data.CompanyAddress))
-            rightSp.Children.Add(Tb(data.CompanyAddress, 8, align: TextAlignment.Right));
+            rightSp.Children.Add(Tb(data.CompanyAddress, 8, align: TextAlignment.Left));
         if (!string.IsNullOrWhiteSpace(data.CompanyPhone))
-            rightSp.Children.Add(Tb($"TEL: {data.CompanyPhone}", 8, align: TextAlignment.Right));
+            rightSp.Children.Add(Tb($"TEL: {data.CompanyPhone}", 8, align: TextAlignment.Left));
         if (!string.IsNullOrWhiteSpace(data.CompanyFax))
-            rightSp.Children.Add(Tb($"FAX: {data.CompanyFax}", 8, align: TextAlignment.Right));
+            rightSp.Children.Add(Tb($"FAX: {data.CompanyFax}", 8, align: TextAlignment.Left));
         if (!string.IsNullOrWhiteSpace(data.CompanyInvoiceRegNo))
         {
-            rightSp.Children.Add(new Rectangle { Height = 4, Fill = Brushes.Transparent });
-            rightSp.Children.Add(Tb($"登録番号: {data.CompanyInvoiceRegNo}", 8, FontWeights.Bold, TextAlignment.Right));
+            rightSp.Children.Add(new Rectangle { Height = 4, Fill = Brushes.Transparent });     // 隙間開ける
+            rightSp.Children.Add(Tb($"登録番号: {data.CompanyInvoiceRegNo}", 8, FontWeights.Bold, TextAlignment.Left));
         }
 
         var box = new Border
@@ -284,13 +276,9 @@ public static class InvoicePrintHelper
             Orientation = Orientation.Horizontal,
             Margin      = new Thickness(0, 2, 0, 6),
         };
-        row.Children.Add(Tb("請求日:", 9, FontWeights.Bold));
+        row.Children.Add(Tb("お客様コード:", 9, FontWeights.Bold));
         row.Children.Add(new Rectangle { Width = 4, Fill = Brushes.Transparent });
-        row.Children.Add(Tb(data.InvoiceDate, 9));
-        row.Children.Add(new Rectangle { Width = 24, Fill = Brushes.Transparent });
-        row.Children.Add(Tb("締め日:", 9, FontWeights.Bold));
-        row.Children.Add(new Rectangle { Width = 4, Fill = Brushes.Transparent });
-        row.Children.Add(Tb(data.ClosingDayLabel, 9));
+        row.Children.Add(Tb(data.CustomerCode, 9));
         return row;
     }
 
@@ -310,90 +298,76 @@ public static class InvoicePrintHelper
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  集計サマリーセクション（1ページ目のみ）
+    //  集計サマリー（横5列テーブル）
+    //  前回請求額 | 入金額 | 今期売上（税抜） | 消費税 | 今回請求額
+    //  外枠なし・内部セパレータは明細部と統一
     // ─────────────────────────────────────────────────────────────
+
+    private static readonly double[] SummaryColFixed = { 130, 115, 145, 115, 0 };
+    private static double SummaryStarWidth => CW - SummaryColFixed.Where(w => w > 0).Sum();
 
     private static FrameworkElement BuildSummary(InvoicePrintData data)
     {
-        var outer = new Grid { Margin = new Thickness(0, 8, 0, 8) };
-        outer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        outer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(320) });
+        var container = new StackPanel { Margin = new Thickness(0, 8, 0, 8) };
 
-        // 右: 今回請求額ボックス
-        var amountBox = BuildCurrentAmountBox(data.CurrentAmountStr);
-        Grid.SetColumn(amountBox, 1);
-        outer.Children.Add(amountBox);
-
-        // 左: 内訳
-        var leftSp = new StackPanel { Margin = new Thickness(0, 0, 16, 0) };
-
-        leftSp.Children.Add(BuildSummaryRow("前回請求額",            data.PreviousAmountStr,  false));
-        leftSp.Children.Add(BuildSummaryRow("入金額",               data.ReceiptAmountStr,   false, prefix: "－"));
-        leftSp.Children.Add(HLine(0.5));
-
-        bool hasStandard = data.SalesStandardStr != "0" || data.TaxStandardStr != "0";
-        bool hasReduced  = data.SalesReducedStr  != "0" || data.TaxReducedStr  != "0";
-
-        if (hasStandard)
-        {
-            leftSp.Children.Add(BuildSummaryRow("今期売上（税抜・標準）", data.SalesStandardStr, false));
-            leftSp.Children.Add(BuildSummaryRow("消費税（標準）",        data.TaxStandardStr,   false));
-        }
-        if (hasReduced)
-        {
-            leftSp.Children.Add(BuildSummaryRow("今期売上（税抜・軽減）", data.SalesReducedStr, false));
-            leftSp.Children.Add(BuildSummaryRow("消費税（軽減）",        data.TaxReducedStr,   false));
-        }
-
-        leftSp.Children.Add(HLine(1));
-        leftSp.Children.Add(BuildSummaryRow("今回請求額", data.CurrentAmountStr, true));
-
-        Grid.SetColumn(leftSp, 0);
-        outer.Children.Add(leftSp);
-
-        return outer;
-    }
-
-    private static FrameworkElement BuildCurrentAmountBox(string amount)
-    {
-        var inner = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
-        inner.Children.Add(Tb("今回請求額", 9, align: TextAlignment.Center));
-        inner.Children.Add(new Rectangle { Height = 6, Fill = Brushes.Transparent });
-        inner.Children.Add(Tb($"¥ {amount}", 18, FontWeights.Bold, TextAlignment.Center));
-
-        return new Border
-        {
-            BorderBrush     = Brushes.Black,
-            BorderThickness = new Thickness(1.5),
-            Padding         = new Thickness(12, 8, 12, 8),
-            Margin          = new Thickness(0, 0, 0, 0),
-            Child           = inner,
-            VerticalAlignment = VerticalAlignment.Top,
+        string[] labels = { "前回請求額", "入金額", "今期売上（税抜）", "消費税", "今回請求額" };
+        string[] values = {
+            $"¥ {data.PreviousAmountStr}",
+            $"¥ {data.ReceiptAmountStr}",
+            $"¥ {data.SalesTotalStr}",
+            $"¥ {data.TaxTotalStr}",
+            $"¥ {data.CurrentAmountStr}",
         };
+
+        container.Children.Add(BuildSummaryTableRow(labels, isValue: false));
+        container.Children.Add(HLine(0.5));
+        container.Children.Add(BuildSummaryTableRow(values, isValue: true));
+
+        return container;
     }
 
-    private static FrameworkElement BuildSummaryRow(string label, string value, bool large, string prefix = "")
+    private static FrameworkElement BuildSummaryTableRow(string[] cells, bool isValue)
     {
-        var grid = new Grid { Margin = new Thickness(0, 2, 0, 2) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+        var cols = SummaryColFixed.Select((w, i) => w == 0 ? SummaryStarWidth : w).ToArray();
+        var bg   = isValue
+            ? Brushes.White
+            : (Brush)new SolidColorBrush(Color.FromRgb(220, 220, 220));
 
-        var prefixTb = Tb(prefix, 9);
-        prefixTb.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(prefixTb, 0);
-        grid.Children.Add(prefixTb);
+        var grid = new Grid { Background = bg };
+        for (int i = 0; i < cols.Length; i++)
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(cols[i]) });
 
-        var labelTb = Tb(label, large ? 10.0 : 9.0, large ? FontWeights.Bold : FontWeights.Normal);
-        labelTb.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(labelTb, 1);
-        grid.Children.Add(labelTb);
+        for (int i = 0; i < cols.Length; i++)
+        {
+            bool isAccent = i == cells.Length - 1;
+            var tb = new TextBlock
+            {
+                Text              = cells[i],
+                FontFamily        = JFont,
+                FontSize          = isValue ? (isAccent ? 14.0 : 11.0) : 9.0,
+                FontWeight        = isValue ? (isAccent ? FontWeights.Bold : FontWeights.Normal)
+                                            : FontWeights.Bold,
+                TextAlignment     = isValue ? TextAlignment.Right : TextAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Padding           = new Thickness(3, isValue ? 8 : 4, 3, isValue ? 8 : 4),
+                TextTrimming      = TextTrimming.CharacterEllipsis,
+            };
+            Grid.SetColumn(tb, i);
+            grid.Children.Add(tb);
 
-        var valueTb = Tb(value, large ? 12.0 : 9.0,
-            large ? FontWeights.Bold : FontWeights.Normal, TextAlignment.Right);
-        valueTb.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(valueTb, 2);
-        grid.Children.Add(valueTb);
+            if (i < cols.Length - 1)
+            {
+                var sep = new Rectangle
+                {
+                    Width               = 0.5,
+                    Fill                = new SolidColorBrush(Color.FromRgb(180, 180, 180)),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment   = VerticalAlignment.Stretch,
+                };
+                Grid.SetColumn(sep, i);
+                grid.Children.Add(sep);
+            }
+        }
 
         return grid;
     }
@@ -402,12 +376,12 @@ public static class InvoicePrintHelper
     //  明細テーブル
     // ─────────────────────────────────────────────────────────────
 
-    private static readonly string[] Headers = { "日付", "伝票No.", "摘要", "税抜/入金額", "消費税" };
+    private static readonly string[] Headers = { "日付", "伝票No.", "商品名 / 支払方法", "数量", "単価", "金額" };
 
     private static readonly TextAlignment[] ColAlign =
     {
-        TextAlignment.Center, TextAlignment.Left, TextAlignment.Left,
-        TextAlignment.Right,  TextAlignment.Right,
+        TextAlignment.Center, TextAlignment.Left,  TextAlignment.Left,
+        TextAlignment.Right,  TextAlignment.Right, TextAlignment.Right,
     };
 
     private static FrameworkElement BuildLinesTable(List<PrintRow> rows)
@@ -424,13 +398,7 @@ public static class InvoicePrintHelper
         bool alt = false;
         foreach (var row in rows)
         {
-            if (row.IsSection)
-            {
-                container.Children.Add(BuildSectionRow(row.C1));
-                alt = false;
-                continue;
-            }
-            var cells = new[] { row.C0, row.C1, row.C2, row.C3, row.C4 };
+            var cells = new[] { row.C0, row.C1, row.C2, row.C3, row.C4, row.C5 };
             var bg    = alt
                 ? new SolidColorBrush(Color.FromRgb(248, 248, 248))
                 : Brushes.White;
@@ -438,37 +406,15 @@ public static class InvoicePrintHelper
             alt = !alt;
         }
 
-        int nonSectionCount = rows.Count(r => !r.IsSection);
-        if (nonSectionCount < 5)
+        if (rows.Count < 5)
         {
-            for (int i = nonSectionCount; i < 5; i++)
+            for (int i = rows.Count; i < 5; i++)
                 container.Children.Add(
                     BuildTableRow(isHeader: false, background: Brushes.White,
                         cells: new string[Headers.Length]));
         }
 
         return container;
-    }
-
-    private static FrameworkElement BuildSectionRow(string label)
-    {
-        var grid = new Grid
-        {
-            Background = new SolidColorBrush(Color.FromRgb(230, 230, 240)),
-            Height     = LineH,
-        };
-        var tb = new TextBlock
-        {
-            Text              = label,
-            FontFamily        = JFont,
-            FontSize          = 9.0,
-            FontWeight        = FontWeights.Bold,
-            TextAlignment     = TextAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Center,
-            Padding           = new Thickness(6, 0, 3, 0),
-        };
-        grid.Children.Add(tb);
-        return grid;
     }
 
     private static FrameworkElement BuildTableRow(bool isHeader, Brush background, string?[] cells)
@@ -526,26 +472,28 @@ public static class InvoicePrintHelper
     {
         var sp = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
 
+        // 税率別集計（右半分に収める: Star + 125 + 115 + 8 + 100 = 右約 348px）
         if (data.TaxBreakdowns.Count > 0)
         {
             foreach (var bd in data.TaxBreakdowns)
             {
                 var row = new Grid();
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) }); // ※ label
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) }); // 税抜金額
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(6) });   // spacer
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(135) }); // 消費税
 
                 var label = Tb($"※ {bd.Label}", 9);
-                Grid.SetColumn(label, 0);
+                Grid.SetColumn(label, 1);
                 row.Children.Add(label);
 
                 var excl = BuildLabelValue("税抜金額", bd.TaxExcludedAmount);
-                Grid.SetColumn(excl, 1);
+                Grid.SetColumn(excl, 2);
                 row.Children.Add(excl);
 
                 var tax = BuildLabelValue("消費税", bd.TaxAmount);
-                Grid.SetColumn(tax, 3);
+                Grid.SetColumn(tax, 4);
                 row.Children.Add(tax);
 
                 sp.Children.Add(row);
@@ -553,8 +501,17 @@ public static class InvoicePrintHelper
             sp.Children.Add(HLine(0.5));
         }
 
+        // 軽減税率の但し書き
+        if (data.TaxBreakdowns.Any(b => b.Label.Contains("軽減")))
+        {
+            var reducedNote = Tb("* 軽減税率（8%）対象", 7);
+            reducedNote.Margin     = new Thickness(0, 4, 0, 0);
+            reducedNote.Foreground = Brushes.Gray;
+            sp.Children.Add(reducedNote);
+        }
+
         var note = Tb("※本書は消費税法に基づく適格請求書（インボイス）です", 7);
-        note.Margin     = new Thickness(0, 6, 0, 0);
+        note.Margin     = new Thickness(0, 2, 0, 0);
         note.Foreground = Brushes.Gray;
         sp.Children.Add(note);
 

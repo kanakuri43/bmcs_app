@@ -3,6 +3,7 @@ namespace bmcs_app.Core.Models;
 public class InvoiceHeader
 {
     public int      CustomerId            { get; set; }
+    public string   CustomerCode          { get; set; } = "";
     public string   CustomerName          { get; set; } = "";
     public string?  CustomerPostalCode    { get; set; }
     public string?  CustomerAddress1      { get; set; }

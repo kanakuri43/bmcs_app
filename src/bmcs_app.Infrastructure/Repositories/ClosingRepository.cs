@@ -117,6 +117,7 @@ public class ClosingRepository : IClosingRepository
             list.Add(new InvoiceHeader
             {
                 CustomerId            = reader.GetInt32(reader.GetOrdinal("customer_id")),
+                CustomerCode          = reader.GetString(reader.GetOrdinal("customer_code")),
                 CustomerName          = reader.GetString(reader.GetOrdinal("customer_name")),
                 InvoiceDate           = DateOnly.FromDateTime(reader.GetDateTime(reader.GetOrdinal("invoice_date"))),
                 PreviousInvoiceAmount = reader.GetDecimal(reader.GetOrdinal("previous_invoice_amount")),
@@ -150,11 +151,15 @@ public class ClosingRepository : IClosingRepository
         {
             list.Add(new InvoiceSlipDetail
             {
-                SaleNo      = reader.GetString(0),
-                SaleDate    = DateOnly.FromDateTime(reader.GetDateTime(1)),
-                Remarks     = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                TaxExcluded = reader.GetDecimal(3),
-                TaxAmount   = reader.GetDecimal(4),
+                SaleDate    = DateOnly.FromDateTime(reader.GetDateTime(0)),
+                SaleNo      = reader.GetString(1),
+                LineNo      = reader.GetInt32(2),
+                ProductName = reader.GetString(3),
+                Quantity    = reader.GetDecimal(4),
+                UnitPrice   = reader.GetDecimal(5),
+                LineAmount  = reader.GetDecimal(6),
+                LineRemarks = reader.IsDBNull(7) ? null : reader.GetString(7),
+                TaxRateType = reader.GetByte(8),
             });
         }
         return list;
@@ -176,10 +181,12 @@ public class ClosingRepository : IClosingRepository
         {
             list.Add(new InvoiceReceiptDetail
             {
-                ReceiptDate = DateOnly.FromDateTime(reader.GetDateTime(0)),
-                ReceiptNo   = reader.GetString(1),
-                Remarks     = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                Amount      = reader.GetDecimal(3),
+                ReceiptDate       = DateOnly.FromDateTime(reader.GetDateTime(0)),
+                ReceiptNo         = reader.GetString(1),
+                LineNo            = reader.GetInt32(2),
+                PaymentMethodName = reader.GetString(3),
+                Amount            = reader.GetDecimal(4),
+                LineRemarks       = reader.IsDBNull(5) ? null : reader.GetString(5),
             });
         }
         return list;

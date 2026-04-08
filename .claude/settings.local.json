@@ -144,7 +144,8 @@
       "Bash(where /r \"C:\\\\Program Files\" sqlcmd.exe)",
       "Bash(Get-Command sqlcmd:*)",
       "Bash(Select-Object -ExpandProperty Source)",
-      "Read(//c/Program Files/Microsoft SQL Server/**)"
+      "Read(//c/Program Files/Microsoft SQL Server/**)",
+      "PowerShell($sqlcmd = \\(Get-ChildItem \"C:\\\\Program Files\\\\Microsoft SQL Server\" -Recurse -Filter \"sqlcmd.exe\" -ErrorAction SilentlyContinue | Select-Object -First 1\\).FullName; Write-Output $sqlcmd)"
     ]
   }
 }

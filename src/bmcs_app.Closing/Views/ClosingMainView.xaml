@@ -47,30 +47,30 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- 締め日 -->
+                        <!-- 処理日付 -->
                         <TextBlock Grid.Row="0" Grid.Column="0"
+                                   Text="処理日付"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,0,12" />
+                        <StackPanel Grid.Row="0" Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    Margin="0,0,0,12">
+                            <DatePicker SelectedDate="{Binding InvoiceTab.ProcessDate}"
+                                        Width="130" />
+                        </StackPanel>
+
+                        <!-- 締め日 -->
+                        <TextBlock Grid.Row="1" Grid.Column="0"
                                    Text="対象締日"
                                    VerticalAlignment="Center"
                                    Margin="0,0,0,12" />
-                        <ComboBox Grid.Row="0" Grid.Column="1"
+                        <ComboBox Grid.Row="1" Grid.Column="1"
                                   ItemsSource="{Binding InvoiceTab.ClosingDays}"
                                   SelectedItem="{Binding InvoiceTab.SelectedClosingDay}"
                                   DisplayMemberPath="Label"
                                   Width="100"
                                   HorizontalAlignment="Left"
                                   Margin="0,0,0,12" />
-
-                        <!-- 処理日付 -->
-                        <TextBlock Grid.Row="1" Grid.Column="0"
-                                   Text="処理日付"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,0,12" />
-                        <StackPanel Grid.Row="1" Grid.Column="1"
-                                    Orientation="Horizontal"
-                                    Margin="0,0,0,12">
-                            <DatePicker SelectedDate="{Binding InvoiceTab.ProcessDate}"
-                                        Width="130" />
-                        </StackPanel>
 
                         <!-- 得意先 -->
                         <TextBlock Grid.Row="2" Grid.Column="0"
@@ -140,10 +140,10 @@
                                     HorizontalAlignment="Right">
                             <Button Command="{Binding InvoiceTab.PrintCommand}"
                                     Content="請求書印刷 (F11)"
-                                    Width="140" />
+                                    Width="160" />
                             <Button Command="{Binding InvoiceTab.CancelAggregationCommand}"
                                     Content="締め解除 (F8)"
-                                    Width="140"
+                                    Width="160"
                                     Margin="8,0,0,0" />
                         </StackPanel>
                     </Grid>
@@ -249,9 +249,13 @@
                         <StackPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
                                     Orientation="Horizontal"
                                     HorizontalAlignment="Right">
+                            <Button Command="{Binding InvoiceTab.PrintCommand}"
+                                    Content="売掛金残高一覧表 (F11)"
+                                    Width="160" />
                             <Button Command="{Binding ArTab.CancelAggregationCommand}"
                                     Content="集計取り消し (F8)"
-                                    Width="160" />
+                                    Width="160" 
+                                    Margin="8,0,0,0" />
                         </StackPanel>
                     </Grid>
                 </Border>

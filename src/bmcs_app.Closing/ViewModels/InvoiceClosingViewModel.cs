@@ -245,12 +245,12 @@ public class InvoiceClosingViewModel : BindableBase
 
         var data = new InvoicePrintData
         {
+            CustomerCode        = header.CustomerCode,
             CustomerName        = header.CustomerName,
             CustomerPostalCode  = header.CustomerPostalCode ?? "",
             CustomerAddress1    = header.CustomerAddress1   ?? "",
             CustomerAddress2    = header.CustomerAddress2   ?? "",
             InvoiceDate         = header.InvoiceDate.ToString("yyyy年MM月dd日"),
-            ClosingDayLabel     = closingDayLabel,
             PreviousAmountStr   = Fmt(header.PreviousInvoiceAmount),
             ReceiptAmountStr    = Fmt(header.ReceiptAmount),
             SalesStandardStr    = Fmt(header.SalesAmountStandard),
@@ -258,6 +258,8 @@ public class InvoiceClosingViewModel : BindableBase
             TaxStandardStr      = Fmt(header.TaxAmountStandard),
             TaxReducedStr       = Fmt(header.TaxAmountReduced),
             CurrentAmountStr    = Fmt(header.CurrentInvoiceAmount),
+            SalesTotalStr       = Fmt(header.SalesAmountStandard + header.SalesAmountReduced),
+            TaxTotalStr         = Fmt(header.TaxAmountStandard   + header.TaxAmountReduced),
             CompanyName         = _companyInfo.Name,
             CompanyAddress      = _companyInfo.Address,
             CompanyPhone        = _companyInfo.Phone,
@@ -265,22 +267,51 @@ public class InvoiceClosingViewModel : BindableBase
             CompanyInvoiceRegNo = _companyInfo.InvoiceRegistrationNo,
         };
 
-        data.Lines = slips.Select(s => new InvoiceSlipLine
+        var saleLines = slips.Select(s =>
         {
-            SaleDate    = s.SaleDate.ToString("yyyy/MM/dd"),
-            SaleNo      = s.SaleNo,
-            Remarks     = s.Remarks ?? "",
-            TaxExcluded = Fmt(s.TaxExcluded),
-            TaxAmount   = Fmt(s.TaxAmount),
-        }).ToList();
+            var baseName = s.TaxRateType == 2 ? $"* {s.ProductName}" : s.ProductName;
+            var desc     = string.IsNullOrWhiteSpace(s.LineRemarks)
+                ? baseName
+                : $"{baseName}　{s.LineRemarks}";
+            return new InvoiceMixedLine
+            {
+                SortDate     = s.SaleDate,
+                SortSlipNo   = s.SaleNo,
+                SortLineNo   = s.LineNo,
+                DateStr      = s.SaleDate.ToString("yyyy/MM/dd"),
+                SlipNo       = s.SaleNo,
+                Description  = desc,
+                QuantityStr  = s.Quantity.ToString("#,##0.##"),
+                UnitPriceStr = Fmt(s.UnitPrice),
+                AmountStr    = Fmt(s.LineAmount),
+            };
+        });
 
-        data.ReceiptLines = receipts.Select(r => new InvoiceReceiptLine
+        var receiptLines = receipts.Select(r =>
         {
-            ReceiptDate = r.ReceiptDate.ToString("yyyy/MM/dd"),
-            ReceiptNo   = r.ReceiptNo,
-            Remarks     = r.Remarks ?? "",
-            AmountStr   = Fmt(r.Amount),
-        }).ToList();
+            var desc = string.IsNullOrWhiteSpace(r.LineRemarks)
+                ? r.PaymentMethodName
+                : $"{r.PaymentMethodName}　{r.LineRemarks}";
+            return new InvoiceMixedLine
+            {
+                SortDate     = r.ReceiptDate,
+                SortSlipNo   = r.ReceiptNo,
+                SortLineNo   = r.LineNo,
+                DateStr      = r.ReceiptDate.ToString("yyyy/MM/dd"),
+                SlipNo       = r.ReceiptNo,
+                Description  = desc,
+                QuantityStr  = "",
+                UnitPriceStr = "",
+                AmountStr    = Fmt(r.Amount),
+            };
+        });
+
+        data.MixedLines = saleLines
+            .Concat(receiptLines)
+            .OrderBy(l => l.SortDate)
+            .ThenBy(l => l.SortSlipNo)
+            .ThenBy(l => l.SortLineNo)
+            .ToList();
 
         data.TaxBreakdowns = taxGroups.Select(g =>
         {
