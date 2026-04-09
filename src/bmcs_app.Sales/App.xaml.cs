@@ -24,14 +24,19 @@ public partial class App : Application
 
         // 税種別は Infrastructure に専用リポジトリが不要なため Customer 経由で取得済みデータを使用
         // TaxTypes は ViewModel 初期化後に設定する
-        var saleRepo = new SaleRepository();
-        var saleFlat = Task.Run(() => saleRepo.GetAllFlatAsync()).Result;
+        var saleRepo  = new SaleRepository();
+        var saleFlat  = Task.Run(() => saleRepo.GetAllFlatAsync()).Result;
+        var orderRepo = new OrderRepository();
+        var orderFlat = Task.Run(() => orderRepo.GetAllFlatAsync()).Result;
 
         var lookupService = new LookupService();
         lookupService.Initialize(customers, employees, products);
         lookupService.SetSlipData(
             new[] { "日付", "伝票番号", "得意先コード", "得意先名", "行", "商品コード", "商品名", "数量", "単価", "金額" },
             saleFlat);
+        lookupService.SetOrderData(
+            new[] { "日付", "受注番号", "得意先コード", "得意先名", "行", "商品コード", "商品名", "数量", "単価", "金額" },
+            orderFlat);
 
         var taxRatePeriodRepo = new TaxRatePeriodRepository();
         var taxRatePeriods    = Task.Run(() => taxRatePeriodRepo.GetAllAsync()).Result;

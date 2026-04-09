@@ -18,7 +18,6 @@
                    Margin="0,0,0,4" />
 
         <Button Content="受注登録"
-                IsEnabled="False"
                 Command="{Binding LaunchCommand}"
                 CommandParameter="bmcs_app.Order.exe"
                 HorizontalAlignment="Stretch"

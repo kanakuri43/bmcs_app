@@ -16,6 +16,8 @@ public class SaleSlip
     public string         EmployeeCode { get; set; } = "";
     public string         EmployeeName { get; set; } = "";
     public string?        SlipRemarks  { get; set; }
-    public bool           IsLocked     { get; set; }
-    public List<SaleLine> Lines        { get; set; } = new();
+    public bool           IsLocked        { get; set; }
+    public DateOnly?      InvoicedAt      { get; set; }
+    public DateOnly?      ArAggregatedAt  { get; set; }
+    public List<SaleLine> Lines           { get; set; } = new();
 }

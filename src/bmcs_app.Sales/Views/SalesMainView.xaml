@@ -53,8 +53,47 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition />
-                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="250"/>
                 </Grid.ColumnDefinitions>
+                <!-- 集計状況（伝票読み込み時のみ表示） -->
+                <Border Grid.Column="1"
+                        BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                        BorderThickness="1"
+                        CornerRadius="2"
+                        Padding="10,8"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Stretch">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="40" />
+                                <ColumnDefinition Width="*"  />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="4"    />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                       Text="請求："
+                                       FontSize="12"
+                                       Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="{Binding InvoicedAtText}"
+                                       FontSize="12"
+                                       FontWeight="Bold" />
+                            <TextBlock Grid.Row="2" Grid.Column="0"
+                                       Text="売掛："
+                                       FontSize="12"
+                                       Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                            <TextBlock Grid.Row="2" Grid.Column="1"
+                                       Text="{Binding ArAggregatedAtText}"
+                                       FontSize="12"
+                                       FontWeight="Bold" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
                 <StackPanel Grid.Column="0">
                     <!-- 行1: 売上日付 / 伝票No. / 受注No. -->
                     <Grid>

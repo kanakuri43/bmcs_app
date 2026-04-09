@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\bmcs_app.Core\bmcs_app.Core.csproj" />
     <ProjectReference Include="..\bmcs_app.Infrastructure\bmcs_app.Infrastructure.csproj" />
+    <ProjectReference Include="..\bmcs_app.Shared\bmcs_app.Shared.csproj" />
   </ItemGroup>
 
 </Project>

@@ -15,8 +15,12 @@ public class LookupService : ILookupService
     private List<Product>  _products  = new();
 
     // 伝票検索ダイアログ用（App.xaml.cs から注入）
-    private string[]       _slipColumns = Array.Empty<string>();
-    private List<string[]> _slipRows    = new();
+    private string[]       _slipColumns  = Array.Empty<string>();
+    private List<string[]> _slipRows     = new();
+
+    // 受注検索ダイアログ用（App.xaml.cs から注入）
+    private string[]       _orderColumns = Array.Empty<string>();
+    private List<string[]> _orderRows    = new();
 
     /// <summary>
     /// 伝票検索ダイアログ用の非正規化データを設定する。
@@ -26,6 +30,12 @@ public class LookupService : ILookupService
     {
         _slipColumns = columns;
         _slipRows    = rows.ToList();
+    }
+
+    public void SetOrderData(string[] columns, IEnumerable<string[]> rows)
+    {
+        _orderColumns = columns;
+        _orderRows    = rows.ToList();
     }
 
     public void Initialize(
@@ -75,6 +85,13 @@ public class LookupService : ILookupService
     public string? OpenSlipSearch(IEnumerable<SlipSummary> slips, string initialKeyword = "")
     {
         var dlg = new SlipSearchDialog("伝票検索", _slipColumns, _slipRows, keyColumnIndex: 1, initialKeyword)
+            { Owner = System.Windows.Application.Current.MainWindow };
+        return dlg.ShowDialog() == true ? dlg.SelectedSlipNo : null;
+    }
+
+    public string? OpenOrderSearch(string initialKeyword = "")
+    {
+        var dlg = new SlipSearchDialog("受注検索", _orderColumns, _orderRows, keyColumnIndex: 1, initialKeyword)
             { Owner = System.Windows.Application.Current.MainWindow };
         return dlg.ShowDialog() == true ? dlg.SelectedSlipNo : null;
     }

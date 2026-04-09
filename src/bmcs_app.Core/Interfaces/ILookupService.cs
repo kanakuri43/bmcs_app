@@ -14,6 +14,9 @@ public interface ILookupService
     /// <summary>伝票番号検索ダイアログを開き、選択された伝票番号を返す</summary>
     string? OpenSlipSearch(IEnumerable<SlipSummary> slips, string initialKeyword = "");
 
+    /// <summary>受注番号検索ダイアログを開き、選択された受注番号を返す</summary>
+    string? OpenOrderSearch(string initialKeyword = "");
+
     /// <summary>コードで得意先を直接検索（Enter/Tab 補完用）</summary>
     Customer? FindCustomerByCode(string code);
     /// <summary>コードで担当者を直接検索</summary>

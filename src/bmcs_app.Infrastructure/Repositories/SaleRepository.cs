@@ -128,18 +128,23 @@ public class SaleRepository : ISaleRepository
 
         if (slip is null) return null;
 
-        // ── ロック判定（invoiced_at または ar_aggregated_at が設定済みか）──
+        // ── ロック判定（invoiced_at / ar_aggregated_at を取得して IsLocked を設定）──
         await using (var lockCmd = conn.CreateCommand())
         {
             lockCmd.CommandText = """
-                SELECT COUNT(1) FROM sales
+                SELECT TOP 1 invoiced_at, ar_aggregated_at FROM sales
                 WHERE sale_no    = @sale_no
                   AND is_deleted = 0
-                  AND (invoiced_at IS NOT NULL OR ar_aggregated_at IS NOT NULL)
+                ORDER BY line_no
                 """;
             lockCmd.Parameters.AddWithValue("@sale_no", saleNo);
-            var count = (int)(await lockCmd.ExecuteScalarAsync())!;
-            slip.IsLocked = count > 0;
+            await using var lockReader = await lockCmd.ExecuteReaderAsync();
+            if (await lockReader.ReadAsync())
+            {
+                slip.InvoicedAt     = lockReader.IsDBNull(0) ? null : DateOnly.FromDateTime(lockReader.GetDateTime(0));
+                slip.ArAggregatedAt = lockReader.IsDBNull(1) ? null : DateOnly.FromDateTime(lockReader.GetDateTime(1));
+                slip.IsLocked       = slip.InvoicedAt is not null || slip.ArAggregatedAt is not null;
+            }
         }
 
         return slip;
