@@ -121,7 +121,6 @@
                                   GridLinesVisibility="Horizontal"
                                   HeadersVisibility="Column">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="対象締日"   Binding="{Binding ClosingDayLabel}"  Width="90" />
                                 <DataGridTextColumn Header="処理日付"   Binding="{Binding InvoiceDateLabel}" Width="110" />
                                 <DataGridTextColumn Header="得意先件数" Binding="{Binding CustomerCount}"    Width="90">
                                     <DataGridTextColumn.ElementStyle>

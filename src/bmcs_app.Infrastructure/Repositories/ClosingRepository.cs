@@ -92,8 +92,7 @@ public class ClosingRepository : IClosingRepository
             list.Add(new InvoiceHistorySummary
             {
                 InvoiceDate   = DateOnly.FromDateTime(reader.GetDateTime(0)),
-                ClosingDay    = reader.GetByte(1),
-                CustomerCount = reader.GetInt32(2),
+                CustomerCount = reader.GetInt32(1),
             });
         }
         return list;
