@@ -50,133 +50,151 @@
                 BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
                 BorderThickness="0,0,0,1"
                 Background="{DynamicResource MahApps.Brushes.Gray10}">
-            <StackPanel>
-                <!-- 行1: 売上日付 / 伝票No. / 受注No. -->
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="58"  />  <!-- label -->
-                        <ColumnDefinition Width="140" />  <!-- value -->
-                        <ColumnDefinition Width="16"  />
-                        <ColumnDefinition Width="58"  />  <!-- label -->
-                        <ColumnDefinition Width="130" />  <!-- value -->
-                        <ColumnDefinition Width="16"  />
-                        <ColumnDefinition Width="58"  />  <!-- label -->
-                        <ColumnDefinition Width="130" />  <!-- value -->
-                        <ColumnDefinition Width="*"   />
-                    </Grid.ColumnDefinitions>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition Width="200"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <!-- 行1: 売上日付 / 伝票No. / 受注No. -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58"  />
+                            <!-- label -->
+                            <ColumnDefinition Width="140" />
+                            <!-- value -->
+                            <ColumnDefinition Width="16"  />
+                            <ColumnDefinition Width="58"  />
+                            <!-- label -->
+                            <ColumnDefinition Width="130" />
+                            <!-- value -->
+                            <ColumnDefinition Width="16"  />
+                            <ColumnDefinition Width="58"  />
+                            <!-- label -->
+                            <ColumnDefinition Width="130" />
+                            <!-- value -->
+                            <ColumnDefinition Width="*"   />
+                        </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="売上日付" VerticalAlignment="Center" />
-                    <DatePicker Grid.Column="1"
+                        <TextBlock Grid.Column="0" Text="売上日付" VerticalAlignment="Center" />
+                        <DatePicker Grid.Column="1"
                                 SelectedDate="{Binding EditSaleDate}"
                                 SelectedDateFormat="Short" />
 
-                    <TextBlock Grid.Column="3" Text="伝票No." VerticalAlignment="Center" />
-                    <TextBox x:Name="SaleNoBox"
+                        <TextBlock Grid.Column="3" Text="伝票No." VerticalAlignment="Center" />
+                        <TextBox x:Name="SaleNoBox"
                              Grid.Column="4"
                              h:FocusHelper.MoveNextOnEnter="True"
                              Text="{Binding EditSaleNo, UpdateSourceTrigger=PropertyChanged}"
                              mah:TextBoxHelper.Watermark="自動採番"
                              mah:TextBoxHelper.ClearTextButton="True"
                              MaxLength="20">
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Space"  Command="{Binding OpenSlipLookupCommand}" />
-                            <KeyBinding Key="Return" Command="{Binding SearchCommand}" />
-                        </TextBox.InputBindings>
-                    </TextBox>
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Space"  Command="{Binding OpenSlipLookupCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding SearchCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
 
-                    <TextBlock Grid.Column="6" Text="受注No." VerticalAlignment="Center" />
-                    <TextBox Grid.Column="7"
+                        <TextBlock Grid.Column="6" Text="受注No." VerticalAlignment="Center" />
+                        <TextBox Grid.Column="7"
                              h:FocusHelper.MoveNextOnEnter="True"
                              Text="{Binding EditOrderNo, UpdateSourceTrigger=PropertyChanged}"
                              mah:TextBoxHelper.Watermark="（任意）"
                              mah:TextBoxHelper.ClearTextButton="True"
                              MaxLength="20">
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Space"  Command="{Binding OpenOrderLookupCommand}" />
-                            <KeyBinding Key="Return" Command="{Binding LookupOrderByNoCommand}" />
-                        </TextBox.InputBindings>
-                    </TextBox>
-                </Grid>
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Space"  Command="{Binding OpenOrderLookupCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding LookupOrderByNoCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                    </Grid>
 
-                <!-- 行2: 得意先 -->
-                <Grid Margin="0,6,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="58"  />  <!-- label -->
-                        <ColumnDefinition Width="110" />  <!-- code -->
-                        <ColumnDefinition Width="8"   />
-                        <ColumnDefinition Width="*"   />  <!-- name -->
-                    </Grid.ColumnDefinitions>
+                    <!-- 行2: 得意先 -->
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58"  />
+                            <!-- label -->
+                            <ColumnDefinition Width="110" />
+                            <!-- code -->
+                            <ColumnDefinition Width="8"   />
+                            <ColumnDefinition Width="*"   />
+                            <!-- name -->
+                        </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="得意先" VerticalAlignment="Center" />
-                    <TextBox x:Name="CustomerCodeBox"
+                        <TextBlock Grid.Column="0" Text="得意先" VerticalAlignment="Center" />
+                        <TextBox x:Name="CustomerCodeBox"
                              Grid.Column="1"
                              h:FocusHelper.MoveNextOnEnter="True"
                              Text="{Binding EditCustomerCode, UpdateSourceTrigger=PropertyChanged}"
                              mah:TextBoxHelper.Watermark="コード"
                              mah:TextBoxHelper.ClearTextButton="True"
                              MaxLength="20">
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Space"  Command="{Binding OpenCustomerLookupCommand}" />
-                            <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />
-                        </TextBox.InputBindings>
-                    </TextBox>
-                    <TextBox Grid.Column="3"
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Space"  Command="{Binding OpenCustomerLookupCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <TextBox Grid.Column="3"
                              Text="{Binding EditCustomerName, Mode=OneWay}"
                              IsReadOnly="True"
                              IsTabStop="False"
                              Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                </Grid>
+                    </Grid>
 
-                <!-- 行3: 担当者 -->
-                <Grid Margin="0,6,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="58"  />  <!-- label -->
-                        <ColumnDefinition Width="110" />  <!-- code -->
-                        <ColumnDefinition Width="8"   />
-                        <ColumnDefinition Width="240" />  <!-- name -->
-                        <ColumnDefinition Width="*"   />
-                    </Grid.ColumnDefinitions>
+                    <!-- 行3: 担当者 -->
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58"  />
+                            <!-- label -->
+                            <ColumnDefinition Width="110" />
+                            <!-- code -->
+                            <ColumnDefinition Width="8"   />
+                            <ColumnDefinition Width="240" />
+                            <!-- name -->
+                            <ColumnDefinition Width="*"   />
+                        </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="担当者" VerticalAlignment="Center" />
-                    <TextBox x:Name="EmployeeCodeBox"
+                        <TextBlock Grid.Column="0" Text="担当者" VerticalAlignment="Center" />
+                        <TextBox x:Name="EmployeeCodeBox"
                              Grid.Column="1"
                              h:FocusHelper.MoveNextOnEnter="True"
                              Text="{Binding EditEmployeeCode, UpdateSourceTrigger=PropertyChanged}"
                              mah:TextBoxHelper.Watermark="コード"
                              mah:TextBoxHelper.ClearTextButton="True"
                              MaxLength="20">
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Space"  Command="{Binding OpenEmployeeLookupCommand}" />
-                            <KeyBinding Key="Return" Command="{Binding LookupEmployeeByCodeCommand}" />
-                        </TextBox.InputBindings>
-                    </TextBox>
-                    <TextBox Grid.Column="3"
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Space"  Command="{Binding OpenEmployeeLookupCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding LookupEmployeeByCodeCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <TextBox Grid.Column="3"
                              Text="{Binding EditEmployeeName, Mode=OneWay}"
                              IsReadOnly="True"
                              IsTabStop="False"
                              Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                </Grid>
+                    </Grid>
 
-                <!-- 行4: 摘要 -->
-                <Grid Margin="0,6,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="58" />
-                        <ColumnDefinition Width="*"  />
-                    </Grid.ColumnDefinitions>
+                    <!-- 行4: 摘要 -->
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition Width="*"  />
+                        </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="摘要" VerticalAlignment="Center" />
-                    <TextBox x:Name="RemarksBox"
+                        <TextBlock Grid.Column="0" Text="摘要" VerticalAlignment="Center" />
+                        <TextBox x:Name="RemarksBox"
                              Grid.Column="1"
                              Text="{Binding EditSlipRemarks, UpdateSourceTrigger=PropertyChanged}"
                              mah:TextBoxHelper.Watermark="（任意）"
                              MaxLength="200">
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Return" Command="{Binding RemarksEnterCommand}" />
-                        </TextBox.InputBindings>
-                    </TextBox>
-                </Grid>
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Return" Command="{Binding RemarksEnterCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                    </Grid>
 
-            </StackPanel>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- ===== 明細 ===== -->
