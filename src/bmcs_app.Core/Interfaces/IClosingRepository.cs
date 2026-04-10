@@ -11,7 +11,7 @@ public interface IClosingRepository
 
     Task<IEnumerable<InvoiceHistorySummary>> GetInvoiceHistorySummariesAsync();
     Task<IEnumerable<ArHistorySummary>>      GetArHistorySummariesAsync();
-    Task<IEnumerable<InvoiceHeader>>        GetInvoiceHeadersAsync(DateOnly invoiceDate, byte closingDay, int? customerId = null);
+    Task<IEnumerable<InvoiceHeader>>        GetInvoiceHeadersAsync(DateOnly invoiceDate, int? customerId = null);
     Task<IEnumerable<InvoiceSlipDetail>>    GetInvoiceSlipDetailsAsync(DateOnly invoiceDate, int customerId);
     Task<IEnumerable<InvoiceTaxGroup>>      GetInvoiceTaxGroupsAsync(DateOnly invoiceDate, int customerId);
     Task<IEnumerable<InvoiceReceiptDetail>> GetInvoiceReceiptDetailsAsync(DateOnly invoiceDate, int customerId);

@@ -104,10 +104,10 @@
                 HorizontalAlignment="Stretch"
                 Margin="0,0,0,4" />
 
-        <Button Content="サーバ"
-                Command="{Binding OpenServerSettingsCommand}"
+        <Button Content="自社情報"
+                Command="{Binding OpenCompanyInfoSettingsCommand}"
                 HorizontalAlignment="Stretch"
-                Margin="0,0,0,16" />
+                Margin="0,0,0,4" />
 
     </StackPanel>
 </mah:MetroWindow>

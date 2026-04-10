@@ -203,8 +203,7 @@ public class InvoiceClosingViewModel : BindableBase
             StatusMessage = "印刷データ取得中...";
 
             var invoiceDate = SelectedHistoryItem.InvoiceDate;
-            var closingDay  = SelectedHistoryItem.ClosingDay;
-            var headers     = (await _repo.GetInvoiceHeadersAsync(invoiceDate, closingDay, customerId)).ToList();
+            var headers     = (await _repo.GetInvoiceHeadersAsync(invoiceDate, customerId)).ToList();
 
             if (headers.Count == 0)
             {
@@ -219,7 +218,7 @@ public class InvoiceClosingViewModel : BindableBase
                 var taxGroups = (await _repo.GetInvoiceTaxGroupsAsync(invoiceDate, h.CustomerId)).ToList();
                 var receipts  = (await _repo.GetInvoiceReceiptDetailsAsync(invoiceDate, h.CustomerId)).ToList();
 
-                printDataList.Add(BuildPrintData(h, slips, taxGroups, receipts, closingDay));
+                printDataList.Add(BuildPrintData(h, slips, taxGroups, receipts));
             }
 
             StatusMessage = "印刷中...";
@@ -236,12 +235,9 @@ public class InvoiceClosingViewModel : BindableBase
         InvoiceHeader header,
         List<bmcs_app.Core.Models.InvoiceSlipDetail> slips,
         List<bmcs_app.Core.Models.InvoiceTaxGroup> taxGroups,
-        List<bmcs_app.Core.Models.InvoiceReceiptDetail> receipts,
-        byte closingDay)
+        List<bmcs_app.Core.Models.InvoiceReceiptDetail> receipts)
     {
         static string Fmt(decimal v) => v.ToString("#,##0");
-
-        var closingDayLabel = closingDay is 0 or 99 ? "末日" : $"{closingDay}日";
 
         var data = new InvoicePrintData
         {

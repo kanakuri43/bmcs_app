@@ -9,15 +9,15 @@ namespace bmcs_app.ViewModels;
 
 public class MainWindowViewModel : BindableBase
 {
-    public DelegateCommand<string> LaunchCommand              { get; }
-    public DelegateCommand OpenPrinterSettingsCommand { get; }
-    public DelegateCommand OpenServerSettingsCommand { get; }
+    public DelegateCommand<string> LaunchCommand                 { get; }
+    public DelegateCommand         OpenPrinterSettingsCommand    { get; }
+    public DelegateCommand         OpenCompanyInfoSettingsCommand { get; }
 
     public MainWindowViewModel()
     {
-        LaunchCommand              = new DelegateCommand<string>(Launch);
-        OpenPrinterSettingsCommand = new DelegateCommand(OpenPrinterSettings);
-        OpenServerSettingsCommand  = new DelegateCommand(OpenServerSettings);
+        LaunchCommand                 = new DelegateCommand<string>(Launch);
+        OpenPrinterSettingsCommand    = new DelegateCommand(OpenPrinterSettings);
+        OpenCompanyInfoSettingsCommand = new DelegateCommand(OpenCompanyInfoSettings);
     }
 
     private static void OpenPrinterSettings()
@@ -31,13 +31,13 @@ public class MainWindowViewModel : BindableBase
         win.ShowDialog();
     }
 
-    private static void OpenServerSettings()
+    private static void OpenCompanyInfoSettings()
     {
-        var vm = new ServerSettingsViewModel();
-        var win = new ServerSettingsWindow
+        var vm  = new CompanyInfoSettingsViewModel();
+        var win = new CompanyInfoSettingsWindow
         {
             DataContext = vm,
-            Owner = Application.Current.MainWindow,
+            Owner       = Application.Current.MainWindow,
         };
         win.ShowDialog();
     }

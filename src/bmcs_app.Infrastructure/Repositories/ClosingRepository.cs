@@ -99,7 +99,7 @@ public class ClosingRepository : IClosingRepository
     }
 
     public async Task<IEnumerable<InvoiceHeader>> GetInvoiceHeadersAsync(
-        DateOnly invoiceDate, byte closingDay, int? customerId = null)
+        DateOnly invoiceDate, int? customerId = null)
     {
         var list = new List<InvoiceHeader>();
         await using var conn = new SqlConnection(ConnectionString);
@@ -108,7 +108,6 @@ public class ClosingRepository : IClosingRepository
         cmd.CommandText = "usp_invoice_headers_select";
         cmd.CommandType = CommandType.StoredProcedure;
         cmd.Parameters.AddWithValue("@invoice_date", invoiceDate.ToDateTime(TimeOnly.MinValue));
-        cmd.Parameters.AddWithValue("@closing_day",  closingDay);
         cmd.Parameters.AddWithValue("@customer_id",  (object?)customerId ?? DBNull.Value);
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
