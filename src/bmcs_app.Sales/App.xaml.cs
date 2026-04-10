@@ -43,7 +43,7 @@ public partial class App : Application
 
         var companyInfo = Task.Run(() => new CompanyInfoRepository().GetAsync()).Result;
 
-        var vm = new SalesMainViewModel(lookupService, saleRepo);
+        var vm = new SalesMainViewModel(lookupService, saleRepo, orderRepo);
         vm.SetTaxRatePeriods(taxRatePeriods);
         vm.SetCompanyInfo(companyInfo);
 

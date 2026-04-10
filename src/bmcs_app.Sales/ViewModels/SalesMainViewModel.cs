@@ -13,8 +13,9 @@ namespace bmcs_app.Sales.ViewModels;
 
 public class SalesMainViewModel : BindableBase
 {
-    private readonly ILookupService  _lookup;
-    private readonly ISaleRepository _saleRepo;
+    private readonly ILookupService   _lookup;
+    private readonly ISaleRepository  _saleRepo;
+    private readonly IOrderRepository _orderRepo;
     private List<TaxRatePeriod> _taxRatePeriods = new();
     private CompanyInfo _companyInfo = new();
     private bool _isLineTaxCalc = true;
@@ -201,10 +202,11 @@ public class SalesMainViewModel : BindableBase
     public DelegateCommand LookupOrderByNoCommand      { get; }
 
     // ── コンストラクタ ─────────────────────────────────────
-    public SalesMainViewModel(ILookupService lookup, ISaleRepository saleRepo)
+    public SalesMainViewModel(ILookupService lookup, ISaleRepository saleRepo, IOrderRepository orderRepo)
     {
-        _lookup   = lookup;
-        _saleRepo = saleRepo;
+        _lookup    = lookup;
+        _saleRepo  = saleRepo;
+        _orderRepo = orderRepo;
 
         NewCommand        = new DelegateCommand(OnNew);
         SearchCommand     = new DelegateCommand(async () => await OnSearchAsync());
@@ -224,7 +226,7 @@ public class SalesMainViewModel : BindableBase
         OpenSlipLookupCommand       = new DelegateCommand(OnOpenSlipLookup);
         LookupCustomerByCodeCommand = new DelegateCommand(OnLookupCustomerByCode);
         LookupEmployeeByCodeCommand = new DelegateCommand(OnLookupEmployeeByCode);
-        LookupOrderByNoCommand      = new DelegateCommand(OnLookupOrderByNo);
+        LookupOrderByNoCommand      = new DelegateCommand(async () => await OnLookupOrderByNoAsync());
 
         Lines.CollectionChanged += OnLinesCollectionChanged;
 
@@ -530,16 +532,101 @@ public class SalesMainViewModel : BindableBase
     }
 
     // ── ルックアップ: 受注No. ───────────────────────────────
-    private void OnLookupOrderByNo()
+    private async Task OnLookupOrderByNoAsync()
     {
-        // 受注No. 入力後 Enter → Tab 順で次フィールド（得意先コード）へ
+        if (string.IsNullOrWhiteSpace(EditOrderNo)) return;
+        try
+        {
+            var order = await _orderRepo.GetByOrderNoAsync(EditOrderNo.Trim());
+            if (order is null)
+            {
+                StatusMessage = $"受注No. '{EditOrderNo}' が見つかりません";
+                return;
+            }
+            ApplyOrder(order);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"受注取得エラー: {ex.Message}";
+        }
     }
 
     private void OnOpenOrderLookup()
     {
         var selected = _lookup.OpenOrderSearch(EditOrderNo);
         if (selected is not null)
+        {
             EditOrderNo = selected;
+            _ = LoadOrderByNoAsync(selected);
+        }
+    }
+
+    private async Task LoadOrderByNoAsync(string orderNo)
+    {
+        try
+        {
+            var order = await _orderRepo.GetByOrderNoAsync(orderNo);
+            if (order is not null) ApplyOrder(order);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"受注取得エラー: {ex.Message}";
+        }
+    }
+
+    private void ApplyOrder(OrderSlip order)
+    {
+        _editOrderId = order.OrderId;
+        EditOrderNo  = order.OrderNo;
+
+        // 得意先: キャッシュから Customer オブジェクトを取得（住所・TaxCalcUnit 含む）
+        var customer = _lookup.FindCustomerByCode(order.CustomerCode);
+        if (customer is not null)
+        {
+            ApplyCustomer(customer);
+        }
+        else
+        {
+            EditCustomerCode = order.CustomerCode;
+            EditCustomerName = order.CustomerName;
+            _editCustomerId  = order.CustomerId;
+            _isLineTaxCalc   = ResolveIsLineTaxCalc(order.TaxCalcUnitId);
+            PropagateLineTaxCalcToLines();
+        }
+
+        // 担当者
+        var employee = order.EmployeeId != 0 ? _lookup.FindEmployeeById(order.EmployeeId) : null;
+        if (employee is not null)
+            ApplyEmployee(employee);
+
+        // 摘要
+        EditSlipRemarks = order.SlipRemarks ?? "";
+
+        // 明細: 受注内容をそのまま展開（税率は売上日付で再解決）
+        Lines.Clear();
+        var saleDate = EditSaleDate.HasValue
+            ? DateOnly.FromDateTime(EditSaleDate.Value)
+            : DateOnly.FromDateTime(DateTime.Today);
+
+        foreach (var l in order.Lines)
+        {
+            var taxType = TaxTypes.FirstOrDefault(t => t.TaxTypeId == l.TaxTypeId);
+            var vm = CreateLineVm(l.LineNo);
+            vm.ProductId      = l.ProductId;
+            vm.ProductCode    = l.ProductCode;
+            vm.ProductName    = l.ProductName;
+            vm.Quantity       = l.Quantity;
+            vm.UnitPrice      = l.UnitPrice;
+            vm.CostPrice      = l.CostPrice;
+            vm.TaxType        = taxType;
+            vm.TaxRateType    = l.TaxRateType;
+            vm.AppliedTaxRate = GetAppliedTaxRate(l.TaxRateType, saleDate);
+            vm.LineRemarks    = l.LineRemarks ?? "";
+            Lines.Add(vm);
+        }
+
+        RaiseTotalsChanged();
+        StatusMessage = $"受注No. {order.OrderNo} を読み込みました";
     }
 
     // ── 摘要 Enter ──────────────────────────────────────────
