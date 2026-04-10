@@ -62,7 +62,7 @@
                         CornerRadius="2"
                         Padding="10,8"
                         Margin="8,0,0,0"
-                        VerticalAlignment="Top">
+                        VerticalAlignment="Stretch">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="40" />
@@ -292,7 +292,7 @@
                 </StackPanel>
 
                 <!-- 粗利 -->
-                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,20,0">
                     <TextBlock Text="《粗利》"
                                FontSize="11"
                                Foreground="{DynamicResource MahApps.Brushes.Gray3}"
@@ -306,7 +306,7 @@
                 </StackPanel>
 
                 <!-- 消費税計 -->
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,20,0">
+                <StackPanel Grid.Column="2" VerticalAlignment="Center">
                     <TextBlock Text="《消費税計》"
                                FontSize="11"
                                Foreground="{DynamicResource MahApps.Brushes.Gray3}"
@@ -374,7 +374,7 @@
                 <!-- 操作ボタン（縦並び: 保存 / 削除） -->
                 <StackPanel Grid.Column="5"
                             Orientation="Vertical"
-                            VerticalAlignment="Top"
+                            VerticalAlignment="Center"
                             Width="110">
                     <Button Command="{Binding SaveCommand}"
                             Content="保存 (F10)"
