@@ -1,114 +1,31 @@
 # タスク管理
 
-## 完了
+## 実装済みモジュール
 
-### [x] マスタメンテ サンプル作成（社員マスタ）
-作成ファイル:
-- `bmcs_app.Core/Models/Employee.cs`
-- `bmcs_app.Core/Interfaces/IEmployeeRepository.cs`
-- `bmcs_app.Infrastructure/Repositories/EmployeeRepository.cs`
-- `bmcs_app.Master/` (新規プロジェクト)
-  - `MasterModule.cs`
-  - `Views/EmployeeMaintView.xaml`
-  - `ViewModels/EmployeeMaintViewModel.cs`
-- `bmcs_app/App.xaml` + `App.xaml.cs`
-- `bmcs_app/Views/MainWindow.xaml` + `.xaml.cs`
-- `bmcs_app/ViewModels/MainWindowViewModel.cs`
-
-### [x] Phase 1: 画面構成の確定 → CLAUDE.md 作成
-
-### [x] Phase 2: 残りのマスタメンテ（部分）
-- [x] 得意先マスタ
-- [x] 消費税率マスタ
-- [ ] 商品マスタ ← Phase 3 完了後に着手
-- [ ] 自社情報 ← 同上
+| モジュール | 状態 |
+|---|---|
+| bmcs_app（ランチャー） | 完了 |
+| bmcs_app.Master（マスタ保守） | 完了 |
+| bmcs_app.Sales（売上登録） | 完了 |
+| bmcs_app.Order（受注登録） | 完了 |
+| bmcs_app.Receipt（入金登録） | 完了 |
+| bmcs_app.Closing（請求集計・売掛金集計） | 完了 |
+| bmcs_app.Search（伝票横断検索） | 完了 |
+| bmcs_app.Shared/Helpers/FocusHelper.cs | 完了（Sales/Order/Receipt 共用） |
+| bmcs_app.Core/Services/TaxCalculator.cs | 完了（Sales/Order 共用） |
 
 ---
 
-## 進行中
+## 残タスク
 
-### Phase 3: [ ] 売上登録（bmcs_app.Sales）
+### [ ] Closing: 得意先指定機能
+- 請求集計・売掛金集計で特定得意先のみを対象にする機能
+- 現在は「全得意先」のみ動作し「指定」RadioButton は `IsEnabled=False`
+- `usp_invoice_closing` / `usp_ar_closing` は `@customer_id` パラメータ対応済み（SP側は完成）
+- **残作業**: View の RadioButton 有効化 + 得意先コード欄の入力 → `@customer_id` を ViewModel から SP に渡す
+- **残作業**: 請求残高一覧表・売掛金残高一覧表 （レポートおよびCSV出力）
 
-#### DB スキーマ確認済み
-- `sales` テーブル: sale_no, sale_date, customer_id, order_id?, employee_id + 明細行
-- SP: `usp_sales_select`, `usp_sales_upsert`（JSON TVP @lines）, `usp_sales_delete`
-- 税種別: 1=外税, 2=内税, 3=非課税
+### [ ] Search: 伝票検索
 
-#### 作成済みファイル
-- `Core/Models/` — `Product.cs`, `TaxTypeClassification.cs`, `SlipSummary.cs`
-- `Core/Interfaces/` — `ILookupService.cs`, `IProductRepository.cs`, `ISaleRepository.cs`
-- `Infrastructure/Repositories/` — `ProductRepository.cs`, `TaxTypeRepository.cs`, `SaleRepository.cs`（GetSummariesAsync のみ）
-- `Sales/Views/` — `SalesMainView.xaml`（レイアウト確定）, `MasterSearchDialog.xaml`
-- `Sales/ViewModels/` — `SalesMainViewModel.cs`（プレースホルダ）, `SaleLineViewModel.cs`
-- `Sales/Services/` — `LookupService.cs`
-- `Sales/App.xaml.cs` — DI 設定済み
+- **残作業**: 発注・仕入 伝票検索  発注・仕入伝票登録実装後に対応
 
-#### 実装ステップ
-- [x] 3-1. XAML レイアウト作成・確認（画像参照ベースで確定）
-- [x] 3-1b. コード検索パターン実装
-  - Space キー → `MasterSearchDialog`（全エンティティ共通）
-  - Enter → コード直接補完
-  - Enter 確定後 → 次フィールドへ自動フォーカス移動
-- [x] 3-1c. フォーカス制御完成
-  - `FocusHelper`（添付プロパティ）: Enter で次フィールドへ移動
-  - `handledEventsToo=true` で KeyBinding 実行後も確実に発火
-  - readonly 名称欄は `IsTabStop="False"` でスキップ
-  - 伝票No. を検索欄と兼用（Space=ダイアログ / Enter=伝票読込）
-  - 初期フォーカス: `FocusManager.FocusedElement` で伝票No. に設定
-  - 摘要 Enter → 行ゼロなら自動追加 → DataGrid 商品コードセルへ移動
-    （`FocusField` イベント + コードビハインドで `CurrentCell` + `BeginEdit()`）
-- [ ] 3-3. `SaleRepository` 完成（upsert / delete / select by slip_no）
-- [ ] 3-4. `SalesMainViewModel` 機能実装
-  - 伝票読み込み（SearchCommand / PrevSlip / NextSlip）
-  - 保存（`usp_sales_upsert` 呼び出し・税計算込み）
-  - 削除（`usp_sales_delete`）
-- [ ] 3-7. 最終ビルド・動作確認
-
----
-
-## 待機中
-
-### Phase 4: [ ] 受注登録（bmcs_app.Order）
-- DB スキーマ・SP 確認済み
-- 売上登録と同パターン（MasterSearchDialog 等の共通部品を再利用）
-- [ ] 4-1〜4-7 （売上登録完了後に着手）
-
-#### 設計方針（確定）
-- 売上と受注は**独立実装**（コピーベースで各自進化）
-- `FocusHelper.cs` を `bmcs_app.Shared` に昇格（Sales/Order の重複解消）
-- 税計算ロジックは `bmcs_app.Core` に抽出
-
-#### 将来の対向画面（仕入・発注）追加時の方針
-- 売上 ↔ 仕入、受注 ↔ 発注 は対になる構造
-- 仕入を作る時点で `SlipMainViewModelBase` を売上から抽出してペアに適用
-- 発注を作る時点で受注から同様に抽出
-- 抽象化は「2実装が揃った時点」で初めて実施（先行設計しない）
-
-### Phase 5: [ ] 入金登録（bmcs_app.Payment）
-- DB スキーマ・SP 確認済み
-- 明細は入金方法 + 金額のみ（税計算なし）
-- [ ] 5-1〜5-7
-
-### Phase 6: [ ] 請求集計・売掛金集計（bmcs_app.Closing）
-- Phase 3〜5 完了後に検討
-
----
-
-## 実装メモ
-
-### 伝票入力画面 共通パターン
-- 伝票一覧は `sale_no` でグルーピング（複数行 → 1伝票として表示）
-- 明細 DataGrid は編集可能 + 行追加(F2) / 行削除ボタン
-- `usp_*_upsert` は JSON TVP（`@lines` パラメータ）でまとめて送信
-- 税計算はクライアント側（ViewModel）で実施してから SP へ渡す
-- 税率は `tax_rate_periods` テーブルから `sale_date` に対応するレコードを取得
-
-### マスタ参照フィールドのパターン（伝票画面）
-- ComboBox は使わず **[コード TextBox] + [名称 TextBox(readonly)]** の2欄構成
-- Space キーでダイアログ検索、Enter でコード直接補完
-- 詳細は CLAUDE.md「マスタ参照フィールドパターン」参照
-
-### マスタメンテ共通
-- Prism 9 の名前空間: `Prism.Navigation.Regions`（`Prism.Regions` は旧）
-- SP select 未定義のマスタは直接 SELECT クエリで取得
-- usp_employees_upsert は @row_version 不要

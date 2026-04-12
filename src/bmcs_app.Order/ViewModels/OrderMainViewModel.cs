@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Windows;
 using bmcs_app.Core.Interfaces;
 using bmcs_app.Core.Models;
+using bmcs_app.Core.Services;
 using bmcs_app.Order.Services;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -109,30 +110,13 @@ public class OrderMainViewModel : BindableBase
     public decimal TaxExcludedTotal => Lines.Sum(l => l.LineAmount);
 
     public decimal ExternalTaxTotal
-    {
-        get
-        {
-            var externalLines = Lines.Where(l => l.TaxType?.TaxTypeId == 1 && l.AppliedTaxRate > 0);
-            if (_isLineTaxCalc)
-                return externalLines.Sum(l => l.LineTaxAmount);
-            return externalLines
-                .GroupBy(l => l.AppliedTaxRate)
-                .Sum(g => Math.Floor(g.Sum(l => l.LineAmount) * g.Key));
-        }
-    }
+        => TaxCalculator.CalcExternalTaxTotal(Lines.Select(ToTaxLine), _isLineTaxCalc);
 
     public decimal InternalTaxTotal
-    {
-        get
-        {
-            var internalLines = Lines.Where(l => l.TaxType?.TaxTypeId == 2 && l.AppliedTaxRate > 0);
-            if (_isLineTaxCalc)
-                return internalLines.Sum(l => l.LineTaxAmount);
-            return internalLines
-                .GroupBy(l => l.AppliedTaxRate)
-                .Sum(g => Math.Floor(g.Sum(l => l.LineAmount) * g.Key / (1 + g.Key)));
-        }
-    }
+        => TaxCalculator.CalcInternalTaxTotal(Lines.Select(ToTaxLine), _isLineTaxCalc);
+
+    private static TaxLineInput ToTaxLine(OrderLineViewModel l)
+        => new(l.TaxType?.TaxTypeId ?? 0, l.AppliedTaxRate, l.LineAmount, l.LineTaxAmount);
 
     public decimal TaxTotal    => ExternalTaxTotal + InternalTaxTotal;
     public decimal GrandTotal  => TaxExcludedTotal + ExternalTaxTotal;
@@ -310,7 +294,7 @@ public class OrderMainViewModel : BindableBase
     private void LoadSlip(OrderSlip slip)
     {
         IsLocked         = slip.HasSales;
-        _isLineTaxCalc   = ResolveIsLineTaxCalc(slip.TaxCalcUnitId);
+        _isLineTaxCalc   = TaxCalculator.IsLineTaxCalc(slip.TaxCalcUnitId);
         EditOrderNo      = slip.OrderNo;
         EditOrderDate    = slip.OrderDate.ToDateTime(TimeOnly.MinValue);
         EditCustomerCode = slip.CustomerCode;
@@ -386,7 +370,7 @@ public class OrderMainViewModel : BindableBase
         EditCustomerCode  = c.CustomerCode;
         EditCustomerName  = c.CustomerName;
         _editCustomerId   = c.CustomerId;
-        _isLineTaxCalc    = ResolveIsLineTaxCalc(c.TaxCalcUnitId);
+        _isLineTaxCalc    = TaxCalculator.IsLineTaxCalc(c.TaxCalcUnitId);
         PropagateLineTaxCalcToLines();
 
         if (c.EmployeeId.HasValue)
@@ -437,7 +421,7 @@ public class OrderMainViewModel : BindableBase
         var orderDate = EditOrderDate.HasValue
             ? DateOnly.FromDateTime(EditOrderDate.Value)
             : DateOnly.FromDateTime(DateTime.Today);
-        line.AppliedTaxRate = GetAppliedTaxRate(p.TaxRateType, orderDate);
+        line.AppliedTaxRate = TaxCalculator.GetAppliedTaxRate(_taxRatePeriods, p.TaxRateType, orderDate);
 
         RaiseTotalsChanged();
         line.RequestMoveToQuantity();
@@ -581,30 +565,11 @@ public class OrderMainViewModel : BindableBase
         => _taxRatePeriods = periods.ToList();
 
     // ── 税計算単位 ───────────────────────────────────────────
-    private static bool ResolveIsLineTaxCalc(int taxCalcUnitId) => taxCalcUnitId == 1;
-
     private void PropagateLineTaxCalcToLines()
     {
         foreach (var line in Lines)
             line.IsLineTaxCalc = _isLineTaxCalc;
         RaiseTotalsChanged();
-    }
-
-    private decimal GetAppliedTaxRate(byte taxRateType, DateOnly orderDate)
-    {
-        var period = _taxRatePeriods
-            .Where(p => p.StartDate <= orderDate && (p.EndDate is null || p.EndDate >= orderDate))
-            .OrderByDescending(p => p.StartDate)
-            .FirstOrDefault();
-        if (period is null) return 0m;
-
-        return taxRateType switch
-        {
-            1 => period.PrimaryTaxRate,
-            2 => period.SecondaryTaxRate,
-            3 => period.TertiaryTaxRate ?? 0m,
-            _ => 0m,
-        };
     }
 
     // ── 伝票番号自動生成 ─────────────────────────────────────

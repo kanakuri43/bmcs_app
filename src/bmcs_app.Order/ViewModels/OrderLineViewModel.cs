@@ -1,4 +1,5 @@
 using bmcs_app.Core.Models;
+using bmcs_app.Core.Services;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -169,17 +170,8 @@ public class OrderLineViewModel : BindableBase
     /// 伝票単位（IsLineTaxCalc=false）の場合は 0。
     /// 外税=金額×税率, 内税=金額×税率÷(1+税率)、切り捨て。
     /// </summary>
-    public decimal LineTaxAmount
-    {
-        get
-        {
-            if (!_isLineTaxCalc) return 0m;
-            if (_appliedTaxRate == 0) return 0m;
-            if (_taxType?.TaxTypeId == 2)
-                return Math.Floor(LineAmount * _appliedTaxRate / (1 + _appliedTaxRate));
-            return Math.Floor(LineAmount * _appliedTaxRate);
-        }
-    }
+    public decimal LineTaxAmount => TaxCalculator.CalcLineTaxAmount(
+        LineAmount, _appliedTaxRate, _taxType?.TaxTypeId ?? 0, _isLineTaxCalc);
 
     public string LineRemarks
     {

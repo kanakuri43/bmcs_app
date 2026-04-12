@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 
-namespace bmcs_app.Order.Helpers;
+namespace bmcs_app.Shared.Helpers;
 
 /// <summary>
 /// Enter キー押下後に次のフォーカス可能要素へ移動する添付プロパティ。
@@ -30,6 +30,7 @@ public static class FocusHelper
     {
         if (d is not UIElement element) return;
 
+        // handledEventsToo=true: KeyBinding が e.Handled=true にした後でも確実に呼ばれる
         if ((bool)e.NewValue)
             element.AddHandler(UIElement.KeyDownEvent, _onKeyDown, handledEventsToo: true);
         else
@@ -41,6 +42,8 @@ public static class FocusHelper
         if (e.Key != Key.Return) return;
 
         var element = (UIElement)sender;
+
+        // KeyBinding のコマンド実行後にフォーカスを移すため Input 優先度でキュー
         element.Dispatcher.BeginInvoke(
             () => element.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next)),
             DispatcherPriority.Input);

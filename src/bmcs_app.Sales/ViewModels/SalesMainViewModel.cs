@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Windows;
 using bmcs_app.Core.Interfaces;
 using bmcs_app.Core.Models;
+using bmcs_app.Core.Services;
 using bmcs_app.Infrastructure;
 using bmcs_app.Sales.Services;
 using Prism.Commands;
@@ -131,32 +132,13 @@ public class SalesMainViewModel : BindableBase
     public decimal TaxExcludedTotal => Lines.Sum(l => l.LineAmount);
 
     public decimal ExternalTaxTotal
-    {
-        get
-        {
-            var externalLines = Lines.Where(l => l.TaxType?.TaxTypeId == 1 && l.AppliedTaxRate > 0);
-            if (_isLineTaxCalc)
-                return externalLines.Sum(l => l.LineTaxAmount);
-            // 伝票単位: 税率ごとに合計金額を集計してから floor
-            return externalLines
-                .GroupBy(l => l.AppliedTaxRate)
-                .Sum(g => Math.Floor(g.Sum(l => l.LineAmount) * g.Key));
-        }
-    }
+        => TaxCalculator.CalcExternalTaxTotal(Lines.Select(ToTaxLine), _isLineTaxCalc);
 
     public decimal InternalTaxTotal
-    {
-        get
-        {
-            var internalLines = Lines.Where(l => l.TaxType?.TaxTypeId == 2 && l.AppliedTaxRate > 0);
-            if (_isLineTaxCalc)
-                return internalLines.Sum(l => l.LineTaxAmount);
-            // 伝票単位: 税率ごとに合計金額を集計してから floor
-            return internalLines
-                .GroupBy(l => l.AppliedTaxRate)
-                .Sum(g => Math.Floor(g.Sum(l => l.LineAmount) * g.Key / (1 + g.Key)));
-        }
-    }
+        => TaxCalculator.CalcInternalTaxTotal(Lines.Select(ToTaxLine), _isLineTaxCalc);
+
+    private static TaxLineInput ToTaxLine(SaleLineViewModel l)
+        => new(l.TaxType?.TaxTypeId ?? 0, l.AppliedTaxRate, l.LineAmount, l.LineTaxAmount);
 
     public decimal TaxTotal    => ExternalTaxTotal + InternalTaxTotal;
     public decimal GrandTotal  => TaxExcludedTotal + ExternalTaxTotal;
@@ -376,7 +358,7 @@ public class SalesMainViewModel : BindableBase
         // 得意先の税計算単位を解決（CustomerCode でキャッシュから検索）
         var customer = _lookup.FindCustomerByCode(slip.CustomerCode);
         _isLineTaxCalc = customer is not null
-            ? ResolveIsLineTaxCalc(customer.TaxCalcUnitId)
+            ? TaxCalculator.IsLineTaxCalc(customer.TaxCalcUnitId)
             : true;
         _editCustomerPostalCode = slip.CustomerPostalCode ?? "";
         _editCustomerAddress1   = slip.CustomerAddress1   ?? "";
@@ -462,7 +444,7 @@ public class SalesMainViewModel : BindableBase
         _editCustomerPostalCode   = c.PostalCode ?? "";
         _editCustomerAddress1     = c.Address1   ?? "";
         _editCustomerAddress2     = c.Address2   ?? "";
-        _isLineTaxCalc            = ResolveIsLineTaxCalc(c.TaxCalcUnitId);
+        _isLineTaxCalc            = TaxCalculator.IsLineTaxCalc(c.TaxCalcUnitId);
         PropagateLineTaxCalcToLines();
 
         if (c.EmployeeId.HasValue)
@@ -514,7 +496,7 @@ public class SalesMainViewModel : BindableBase
         var saleDate = EditSaleDate.HasValue
             ? DateOnly.FromDateTime(EditSaleDate.Value)
             : DateOnly.FromDateTime(DateTime.Today);
-        line.AppliedTaxRate = GetAppliedTaxRate(p.TaxRateType, saleDate);
+        line.AppliedTaxRate = TaxCalculator.GetAppliedTaxRate(_taxRatePeriods,p.TaxRateType, saleDate);
 
         RaiseTotalsChanged();
         line.RequestMoveToQuantity();
@@ -590,7 +572,7 @@ public class SalesMainViewModel : BindableBase
             EditCustomerCode = order.CustomerCode;
             EditCustomerName = order.CustomerName;
             _editCustomerId  = order.CustomerId;
-            _isLineTaxCalc   = ResolveIsLineTaxCalc(order.TaxCalcUnitId);
+            _isLineTaxCalc   = TaxCalculator.IsLineTaxCalc(order.TaxCalcUnitId);
             PropagateLineTaxCalcToLines();
         }
 
@@ -620,7 +602,7 @@ public class SalesMainViewModel : BindableBase
             vm.CostPrice      = l.CostPrice;
             vm.TaxType        = taxType;
             vm.TaxRateType    = l.TaxRateType;
-            vm.AppliedTaxRate = GetAppliedTaxRate(l.TaxRateType, saleDate);
+            vm.AppliedTaxRate = TaxCalculator.GetAppliedTaxRate(_taxRatePeriods,l.TaxRateType, saleDate);
             vm.LineRemarks    = l.LineRemarks ?? "";
             Lines.Add(vm);
         }
@@ -863,33 +845,12 @@ public class SalesMainViewModel : BindableBase
         => _taxRatePeriods = periods.ToList();
 
     // ── 税計算単位 ───────────────────────────────────────────
-    /// <summary>1=明細単位, 2=伝票単位（固定）</summary>
-    private static bool ResolveIsLineTaxCalc(int taxCalcUnitId) => taxCalcUnitId == 1;
-
     /// <summary>現在の _isLineTaxCalc をすべての明細行に反映する</summary>
     private void PropagateLineTaxCalcToLines()
     {
         foreach (var line in Lines)
             line.IsLineTaxCalc = _isLineTaxCalc;
         RaiseTotalsChanged();
-    }
-
-    /// <summary>売上日付と税率タイプから適用税率を求める。該当なしは 0</summary>
-    private decimal GetAppliedTaxRate(byte taxRateType, DateOnly saleDate)
-    {
-        var period = _taxRatePeriods
-            .Where(p => p.StartDate <= saleDate && (p.EndDate is null || p.EndDate >= saleDate))
-            .OrderByDescending(p => p.StartDate)
-            .FirstOrDefault();
-        if (period is null) return 0m;
-
-        return taxRateType switch
-        {
-            1 => period.PrimaryTaxRate,
-            2 => period.SecondaryTaxRate,
-            3 => period.TertiaryTaxRate ?? 0m,
-            _ => 0m,
-        };
     }
 
     // ── 伝票番号自動生成 ─────────────────────────────────────
