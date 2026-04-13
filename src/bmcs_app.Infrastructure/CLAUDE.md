@@ -25,13 +25,20 @@
 |---|---|---|
 | `EmployeeRepository` | `IEmployeeRepository` | GetAllAsync |
 | `CustomerRepository` | `ICustomerRepository` | GetAllAsync（TaxCalcUnitId 含む） |
+| `SupplierRepository` | `ISupplierRepository` | GetAllAsync / UpsertAsync / DeleteAsync |
 | `ProductRepository` | `IProductRepository` | GetAllAsync / UpsertAsync / DeleteAsync |
 | `TaxTypeRepository` | — | GetAllAsync（インターフェースなし） |
 | `TaxRatePeriodRepository` | `ITaxRatePeriodRepository` | GetAllAsync |
+| `OrderRepository` | `IOrderRepository` | GetSummariesAsync / GetBySlipNoAsync / UpsertAsync / DeleteAsync |
 | `SaleRepository` | `ISaleRepository` | GetSummariesAsync / GetBySlipNoAsync / UpsertAsync / DeleteAsync |
-| `CompanyInfoRepository` | — | GetAsync（インターフェースなし）|
 | `ReceiptRepository` | `IReceiptRepository` | GetSummariesAsync / GetByReceiptNoAsync / UpsertAsync / DeleteAsync |
+| `PurchaseOrderRepository` | `IPurchaseOrderRepository` | GetSummariesAsync / GetBySlipNoAsync / UpsertAsync / DeleteAsync |
+| `PurchaseRepository` | `IPurchaseRepository` | GetSummariesAsync / GetBySlipNoAsync / UpsertAsync / DeleteAsync |
+| `PaymentRepository` | `IPaymentRepository` | GetSummariesAsync / GetByPaymentNoAsync / UpsertAsync / DeleteAsync |
+| `CompanyInfoRepository` | — | GetAsync（インターフェースなし）|
 | `PaymentMethodRepository` | `IPaymentMethodRepository` | GetAllAsync |
+| `ClosingRepository` | `IClosingRepository` | 請求・売掛金集計操作 |
+| `SearchRepository` | `ISearchRepository` | GetAllAsync |
 
 ## CompanyInfoRepository
 

@@ -9,6 +9,7 @@ public class SearchRepository : ISearchRepository
     private static string ConnectionString => AppConfig.ConnectionString;
 
     public async Task<IEnumerable<SearchResultItem>> SearchAsync(
+        bool      includeOrders,
         bool      includeSales,
         bool      includeReceipts,
         DateOnly? dateFrom,
@@ -18,6 +19,9 @@ public class SearchRepository : ISearchRepository
         string    aggregationStatus)
     {
         var parts = new List<string>();
+
+        if (includeOrders)
+            parts.Add(BuildOrdersQuery(dateFrom, dateTo, keyword, customerCode, aggregationStatus));
 
         if (includeSales)
             parts.Add(BuildSalesQuery(dateFrom, dateTo, keyword, customerCode, aggregationStatus));
@@ -60,6 +64,31 @@ public class SearchRepository : ISearchRepository
             });
         }
         return list;
+    }
+
+    private static string BuildOrdersQuery(
+        DateOnly? dateFrom, DateOnly? dateTo,
+        string? keyword, string? customerCode, string aggregationStatus)
+    {
+        var where = new List<string> { "o.is_deleted = 0" };
+        if (dateFrom.HasValue)                        where.Add("o.order_date >= @date_from");
+        if (dateTo.HasValue)                          where.Add("o.order_date <= @date_to");
+        if (!string.IsNullOrWhiteSpace(keyword))      where.Add("(o.customer_name LIKE @keyword OR o.product_name LIKE @keyword OR o.slip_remarks LIKE @keyword OR o.line_remarks LIKE @keyword)");
+        if (!string.IsNullOrWhiteSpace(customerCode)) where.Add("o.customer_code = @customer_code");
+        if (aggregationStatus == "unprocessed")       where.Add("NOT EXISTS (SELECT 1 FROM sales s2 WHERE s2.sale_no = o.order_no AND s2.is_deleted = 0)");
+        else if (aggregationStatus == "processed")    where.Add("EXISTS (SELECT 1 FROM sales s2 WHERE s2.sale_no = o.order_no AND s2.is_deleted = 0)");
+
+        return $"""
+            SELECT N'受注' AS slip_type, o.order_no AS slip_no,
+                   MIN(o.order_date) AS slip_date, MAX(o.customer_name) AS customer_name,
+                   SUM(o.quantity * o.unit_price) AS amount,
+                   MAX(CASE WHEN s.sale_no IS NOT NULL THEN N'売上済' ELSE N'未処理' END) AS status,
+                   MAX(ISNULL(o.slip_remarks, N'')) AS remarks
+            FROM orders o
+            LEFT JOIN (SELECT DISTINCT sale_no FROM sales WHERE is_deleted = 0) s ON s.sale_no = o.order_no
+            WHERE {string.Join(" AND ", where)}
+            GROUP BY o.order_no
+            """;
     }
 
     private static string BuildSalesQuery(

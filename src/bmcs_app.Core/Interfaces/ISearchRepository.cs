@@ -5,6 +5,7 @@ namespace bmcs_app.Core.Interfaces;
 public interface ISearchRepository
 {
     Task<IEnumerable<SearchResultItem>> SearchAsync(
+        bool      includeOrders,
         bool      includeSales,
         bool      includeReceipts,
         DateOnly? dateFrom,

@@ -19,11 +19,15 @@
 | bmcs_app.Core | ライブラリ | 共通モデル・インターフェース |
 | bmcs_app.Infrastructure | ライブラリ | DB接続・リポジトリ |
 | bmcs_app.Shared | WPF ライブラリ | 共通 WPF コンポーネント（MasterSearchDialog 等） |
-| bmcs_app.Master | WinExe | マスタ保守（社員・得意先・商品等） |
+| bmcs_app.Master | WinExe | マスタ保守（社員・得意先・仕入先・商品等） |
 | bmcs_app.Order | WinExe | 受注登録 |
 | bmcs_app.Sales | WinExe | 売上登録 |
 | bmcs_app.Receipt | WinExe | 入金登録 |
 | bmcs_app.Closing | WinExe | 請求集計・売掛金集計 |
+| bmcs_app.Search | WinExe | 伝票横断検索 |
+| bmcs_app.PurchaseOrder | WinExe | 発注登録 |
+| bmcs_app.Purchase | WinExe | 仕入登録 |
+| bmcs_app.Payment | WinExe | 支払登録 |
 
 ## アーキテクチャ方針
 

@@ -22,13 +22,17 @@ Process.Start(new ProcessStartInfo(path)
 
 | ボタン | コマンド | CommandParameter |
 |---|---|---|
-| 受注登録 | `LaunchCommand` | `bmcs_app.Order.exe`（IsEnabled=False） |
+| 受注登録 | `LaunchCommand` | `bmcs_app.Order.exe` |
 | 売上登録 | `LaunchCommand` | `bmcs_app.Sales.exe` |
 | 入金登録 | `LaunchCommand` | `bmcs_app.Receipt.exe` |
-| 請求集計 | `LaunchCommand` | `bmcs_app.Closing.exe` |
+| 請求管理 | `LaunchCommand` | `bmcs_app.Closing.exe` |
+| 発注登録 | `LaunchCommand` | `bmcs_app.PurchaseOrder.exe` |
+| 仕入登録 | `LaunchCommand` | `bmcs_app.Purchase.exe` |
+| 支払登録 | `LaunchCommand` | `bmcs_app.Payment.exe` |
 | 伝票検索 | `LaunchCommand` | `bmcs_app.Search.exe` |
 | 社員マスタ | `LaunchCommand` | `bmcs_app.Master.exe` |
 | 得意先マスタ | `LaunchCommand` | `bmcs_app.Master.exe --master=customer` |
+| 仕入先マスタ | `LaunchCommand` | `bmcs_app.Master.exe --master=supplier` |
 | 商品マスタ | `LaunchCommand` | `bmcs_app.Master.exe --master=product` |
 | 消費税率 | `LaunchCommand` | `bmcs_app.Master.exe --master=taxrate` |
 | プリンタ設定 | `OpenPrinterSettingsCommand` | — |

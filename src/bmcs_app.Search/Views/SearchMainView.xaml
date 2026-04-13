@@ -33,15 +33,15 @@
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
 
                     <TextBlock Text="種別:" VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <RadioButton Content="両方" GroupName="SlipType"
-                                 IsChecked="{Binding SlipTypeBoth}"
-                                 VerticalAlignment="Center" Margin="0,0,10,0" />
-                    <RadioButton Content="売上" GroupName="SlipType"
-                                 IsChecked="{Binding SlipTypeSalesOnly}"
-                                 VerticalAlignment="Center" Margin="0,0,10,0" />
-                    <RadioButton Content="入金" GroupName="SlipType"
-                                 IsChecked="{Binding SlipTypeReceiptsOnly}"
-                                 VerticalAlignment="Center" Margin="0,0,28,0" />
+                    <CheckBox Content="受注"
+                              IsChecked="{Binding IncludeOrders}"
+                              VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <CheckBox Content="売上"
+                              IsChecked="{Binding IncludeSales}"
+                              VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <CheckBox Content="入金"
+                              IsChecked="{Binding IncludeReceipts}"
+                              VerticalAlignment="Center" Margin="0,0,28,0" />
 
                     <TextBlock Text="日付:" VerticalAlignment="Center" Margin="0,0,6,0" />
                     <DatePicker SelectedDate="{Binding DateFrom}" Width="114" />

@@ -15,29 +15,26 @@ public class SearchMainViewModel : BindableBase
 
     // ===== 種別 =====
 
-    private bool _slipTypeBoth = true;
-    public bool SlipTypeBoth
+    private bool _includeOrders = true;
+    public bool IncludeOrders
     {
-        get => _slipTypeBoth;
-        set => SetProperty(ref _slipTypeBoth, value);
+        get => _includeOrders;
+        set => SetProperty(ref _includeOrders, value);
     }
 
-    private bool _slipTypeSalesOnly;
-    public bool SlipTypeSalesOnly
+    private bool _includeSales = true;
+    public bool IncludeSales
     {
-        get => _slipTypeSalesOnly;
-        set => SetProperty(ref _slipTypeSalesOnly, value);
+        get => _includeSales;
+        set => SetProperty(ref _includeSales, value);
     }
 
-    private bool _slipTypeReceiptsOnly;
-    public bool SlipTypeReceiptsOnly
+    private bool _includeReceipts = true;
+    public bool IncludeReceipts
     {
-        get => _slipTypeReceiptsOnly;
-        set => SetProperty(ref _slipTypeReceiptsOnly, value);
+        get => _includeReceipts;
+        set => SetProperty(ref _includeReceipts, value);
     }
-
-    private bool IncludeSales    => SlipTypeBoth || SlipTypeSalesOnly;
-    private bool IncludeReceipts => SlipTypeBoth || SlipTypeReceiptsOnly;
 
     // ===== 日付 =====
 
@@ -115,8 +112,8 @@ public class SearchMainViewModel : BindableBase
 
     public SearchMainViewModel(ISearchRepository repo)
     {
-        _repo          = repo;
-        SearchCommand  = new DelegateCommand(async () => await OnSearchAsync());
+        _repo           = repo;
+        SearchCommand   = new DelegateCommand(async () => await OnSearchAsync());
         OpenSlipCommand = new DelegateCommand(OnOpenSlip, () => SelectedResult is not null);
     }
 
@@ -124,9 +121,15 @@ public class SearchMainViewModel : BindableBase
     {
         if (SelectedResult is null) return;
 
-        var exeName = SelectedResult.SlipType == "売上"
-            ? "bmcs_app.Sales.exe"
-            : "bmcs_app.Receipt.exe";
+        var exeName = SelectedResult.SlipType switch
+        {
+            "売上" => "bmcs_app.Sales.exe",
+            "入金" => "bmcs_app.Receipt.exe",
+            "受注" => "bmcs_app.Order.exe",
+            _      => null,
+        };
+
+        if (exeName is null) return;
 
         var dir  = AppDomain.CurrentDomain.BaseDirectory;
         var path = Path.Combine(dir, exeName);
@@ -147,7 +150,7 @@ public class SearchMainViewModel : BindableBase
 
     private async Task OnSearchAsync()
     {
-        if (!IncludeSales && !IncludeReceipts)
+        if (!IncludeOrders && !IncludeSales && !IncludeReceipts)
         {
             StatusMessage = "種別を1つ以上選択してください。";
             return;
@@ -168,7 +171,7 @@ public class SearchMainViewModel : BindableBase
             };
 
             var results = await _repo.SearchAsync(
-                IncludeSales, IncludeReceipts,
+                IncludeOrders, IncludeSales, IncludeReceipts,
                 dateFrom, dateTo,
                 string.IsNullOrWhiteSpace(Keyword)      ? null : Keyword,
                 string.IsNullOrWhiteSpace(CustomerCode) ? null : CustomerCode,
