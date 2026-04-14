@@ -121,12 +121,12 @@ public class SearchMainViewModel : BindableBase
     {
         if (SelectedResult is null) return;
 
-        var exeName = SelectedResult.SlipType switch
+        var (exeName, argName) = SelectedResult.SlipType switch
         {
-            "売上" => "bmcs_app.Sales.exe",
-            "入金" => "bmcs_app.Receipt.exe",
-            "受注" => "bmcs_app.Order.exe",
-            _      => null,
+            "売上" => ("bmcs_app.Sales.exe",   "--slip-no="),
+            "入金" => ("bmcs_app.Receipt.exe",  "--slip-no="),
+            "受注" => ("bmcs_app.Order.exe",    "--order-no="),
+            _      => (null, null),
         };
 
         if (exeName is null) return;
@@ -144,7 +144,7 @@ public class SearchMainViewModel : BindableBase
         Process.Start(new ProcessStartInfo(path)
         {
             UseShellExecute = true,
-            Arguments       = $"--slip-no={SelectedResult.SlipNo}",
+            Arguments       = $"{argName}{SelectedResult.SlipNo}",
         });
     }
 
