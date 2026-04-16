@@ -9,8 +9,18 @@
 ## ビジネスルール
 - 仕入は CRUD 対応
 - ロックカラム: `ap_closing_at`（買掛金集計済みなら編集・削除不可）
-- Sales の `invoiced_at` / `ar_aggregated_at`（2カラム）に対し、仕入側は `ap_closing_at`（1カラム）のみ
+  - Sales の `invoiced_at` / `ar_aggregated_at`（2カラム）に対し、仕入側は請求締めがないため `ap_closing_at`（1カラム）のみ
+  - 将来の買掛金集計（Closing 拡張）のために確保しているカラム
 - 発注No. を任意で紐付け可能（`purchase_order_id` / `purchase_order_no`）
+
+## 採番ルール
+- 仕入No.: `yyyyMMddnnn` 形式（例: `20260413001`）
+- 既存の受注・売上・発注・支払と統一
+
+## 税計算
+- `bmcs_app.Core/Services/TaxCalculator` を流用（売上・受注と同一ロジック）
+- `TaxCalculator.GetAppliedTaxRate` で日付・税率タイプから適用税率を決定
+- `TaxCalculator.CalcLineTaxAmount` / `CalcExternalTaxTotal` で税額を計算
 
 ## 売上側との対応
 

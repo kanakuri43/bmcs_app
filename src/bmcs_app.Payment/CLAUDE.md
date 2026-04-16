@@ -9,8 +9,14 @@
 ## ビジネスルール
 - 支払は CRUD 対応
 - ロックカラム: `ap_closing_at`（買掛金集計済みなら編集・削除不可）
-- 支払区分は入金側と同じ `payment_method_classifications` テーブルを流用
+  - Sales の `invoiced_at` / `ar_aggregated_at` に相当するが、仕入側は請求締めがないため `ap_closing_at`（1カラム）のみ
+  - 将来の買掛金集計（Closing 拡張）のために確保しているカラム
+- 支払区分は入金側と同じ `payment_method_classifications` テーブルを流用（別テーブル化不要）
 - 手形区分選択時のみ `bill_due_date`（手形期日）DatePicker を表示
+
+## 採番ルール
+- 支払No.: `yyyyMMddnnn` 形式（例: `20260413001`）
+- 既存の受注・売上・発注・仕入と統一
 
 ## 入金側との対応
 

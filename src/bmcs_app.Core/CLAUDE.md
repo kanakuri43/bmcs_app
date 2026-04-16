@@ -29,6 +29,23 @@
 | `ReceiptSlip` | 入金伝票読み込みモデル（ヘッダ + `List<ReceiptLine>` + `IsLocked`。`CustomerPostalCode?` / `CustomerAddress1?` / `CustomerAddress2?` を持つ） |
 | `InvoiceHeader` | 請求ヘッダーモデル（`CustomerPostalCode?` / `CustomerAddress1?` / `CustomerAddress2?` を持つ。集計時点の住所を保持） |
 
+## Services
+
+| クラス | 用途 |
+|---|---|
+| `TaxCalculator` | 税計算共通ロジック（static、副作用なし）。Order / Sales / PurchaseOrder / Purchase で共用 |
+
+### TaxCalculator メソッド
+
+| メソッド | 説明 |
+|---|---|
+| `GetAppliedTaxRate(periods, taxRateType, date)` | 日付と税率タイプから適用税率を決定（期間マスタ参照）|
+| `CalcLineTaxAmount(lineAmount, taxRate, taxTypeId, isLineTaxCalc)` | 行税額計算（外税/内税を切捨で計算。伝票単位 or 税率0 は 0 を返す） |
+| `CalcExternalTaxTotal(lines, isLineTaxCalc)` | 外税合計（明細単位: 行税額合計、伝票単位: 税率グループ別合計） |
+| `CalcInternalTaxTotal(lines, isLineTaxCalc)` | 内税合計（同上） |
+
+---
+
 ## Interfaces
 
 | インターフェース | 実装 |

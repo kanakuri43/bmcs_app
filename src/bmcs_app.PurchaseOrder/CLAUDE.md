@@ -9,7 +9,17 @@
 ## ビジネスルール
 - 発注は CRUD 対応（仕入登録済みの発注は変更・削除不可）
 - 仕入登録済みフラグ `has_purchases` は `usp_purchase_orders_select` が動的計算して返す
+  - 1件でも仕入が起票された発注は `has_purchases=true` → 削除・編集不可（売上側 `orders.HasSales` と同様）
 - 変更・削除可否は `usp_purchase_orders_upsert` / `usp_purchase_orders_delete` でもチェックされる
+
+## 採番ルール
+- 発注No.: `yyyyMMddnnn` 形式（例: `20260413001`）
+- 既存の受注・売上・仕入・支払と統一
+
+## 税計算
+- `bmcs_app.Core/Services/TaxCalculator` を流用（売上・受注と同一ロジック）
+- `TaxCalculator.GetAppliedTaxRate` で日付・税率タイプから適用税率を決定
+- `TaxCalculator.CalcLineTaxAmount` / `CalcExternalTaxTotal` で税額を計算
 
 ## 売上側との対応
 
