@@ -1,6 +1,102 @@
 # タスク管理
 
-## 実装済みモジュール
+## 在庫管理実装ロードマップ
+
+### 在庫数の考え方
+```
+現在庫 = 最新棚卸数量
+        + SUM(purchase_lines.quantity  WHERE purchase_date > last_count_date AND is_deleted=0)
+        - SUM(sale_lines.quantity      WHERE sale_date     > last_count_date AND is_deleted=0)
+```
+棚卸が一度もない商品は現在庫 = NULL（表示上は「未棚卸」）
+
+---
+
+## Phase 1: DB テーブル設計
+
+### [x] inventory_counts（棚卸、1テーブル）
+既存の sales / purchases / orders と同じフラット設計（ヘッダー情報を各行に持つ）。
+棚卸は相手方がないため列がさらにシンプル。
+
+```sql
+CREATE TABLE inventory_counts (
+    inventory_count_id  int            IDENTITY(1,1) PRIMARY KEY,
+    count_date          date           NOT NULL,       -- 棚卸日（グルーピングキー）
+    product_id          int            NOT NULL REFERENCES products(product_id),
+    quantity            decimal(10,2)  NOT NULL,
+    note                nvarchar(200)  NULL,
+    created_at          datetime       NOT NULL DEFAULT GETDATE(),
+    row_version         rowversion
+);
+-- 同一日×同一商品の重複を防ぐ
+CREATE UNIQUE INDEX uix_inventory_counts_date_product
+    ON inventory_counts (count_date, product_id);
+```
+
+---
+
+## Phase 2: ストアドプロシージャ
+
+### [x] usp_inventory_count_upsert
+- 引数: `@count_date DATE`, `@lines NVARCHAR(MAX)`（JSON: `[{product_id, quantity, note}, ...]`）
+- 対象日の全行を DELETE → JSON から INSERT（日単位の全置換）
+- 1テーブルなのでヘッダー操作不要
+
+### [x] usp_inventory_count_delete
+- 引数: `@count_date DATE`（日単位削除）または `@inventory_count_id INT`（1行削除）
+
+### [x] usp_inventory_current_get（現在庫照会）
+- 引数: `@product_id INT NULL`（NULL = 全商品）
+- 返却列: `product_id`, `product_code`, `product_name`,
+  `last_count_date`, `last_count_qty`, `purchase_qty`, `sale_qty`, `current_stock`
+- ロジック（JOINが1段、sales/purchases がフラットなのでシンプル）:
+  1. 商品ごとの最新棚卸: `MAX(count_date)` per `product_id`
+  2. その `count_date` より後の `purchases.quantity`（is_deleted=0）を集計
+  3. その `count_date` より後の `sales.quantity`（is_deleted=0）を集計
+  4. `current_stock = last_count_qty + purchase_qty - sale_qty`
+  5. 棚卸なし商品: `last_count_date=NULL, current_stock=NULL`
+
+---
+
+## Phase 3: bmcs_app.Inventory プロジェクト
+
+### [x] プロジェクト新規作成
+- 種別: WinExe（既存プロジェクトと同パターン）
+- 参照: bmcs_app.Core / bmcs_app.Infrastructure / bmcs_app.Shared
+- 出力先: `bin/Debug/`（Directory.Build.props 継承）
+
+### [x] 在庫照会画面（読み取り専用）
+**ファイル:**
+- `Views/InventoryInquiryView.xaml`
+- `ViewModels/InventoryInquiryViewModel.cs`
+
+### [x] 棚卸入力画面
+**ファイル:**
+- `Views/InventoryCountView.xaml`
+- `ViewModels/InventoryCountViewModel.cs`
+- `ViewModels/InventoryCountLineViewModel.cs`（明細行用）
+
+**Infrastructure:**
+- `IInventoryCountRepository` (Core/Interfaces)
+- `InventoryCountRepository` (Infrastructure/Repositories)
+- `IInventoryCurrentRepository` / `InventoryCurrentRepository` (照会専用)
+- `Services/LookupService.cs`（商品マスタキャッシュ）
+
+### [x] App.xaml.cs
+- `InventoryCountRepository` / `InventoryCurrentRepository` をインスタンス化
+- `LookupService.Initialize(products)` で商品マスタをキャッシュ
+- 在庫照会画面起動、「棚卸入力」ボタンで棚卸入力ウィンドウをオンデマンド起動
+
+---
+
+## Phase 4: ランチャー統合
+
+### [x] bmcs_app（ランチャー）にボタン追加
+- 「在庫管理」ボタン → `bmcs_app.Inventory.exe` を `Process.Start` で起動
+
+---
+
+## 実装済みモジュール（参考）
 
 | モジュール | 状態 |
 |---|---|
@@ -14,8 +110,6 @@
 | bmcs_app.PurchaseOrder（発注登録） | 完了 |
 | bmcs_app.Purchase（仕入登録） | 完了 |
 | bmcs_app.Payment（支払登録） | 完了 |
-| bmcs_app.Shared/Helpers/FocusHelper.cs | 完了（Sales/Order/Receipt/Purchase/PurchaseOrder/Payment 共用） |
-| bmcs_app.Core/Services/TaxCalculator.cs | 完了（Sales/Order/Purchase/PurchaseOrder 共用） |
 
 ---
 
@@ -26,42 +120,4 @@
 - 現在は「全得意先」のみ動作し「指定」RadioButton は `IsEnabled=False`
 - `usp_invoice_closing` / `usp_ar_closing` は `@customer_id` パラメータ対応済み（SP側は完成）
 - **残作業**: View の RadioButton 有効化 + 得意先コード欄の入力 → `@customer_id` を ViewModel から SP に渡す
-- **残作業**: 請求残高一覧表・売掛金残高一覧表 （レポートおよびCSV出力）
-
----
-
-## 新規機能: 発注・仕入・支払
-
-受注→売上→入金 の対称処理として、発注→仕入→支払 を追加する。
-
-### 対応関係
-
-| 売上側 | 仕入側 | 備考 |
-|---|---|---|
-| 受注 (orders / bmcs_app.Order) | 発注 (purchase_orders / bmcs_app.PurchaseOrder) | |
-| 売上 (sales / bmcs_app.Sales) | 仕入 (purchases / bmcs_app.Purchase) | |
-| 入金 (receipts / bmcs_app.Receipt) | 支払 (payments / bmcs_app.Payment) | |
-| 得意先 (customers) | 仕入先 (suppliers) ※新規マスタ | |
-
----
-
-## 設計上の注意点
-
-### ロックカラム
-- `purchases.ap_closing_at` / `payments.ap_closing_at`: 買掛金締め処理でセット
-- `sales` の `invoiced_at` / `ar_aggregated_at` に相当するが、仕入側は請求締めがないため1カラムで十分
-- 将来の買掛金集計（Closing 拡張）のために確保しておく
-
-### 発注の has_purchases フラグ
-- 売上側の `orders.HasSales` に相当
-- 1件でも仕入が起票された発注は `has_purchases=true` → 発注削除不可
-
-### 採番ルール
-- 既存と統一: `yyyyMMddnnn` 形式（例: 2026041300１）
-
-### 税計算
-- 仕入・発注は既存の `TaxCalculator` をそのまま流用可
-
-### payment_method_classifications の流用
-- 支払区分（現金・手形等）は入金側の `payment_method_classifications` テーブルをそのまま共用
-- 別テーブル化は不要
+- **残作業**: 請求残高一覧表・売掛金残高一覧表（レポートおよびCSV出力）

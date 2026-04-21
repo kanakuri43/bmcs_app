@@ -29,6 +29,15 @@
 | bmcs_app.Purchase | WinExe | 仕入登録 |
 | bmcs_app.Payment | WinExe | 支払登録 |
 
+### 売掛・買掛の対応関係
+
+| 売上側 | 仕入側 |
+|---|---|
+| 受注 (orders / bmcs_app.Order) | 発注 (purchase_orders / bmcs_app.PurchaseOrder) |
+| 売上 (sales / bmcs_app.Sales) | 仕入 (purchases / bmcs_app.Purchase) |
+| 入金 (receipts / bmcs_app.Receipt) | 支払 (payments / bmcs_app.Payment) |
+| 得意先 (customers) | 仕入先 (suppliers) |
+
 ## アーキテクチャ方針
 
 ### SDI（Single Document Interface）

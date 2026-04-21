@@ -146,7 +146,10 @@
       "Bash(Select-Object -ExpandProperty Source)",
       "Read(//c/Program Files/Microsoft SQL Server/**)",
       "PowerShell($sqlcmd = \\(Get-ChildItem \"C:\\\\Program Files\\\\Microsoft SQL Server\" -Recurse -Filter \"sqlcmd.exe\" -ErrorAction SilentlyContinue | Select-Object -First 1\\).FullName; Write-Output $sqlcmd)",
-      "PowerShell(Get-Command:*)"
+      "PowerShell(Get-Command:*)",
+      "PowerShell([System.Guid]::NewGuid\\(\\).ToString\\(\"B\"\\).ToUpper\\(\\))",
+      "PowerShell(Start-Process \"C:\\\\Users\\\\User3292\\\\source\\\\repos\\\\bmcs_app\\\\bin\\\\Debug\\\\bmcs_app.Inventory.exe\")",
+      "PowerShell(Stop-Process *)"
     ]
   }
 }

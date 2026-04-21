@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -9,15 +10,29 @@ namespace bmcs_app.ViewModels;
 
 public class MainWindowViewModel : BindableBase
 {
-    public DelegateCommand<string> LaunchCommand                 { get; }
-    public DelegateCommand         OpenPrinterSettingsCommand    { get; }
+    public DelegateCommand<string> LaunchCommand                  { get; }
+    public DelegateCommand         OpenPrinterSettingsCommand     { get; }
     public DelegateCommand         OpenCompanyInfoSettingsCommand { get; }
 
-    public MainWindowViewModel()
+    public bool IsSettingsEnabled { get; }
+
+    private readonly HashSet<string>? _allowedExes;
+
+    public MainWindowViewModel(PermissionLevel level = PermissionLevel.Full)
     {
-        LaunchCommand                 = new DelegateCommand<string>(Launch);
-        OpenPrinterSettingsCommand    = new DelegateCommand(OpenPrinterSettings);
-        OpenCompanyInfoSettingsCommand = new DelegateCommand(OpenCompanyInfoSettings);
+        _allowedExes       = PermissionPolicy.GetAllowedExes(level);
+        IsSettingsEnabled  = PermissionPolicy.IsSettingsEnabled(level);
+
+        LaunchCommand                  = new DelegateCommand<string>(Launch, CanLaunch);
+        OpenPrinterSettingsCommand     = new DelegateCommand(OpenPrinterSettings,     () => IsSettingsEnabled);
+        OpenCompanyInfoSettingsCommand = new DelegateCommand(OpenCompanyInfoSettings, () => IsSettingsEnabled);
+    }
+
+    private bool CanLaunch(string? exeNameWithArgs)
+    {
+        if (_allowedExes is null || exeNameWithArgs is null) return true;
+        var exeName = exeNameWithArgs.Split(' ', 2)[0];
+        return _allowedExes.Contains(exeName);
     }
 
     private static void OpenPrinterSettings()

@@ -1,0 +1,200 @@
+<mah:MetroWindow x:Class="bmcs_app.Inventory.Views.InventoryCountView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+    xmlns:h="clr-namespace:bmcs_app.Shared.Helpers;assembly=bmcs_app.Shared"
+    xmlns:local="clr-namespace:bmcs_app.Inventory.Views"
+    Title="棚卸入力"
+    Height="720" Width="1100"
+    WindowStartupLocation="CenterScreen"
+    WindowTransitionsEnabled="False"
+    FocusManager.FocusedElement="{Binding ElementName=CountDatePicker}">
+
+    <Window.InputBindings>
+        <KeyBinding Key="F2"  Command="{Binding AddLineCommand}" />
+        <KeyBinding Key="F3"  Command="{Binding NewCommand}" />
+        <KeyBinding Key="F8"  Command="{Binding DeleteCommand}" />
+        <KeyBinding Key="F10" Command="{Binding SaveCommand}" />
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />  <!-- ToolBar -->
+            <RowDefinition Height="Auto" />  <!-- ヘッダー -->
+            <RowDefinition Height="*"    />  <!-- 明細 -->
+            <RowDefinition Height="Auto" />  <!-- フッター -->
+            <RowDefinition Height="Auto" />  <!-- StatusBar -->
+        </Grid.RowDefinitions>
+
+        <!-- ===== ToolBar ===== -->
+        <ToolBar Grid.Row="0" ToolBarTray.IsLocked="True">
+            <Button Command="{Binding NewCommand}"
+                    Content="新規 (F3)"
+                    ToolTip="新しい棚卸を作成します (F3)" />
+            <Separator />
+            <Button Command="{Binding PrevCountCommand}"
+                    Content="|◀"
+                    ToolTip="前の棚卸"
+                    Style="{DynamicResource MahApps.Styles.Button.Flat}" />
+            <Button Command="{Binding NextCountCommand}"
+                    Content="▶|"
+                    ToolTip="次の棚卸"
+                    Style="{DynamicResource MahApps.Styles.Button.Flat}" />
+            <Separator />
+            <TextBlock Text="登録件数:"
+                       VerticalAlignment="Center"
+                       Margin="4,0,2,0"
+                       Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+            <TextBlock Text="{Binding TotalCountDates}"
+                       VerticalAlignment="Center"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource MahApps.Brushes.Accent}" />
+        </ToolBar>
+
+        <!-- ===== 棚卸ヘッダー ===== -->
+        <Border Grid.Row="1"
+                Padding="12,8"
+                BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                BorderThickness="0,0,0,1"
+                Background="{DynamicResource MahApps.Brushes.Gray10}">
+            <StackPanel>
+
+                <!-- 行1: 棚卸日付 -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="58"  />
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="*"   />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="棚卸日付" VerticalAlignment="Center" />
+                    <DatePicker x:Name="CountDatePicker"
+                                Grid.Column="1"
+                                SelectedDate="{Binding EditCountDate}"
+                                SelectedDateFormat="Short"
+                                h:FocusHelper.MoveNextOnEnter="True" />
+                </Grid>
+
+                <!-- 行2: 備考 -->
+                <Grid Margin="0,6,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="58" />
+                        <ColumnDefinition Width="*"  />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="備考" VerticalAlignment="Center" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding EditNote, UpdateSourceTrigger=PropertyChanged}"
+                             mah:TextBoxHelper.Watermark="（任意）"
+                             MaxLength="200">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding HeaderNoteEnterCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                </Grid>
+
+            </StackPanel>
+        </Border>
+
+        <!-- ===== 明細 ===== -->
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />  <!-- 列ヘッダー -->
+                <RowDefinition Height="*"    />  <!-- 明細行リスト -->
+                <RowDefinition Height="Auto" />  <!-- 行追加ボタン -->
+            </Grid.RowDefinitions>
+
+            <!-- 列ヘッダー -->
+            <Border Grid.Row="0"
+                    BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                    BorderThickness="0,1,0,1"
+                    Background="{DynamicResource MahApps.Brushes.Gray10}"
+                    Padding="0,3">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="36"  />
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="*"   />
+                        <ColumnDefinition Width="90"  />
+                        <ColumnDefinition Width="200" />
+                        <ColumnDefinition Width="28"  />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text=""        HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="1" Text="商品コード" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="2" Text="商品名"    Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="3" Text="数量"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="4" Text="備考"      Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                </Grid>
+            </Border>
+
+            <!-- 明細行リスト -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="LinesContainer" ItemsSource="{Binding Lines}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <local:InventoryCountLineControl />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- 行追加ボタン -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="4,2,4,4">
+                <Button Command="{Binding AddLineCommand}"
+                        Content="行追加 (F2)"
+                        ToolTip="明細行を追加します (F2)"
+                        Padding="8,2" />
+            </StackPanel>
+        </Grid>
+
+        <!-- ===== フッター: 商品数 + 操作ボタン ===== -->
+        <Border Grid.Row="3"
+                Padding="12,8"
+                BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*"    />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 商品数 -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,20,0">
+                    <TextBlock Text="《商品数》"
+                               FontSize="11"
+                               Foreground="{DynamicResource MahApps.Brushes.Gray3}"
+                               Margin="0,0,0,2" />
+                    <TextBox Text="{Binding LineCount, StringFormat={}{0} 件, Mode=OneWay}"
+                             IsReadOnly="True"
+                             TextAlignment="Right"
+                             FontWeight="Bold"
+                             FontSize="14"
+                             Width="100" />
+                </StackPanel>
+
+                <!-- 操作ボタン（縦並び: 保存 / 削除） -->
+                <StackPanel Grid.Column="2"
+                            Orientation="Vertical"
+                            VerticalAlignment="Center"
+                            Width="110">
+                    <Button Command="{Binding SaveCommand}"
+                            Content="保存 (F10)"
+                            ToolTip="棚卸内容を保存します (F10)"
+                            Margin="0,0,0,4"
+                            Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" />
+                    <Button Command="{Binding DeleteCommand}"
+                            Content="削除 (F8)"
+                            ToolTip="この棚卸日の記録を削除します (F8)" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ===== StatusBar ===== -->
+        <StatusBar Grid.Row="4">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" />
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</mah:MetroWindow>
