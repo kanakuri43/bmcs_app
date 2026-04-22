@@ -188,3 +188,31 @@ public class PrinterSettingsConfig
 - INSERT / UPDATE / DELETE は必ず SP 経由（`usp_{entity}_{operation}`）
 - null 許容パラメータは `(object?)value ?? DBNull.Value` で渡す
 - **`OnStartup`（UI スレッド）で `GetAllAsync().GetAwaiter().GetResult()` は禁止**（デッドロック）。代わりに ViewModel の `_ = LoadAsync()` で非同期ロードする
+
+## DBスキーマ・SP確認ルール【必須】
+
+**ソースファイル（`.sql`）やドキュメントはライブDBと乖離している場合がある。**
+**テーブル定義・SPを参照・修正するときは必ずライブDBに直接クエリして実態を確認すること。**
+
+```bash
+# テーブル定義確認
+sqlcmd -S 172.16.6.11 -d bmcs_db -U sa -P Sapassword1 \
+  -Q "SELECT COLUMN_NAME,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,IS_NULLABLE \
+      FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='xxx' ORDER BY ORDINAL_POSITION"
+
+# SP定義確認
+sqlcmd -S 172.16.6.11 -d bmcs_db -U sa -P Sapassword1 \
+  -Q "SELECT OBJECT_DEFINITION(OBJECT_ID('usp_xxx'))"
+
+# SP一覧
+sqlcmd -S 172.16.6.11 -d bmcs_db -U sa -P Sapassword1 \
+  -Q "SELECT name FROM sys.procedures ORDER BY name"
+
+# 外部キー制約確認
+sqlcmd -S 172.16.6.11 -d bmcs_db -U sa -P Sapassword1 \
+  -Q "SELECT fk.name, tp.name AS parent_table, ref.name AS ref_table \
+      FROM sys.foreign_keys fk \
+      JOIN sys.tables tp ON fk.parent_object_id=tp.object_id \
+      JOIN sys.tables ref ON fk.referenced_object_id=ref.object_id \
+      WHERE tp.name='xxx' OR ref.name='xxx'"
+```

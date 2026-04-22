@@ -422,7 +422,10 @@ WHERE customer_id = @customer_id AND sale_date <= @closing_date AND invoiced_at 
 - インボイス制度対応（税率・登録番号管理）
 - 非同期は async/await 統一
 - DB操作（CRUD）はすべてStoredProcedure経由
-- **DBスキーマはライブDBに直接クエリして確認する（コードに転記しない）**
+- **DBスキーマ・SPは必ずライブDBに直接クエリして確認する（ソースファイル・ドキュメントは古い可能性がある）**
+  - テーブル定義: `sqlcmd -S 172.16.6.11 -d bmcs_db -U sa -P Sapassword1 -Q "SELECT COLUMN_NAME,DATA_TYPE,IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='xxx' ORDER BY ORDINAL_POSITION"`
+  - SP定義: `sqlcmd -S 172.16.6.11 -d bmcs_db -U sa -P Sapassword1 -Q "SELECT OBJECT_DEFINITION(OBJECT_ID('usp_xxx'))"`
+  - SP一覧: `sqlcmd -S 172.16.6.11 -d bmcs_db -U sa -P Sapassword1 -Q "SELECT name FROM sys.procedures ORDER BY name"`
 - null許容（`Nullable enable`）
 - コードビハインドにロジックを書かない（MVVM 徹底）
 - 画面操作全般キーボード操作を基本とする

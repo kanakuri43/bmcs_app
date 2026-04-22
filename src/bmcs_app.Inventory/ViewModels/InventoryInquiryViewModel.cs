@@ -17,6 +17,7 @@ public class InventoryCurrentRow
     public decimal? CurrentStock        { get; init; }
 
     public bool   IsNeverCounted       => LastCountDate is null;
+    public bool   HasNoStockData       => CurrentStock is null;
     public string LastCountDateDisplay => LastCountDate?.ToString("yyyy/MM/dd") ?? string.Empty;
     public string LastCountQtyDisplay  => LastCountQty.HasValue ? LastCountQty.Value.ToString("N2") : string.Empty;
     public string CurrentStockDisplay  => CurrentStock.HasValue ? CurrentStock.Value.ToString("N2") : "未棚卸";

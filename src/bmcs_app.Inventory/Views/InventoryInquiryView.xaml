@@ -49,6 +49,12 @@
                         <KeyBinding Key="Return" Command="{Binding SearchCommand}" />
                     </TextBox.InputBindings>
                 </TextBox>
+                <TextBlock Grid.Column="2"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Foreground="{DynamicResource MahApps.Brushes.Gray3}"
+                           FontSize="11"
+                           Text="※ 現在庫数 = 最終棚卸数量 ＋ 棚卸日翌日以降の仕入 − 棚卸日翌日以降の売上（棚卸日当日・以前の取引は除く）" />
             </Grid>
         </Border>
 
@@ -120,7 +126,7 @@
             <DataGrid.RowStyle>
                 <Style TargetType="DataGridRow" BasedOn="{StaticResource MahApps.Styles.DataGridRow}">
                     <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsNeverCounted}" Value="True">
+                        <DataTrigger Binding="{Binding HasNoStockData}" Value="True">
                             <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.Gray5}" />
                         </DataTrigger>
                     </Style.Triggers>
