@@ -22,8 +22,6 @@ public partial class App : Application
         var employees = Task.Run(() => employeeRepo.GetAllAsync()).Result;
         var products  = Task.Run(() => productRepo.GetAllAsync()).Result;
 
-        // 税種別は Infrastructure に専用リポジトリが不要なため Customer 経由で取得済みデータを使用
-        // TaxTypes は ViewModel 初期化後に設定する
         var saleRepo  = new SaleRepository();
         var saleFlat  = Task.Run(() => saleRepo.GetAllFlatAsync()).Result;
         var orderRepo = new OrderRepository();
@@ -47,9 +45,6 @@ public partial class App : Application
         vm.SetTaxRatePeriods(taxRatePeriods);
         vm.SetCompanyInfo(companyInfo);
 
-        // 税種別を VM の TaxTypes コレクションにセット（ダイアログとの照合用）
-        _ = InitTaxTypesAsync(vm);
-
         var win = new SalesMainView { DataContext = vm };
         win.Show();
 
@@ -60,18 +55,4 @@ public partial class App : Application
             _ = vm.LoadInitialSlipAsync(initialSlipNo);
     }
 
-    private static async Task InitTaxTypesAsync(SalesMainViewModel vm)
-    {
-        try
-        {
-            var repo  = new TaxTypeRepository();
-            var types = await repo.GetAllAsync();
-            foreach (var t in types)
-                vm.TaxTypes.Add(t);
-        }
-        catch (Exception ex)
-        {
-            vm.StatusMessage = $"税種別の読み込みエラー: {ex.Message}";
-        }
-    }
 }

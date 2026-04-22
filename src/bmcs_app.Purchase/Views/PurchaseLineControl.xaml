@@ -15,9 +15,7 @@
                 <ColumnDefinition Width="88"  />  <!-- 単価 -->
                 <ColumnDefinition Width="80"  />  <!-- 原価 -->
                 <ColumnDefinition Width="96"  />  <!-- 金額 -->
-                <ColumnDefinition Width="80"  />  <!-- 税種別 -->
                 <ColumnDefinition Width="56"  />  <!-- 税率 -->
-                <ColumnDefinition Width="80"  />  <!-- 税額 -->
                 <ColumnDefinition Width="130" />  <!-- 行摘要 -->
                 <ColumnDefinition Width="28"  />  <!-- 削除 -->
             </Grid.ColumnDefinitions>
@@ -84,31 +82,15 @@
                        FontWeight="SemiBold"
                        Padding="4,0" />
 
-            <!-- 税種別 ComboBox（RelativeSource で Window.DataContext.TaxTypes を参照） -->
-            <ComboBox Grid.Column="7"
-                      ItemsSource="{Binding DataContext.TaxTypes,
-                                   RelativeSource={RelativeSource AncestorType=Window}}"
-                      SelectedItem="{Binding TaxType}"
-                      DisplayMemberPath="TaxTypeName"
-                      h:FocusHelper.MoveNextOnEnter="True"
-                      Margin="2,1,0,1" />
-
             <!-- 税率（表示のみ） -->
-            <TextBlock Grid.Column="8"
+            <TextBlock Grid.Column="7"
                        Text="{Binding AppliedTaxRateDisplay}"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Right"
                        Padding="4,0" />
 
-            <!-- 税額（表示のみ） -->
-            <TextBlock Grid.Column="9"
-                       Text="{Binding LineTaxAmount, StringFormat={}{0:N0}}"
-                       VerticalAlignment="Center"
-                       HorizontalAlignment="Right"
-                       Padding="4,0" />
-
             <!-- 行摘要 -->
-            <TextBox Grid.Column="10"
+            <TextBox Grid.Column="8"
                      Text="{Binding LineRemarks, UpdateSourceTrigger=PropertyChanged}"
                      mah:TextBoxHelper.Watermark="（任意）"
                      GotKeyboardFocus="OnTextBoxGotKeyboardFocus"
@@ -119,7 +101,7 @@
             </TextBox>
 
             <!-- 行削除ボタン -->
-            <Button Grid.Column="11"
+            <Button Grid.Column="9"
                     Command="{Binding DeleteCommand}"
                     Content="×"
                     IsTabStop="False"

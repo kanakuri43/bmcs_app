@@ -17,7 +17,6 @@ public class PurchaseMainViewModel : BindableBase
     private readonly IPurchaseRepository     _purchaseRepo;
     private readonly IPurchaseOrderRepository _purchaseOrderRepo;
     private List<TaxRatePeriod> _taxRatePeriods = new();
-    private bool _isLineTaxCalc = true;
 
     // ── 検索・ナビゲーション ─────────────────────────────────
     private List<string>      _slipNos          = new();
@@ -88,6 +87,7 @@ public class PurchaseMainViewModel : BindableBase
     }
 
     private int?   _editSupplierId;
+    private int    _taxFractionId          = 1;
     private string _editSupplierPostalCode = "";
     private string _editSupplierAddress1   = "";
     private string _editSupplierAddress2   = "";
@@ -120,9 +120,6 @@ public class PurchaseMainViewModel : BindableBase
         set => SetProperty(ref _editSlipRemarks, value);
     }
 
-    // ── 税種別（明細 ComboBox 用） ──────────────────────────
-    public ObservableCollection<TaxTypeClassification> TaxTypes { get; } = new();
-
     // ── 明細 ─────────────────────────────────────────────────
     public ObservableCollection<PurchaseLineViewModel> Lines { get; } = new();
 
@@ -130,15 +127,12 @@ public class PurchaseMainViewModel : BindableBase
     public decimal TaxExcludedTotal => Lines.Sum(l => l.LineAmount);
 
     public decimal ExternalTaxTotal
-        => TaxCalculator.CalcExternalTaxTotal(Lines.Select(ToTaxLine), _isLineTaxCalc);
-
-    public decimal InternalTaxTotal
-        => TaxCalculator.CalcInternalTaxTotal(Lines.Select(ToTaxLine), _isLineTaxCalc);
+        => TaxCalculator.CalcExternalTaxTotal(Lines.Select(ToTaxLine), _taxFractionId);
 
     private static TaxLineInput ToTaxLine(PurchaseLineViewModel l)
-        => new(l.TaxType?.TaxTypeId ?? 0, l.AppliedTaxRate, l.LineAmount, l.LineTaxAmount);
+        => new(l.AppliedTaxRate, l.LineAmount);
 
-    public decimal TaxTotal    => ExternalTaxTotal + InternalTaxTotal;
+    public decimal TaxTotal    => ExternalTaxTotal;
     public decimal GrandTotal  => TaxExcludedTotal + ExternalTaxTotal;
     public decimal GrossProfit => TaxExcludedTotal - Lines.Sum(l => l.LineCostTotal);
 
@@ -230,7 +224,7 @@ public class PurchaseMainViewModel : BindableBase
             FocusField?.Invoke(FocusTargets.LineProductCodeLast);
         }
     )
-    { LineNo = lineNo, IsLineTaxCalc = _isLineTaxCalc };
+    { LineNo = lineNo };
 
     // ── 行VM のプロパティ変更を購読して集計を再通知 ────────────
     private void OnLinesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -246,8 +240,6 @@ public class PurchaseMainViewModel : BindableBase
     private void OnLinePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(PurchaseLineViewModel.LineAmount)
-                           or nameof(PurchaseLineViewModel.LineTaxAmount)
-                           or nameof(PurchaseLineViewModel.TaxType)
                            or nameof(PurchaseLineViewModel.LineCostTotal))
             RaiseTotalsChanged();
     }
@@ -328,11 +320,6 @@ public class PurchaseMainViewModel : BindableBase
         _apClosingAt = slip.ApClosingAt;
         RaisePropertyChanged(nameof(ApClosingAtText));
 
-        var supplier = _lookup.FindSupplierByCode(slip.SupplierCode);
-        _isLineTaxCalc = supplier is not null
-            ? TaxCalculator.IsLineTaxCalc(supplier.TaxCalcUnitId)
-            : true;
-
         _editSupplierPostalCode = slip.SupplierPostalCode ?? "";
         _editSupplierAddress1   = slip.SupplierAddress1   ?? "";
         _editSupplierAddress2   = slip.SupplierAddress2   ?? "";
@@ -341,6 +328,7 @@ public class PurchaseMainViewModel : BindableBase
         EditSupplierCode      = slip.SupplierCode;
         EditSupplierName      = slip.SupplierName;
         _editSupplierId       = slip.SupplierId;
+        _taxFractionId        = _lookup.FindSupplierByCode(slip.SupplierCode)?.TaxFractionId ?? 1;
         EditEmployeeCode      = slip.EmployeeCode;
         EditEmployeeName      = slip.EmployeeName;
         _editEmployeeId       = slip.EmployeeId;
@@ -351,7 +339,6 @@ public class PurchaseMainViewModel : BindableBase
         Lines.Clear();
         foreach (var l in slip.Lines)
         {
-            var taxType = TaxTypes.FirstOrDefault(t => t.TaxTypeId == l.TaxTypeId);
             var vm = CreateLineVm(l.LineNo);
             vm.ProductId      = l.ProductId;
             vm.ProductCode    = l.ProductCode;
@@ -359,7 +346,6 @@ public class PurchaseMainViewModel : BindableBase
             vm.Quantity       = l.Quantity;
             vm.UnitPrice      = l.UnitPrice;
             vm.CostPrice      = l.CostPrice;
-            vm.TaxType        = taxType;
             vm.TaxRateType    = l.TaxRateType;
             vm.AppliedTaxRate = l.AppliedTaxRate;
             vm.LineRemarks    = l.LineRemarks ?? "";
@@ -414,11 +400,10 @@ public class PurchaseMainViewModel : BindableBase
         EditSupplierCode          = s.SupplierCode;
         EditSupplierName          = s.SupplierName;
         _editSupplierId           = s.SupplierId;
+        _taxFractionId            = s.TaxFractionId;
         _editSupplierPostalCode   = s.PostalCode ?? "";
         _editSupplierAddress1     = s.Address1   ?? "";
         _editSupplierAddress2     = s.Address2   ?? "";
-        _isLineTaxCalc            = TaxCalculator.IsLineTaxCalc(s.TaxCalcUnitId);
-        PropagateLineTaxCalcToLines();
 
         if (s.EmployeeId.HasValue)
         {
@@ -463,8 +448,6 @@ public class PurchaseMainViewModel : BindableBase
         line.ProductName = p.ProductName;
         line.CostPrice   = p.CostPrice;
         line.TaxRateType = p.TaxRateType;
-        var taxType = TaxTypes.FirstOrDefault(t => t.TaxTypeId == p.TaxTypeId);
-        line.TaxType = taxType;
 
         var purchaseDate = EditPurchaseDate.HasValue
             ? DateOnly.FromDateTime(EditPurchaseDate.Value)
@@ -544,8 +527,6 @@ public class PurchaseMainViewModel : BindableBase
             EditSupplierCode = order.SupplierCode;
             EditSupplierName = order.SupplierName;
             _editSupplierId  = order.SupplierId;
-            _isLineTaxCalc   = TaxCalculator.IsLineTaxCalc(order.TaxCalcUnitId);
-            PropagateLineTaxCalcToLines();
         }
 
         var employee = order.EmployeeId != 0 ? _lookup.FindEmployeeById(order.EmployeeId) : null;
@@ -561,7 +542,6 @@ public class PurchaseMainViewModel : BindableBase
 
         foreach (var l in order.Lines)
         {
-            var taxType = TaxTypes.FirstOrDefault(t => t.TaxTypeId == l.TaxTypeId);
             var vm = CreateLineVm(l.LineNo);
             vm.ProductId      = l.ProductId;
             vm.ProductCode    = l.ProductCode;
@@ -569,7 +549,6 @@ public class PurchaseMainViewModel : BindableBase
             vm.Quantity       = l.Quantity;
             vm.UnitPrice      = l.UnitPrice;
             vm.CostPrice      = l.CostPrice;
-            vm.TaxType        = taxType;
             vm.TaxRateType    = l.TaxRateType;
             vm.AppliedTaxRate = TaxCalculator.GetAppliedTaxRate(_taxRatePeriods, l.TaxRateType, purchaseDate);
             vm.LineRemarks    = l.LineRemarks ?? "";
@@ -644,12 +623,12 @@ public class PurchaseMainViewModel : BindableBase
                                ? GenerateSlipNo(purchaseDate)
                                : EditPurchaseNo.Trim();
 
-        var slipTaxTotal = Lines.Sum(l => l.LineTaxAmount);
+        var slipTaxTotal = ExternalTaxTotal;
         var lineInputs = Lines.Select(l => new PurchaseLineInput(
             l.LineNo, l.ProductId, l.ProductCode, l.ProductName,
             l.Quantity, l.UnitPrice, l.CostPrice,
-            l.TaxType?.TaxTypeId ?? 0, l.TaxRateType, l.AppliedTaxRate,
-            l.LineTaxAmount, slipTaxTotal,
+            1, l.TaxRateType, l.AppliedTaxRate,
+            0, slipTaxTotal,
             string.IsNullOrWhiteSpace(l.LineRemarks) ? null : l.LineRemarks));
 
         try
@@ -708,14 +687,6 @@ public class PurchaseMainViewModel : BindableBase
     public void SetTaxRatePeriods(IEnumerable<TaxRatePeriod> periods)
         => _taxRatePeriods = periods.ToList();
 
-    // ── 税計算単位 ───────────────────────────────────────────
-    private void PropagateLineTaxCalcToLines()
-    {
-        foreach (var line in Lines)
-            line.IsLineTaxCalc = _isLineTaxCalc;
-        RaiseTotalsChanged();
-    }
-
     // ── 伝票番号自動生成 ─────────────────────────────────────
     private string GenerateSlipNo(DateOnly date)
     {
@@ -729,7 +700,6 @@ public class PurchaseMainViewModel : BindableBase
     {
         RaisePropertyChanged(nameof(TaxExcludedTotal));
         RaisePropertyChanged(nameof(ExternalTaxTotal));
-        RaisePropertyChanged(nameof(InternalTaxTotal));
         RaisePropertyChanged(nameof(TaxTotal));
         RaisePropertyChanged(nameof(GrandTotal));
         RaisePropertyChanged(nameof(GrossProfit));

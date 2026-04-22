@@ -40,8 +40,6 @@ public partial class App : Application
         var vm = new PurchaseMainViewModel(lookupService, purchaseRepo, purchaseOrderRepo);
         vm.SetTaxRatePeriods(taxRatePeriods);
 
-        _ = InitTaxTypesAsync(vm);
-
         var win = new PurchaseMainView { DataContext = vm };
         win.Show();
 
@@ -52,18 +50,4 @@ public partial class App : Application
             _ = vm.LoadInitialSlipAsync(initialNo);
     }
 
-    private static async Task InitTaxTypesAsync(PurchaseMainViewModel vm)
-    {
-        try
-        {
-            var repo  = new TaxTypeRepository();
-            var types = await repo.GetAllAsync();
-            foreach (var t in types)
-                vm.TaxTypes.Add(t);
-        }
-        catch (Exception ex)
-        {
-            vm.StatusMessage = $"税種別の読み込みエラー: {ex.Message}";
-        }
-    }
 }

@@ -1,5 +1,3 @@
-using bmcs_app.Core.Models;
-using bmcs_app.Core.Services;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -20,10 +18,8 @@ public class OrderLineViewModel : BindableBase
     private decimal _quantity;
     private decimal _unitPrice;
     private decimal _costPrice;
-    private TaxTypeClassification? _taxType;
     private byte    _taxRateType;
     private decimal _appliedTaxRate;
-    private bool    _isLineTaxCalc  = true;
     private string  _lineRemarks    = "";
 
     public DelegateCommand OpenProductLookupCommand   { get; }
@@ -85,7 +81,6 @@ public class OrderLineViewModel : BindableBase
             if (SetProperty(ref _quantity, value))
             {
                 RaisePropertyChanged(nameof(LineAmount));
-                RaisePropertyChanged(nameof(LineTaxAmount));
                 RaisePropertyChanged(nameof(LineCostTotal));
             }
         }
@@ -111,36 +106,12 @@ public class OrderLineViewModel : BindableBase
         set
         {
             if (SetProperty(ref _unitPrice, value))
-            {
                 RaisePropertyChanged(nameof(LineAmount));
-                RaisePropertyChanged(nameof(LineTaxAmount));
-            }
         }
     }
 
     /// <summary>数量 × 単価（税抜金額）</summary>
     public decimal LineAmount => Quantity * UnitPrice;
-
-    public TaxTypeClassification? TaxType
-    {
-        get => _taxType;
-        set
-        {
-            if (SetProperty(ref _taxType, value))
-                RaisePropertyChanged(nameof(LineTaxAmount));
-        }
-    }
-
-    /// <summary>true = 明細単位で税額計算、false = 伝票単位（明細税額は 0）</summary>
-    public bool IsLineTaxCalc
-    {
-        get => _isLineTaxCalc;
-        set
-        {
-            if (SetProperty(ref _isLineTaxCalc, value))
-                RaisePropertyChanged(nameof(LineTaxAmount));
-        }
-    }
 
     public byte TaxRateType
     {
@@ -154,24 +125,13 @@ public class OrderLineViewModel : BindableBase
         set
         {
             if (SetProperty(ref _appliedTaxRate, value))
-            {
                 RaisePropertyChanged(nameof(AppliedTaxRateDisplay));
-                RaisePropertyChanged(nameof(LineTaxAmount));
-            }
         }
     }
 
     public string AppliedTaxRateDisplay => _appliedTaxRate == 0
         ? "—"
         : $"{_appliedTaxRate * 100:0.##}%";
-
-    /// <summary>
-    /// 行税額（自動計算）。
-    /// 伝票単位（IsLineTaxCalc=false）の場合は 0。
-    /// 外税=金額×税率, 内税=金額×税率÷(1+税率)、切り捨て。
-    /// </summary>
-    public decimal LineTaxAmount => TaxCalculator.CalcLineTaxAmount(
-        LineAmount, _appliedTaxRate, _taxType?.TaxTypeId ?? 0, _isLineTaxCalc);
 
     public string LineRemarks
     {

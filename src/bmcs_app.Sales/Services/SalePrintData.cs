@@ -21,6 +21,9 @@ public class SalePrintData
     public List<SalePrintLine>      Lines         { get; set; } = new();
     public List<TaxRateBreakdown>   TaxBreakdowns { get; set; } = new();
 
+    /// <summary>true = 請求単位消費税: 納品書には消費税を表示しない</summary>
+    public bool IsInvoiceUnitTax { get; set; }
+
     public string TaxExcludedTotalStr { get; set; } = "";
     public string TaxTotalStr         { get; set; } = "";
     public string GrandTotalStr       { get; set; } = "";
@@ -28,15 +31,15 @@ public class SalePrintData
 
 public class SalePrintLine
 {
-    public int    LineNo      { get; set; }
-    public string ProductCode { get; set; } = "";
-    public string ProductName { get; set; } = "";
-    public string Quantity    { get; set; } = "";
-    public string UnitPrice   { get; set; } = "";
-    public string LineAmount  { get; set; } = "";
-    public string TaxTypeName { get; set; } = "";
-    public string TaxRate     { get; set; } = "";
-    public string LineRemarks { get; set; } = "";
+    public int    LineNo        { get; set; }
+    public string ProductCode   { get; set; } = "";
+    public string ProductName   { get; set; } = "";
+    public bool   IsReducedRate { get; set; }
+    public string Quantity      { get; set; } = "";
+    public string UnitPrice     { get; set; } = "";
+    public string LineAmount    { get; set; } = "";
+    public string TaxRate       { get; set; } = "";
+    public string LineRemarks   { get; set; } = "";
 }
 
 /// <summary>インボイス制度：税率区分ごとの集計行</summary>

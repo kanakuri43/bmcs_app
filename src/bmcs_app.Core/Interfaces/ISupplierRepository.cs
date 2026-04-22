@@ -10,6 +10,6 @@ public interface ISupplierRepository
     Task<IEnumerable<Employee>>                  GetEmployeesAsync();
     Task UpsertAsync(int? supplierId, string supplierCode, string supplierName,
         byte closingDay, int taxFractionId, int taxCalcUnitId, int? employeeId,
-        string? postalCode, string? address1, string? address2);
+        string? postalCode, string? address1, string? address2, string? invoiceNo);
     Task DeleteAsync(int supplierId);
 }

@@ -3,21 +3,14 @@ using bmcs_app.Core.Models;
 namespace bmcs_app.Core.Services;
 
 /// <summary>税計算に必要な明細行の入力値</summary>
-public readonly record struct TaxLineInput(
-    int     TaxTypeId,
-    decimal AppliedTaxRate,
-    decimal LineAmount,
-    decimal LineTaxAmount);
+public readonly record struct TaxLineInput(decimal AppliedTaxRate, decimal LineAmount);
 
 /// <summary>
-/// 消費税計算ロジック（Sales / Order で共通）。
-/// 全メソッドは static で副作用なし。
+/// 消費税計算ロジック（Sales / Order / Purchase / PurchaseOrder で共通）。
+/// 全メソッドは static で副作用なし。外税のみ・伝票単位の割戻し計算。
 /// </summary>
 public static class TaxCalculator
 {
-    /// <summary>taxCalcUnitId=1 が明細単位、2 が伝票単位</summary>
-    public static bool IsLineTaxCalc(int taxCalcUnitId) => taxCalcUnitId == 1;
-
     /// <summary>日付と税率タイプから適用税率を求める。対象期間なし → 0</summary>
     public static decimal GetAppliedTaxRate(
         IEnumerable<TaxRatePeriod> periods, byte taxRateType, DateOnly date)
@@ -37,45 +30,18 @@ public static class TaxCalculator
     }
 
     /// <summary>
-    /// 行税額を計算する。
-    /// isLineTaxCalc=false（伝票単位）または taxRate=0 の場合は 0。
-    /// 内税(taxTypeId=2): floor(金額 × rate ÷ (1+rate))
-    /// 外税(taxTypeId=1): floor(金額 × rate)
+    /// 外税合計を計算する。税率ごとに LineAmount を集計し、1回の端数処理を行う（インボイス準拠）。
+    /// taxFractionId: 1=切捨（デフォルト）/ 2=切上 / 3=四捨五入
     /// </summary>
-    public static decimal CalcLineTaxAmount(
-        decimal lineAmount, decimal appliedTaxRate, int taxTypeId, bool isLineTaxCalc)
-    {
-        if (!isLineTaxCalc || appliedTaxRate == 0) return 0m;
-        if (taxTypeId == 2)
-            return Math.Floor(lineAmount * appliedTaxRate / (1 + appliedTaxRate));
-        return Math.Floor(lineAmount * appliedTaxRate);
-    }
-
-    /// <summary>
-    /// 外税合計を計算する。
-    /// isLineTaxCalc=true なら各行の LineTaxAmount を合計。
-    /// false（伝票単位）なら税率ごとに LineAmount を合計してから計算。
-    /// </summary>
-    public static decimal CalcExternalTaxTotal(IEnumerable<TaxLineInput> lines, bool isLineTaxCalc)
-    {
-        var ext = lines.Where(l => l.TaxTypeId == 1 && l.AppliedTaxRate > 0);
-        if (isLineTaxCalc) return ext.Sum(l => l.LineTaxAmount);
-        return ext
+    public static decimal CalcExternalTaxTotal(IEnumerable<TaxLineInput> lines, int taxFractionId = 1)
+        => lines.Where(l => l.AppliedTaxRate > 0)
             .GroupBy(l => l.AppliedTaxRate)
-            .Sum(g => Math.Floor(g.Sum(l => l.LineAmount) * g.Key));
-    }
+            .Sum(g => ApplyRounding(g.Sum(l => l.LineAmount) * g.Key, taxFractionId));
 
-    /// <summary>
-    /// 内税合計を計算する。
-    /// isLineTaxCalc=true なら各行の LineTaxAmount を合計。
-    /// false（伝票単位）なら税率ごとに LineAmount を合計してから計算。
-    /// </summary>
-    public static decimal CalcInternalTaxTotal(IEnumerable<TaxLineInput> lines, bool isLineTaxCalc)
+    private static decimal ApplyRounding(decimal value, int taxFractionId) => taxFractionId switch
     {
-        var intn = lines.Where(l => l.TaxTypeId == 2 && l.AppliedTaxRate > 0);
-        if (isLineTaxCalc) return intn.Sum(l => l.LineTaxAmount);
-        return intn
-            .GroupBy(l => l.AppliedTaxRate)
-            .Sum(g => Math.Floor(g.Sum(l => l.LineAmount) * g.Key / (1 + g.Key)));
-    }
+        2 => Math.Ceiling(value),
+        3 => Math.Round(value, 0, MidpointRounding.AwayFromZero),
+        _ => Math.Floor(value),
+    };
 }

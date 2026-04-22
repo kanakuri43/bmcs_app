@@ -214,6 +214,12 @@
                                  mah:TextBoxHelper.Watermark="例: ○○ビル 3F"
                                  MaxLength="100"
                                  Margin="0,0,0,8" />
+
+                        <Label Content="登録番号（T番号）" />
+                        <TextBox Text="{Binding EditInvoiceNo, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="例: T1234567890123"
+                                 MaxLength="14"
+                                 Margin="0,0,0,8" />
                     </StackPanel>
 
                     <!-- 保存・削除ボタン（右下） -->

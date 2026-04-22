@@ -30,8 +30,8 @@ public static class SalesPrintHelper
     private const double FooterH      = 160.0;  // 税率別集計+合計
 
     // ── 明細テーブルの列幅 ─────────────────────────────────────────
-    // { 行, 商品コード, 商品名(*=残余), 数量, 単価, 金額, 税種, 税率, 行摘要 }
-    private static readonly double[] ColFixed = { 28, 82, 0, 52, 72, 76, 46, 42, 76 };
+    // { 行, 商品コード, 商品名(*=残余), 数量, 単価, 金額, 税率, 行摘要 }
+    private static readonly double[] ColFixed = { 28, 82, 0, 52, 72, 76, 42, 76 };
     // index 2 (商品名) = * → 残余幅で計算
     private static double StarWidth => CW - ColFixed.Where(w => w > 0).Sum();  // ≒ 223
 
@@ -302,13 +302,13 @@ public static class SalesPrintHelper
     // ─────────────────────────────────────────────────────────────
 
     private static readonly string[] Headers =
-        { "行", "商品コード", "商品名", "数量", "単価", "金額", "税種", "税率", "摘要" };
+        { "行", "商品コード", "商品名", "数量", "単価", "金額", "税率", "摘要" };
 
     private static readonly TextAlignment[] ColAlign =
     {
         TextAlignment.Center, TextAlignment.Left, TextAlignment.Left,
         TextAlignment.Right,  TextAlignment.Right, TextAlignment.Right,
-        TextAlignment.Center, TextAlignment.Right, TextAlignment.Left,
+        TextAlignment.Right,  TextAlignment.Left,
     };
 
     private static FrameworkElement BuildLinesTable(List<SalePrintLine> lines)
@@ -331,11 +331,10 @@ public static class SalesPrintHelper
             {
                 line.LineNo.ToString(),
                 line.ProductCode,
-                line.ProductName,
+                line.IsReducedRate ? "※ " + line.ProductName : line.ProductName,
                 line.Quantity,
                 line.UnitPrice,
                 line.LineAmount,
-                line.TaxTypeName,
                 line.TaxRate,
                 line.LineRemarks,
             };
@@ -353,7 +352,7 @@ public static class SalesPrintHelper
             {
                 container.Children.Add(
                     BuildTableRow(isHeader: false, background: Brushes.White,
-                        cells: new string[9]));
+                        cells: new string[8]));
             }
         }
 
@@ -421,49 +420,74 @@ public static class SalesPrintHelper
     {
         var sp = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
 
-        // 税率別集計（インボイス制度 必須記載事項）
-        if (data.TaxBreakdowns.Count > 0)
+        if (data.IsInvoiceUnitTax)
         {
-            var breakdown = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
-            foreach (var bd in data.TaxBreakdowns)
-            {
-                var row = new Grid();
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+            // 請求単位消費税: 消費税は月次請求書でまとめて計上するため、納品書には税抜合計のみ表示
+            var totalsPanel = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right };
+            totalsPanel.Children.Add(HLine(1.5));
+            totalsPanel.Children.Add(BuildTotalRow("税抜合計", data.TaxExcludedTotalStr, true));
+            sp.Children.Add(totalsPanel);
 
-                var label = Tb($"※ {bd.Label}", 9);
-                Grid.SetColumn(label, 0);
-                row.Children.Add(label);
-
-                var excl = BuildLabelValue("税抜金額", bd.TaxExcludedAmount);
-                Grid.SetColumn(excl, 1);
-                row.Children.Add(excl);
-
-                var tax = BuildLabelValue("消費税", bd.TaxAmount);
-                Grid.SetColumn(tax, 3);
-                row.Children.Add(tax);
-
-                breakdown.Children.Add(row);
-            }
-            sp.Children.Add(breakdown);
-            sp.Children.Add(HLine(0.5));
+            var invoiceNote = Tb("※ 消費税は月次請求書にてご確認ください", 7);
+            invoiceNote.Margin     = new Thickness(0, 8, 0, 0);
+            invoiceNote.Foreground = Brushes.Gray;
+            sp.Children.Add(invoiceNote);
         }
+        else
+        {
+            // 税率別集計（インボイス制度 必須記載事項）
+            if (data.TaxBreakdowns.Count > 0)
+            {
+                var breakdown = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
+                foreach (var bd in data.TaxBreakdowns)
+                {
+                    var row = new Grid();
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10) });
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
 
-        // 合計ブロック（右寄せ）
-        var totalsPanel = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right };
-        totalsPanel.Children.Add(BuildTotalRow("税抜合計",  data.TaxExcludedTotalStr,  false));
-        totalsPanel.Children.Add(BuildTotalRow("消費税合計", data.TaxTotalStr,          false));
-        totalsPanel.Children.Add(HLine(1.5));
-        totalsPanel.Children.Add(BuildTotalRow("税込合計",  data.GrandTotalStr,        true));
-        sp.Children.Add(totalsPanel);
+                    var label = Tb($"※ {bd.Label}", 9);
+                    Grid.SetColumn(label, 0);
+                    row.Children.Add(label);
 
-        // インボイス注記
-        var note = Tb("※本書は消費税法に基づく適格請求書（インボイス）です", 7);
-        note.Margin     = new Thickness(0, 12, 0, 0);
-        note.Foreground = Brushes.Gray;
-        sp.Children.Add(note);
+                    var excl = BuildLabelValue("税抜金額", bd.TaxExcludedAmount);
+                    Grid.SetColumn(excl, 1);
+                    row.Children.Add(excl);
+
+                    var tax = BuildLabelValue("消費税", bd.TaxAmount);
+                    Grid.SetColumn(tax, 3);
+                    row.Children.Add(tax);
+
+                    breakdown.Children.Add(row);
+                }
+                sp.Children.Add(breakdown);
+                sp.Children.Add(HLine(0.5));
+            }
+
+            // 合計ブロック（右寄せ）
+            var totalsPanel = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right };
+            totalsPanel.Children.Add(BuildTotalRow("税抜合計",  data.TaxExcludedTotalStr,  false));
+            totalsPanel.Children.Add(BuildTotalRow("消費税合計", data.TaxTotalStr,          false));
+            totalsPanel.Children.Add(HLine(1.5));
+            totalsPanel.Children.Add(BuildTotalRow("税込合計",  data.GrandTotalStr,        true));
+            sp.Children.Add(totalsPanel);
+
+            // 軽減税率マーク注記（軽減税率行がある場合のみ）
+            if (data.Lines.Any(l => l.IsReducedRate))
+            {
+                var reducedNote = Tb("※ は軽減税率（8%）対象商品です", 7);
+                reducedNote.Margin     = new Thickness(0, 8, 0, 0);
+                reducedNote.Foreground = Brushes.Gray;
+                sp.Children.Add(reducedNote);
+            }
+
+            // インボイス注記
+            var note = Tb("※本書は消費税法に基づく適格請求書（インボイス）です", 7);
+            note.Margin     = new Thickness(0, 4, 0, 0);
+            note.Foreground = Brushes.Gray;
+            sp.Children.Add(note);
+        }
 
         return sp;
     }

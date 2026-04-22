@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.RegularExpressions;
 using bmcs_app.Core.Interfaces;
 using bmcs_app.Core.Models;
 using Prism.Commands;
@@ -136,6 +137,13 @@ public class SupplierMaintViewModel : BindableBase
         set => SetProperty(ref _editAddress2, value);
     }
 
+    private string _editInvoiceNo = "";
+    public string EditInvoiceNo
+    {
+        get => _editInvoiceNo;
+        set => SetProperty(ref _editInvoiceNo, value);
+    }
+
     private string _statusMessage = "準備完了";
     public string StatusMessage
     {
@@ -248,6 +256,7 @@ public class SupplierMaintViewModel : BindableBase
         EditPostalCode   = "";
         EditAddress1     = "";
         EditAddress2     = "";
+        EditInvoiceNo    = "";
         _selectedSupplier = null;
         RaisePropertyChanged(nameof(SelectedSupplier));
         StatusMessage = "新規入力";
@@ -262,9 +271,10 @@ public class SupplierMaintViewModel : BindableBase
         EditTaxFraction = TaxFractions.FirstOrDefault(f => f.TaxFractionId == s.TaxFractionId);
         EditTaxCalcUnit = TaxCalcUnits.FirstOrDefault(u => u.TaxCalcUnitId  == s.TaxCalcUnitId);
         EditEmployee    = Employees.FirstOrDefault(e => e?.EmployeeId == s.EmployeeId);
-        EditPostalCode  = s.PostalCode ?? "";
-        EditAddress1    = s.Address1   ?? "";
-        EditAddress2    = s.Address2   ?? "";
+        EditPostalCode  = s.PostalCode  ?? "";
+        EditAddress1    = s.Address1    ?? "";
+        EditAddress2    = s.Address2    ?? "";
+        EditInvoiceNo   = s.InvoiceNo   ?? "";
         StatusMessage   = $"編集中: {s.SupplierName}";
     }
 
@@ -295,6 +305,14 @@ public class SupplierMaintViewModel : BindableBase
             return;
         }
 
+        var invoiceNoTrimmed = EditInvoiceNo.Trim();
+        if (!string.IsNullOrEmpty(invoiceNoTrimmed) &&
+            !Regex.IsMatch(invoiceNoTrimmed, @"^T\d{13}$"))
+        {
+            StatusMessage = "登録番号は「T + 13桁の数字」の形式で入力してください（例: T1234567890123）";
+            return;
+        }
+
         try
         {
             await _repo.UpsertAsync(
@@ -307,7 +325,8 @@ public class SupplierMaintViewModel : BindableBase
                 EditEmployee?.EmployeeId,
                 string.IsNullOrWhiteSpace(EditPostalCode) ? null : EditPostalCode.Trim(),
                 string.IsNullOrWhiteSpace(EditAddress1)   ? null : EditAddress1.Trim(),
-                string.IsNullOrWhiteSpace(EditAddress2)   ? null : EditAddress2.Trim());
+                string.IsNullOrWhiteSpace(EditAddress2)   ? null : EditAddress2.Trim(),
+                string.IsNullOrEmpty(invoiceNoTrimmed)    ? null : invoiceNoTrimmed);
 
             StatusMessage = _editingId is null ? "登録しました" : "更新しました";
             await LoadAsync();

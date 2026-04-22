@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using bmcs_app.Infrastructure;
 using bmcs_app.Infrastructure.Repositories;
 using Prism.Commands;
@@ -93,8 +94,17 @@ public class CompanyInfoSettingsViewModel : BindableBase
         BankAccountNumber3    = info.BankAccountNumber3;
     }
 
+    private static readonly Regex InvoiceNoPattern = new(@"^T\d{13}$", RegexOptions.Compiled);
+
     private async Task OnSaveAsync()
     {
+        if (!string.IsNullOrWhiteSpace(InvoiceRegistrationNo) &&
+            !InvoiceNoPattern.IsMatch(InvoiceRegistrationNo))
+        {
+            StatusMessage = "登録番号は「T + 13桁の数字」の形式で入力してください（例: T1234567890123）";
+            return;
+        }
+
         try
         {
             await _repo.UpsertAsync(new CompanyInfo
