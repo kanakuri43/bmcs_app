@@ -10,7 +10,7 @@ namespace bmcs_app.Closing.ViewModels;
 
 public record ClosingDayOption(byte Day)
 {
-    public string Label => Day is 0 or 99 ? "末日" : $"{Day}日";
+    public string Label => Day == 99 ? "末日" : $"{Day}日";
 }
 
 public class InvoiceClosingViewModel : BindableBase

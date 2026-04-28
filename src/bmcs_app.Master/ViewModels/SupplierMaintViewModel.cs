@@ -81,6 +81,13 @@ public class SupplierMaintViewModel : BindableBase
         set => SetProperty(ref _editCode, value);
     }
 
+    private bool _isEditCodeReadOnly = false;
+    public bool IsEditCodeReadOnly
+    {
+        get => _isEditCodeReadOnly;
+        private set => SetProperty(ref _isEditCodeReadOnly, value);
+    }
+
     private string _editName = "";
     public string EditName
     {
@@ -93,6 +100,13 @@ public class SupplierMaintViewModel : BindableBase
     {
         get => _editClosingDay;
         set => SetProperty(ref _editClosingDay, value);
+    }
+
+    private bool _isClosingDayEditable = true;
+    public bool IsClosingDayEditable
+    {
+        get => _isClosingDayEditable;
+        private set => SetProperty(ref _isClosingDayEditable, value);
     }
 
     private TaxFractionClassification? _editTaxFraction;
@@ -142,6 +156,17 @@ public class SupplierMaintViewModel : BindableBase
     {
         get => _editInvoiceNo;
         set => SetProperty(ref _editInvoiceNo, value);
+    }
+
+    private bool _editIsMiscellaneous = false;
+    public bool EditIsMiscellaneous
+    {
+        get => _editIsMiscellaneous;
+        set
+        {
+            if (SetProperty(ref _editIsMiscellaneous, value))
+                OnMiscellaneousChanged();
+        }
     }
 
     private string _statusMessage = "準備完了";
@@ -246,36 +271,52 @@ public class SupplierMaintViewModel : BindableBase
     // ── フォーム操作 ───────────────────────────────────────
     private void OnNew()
     {
-        _editingId       = null;
-        EditCode         = "";
-        EditName         = "";
-        EditClosingDay   = "";
-        EditTaxFraction  = TaxFractions.FirstOrDefault();
-        EditTaxCalcUnit  = TaxCalcUnits.FirstOrDefault();
-        EditEmployee     = null;
-        EditPostalCode   = "";
-        EditAddress1     = "";
-        EditAddress2     = "";
-        EditInvoiceNo    = "";
-        _selectedSupplier = null;
+        _editingId            = null;
+        EditCode              = "";
+        EditName              = "";
+        EditClosingDay        = "";
+        EditTaxFraction       = TaxFractions.FirstOrDefault();
+        EditTaxCalcUnit       = TaxCalcUnits.FirstOrDefault();
+        EditEmployee          = null;
+        EditPostalCode        = "";
+        EditAddress1          = "";
+        EditAddress2          = "";
+        EditInvoiceNo         = "";
+        EditIsMiscellaneous   = false;
+        IsEditCodeReadOnly    = false;
+        IsClosingDayEditable  = true;
+        _selectedSupplier     = null;
         RaisePropertyChanged(nameof(SelectedSupplier));
         StatusMessage = "新規入力";
     }
 
     private void LoadToForm(Supplier s)
     {
-        _editingId      = s.SupplierId;
-        EditCode        = s.SupplierCode;
-        EditName        = s.SupplierName;
-        EditClosingDay  = s.ClosingDay.ToString();
-        EditTaxFraction = TaxFractions.FirstOrDefault(f => f.TaxFractionId == s.TaxFractionId);
-        EditTaxCalcUnit = TaxCalcUnits.FirstOrDefault(u => u.TaxCalcUnitId  == s.TaxCalcUnitId);
-        EditEmployee    = Employees.FirstOrDefault(e => e?.EmployeeId == s.EmployeeId);
-        EditPostalCode  = s.PostalCode  ?? "";
-        EditAddress1    = s.Address1    ?? "";
-        EditAddress2    = s.Address2    ?? "";
-        EditInvoiceNo   = s.InvoiceNo   ?? "";
-        StatusMessage   = $"編集中: {s.SupplierName}";
+        _editingId            = s.SupplierId;
+        EditCode              = s.SupplierCode;
+        EditName              = s.SupplierName;
+        EditClosingDay        = s.ClosingDay.ToString();
+        EditTaxFraction       = TaxFractions.FirstOrDefault(f => f.TaxFractionId == s.TaxFractionId);
+        EditTaxCalcUnit       = TaxCalcUnits.FirstOrDefault(u => u.TaxCalcUnitId  == s.TaxCalcUnitId);
+        EditEmployee          = Employees.FirstOrDefault(e => e?.EmployeeId == s.EmployeeId);
+        EditPostalCode        = s.PostalCode  ?? "";
+        EditAddress1          = s.Address1    ?? "";
+        EditAddress2          = s.Address2    ?? "";
+        EditInvoiceNo         = s.InvoiceNo   ?? "";
+        EditIsMiscellaneous   = s.IsMiscellaneous;
+        IsEditCodeReadOnly    = s.IsMiscellaneous;
+        IsClosingDayEditable  = !s.IsMiscellaneous;
+        StatusMessage         = $"編集中: {s.SupplierName}";
+    }
+
+    private void OnMiscellaneousChanged()
+    {
+        IsEditCodeReadOnly   = EditIsMiscellaneous && _editingId is not null;
+        IsClosingDayEditable = !EditIsMiscellaneous;
+        if (EditIsMiscellaneous)
+            EditClosingDay = "0";
+        else if (EditClosingDay == "0")
+            EditClosingDay = "";
     }
 
     private async Task OnSaveAsync()
@@ -286,11 +327,27 @@ public class SupplierMaintViewModel : BindableBase
             return;
         }
 
-        if (!byte.TryParse(EditClosingDay.Trim(), out var cd) ||
-            (cd < 1 || cd > 27) && cd != 99)
+        if (!byte.TryParse(EditClosingDay.Trim(), out var cd))
         {
-            StatusMessage = "締日は 1〜27 または 99（月末）を入力してください";
+            StatusMessage = "締日は数値で入力してください";
             return;
+        }
+
+        if (EditIsMiscellaneous)
+        {
+            if (cd != 0)
+            {
+                StatusMessage = "諸口仕入先の締日は 0 を指定してください";
+                return;
+            }
+        }
+        else
+        {
+            if ((cd < 1 || cd > 27) && cd != 99)
+            {
+                StatusMessage = "締日は 1〜27 または 99（月末）を入力してください";
+                return;
+            }
         }
 
         if (EditTaxFraction is null)
@@ -326,7 +383,8 @@ public class SupplierMaintViewModel : BindableBase
                 string.IsNullOrWhiteSpace(EditPostalCode) ? null : EditPostalCode.Trim(),
                 string.IsNullOrWhiteSpace(EditAddress1)   ? null : EditAddress1.Trim(),
                 string.IsNullOrWhiteSpace(EditAddress2)   ? null : EditAddress2.Trim(),
-                string.IsNullOrEmpty(invoiceNoTrimmed)    ? null : invoiceNoTrimmed);
+                string.IsNullOrEmpty(invoiceNoTrimmed)    ? null : invoiceNoTrimmed,
+                EditIsMiscellaneous);
 
             StatusMessage = _editingId is null ? "登録しました" : "更新しました";
             await LoadAsync();
@@ -353,5 +411,5 @@ public class SupplierMaintViewModel : BindableBase
         }
     }
 
-    private bool CanDelete() => SelectedSupplier is not null;
+    private bool CanDelete() => SelectedSupplier is not null && !SelectedSupplier.IsMiscellaneous;
 }

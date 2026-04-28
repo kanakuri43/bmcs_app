@@ -11,6 +11,7 @@ public interface ICustomerRepository
     Task UpsertAsync(int? customerId, string code, string name,
                      byte closingDay, int taxFractionId, int taxCalcUnitId,
                      int? employeeId,
-                     string? postalCode, string? address1, string? address2);
+                     string? postalCode, string? address1, string? address2,
+                     bool isMiscellaneous = false);
     Task DeleteAsync(int customerId);
 }

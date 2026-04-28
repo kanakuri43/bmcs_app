@@ -3,6 +3,8 @@ using Prism.Commands;
 using Prism.Mvvm;
 using bmcs_app.Core.Interfaces;
 using bmcs_app.Core.Models;
+using bmcs_app.Closing.Services;
+using bmcs_app.Infrastructure;
 
 namespace bmcs_app.Closing.ViewModels;
 
@@ -10,6 +12,7 @@ public class ArClosingViewModel : BindableBase
 {
     private readonly IClosingRepository _repo;
     private readonly List<Customer>     _customers;
+    private CompanyInfo                 _companyInfo = new();
 
     // ===== 処理日付 =====
 
@@ -61,6 +64,7 @@ public class ArClosingViewModel : BindableBase
         {
             SetProperty(ref _selectedHistoryItem, value);
             CancelAggregationCommand.RaiseCanExecuteChanged();
+            PrintCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -82,6 +86,7 @@ public class ArClosingViewModel : BindableBase
 
     public DelegateCommand AggregateCommand         { get; }
     public DelegateCommand CancelAggregationCommand { get; }
+    public DelegateCommand PrintCommand             { get; }
 
     public ArClosingViewModel(IEnumerable<Customer> customers, IClosingRepository repo)
     {
@@ -91,9 +96,13 @@ public class ArClosingViewModel : BindableBase
         AggregateCommand         = new DelegateCommand(async () => await OnAggregateAsync());
         CancelAggregationCommand = new DelegateCommand(async () => await OnCancelAggregationAsync(),
                                                        () => SelectedHistoryItem is not null);
+        PrintCommand             = new DelegateCommand(async () => await OnPrintAsync(),
+                                                       () => SelectedHistoryItem is not null);
 
         _ = LoadHistoryAsync();
     }
+
+    public void SetCompanyInfo(CompanyInfo info) => _companyInfo = info;
 
     private static DateTime EndOfMonth(DateTime d)
         => new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month));
@@ -152,6 +161,34 @@ public class ArClosingViewModel : BindableBase
             StatusMessage = $"集計取り消しが完了しました。（{SelectedHistoryItem.ClosingDateLabel}）";
             SelectedHistoryItem = null;
             await LoadHistoryAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"エラー: {ex.Message}";
+        }
+    }
+
+    private async Task OnPrintAsync()
+    {
+        if (SelectedHistoryItem is null) return;
+
+        int? customerId = ResolveCustomerId();
+        if (IsSpecificCustomer && customerId is null) { StatusMessage = "得意先コードが見つかりません。"; return; }
+
+        try
+        {
+            StatusMessage = "印刷データ取得中...";
+            var rows = (await _repo.GetArRowsAsync(SelectedHistoryItem.ClosingDate, customerId)).ToList();
+
+            if (rows.Count == 0)
+            {
+                StatusMessage = "印刷する売掛金データがありません。";
+                return;
+            }
+
+            StatusMessage = "印刷中...";
+            ArBalancePrintHelper.Print(rows, SelectedHistoryItem.ClosingDate, _companyInfo.Name);
+            StatusMessage = $"印刷が完了しました。（{SelectedHistoryItem.ClosingDateLabel}  {rows.Count} 件）";
         }
         catch (Exception ex)
         {

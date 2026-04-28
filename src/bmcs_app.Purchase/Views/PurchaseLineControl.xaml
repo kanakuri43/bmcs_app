@@ -41,13 +41,24 @@
                 </TextBox.InputBindings>
             </TextBox>
 
-            <!-- 商品名（表示のみ） -->
-            <TextBlock Grid.Column="2"
-                       Text="{Binding ProductName}"
-                       VerticalAlignment="Center"
-                       Foreground="{DynamicResource MahApps.Brushes.Gray3}"
-                       Padding="4,0"
-                       TextTrimming="CharacterEllipsis" />
+            <!-- 商品名（通常は表示のみ、諸口商品選択時は編集可） -->
+            <TextBox Grid.Column="2"
+                     Text="{Binding ProductName, UpdateSourceTrigger=PropertyChanged}"
+                     IsReadOnly="{Binding IsProductNameReadOnly}"
+                     IsTabStop="False"
+                     Margin="1,1,0,1">
+                <TextBox.Style>
+                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsProductNameReadOnly}" Value="True">
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Background"      Value="Transparent" />
+                                <Setter Property="Foreground"      Value="{DynamicResource MahApps.Brushes.Gray3}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBox.Style>
+            </TextBox>
 
             <!-- 数量 -->
             <TextBox x:Name="QuantityBox"

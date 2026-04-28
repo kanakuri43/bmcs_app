@@ -80,6 +80,14 @@ public class CustomerMaintViewModel : BindableBase
         set => SetProperty(ref _editCode, value);
     }
 
+    // 諸口レコード編集中はコード変更不可
+    private bool _isEditCodeReadOnly = false;
+    public bool IsEditCodeReadOnly
+    {
+        get => _isEditCodeReadOnly;
+        private set => SetProperty(ref _isEditCodeReadOnly, value);
+    }
+
     private string _editName = "";
     public string EditName
     {
@@ -92,6 +100,14 @@ public class CustomerMaintViewModel : BindableBase
     {
         get => _editClosingDay;
         set => SetProperty(ref _editClosingDay, value);
+    }
+
+    // 諸口の場合 closing_day は 0 固定で編集不可
+    private bool _isClosingDayEditable = true;
+    public bool IsClosingDayEditable
+    {
+        get => _isClosingDayEditable;
+        private set => SetProperty(ref _isClosingDayEditable, value);
     }
 
     private TaxFractionClassification? _editTaxFraction;
@@ -134,6 +150,17 @@ public class CustomerMaintViewModel : BindableBase
     {
         get => _editAddress2;
         set => SetProperty(ref _editAddress2, value);
+    }
+
+    private bool _editIsMiscellaneous = false;
+    public bool EditIsMiscellaneous
+    {
+        get => _editIsMiscellaneous;
+        set
+        {
+            if (SetProperty(ref _editIsMiscellaneous, value))
+                OnMiscellaneousChanged();
+        }
     }
 
     private string _statusMessage = "準備完了";
@@ -238,34 +265,50 @@ public class CustomerMaintViewModel : BindableBase
     // ── フォーム操作 ───────────────────────────────────────
     private void OnNew()
     {
-        _editingId       = null;
-        EditCode         = "";
-        EditName         = "";
-        EditClosingDay   = "";
-        EditTaxFraction  = TaxFractions.FirstOrDefault();
-        EditTaxCalcUnit  = TaxCalcUnits.FirstOrDefault();
-        EditEmployee     = null;
-        EditPostalCode   = "";
-        EditAddress1     = "";
-        EditAddress2     = "";
-        _selectedCustomer = null;
+        _editingId            = null;
+        EditCode              = "";
+        EditName              = "";
+        EditClosingDay        = "";
+        EditTaxFraction       = TaxFractions.FirstOrDefault();
+        EditTaxCalcUnit       = TaxCalcUnits.FirstOrDefault();
+        EditEmployee          = null;
+        EditPostalCode        = "";
+        EditAddress1          = "";
+        EditAddress2          = "";
+        EditIsMiscellaneous   = false;
+        IsEditCodeReadOnly    = false;
+        IsClosingDayEditable  = true;
+        _selectedCustomer     = null;
         RaisePropertyChanged(nameof(SelectedCustomer));
         StatusMessage = "新規入力";
     }
 
     private void LoadToForm(Customer c)
     {
-        _editingId      = c.CustomerId;
-        EditCode        = c.CustomerCode;
-        EditName        = c.CustomerName;
-        EditClosingDay  = c.ClosingDay.ToString();
-        EditTaxFraction = TaxFractions.FirstOrDefault(f => f.TaxFractionId == c.TaxFractionId);
-        EditTaxCalcUnit = TaxCalcUnits.FirstOrDefault(u => u.TaxCalcUnitId  == c.TaxCalcUnitId);
-        EditEmployee    = Employees.FirstOrDefault(e => e?.EmployeeId == c.EmployeeId);
-        EditPostalCode  = c.PostalCode ?? "";
-        EditAddress1    = c.Address1   ?? "";
-        EditAddress2    = c.Address2   ?? "";
-        StatusMessage   = $"編集中: {c.CustomerName}";
+        _editingId            = c.CustomerId;
+        EditCode              = c.CustomerCode;
+        EditName              = c.CustomerName;
+        EditClosingDay        = c.ClosingDay.ToString();
+        EditTaxFraction       = TaxFractions.FirstOrDefault(f => f.TaxFractionId == c.TaxFractionId);
+        EditTaxCalcUnit       = TaxCalcUnits.FirstOrDefault(u => u.TaxCalcUnitId  == c.TaxCalcUnitId);
+        EditEmployee          = Employees.FirstOrDefault(e => e?.EmployeeId == c.EmployeeId);
+        EditPostalCode        = c.PostalCode ?? "";
+        EditAddress1          = c.Address1   ?? "";
+        EditAddress2          = c.Address2   ?? "";
+        EditIsMiscellaneous   = c.IsMiscellaneous;
+        IsEditCodeReadOnly    = c.IsMiscellaneous;
+        IsClosingDayEditable  = !c.IsMiscellaneous;
+        StatusMessage         = $"編集中: {c.CustomerName}";
+    }
+
+    private void OnMiscellaneousChanged()
+    {
+        IsEditCodeReadOnly   = EditIsMiscellaneous && _editingId is not null;
+        IsClosingDayEditable = !EditIsMiscellaneous;
+        if (EditIsMiscellaneous)
+            EditClosingDay = "0";
+        else if (EditClosingDay == "0")
+            EditClosingDay = "";
     }
 
     private async Task OnSaveAsync()
@@ -276,11 +319,27 @@ public class CustomerMaintViewModel : BindableBase
             return;
         }
 
-        if (!byte.TryParse(EditClosingDay.Trim(), out var cd) ||
-            (cd < 1 || cd > 27) && cd != 99)
+        if (!byte.TryParse(EditClosingDay.Trim(), out var cd))
         {
-            StatusMessage = "締日は 1〜27 または 99（月末）を入力してください";
+            StatusMessage = "締日は数値で入力してください";
             return;
+        }
+
+        if (EditIsMiscellaneous)
+        {
+            if (cd != 0)
+            {
+                StatusMessage = "諸口得意先の締日は 0 を指定してください";
+                return;
+            }
+        }
+        else
+        {
+            if ((cd < 1 || cd > 27) && cd != 99)
+            {
+                StatusMessage = "締日は 1〜27 または 99（月末）を入力してください";
+                return;
+            }
         }
 
         if (EditTaxFraction is null)
@@ -307,7 +366,8 @@ public class CustomerMaintViewModel : BindableBase
                 EditEmployee?.EmployeeId,
                 string.IsNullOrWhiteSpace(EditPostalCode) ? null : EditPostalCode.Trim(),
                 string.IsNullOrWhiteSpace(EditAddress1)   ? null : EditAddress1.Trim(),
-                string.IsNullOrWhiteSpace(EditAddress2)   ? null : EditAddress2.Trim());
+                string.IsNullOrWhiteSpace(EditAddress2)   ? null : EditAddress2.Trim(),
+                EditIsMiscellaneous);
 
             StatusMessage = _editingId is null ? "登録しました" : "更新しました";
             await LoadAsync();
@@ -334,5 +394,5 @@ public class CustomerMaintViewModel : BindableBase
         }
     }
 
-    private bool CanDelete() => SelectedCustomer is not null;
+    private bool CanDelete() => SelectedCustomer is not null && !SelectedCustomer.IsMiscellaneous;
 }

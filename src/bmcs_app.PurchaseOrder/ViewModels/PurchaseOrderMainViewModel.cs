@@ -75,6 +75,13 @@ public class PurchaseOrderMainViewModel : BindableBase
     private int? _editSupplierId;
     private int  _taxFractionId = 1;
 
+    private bool _isSupplierNameReadOnly = true;
+    public bool IsSupplierNameReadOnly
+    {
+        get => _isSupplierNameReadOnly;
+        private set => SetProperty(ref _isSupplierNameReadOnly, value);
+    }
+
     // ── ヘッダー: 担当者（コード + 名称） ─────────────────────
     private string _editEmployeeCode = "";
     public string EditEmployeeCode
@@ -222,13 +229,14 @@ public class PurchaseOrderMainViewModel : BindableBase
     // ── 新規 ─────────────────────────────────────────────────
     private void OnNew()
     {
-        IsLocked                = false;
-        _currentSlipIndex       = -1;
-        EditPurchaseOrderNo     = "";
-        EditPurchaseOrderDate   = DateTime.Today;
-        EditSupplierCode        = "";
-        EditSupplierName        = "";
-        _editSupplierId         = null;
+        IsLocked               = false;
+        _currentSlipIndex      = -1;
+        EditPurchaseOrderNo    = "";
+        EditPurchaseOrderDate  = DateTime.Today;
+        EditSupplierCode       = "";
+        EditSupplierName       = "";
+        _editSupplierId        = null;
+        IsSupplierNameReadOnly = true;
         EditEmployeeCode        = "";
         EditEmployeeName        = "";
         _editEmployeeId         = null;
@@ -291,7 +299,9 @@ public class PurchaseOrderMainViewModel : BindableBase
         EditSupplierCode      = slip.SupplierCode;
         EditSupplierName      = slip.SupplierName;
         _editSupplierId       = slip.SupplierId;
-        _taxFractionId        = _lookup.FindSupplierByCode(slip.SupplierCode)?.TaxFractionId ?? 1;
+        var supplier = _lookup.FindSupplierByCode(slip.SupplierCode);
+        _taxFractionId         = supplier?.TaxFractionId ?? 1;
+        IsSupplierNameReadOnly = !(supplier?.IsMiscellaneous ?? false);
         EditEmployeeCode      = slip.EmployeeCode;
         EditEmployeeName      = slip.EmployeeName;
         _editEmployeeId       = slip.EmployeeId == 0 ? null : slip.EmployeeId;
@@ -301,15 +311,16 @@ public class PurchaseOrderMainViewModel : BindableBase
         foreach (var l in slip.Lines)
         {
             var vm = CreateLineVm(l.LineNo);
-            vm.ProductId      = l.ProductId;
-            vm.ProductCode    = l.ProductCode;
-            vm.ProductName    = l.ProductName;
-            vm.Quantity       = l.Quantity;
-            vm.UnitPrice      = l.UnitPrice;
-            vm.CostPrice      = l.CostPrice;
-            vm.TaxRateType    = l.TaxRateType;
-            vm.AppliedTaxRate = l.AppliedTaxRate;
-            vm.LineRemarks    = l.LineRemarks ?? "";
+            vm.ProductId             = l.ProductId;
+            vm.ProductCode           = l.ProductCode;
+            vm.ProductName           = l.ProductName;
+            vm.IsProductNameReadOnly = !(_lookup.FindProductByCode(l.ProductCode)?.IsMiscellaneous ?? false);
+            vm.Quantity              = l.Quantity;
+            vm.UnitPrice             = l.UnitPrice;
+            vm.CostPrice             = l.CostPrice;
+            vm.TaxRateType           = l.TaxRateType;
+            vm.AppliedTaxRate        = l.AppliedTaxRate;
+            vm.LineRemarks           = l.LineRemarks ?? "";
             Lines.Add(vm);
         }
 
@@ -357,10 +368,11 @@ public class PurchaseOrderMainViewModel : BindableBase
 
     private void ApplySupplier(Supplier s)
     {
-        EditSupplierCode = s.SupplierCode;
-        EditSupplierName = s.SupplierName;
-        _editSupplierId  = s.SupplierId;
-        _taxFractionId   = s.TaxFractionId;
+        EditSupplierCode       = s.SupplierCode;
+        EditSupplierName       = s.SupplierName;
+        _editSupplierId        = s.SupplierId;
+        _taxFractionId         = s.TaxFractionId;
+        IsSupplierNameReadOnly = !s.IsMiscellaneous;
 
         if (s.EmployeeId.HasValue)
         {
@@ -399,11 +411,12 @@ public class PurchaseOrderMainViewModel : BindableBase
     // ── ルックアップ: 商品（明細行コールバック） ─────────────
     private void ApplyProductToLine(PurchaseOrderLineViewModel line, Product p)
     {
-        line.ProductId   = p.ProductId;
-        line.ProductCode = p.ProductCode;
-        line.ProductName = p.ProductName;
-        line.CostPrice   = p.CostPrice;
-        line.TaxRateType = p.TaxRateType;
+        line.ProductId              = p.ProductId;
+        line.ProductCode            = p.ProductCode;
+        line.ProductName            = p.ProductName;
+        line.IsProductNameReadOnly  = !p.IsMiscellaneous;
+        line.CostPrice              = p.CostPrice;
+        line.TaxRateType            = p.TaxRateType;
 
         var orderDate = EditPurchaseOrderDate.HasValue
             ? DateOnly.FromDateTime(EditPurchaseOrderDate.Value)

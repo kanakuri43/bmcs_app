@@ -27,11 +27,12 @@ public class ClosingMainViewModel : BindableBase
 
     public ClosingMainViewModel(IEnumerable<Customer> customers, IClosingRepository repo)
     {
-        var customerList = customers.ToList();
-        var closingDays  = customerList.Select(c => c.ClosingDay);
+        var customerList    = customers.ToList();
+        var nonMiscCustomers = customerList.Where(c => !c.IsMiscellaneous).ToList();
+        var closingDays      = nonMiscCustomers.Select(c => c.ClosingDay);
 
-        InvoiceTab = new InvoiceClosingViewModel(closingDays, customerList, repo);
-        ArTab      = new ArClosingViewModel(customerList, repo);
+        InvoiceTab = new InvoiceClosingViewModel(closingDays, nonMiscCustomers, repo);
+        ArTab      = new ArClosingViewModel(nonMiscCustomers, repo);
 
         AggregateCommand = new DelegateCommand(() =>
         {
@@ -45,7 +46,11 @@ public class ClosingMainViewModel : BindableBase
             else                        ArTab.CancelAggregationCommand.Execute();
         });
 
-        PrintCommand = new DelegateCommand(() => InvoiceTab.PrintCommand.Execute());
+        PrintCommand = new DelegateCommand(() =>
+        {
+            if (SelectedTabIndex == 0) InvoiceTab.PrintCommand.Execute();
+            else                        ArTab.PrintCommand.Execute();
+        });
 
         InvoiceTab.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(InvoiceTab.StatusMessage)) RaisePropertyChanged(nameof(StatusMessage)); };
         ArTab.PropertyChanged      += (_, e) => { if (e.PropertyName == nameof(ArTab.StatusMessage))      RaisePropertyChanged(nameof(StatusMessage)); };

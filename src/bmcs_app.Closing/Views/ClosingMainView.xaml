@@ -248,7 +248,7 @@
                         <StackPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
                                     Orientation="Horizontal"
                                     HorizontalAlignment="Right">
-                            <Button Command="{Binding InvoiceTab.PrintCommand}"
+                            <Button Command="{Binding ArTab.PrintCommand}"
                                     Content="売掛金残高一覧表 (F11)"
                                     Width="160" />
                             <Button Command="{Binding ArTab.CancelAggregationCommand}"

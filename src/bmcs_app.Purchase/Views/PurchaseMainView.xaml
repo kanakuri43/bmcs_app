@@ -152,10 +152,19 @@
                             </TextBox.InputBindings>
                         </TextBox>
                         <TextBox Grid.Column="3"
-                             Text="{Binding EditSupplierName, Mode=OneWay}"
-                             IsReadOnly="True"
-                             IsTabStop="False"
-                             Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                             Text="{Binding EditSupplierName, UpdateSourceTrigger=PropertyChanged}"
+                             IsReadOnly="{Binding IsSupplierNameReadOnly}"
+                             IsTabStop="False">
+                            <TextBox.Style>
+                                <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSupplierNameReadOnly}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.Gray3}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBox.Style>
+                        </TextBox>
                     </Grid>
 
                     <!-- 行3: 担当者 -->

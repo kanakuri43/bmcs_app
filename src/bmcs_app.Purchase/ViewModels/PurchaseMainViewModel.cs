@@ -89,6 +89,13 @@ public class PurchaseMainViewModel : BindableBase
     private int?   _editSupplierId;
     private int    _taxFractionId          = 1;
     private string _editSupplierPostalCode = "";
+
+    private bool _isSupplierNameReadOnly = true;
+    public bool IsSupplierNameReadOnly
+    {
+        get => _isSupplierNameReadOnly;
+        private set => SetProperty(ref _isSupplierNameReadOnly, value);
+    }
     private string _editSupplierAddress1   = "";
     private string _editSupplierAddress2   = "";
 
@@ -252,12 +259,13 @@ public class PurchaseMainViewModel : BindableBase
         _apClosingAt          = null;
         RaisePropertyChanged(nameof(ApClosingAtText));
         _currentSlipIndex     = -1;
-        EditPurchaseNo        = "";
-        EditPurchaseOrderNo   = "";
-        EditPurchaseDate      = DateTime.Today;
-        EditSupplierCode      = "";
-        EditSupplierName      = "";
-        _editSupplierId       = null;
+        EditPurchaseNo         = "";
+        EditPurchaseOrderNo    = "";
+        EditPurchaseDate       = DateTime.Today;
+        EditSupplierCode       = "";
+        EditSupplierName       = "";
+        _editSupplierId        = null;
+        IsSupplierNameReadOnly = true;
         EditEmployeeCode      = "";
         EditEmployeeName      = "";
         _editEmployeeId       = null;
@@ -328,7 +336,9 @@ public class PurchaseMainViewModel : BindableBase
         EditSupplierCode      = slip.SupplierCode;
         EditSupplierName      = slip.SupplierName;
         _editSupplierId       = slip.SupplierId;
-        _taxFractionId        = _lookup.FindSupplierByCode(slip.SupplierCode)?.TaxFractionId ?? 1;
+        var supplier = _lookup.FindSupplierByCode(slip.SupplierCode);
+        _taxFractionId        = supplier?.TaxFractionId ?? 1;
+        IsSupplierNameReadOnly = !(supplier?.IsMiscellaneous ?? false);
         EditEmployeeCode      = slip.EmployeeCode;
         EditEmployeeName      = slip.EmployeeName;
         _editEmployeeId       = slip.EmployeeId;
@@ -340,15 +350,16 @@ public class PurchaseMainViewModel : BindableBase
         foreach (var l in slip.Lines)
         {
             var vm = CreateLineVm(l.LineNo);
-            vm.ProductId      = l.ProductId;
-            vm.ProductCode    = l.ProductCode;
-            vm.ProductName    = l.ProductName;
-            vm.Quantity       = l.Quantity;
-            vm.UnitPrice      = l.UnitPrice;
-            vm.CostPrice      = l.CostPrice;
-            vm.TaxRateType    = l.TaxRateType;
-            vm.AppliedTaxRate = l.AppliedTaxRate;
-            vm.LineRemarks    = l.LineRemarks ?? "";
+            vm.ProductId             = l.ProductId;
+            vm.ProductCode           = l.ProductCode;
+            vm.ProductName           = l.ProductName;
+            vm.IsProductNameReadOnly = !(_lookup.FindProductByCode(l.ProductCode)?.IsMiscellaneous ?? false);
+            vm.Quantity              = l.Quantity;
+            vm.UnitPrice             = l.UnitPrice;
+            vm.CostPrice             = l.CostPrice;
+            vm.TaxRateType           = l.TaxRateType;
+            vm.AppliedTaxRate        = l.AppliedTaxRate;
+            vm.LineRemarks           = l.LineRemarks ?? "";
             Lines.Add(vm);
         }
 
@@ -397,13 +408,14 @@ public class PurchaseMainViewModel : BindableBase
 
     private void ApplySupplier(Supplier s)
     {
-        EditSupplierCode          = s.SupplierCode;
-        EditSupplierName          = s.SupplierName;
-        _editSupplierId           = s.SupplierId;
-        _taxFractionId            = s.TaxFractionId;
-        _editSupplierPostalCode   = s.PostalCode ?? "";
-        _editSupplierAddress1     = s.Address1   ?? "";
-        _editSupplierAddress2     = s.Address2   ?? "";
+        EditSupplierCode         = s.SupplierCode;
+        EditSupplierName         = s.SupplierName;
+        _editSupplierId          = s.SupplierId;
+        _taxFractionId           = s.TaxFractionId;
+        _editSupplierPostalCode  = s.PostalCode ?? "";
+        _editSupplierAddress1    = s.Address1   ?? "";
+        _editSupplierAddress2    = s.Address2   ?? "";
+        IsSupplierNameReadOnly   = !s.IsMiscellaneous;
 
         if (s.EmployeeId.HasValue)
         {
@@ -411,7 +423,9 @@ public class PurchaseMainViewModel : BindableBase
             if (emp is not null) ApplyEmployee(emp);
         }
 
-        StatusMessage = $"仕入先: {s.SupplierName}";
+        StatusMessage = s.IsMiscellaneous
+            ? "諸口仕入先：適格請求書なし。仕入税額控除の対象外です。"
+            : $"仕入先: {s.SupplierName}";
     }
 
     // ── ルックアップ: 担当者 ─────────────────────────────────
@@ -443,11 +457,12 @@ public class PurchaseMainViewModel : BindableBase
     // ── ルックアップ: 商品（明細行コールバック） ─────────────
     private void ApplyProductToLine(PurchaseLineViewModel line, Product p)
     {
-        line.ProductId   = p.ProductId;
-        line.ProductCode = p.ProductCode;
-        line.ProductName = p.ProductName;
-        line.CostPrice   = p.CostPrice;
-        line.TaxRateType = p.TaxRateType;
+        line.ProductId              = p.ProductId;
+        line.ProductCode            = p.ProductCode;
+        line.ProductName            = p.ProductName;
+        line.IsProductNameReadOnly  = !p.IsMiscellaneous;
+        line.CostPrice              = p.CostPrice;
+        line.TaxRateType            = p.TaxRateType;
 
         var purchaseDate = EditPurchaseDate.HasValue
             ? DateOnly.FromDateTime(EditPurchaseDate.Value)
@@ -543,15 +558,16 @@ public class PurchaseMainViewModel : BindableBase
         foreach (var l in order.Lines)
         {
             var vm = CreateLineVm(l.LineNo);
-            vm.ProductId      = l.ProductId;
-            vm.ProductCode    = l.ProductCode;
-            vm.ProductName    = l.ProductName;
-            vm.Quantity       = l.Quantity;
-            vm.UnitPrice      = l.UnitPrice;
-            vm.CostPrice      = l.CostPrice;
-            vm.TaxRateType    = l.TaxRateType;
-            vm.AppliedTaxRate = TaxCalculator.GetAppliedTaxRate(_taxRatePeriods, l.TaxRateType, purchaseDate);
-            vm.LineRemarks    = l.LineRemarks ?? "";
+            vm.ProductId             = l.ProductId;
+            vm.ProductCode           = l.ProductCode;
+            vm.ProductName           = l.ProductName;
+            vm.IsProductNameReadOnly = !(_lookup.FindProductByCode(l.ProductCode)?.IsMiscellaneous ?? false);
+            vm.Quantity              = l.Quantity;
+            vm.UnitPrice             = l.UnitPrice;
+            vm.CostPrice             = l.CostPrice;
+            vm.TaxRateType           = l.TaxRateType;
+            vm.AppliedTaxRate        = TaxCalculator.GetAppliedTaxRate(_taxRatePeriods, l.TaxRateType, purchaseDate);
+            vm.LineRemarks           = l.LineRemarks ?? "";
             Lines.Add(vm);
         }
 

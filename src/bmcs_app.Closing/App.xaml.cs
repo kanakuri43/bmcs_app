@@ -21,6 +21,7 @@ public partial class App : Application
 
         var vm  = new ClosingMainViewModel(customers, closingRepo);
         vm.InvoiceTab.SetCompanyInfo(companyInfo);
+        vm.ArTab.SetCompanyInfo(companyInfo);
 
         var win = new ClosingMainView { DataContext = vm };
         win.Show();

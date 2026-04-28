@@ -18,7 +18,7 @@ public class CustomerRepository : ICustomerRepository
         cmd.CommandText = """
             SELECT customer_id, customer_code, customer_name,
                    closing_day, tax_fraction_id, tax_calc_unit_id, employee_id,
-                   postal_code, address1, address2
+                   postal_code, address1, address2, is_miscellaneous
             FROM customers
             WHERE is_deleted = 0
             ORDER BY customer_code
@@ -28,16 +28,17 @@ public class CustomerRepository : ICustomerRepository
         {
             list.Add(new Customer
             {
-                CustomerId    = reader.GetInt32(0),
-                CustomerCode  = reader.GetString(1),
-                CustomerName  = reader.GetString(2),
-                ClosingDay    = reader.GetByte(3),
-                TaxFractionId = reader.GetInt32(4),
-                TaxCalcUnitId = reader.GetInt32(5),
-                EmployeeId    = reader.IsDBNull(6) ? null : reader.GetInt32(6),
-                PostalCode    = reader.IsDBNull(7) ? null : reader.GetString(7),
-                Address1      = reader.IsDBNull(8) ? null : reader.GetString(8),
-                Address2      = reader.IsDBNull(9) ? null : reader.GetString(9),
+                CustomerId      = reader.GetInt32(0),
+                CustomerCode    = reader.GetString(1),
+                CustomerName    = reader.GetString(2),
+                ClosingDay      = reader.GetByte(3),
+                TaxFractionId   = reader.GetInt32(4),
+                TaxCalcUnitId   = reader.GetInt32(5),
+                EmployeeId      = reader.IsDBNull(6)  ? null : reader.GetInt32(6),
+                PostalCode      = reader.IsDBNull(7)  ? null : reader.GetString(7),
+                Address1        = reader.IsDBNull(8)  ? null : reader.GetString(8),
+                Address2        = reader.IsDBNull(9)  ? null : reader.GetString(9),
+                IsMiscellaneous = reader.GetBoolean(10),
             });
         }
         return list;
@@ -121,23 +122,25 @@ public class CustomerRepository : ICustomerRepository
     public async Task UpsertAsync(int? customerId, string code, string name,
                                    byte closingDay, int taxFractionId, int taxCalcUnitId,
                                    int? employeeId,
-                                   string? postalCode, string? address1, string? address2)
+                                   string? postalCode, string? address1, string? address2,
+                                   bool isMiscellaneous = false)
     {
         await using var conn = new SqlConnection(ConnectionString);
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = "usp_customers_upsert";
         cmd.CommandType = CommandType.StoredProcedure;
-        cmd.Parameters.AddWithValue("@customer_id",      (object?)customerId  ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@customer_code",    code);
-        cmd.Parameters.AddWithValue("@customer_name",    name);
-        cmd.Parameters.AddWithValue("@closing_day",      closingDay);
-        cmd.Parameters.AddWithValue("@tax_fraction_id",  taxFractionId);
-        cmd.Parameters.AddWithValue("@tax_calc_unit_id", taxCalcUnitId);
-        cmd.Parameters.AddWithValue("@employee_id",      (object?)employeeId  ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@postal_code",      (object?)postalCode  ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@address1",         (object?)address1    ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@address2",         (object?)address2    ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@customer_id",       (object?)customerId  ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@customer_code",     code);
+        cmd.Parameters.AddWithValue("@customer_name",     name);
+        cmd.Parameters.AddWithValue("@closing_day",       closingDay);
+        cmd.Parameters.AddWithValue("@tax_fraction_id",   taxFractionId);
+        cmd.Parameters.AddWithValue("@tax_calc_unit_id",  taxCalcUnitId);
+        cmd.Parameters.AddWithValue("@employee_id",       (object?)employeeId  ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@postal_code",       (object?)postalCode  ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@address1",          (object?)address1    ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@address2",          (object?)address2    ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@is_miscellaneous",  isMiscellaneous);
         await cmd.ExecuteNonQueryAsync();
     }
 

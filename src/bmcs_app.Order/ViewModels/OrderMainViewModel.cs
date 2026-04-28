@@ -74,6 +74,13 @@ public class OrderMainViewModel : BindableBase
     private int? _editCustomerId;
     private int  _taxFractionId = 1;
 
+    private bool _isCustomerNameReadOnly = true;
+    public bool IsCustomerNameReadOnly
+    {
+        get => _isCustomerNameReadOnly;
+        private set => SetProperty(ref _isCustomerNameReadOnly, value);
+    }
+
     // ── ヘッダー: 担当者（コード + 名称） ─────────────────────
     private string _editEmployeeCode = "";
     public string EditEmployeeCode
@@ -221,13 +228,14 @@ public class OrderMainViewModel : BindableBase
     // ── 新規 ─────────────────────────────────────────────────
     private void OnNew()
     {
-        IsLocked          = false;
-        _currentSlipIndex = -1;
-        EditOrderNo       = "";
-        EditOrderDate     = DateTime.Today;
-        EditCustomerCode  = "";
-        EditCustomerName  = "";
-        _editCustomerId   = null;
+        IsLocked               = false;
+        _currentSlipIndex      = -1;
+        EditOrderNo            = "";
+        EditOrderDate          = DateTime.Today;
+        EditCustomerCode       = "";
+        EditCustomerName       = "";
+        _editCustomerId        = null;
+        IsCustomerNameReadOnly = true;
         EditEmployeeCode  = "";
         EditEmployeeName  = "";
         _editEmployeeId   = null;
@@ -290,7 +298,9 @@ public class OrderMainViewModel : BindableBase
         EditCustomerCode = slip.CustomerCode;
         EditCustomerName = slip.CustomerName;
         _editCustomerId  = slip.CustomerId;
-        _taxFractionId   = _lookup.FindCustomerByCode(slip.CustomerCode)?.TaxFractionId ?? 1;
+        var cust = _lookup.FindCustomerByCode(slip.CustomerCode);
+        _taxFractionId         = cust?.TaxFractionId ?? 1;
+        IsCustomerNameReadOnly = !(cust?.IsMiscellaneous ?? false);
         EditEmployeeCode = slip.EmployeeCode;
         EditEmployeeName = slip.EmployeeName;
         _editEmployeeId  = slip.EmployeeId == 0 ? null : slip.EmployeeId;
@@ -300,15 +310,16 @@ public class OrderMainViewModel : BindableBase
         foreach (var l in slip.Lines)
         {
             var vm = CreateLineVm(l.LineNo);
-            vm.ProductId      = l.ProductId;
-            vm.ProductCode    = l.ProductCode;
-            vm.ProductName    = l.ProductName;
-            vm.Quantity       = l.Quantity;
-            vm.UnitPrice      = l.UnitPrice;
-            vm.CostPrice      = l.CostPrice;
-            vm.TaxRateType    = l.TaxRateType;
-            vm.AppliedTaxRate = l.AppliedTaxRate;
-            vm.LineRemarks    = l.LineRemarks ?? "";
+            vm.ProductId             = l.ProductId;
+            vm.ProductCode           = l.ProductCode;
+            vm.ProductName           = l.ProductName;
+            vm.IsProductNameReadOnly = !(_lookup.FindProductByCode(l.ProductCode)?.IsMiscellaneous ?? false);
+            vm.Quantity              = l.Quantity;
+            vm.UnitPrice             = l.UnitPrice;
+            vm.CostPrice             = l.CostPrice;
+            vm.TaxRateType           = l.TaxRateType;
+            vm.AppliedTaxRate        = l.AppliedTaxRate;
+            vm.LineRemarks           = l.LineRemarks ?? "";
             Lines.Add(vm);
         }
 
@@ -356,10 +367,11 @@ public class OrderMainViewModel : BindableBase
 
     private void ApplyCustomer(Customer c)
     {
-        EditCustomerCode  = c.CustomerCode;
-        EditCustomerName  = c.CustomerName;
-        _editCustomerId   = c.CustomerId;
-        _taxFractionId    = c.TaxFractionId;
+        EditCustomerCode       = c.CustomerCode;
+        EditCustomerName       = c.CustomerName;
+        _editCustomerId        = c.CustomerId;
+        _taxFractionId         = c.TaxFractionId;
+        IsCustomerNameReadOnly = !c.IsMiscellaneous;
 
         if (c.EmployeeId.HasValue)
         {
@@ -398,11 +410,12 @@ public class OrderMainViewModel : BindableBase
     // ── ルックアップ: 商品（明細行コールバック） ─────────────
     private void ApplyProductToLine(OrderLineViewModel line, Product p)
     {
-        line.ProductId   = p.ProductId;
-        line.ProductCode = p.ProductCode;
-        line.ProductName = p.ProductName;
-        line.CostPrice   = p.CostPrice;
-        line.TaxRateType = p.TaxRateType;
+        line.ProductId              = p.ProductId;
+        line.ProductCode            = p.ProductCode;
+        line.ProductName            = p.ProductName;
+        line.IsProductNameReadOnly  = !p.IsMiscellaneous;
+        line.CostPrice              = p.CostPrice;
+        line.TaxRateType            = p.TaxRateType;
 
         var orderDate = EditOrderDate.HasValue
             ? DateOnly.FromDateTime(EditOrderDate.Value)

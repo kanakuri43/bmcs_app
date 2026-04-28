@@ -90,6 +90,13 @@ public class SalesMainViewModel : BindableBase
     private int?   _editCustomerId;
     private int    _taxFractionId          = 1;
     private int    _taxCalcUnitId          = 1;
+
+    private bool _isCustomerNameReadOnly = true;
+    public bool IsCustomerNameReadOnly
+    {
+        get => _isCustomerNameReadOnly;
+        private set => SetProperty(ref _isCustomerNameReadOnly, value);
+    }
     private string _editCustomerPostalCode = "";
     private string _editCustomerAddress1   = "";
     private string _editCustomerAddress2   = "";
@@ -259,13 +266,14 @@ public class SalesMainViewModel : BindableBase
         _invoicedAt       = null;
         _arAggregatedAt   = null;
         _currentSlipIndex = -1;
-        EditSaleNo       = "";
-        EditOrderNo      = "";
-        EditSaleDate     = DateTime.Today;
-        EditCustomerCode = "";
-        EditCustomerName = "";
-        EditCustomerId   = null;
-        _taxCalcUnitId   = 1;
+        EditSaleNo              = "";
+        EditOrderNo             = "";
+        EditSaleDate            = DateTime.Today;
+        EditCustomerCode        = "";
+        EditCustomerName        = "";
+        EditCustomerId          = null;
+        _taxCalcUnitId          = 1;
+        IsCustomerNameReadOnly  = true;
         EditEmployeeCode = "";
         EditEmployeeName = "";
         EditEmployeeId   = null;
@@ -351,14 +359,15 @@ public class SalesMainViewModel : BindableBase
         _editCustomerPostalCode = slip.CustomerPostalCode ?? "";
         _editCustomerAddress1   = slip.CustomerAddress1   ?? "";
         _editCustomerAddress2   = slip.CustomerAddress2   ?? "";
-        EditSaleNo       = slip.SaleNo;
-        EditSaleDate     = slip.SaleDate.ToDateTime(TimeOnly.MinValue);
-        EditCustomerCode = slip.CustomerCode;
-        EditCustomerName = slip.CustomerName;
-        _editCustomerId  = slip.CustomerId;
+        EditSaleNo             = slip.SaleNo;
+        EditSaleDate           = slip.SaleDate.ToDateTime(TimeOnly.MinValue);
+        EditCustomerCode       = slip.CustomerCode;
+        EditCustomerName       = slip.CustomerName;
+        _editCustomerId        = slip.CustomerId;
         var cust = _lookup.FindCustomerByCode(slip.CustomerCode);
-        _taxFractionId   = cust?.TaxFractionId ?? 1;
-        _taxCalcUnitId   = cust?.TaxCalcUnitId ?? 1;
+        _taxFractionId         = cust?.TaxFractionId ?? 1;
+        _taxCalcUnitId         = cust?.TaxCalcUnitId ?? 1;
+        IsCustomerNameReadOnly = !(cust?.IsMiscellaneous ?? false);
         EditEmployeeCode = slip.EmployeeCode;
         EditEmployeeName = slip.EmployeeName;
         _editEmployeeId  = slip.EmployeeId;
@@ -370,15 +379,16 @@ public class SalesMainViewModel : BindableBase
         foreach (var l in slip.Lines)
         {
             var vm = CreateLineVm(l.LineNo);
-            vm.ProductId      = l.ProductId;
-            vm.ProductCode    = l.ProductCode;
-            vm.ProductName    = l.ProductName;
-            vm.Quantity       = l.Quantity;
-            vm.UnitPrice      = l.UnitPrice;
-            vm.CostPrice      = l.CostPrice;
-            vm.TaxRateType    = l.TaxRateType;
-            vm.AppliedTaxRate = l.AppliedTaxRate;
-            vm.LineRemarks    = l.LineRemarks ?? "";
+            vm.ProductId             = l.ProductId;
+            vm.ProductCode           = l.ProductCode;
+            vm.ProductName           = l.ProductName;
+            vm.IsProductNameReadOnly = !(_lookup.FindProductByCode(l.ProductCode)?.IsMiscellaneous ?? false);
+            vm.Quantity              = l.Quantity;
+            vm.UnitPrice             = l.UnitPrice;
+            vm.CostPrice             = l.CostPrice;
+            vm.TaxRateType           = l.TaxRateType;
+            vm.AppliedTaxRate        = l.AppliedTaxRate;
+            vm.LineRemarks           = l.LineRemarks ?? "";
             Lines.Add(vm);
         }
 
@@ -435,6 +445,7 @@ public class SalesMainViewModel : BindableBase
         _editCustomerPostalCode   = c.PostalCode ?? "";
         _editCustomerAddress1     = c.Address1   ?? "";
         _editCustomerAddress2     = c.Address2   ?? "";
+        IsCustomerNameReadOnly    = !c.IsMiscellaneous;
         if (c.EmployeeId.HasValue)
         {
             var emp = _lookup.FindEmployeeById(c.EmployeeId.Value);
@@ -473,11 +484,12 @@ public class SalesMainViewModel : BindableBase
     // ── ルックアップ: 商品（明細行コールバック） ─────────────
     private void ApplyProductToLine(SaleLineViewModel line, Product p)
     {
-        line.ProductId   = p.ProductId;
-        line.ProductCode = p.ProductCode;
-        line.ProductName = p.ProductName;
-        line.CostPrice   = p.CostPrice;
-        line.TaxRateType = p.TaxRateType;
+        line.ProductId              = p.ProductId;
+        line.ProductCode            = p.ProductCode;
+        line.ProductName            = p.ProductName;
+        line.IsProductNameReadOnly  = !p.IsMiscellaneous;
+        line.CostPrice              = p.CostPrice;
+        line.TaxRateType            = p.TaxRateType;
         var saleDate = EditSaleDate.HasValue
             ? DateOnly.FromDateTime(EditSaleDate.Value)
             : DateOnly.FromDateTime(DateTime.Today);
@@ -576,15 +588,16 @@ public class SalesMainViewModel : BindableBase
         foreach (var l in order.Lines)
         {
             var vm = CreateLineVm(l.LineNo);
-            vm.ProductId      = l.ProductId;
-            vm.ProductCode    = l.ProductCode;
-            vm.ProductName    = l.ProductName;
-            vm.Quantity       = l.Quantity;
-            vm.UnitPrice      = l.UnitPrice;
-            vm.CostPrice      = l.CostPrice;
-            vm.TaxRateType    = l.TaxRateType;
-            vm.AppliedTaxRate = TaxCalculator.GetAppliedTaxRate(_taxRatePeriods, l.TaxRateType, saleDate);
-            vm.LineRemarks    = l.LineRemarks ?? "";
+            vm.ProductId             = l.ProductId;
+            vm.ProductCode           = l.ProductCode;
+            vm.ProductName           = l.ProductName;
+            vm.IsProductNameReadOnly = !(_lookup.FindProductByCode(l.ProductCode)?.IsMiscellaneous ?? false);
+            vm.Quantity              = l.Quantity;
+            vm.UnitPrice             = l.UnitPrice;
+            vm.CostPrice             = l.CostPrice;
+            vm.TaxRateType           = l.TaxRateType;
+            vm.AppliedTaxRate        = TaxCalculator.GetAppliedTaxRate(_taxRatePeriods, l.TaxRateType, saleDate);
+            vm.LineRemarks           = l.LineRemarks ?? "";
             Lines.Add(vm);
         }
 

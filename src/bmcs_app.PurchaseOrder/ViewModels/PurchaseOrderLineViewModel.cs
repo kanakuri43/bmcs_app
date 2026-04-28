@@ -21,6 +21,7 @@ public class PurchaseOrderLineViewModel : BindableBase
     private byte    _taxRateType;
     private decimal _appliedTaxRate;
     private string  _lineRemarks    = "";
+    private bool    _isProductNameReadOnly = true;
 
     public DelegateCommand OpenProductLookupCommand   { get; }
     public DelegateCommand LookupProductByCodeCommand { get; }
@@ -71,6 +72,12 @@ public class PurchaseOrderLineViewModel : BindableBase
     {
         get => _productName;
         set => SetProperty(ref _productName, value);
+    }
+
+    public bool IsProductNameReadOnly
+    {
+        get => _isProductNameReadOnly;
+        set => SetProperty(ref _isProductNameReadOnly, value);
     }
 
     public decimal Quantity

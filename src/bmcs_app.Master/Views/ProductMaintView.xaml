@@ -142,8 +142,13 @@
 
                     <!-- 入力欄 -->
                     <StackPanel Grid.Row="0">
+                        <CheckBox Content="諸口"
+                                  IsChecked="{Binding EditIsMiscellaneous}"
+                                  Margin="0,0,0,8" />
+
                         <Label Content="商品コード" />
                         <TextBox Text="{Binding EditCode, UpdateSourceTrigger=PropertyChanged}"
+                                 IsReadOnly="{Binding IsEditCodeReadOnly}"
                                  mah:TextBoxHelper.Watermark="例: P001"
                                  MaxLength="20"
                                  Margin="0,0,0,8" />

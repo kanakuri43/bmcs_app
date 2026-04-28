@@ -10,7 +10,7 @@ public class LookupService
 
     public void Initialize(IEnumerable<Product> products)
     {
-        _products = products.ToList();
+        _products = products.Where(p => !p.IsMiscellaneous).ToList();
     }
 
     public Product? OpenProductSearch(string initialKeyword = "")

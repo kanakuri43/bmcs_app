@@ -15,4 +15,5 @@ public interface IClosingRepository
     Task<IEnumerable<InvoiceSlipDetail>>    GetInvoiceSlipDetailsAsync(DateOnly invoiceDate, int customerId);
     Task<IEnumerable<InvoiceTaxGroup>>      GetInvoiceTaxGroupsAsync(DateOnly invoiceDate, int customerId);
     Task<IEnumerable<InvoiceReceiptDetail>> GetInvoiceReceiptDetailsAsync(DateOnly invoiceDate, int customerId);
+    Task<IEnumerable<ArBalanceRow>>         GetArRowsAsync(DateOnly closingDate, int? customerId = null);
 }

@@ -116,6 +116,24 @@ public class ProductMaintViewModel : BindableBase
         set => SetProperty(ref _editCostPrice, value);
     }
 
+    private bool _editIsMiscellaneous = false;
+    public bool EditIsMiscellaneous
+    {
+        get => _editIsMiscellaneous;
+        set
+        {
+            if (SetProperty(ref _editIsMiscellaneous, value))
+                IsEditCodeReadOnly = value && _editingId is not null;
+        }
+    }
+
+    private bool _isEditCodeReadOnly = false;
+    public bool IsEditCodeReadOnly
+    {
+        get => _isEditCodeReadOnly;
+        private set => SetProperty(ref _isEditCodeReadOnly, value);
+    }
+
     // ── ステータス ────────────────────────────────────────
     private string _statusMessage = "準備完了";
     public string StatusMessage
@@ -223,26 +241,30 @@ public class ProductMaintViewModel : BindableBase
     // ── フォーム操作 ───────────────────────────────────────
     private void OnNew()
     {
-        _editingId = null;
-        EditCode        = "";
-        EditName        = "";
-        EditTaxType     = TaxTypes.FirstOrDefault();
-        EditTaxRateType = TaxRateTypeOptions.FirstOrDefault();
-        EditCostPrice   = 0;
-        _selectedProduct = null;
+        _editingId           = null;
+        EditCode             = "";
+        EditName             = "";
+        EditTaxType          = TaxTypes.FirstOrDefault();
+        EditTaxRateType      = TaxRateTypeOptions.FirstOrDefault();
+        EditCostPrice        = 0;
+        EditIsMiscellaneous  = false;
+        IsEditCodeReadOnly   = false;
+        _selectedProduct     = null;
         RaisePropertyChanged(nameof(SelectedProduct));
         StatusMessage = "新規入力";
     }
 
     private void LoadToForm(Product p)
     {
-        _editingId      = p.ProductId;
-        EditCode        = p.ProductCode;
-        EditName        = p.ProductName;
-        EditTaxType     = TaxTypes.FirstOrDefault(t => t.TaxTypeId == p.TaxTypeId);
-        EditTaxRateType = TaxRateTypeOptions.FirstOrDefault(o => o.Value == p.TaxRateType);
-        EditCostPrice   = p.CostPrice;
-        StatusMessage   = $"編集中: {p.ProductName}";
+        _editingId          = p.ProductId;
+        EditCode            = p.ProductCode;
+        EditName            = p.ProductName;
+        EditTaxType         = TaxTypes.FirstOrDefault(t => t.TaxTypeId == p.TaxTypeId);
+        EditTaxRateType     = TaxRateTypeOptions.FirstOrDefault(o => o.Value == p.TaxRateType);
+        EditCostPrice       = p.CostPrice;
+        EditIsMiscellaneous = p.IsMiscellaneous;
+        IsEditCodeReadOnly  = p.IsMiscellaneous;
+        StatusMessage       = $"編集中: {p.ProductName}";
     }
 
     private async Task OnSaveAsync()
@@ -265,7 +287,8 @@ public class ProductMaintViewModel : BindableBase
                 EditName.Trim(),
                 EditTaxType.TaxTypeId,
                 EditTaxRateType.Value,
-                EditCostPrice);
+                EditCostPrice,
+                EditIsMiscellaneous);
             StatusMessage = _editingId is null ? "登録しました" : "更新しました";
             await LoadProductsAsync();
         }
@@ -291,5 +314,5 @@ public class ProductMaintViewModel : BindableBase
         }
     }
 
-    private bool CanDelete() => SelectedProduct is not null;
+    private bool CanDelete() => SelectedProduct is not null && !SelectedProduct.IsMiscellaneous;
 }

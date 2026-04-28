@@ -11,5 +11,6 @@ public class Customer
     public int?    EmployeeId     { get; set; }
     public string? PostalCode     { get; set; }
     public string? Address1       { get; set; }
-    public string? Address2       { get; set; }
+    public string? Address2          { get; set; }
+    public bool    IsMiscellaneous   { get; set; }
 }

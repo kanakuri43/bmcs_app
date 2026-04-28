@@ -7,5 +7,6 @@ public class Product
     public string  ProductName { get; set; } = "";
     public int     TaxTypeId   { get; set; }
     public byte    TaxRateType { get; set; }
-    public decimal CostPrice   { get; set; }
+    public decimal CostPrice        { get; set; }
+    public bool    IsMiscellaneous  { get; set; }
 }

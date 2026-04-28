@@ -215,4 +215,41 @@ public class ClosingRepository : IClosingRepository
         }
         return list;
     }
+
+    public async Task<IEnumerable<ArBalanceRow>> GetArRowsAsync(DateOnly closingDate, int? customerId = null)
+    {
+        var list = new List<ArBalanceRow>();
+        await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT customer_code, customer_name,
+                   carried_over_amount, sales_amount_standard, sales_amount_reduced,
+                   tax_amount_standard, tax_amount_reduced,
+                   receipt_amount, closing_amount
+            FROM   accounts_receivable_histories
+            WHERE  closing_date = @closing_date
+              AND  is_deleted   = 0
+              AND  (@customer_id IS NULL OR customer_id = @customer_id)
+            ORDER BY customer_code";
+        cmd.Parameters.AddWithValue("@closing_date", closingDate.ToDateTime(TimeOnly.MinValue));
+        cmd.Parameters.AddWithValue("@customer_id",  (object?)customerId ?? DBNull.Value);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            list.Add(new ArBalanceRow
+            {
+                CustomerCode        = reader.GetString(0),
+                CustomerName        = reader.GetString(1),
+                CarriedOverAmount   = reader.GetDecimal(2),
+                SalesAmountStandard = reader.GetDecimal(3),
+                SalesAmountReduced  = reader.GetDecimal(4),
+                TaxAmountStandard   = reader.GetDecimal(5),
+                TaxAmountReduced    = reader.GetDecimal(6),
+                ReceiptAmount       = reader.GetDecimal(7),
+                ClosingAmount       = reader.GetDecimal(8),
+            });
+        }
+        return list;
+    }
 }

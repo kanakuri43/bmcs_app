@@ -145,8 +145,13 @@
 
                     <!-- 入力欄 -->
                     <StackPanel Grid.Row="0">
+                        <CheckBox Content="諸口"
+                                  IsChecked="{Binding EditIsMiscellaneous}"
+                                  Margin="0,0,0,8" />
+
                         <Label Content="仕入先コード" />
                         <TextBox Text="{Binding EditCode, UpdateSourceTrigger=PropertyChanged}"
+                                 IsReadOnly="{Binding IsEditCodeReadOnly}"
                                  mah:TextBoxHelper.Watermark="例: S001"
                                  MaxLength="20"
                                  Margin="0,0,0,8" />
@@ -157,11 +162,22 @@
                                  MaxLength="100"
                                  Margin="0,0,0,8" />
 
-                        <Label Content="締日（月末=99）" />
+                        <Label Content="締日（月末=99 / 諸口=0）" />
                         <TextBox Text="{Binding EditClosingDay, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="例: 20 または 99"
                                  MaxLength="2"
-                                 Margin="0,0,0,8" />
+                                 Margin="0,0,0,8">
+                            <TextBox.Style>
+                                <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsClosingDayEditable}" Value="False">
+                                            <Setter Property="IsReadOnly" Value="True" />
+                                            <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.Gray3}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBox.Style>
+                        </TextBox>
 
                         <Label Content="税端数区分" />
                         <ComboBox ItemsSource="{Binding TaxFractions}"
