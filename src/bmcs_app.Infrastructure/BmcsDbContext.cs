@@ -1,10 +1,13 @@
+using bmcs_app.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace bmcs_app.Infrastructure;
 
 /// <summary>
 /// 販売管理システムの DbContext。
-/// エンティティ定義とマッピング設定（PascalCase ↔ snake_case 等）は Phase 1-6 で追加する。
+/// テーブル名・カラム名の PascalCase ↔ snake_case 変換は UseSnakeCaseNamingConvention
+/// （InfrastructureServiceCollectionExtensions で設定）に任せる。マッピング設定の詳細は
+/// Configurations/ 配下の IEntityTypeConfiguration 実装を参照。
 /// </summary>
 public class BmcsDbContext(DbContextOptions<BmcsDbContext> options) : DbContext(options)
 {
@@ -13,6 +16,51 @@ public class BmcsDbContext(DbContextOptions<BmcsDbContext> options) : DbContext(
     /// ウィンドウごとに DbContext のスコープが分かれていることを確認するために使う。
     /// </summary>
     public Guid InstanceId { get; } = Guid.NewGuid();
+
+    public DbSet<Employee> Employees => Set<Employee>();
+
+    public DbSet<Customer> Customers => Set<Customer>();
+
+    public DbSet<Product> Products => Set<Product>();
+
+    public DbSet<CompanyInfo> CompanyInfos => Set<CompanyInfo>();
+
+    public DbSet<BankAccount> BankAccounts => Set<BankAccount>();
+
+    public DbSet<Menu> Menus => Set<Menu>();
+
+    public DbSet<OrderSlip> OrderSlips => Set<OrderSlip>();
+
+    public DbSet<BillingTaxUnitInvoice> BillingTaxUnitInvoices => Set<BillingTaxUnitInvoice>();
+
+    public DbSet<BillingTaxUnitSlip> BillingTaxUnitSlips => Set<BillingTaxUnitSlip>();
+
+    public DbSet<SalesTaxUnitInvoice> SalesTaxUnitInvoices => Set<SalesTaxUnitInvoice>();
+
+    public DbSet<SalesTaxUnitSlip> SalesTaxUnitSlips => Set<SalesTaxUnitSlip>();
+
+    public DbSet<SalesTaxUnitLine> SalesTaxUnitLines => Set<SalesTaxUnitLine>();
+
+    public DbSet<PaymentTaxUnitInvoice> PaymentTaxUnitInvoices => Set<PaymentTaxUnitInvoice>();
+
+    public DbSet<PaymentTaxUnitSlip> PaymentTaxUnitSlips => Set<PaymentTaxUnitSlip>();
+
+    public DbSet<DetailInvoice> DetailInvoices => Set<DetailInvoice>();
+
+    public DbSet<DetailPayment> DetailPayments => Set<DetailPayment>();
+
+    public DbSet<DetailInvoiceSalesLine> DetailInvoiceSalesLines => Set<DetailInvoiceSalesLine>();
+
+    public DbSet<MonthlyClosing> MonthlyClosings => Set<MonthlyClosing>();
+
+    public DbSet<SlipNumberSequence> SlipNumberSequences => Set<SlipNumberSequence>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(BmcsDbContext).Assembly);
+    }
 
     /// <summary>
     /// サーバのバージョン文字列を取得する。テーブルが未作成でも実行できるため、

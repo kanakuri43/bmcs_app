@@ -29,8 +29,12 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Scoped で登録する。ウィンドウごとにスコープを作るため、
         // 画面をまたいで DbContext が共有されない（docs/architecture.md 4章）。
+        // UseSnakeCaseNamingConvention: PascalCase(C#) ↔ snake_case(DB) の変換を自動化する
+        // （docs/database-schema.md の命名規則）。列ごとに HasColumnName を書かずに済む。
         services.AddDbContext<BmcsDbContext>(
-            options => options.UseSqlServer(connectionString),
+            options => options
+                .UseSqlServer(connectionString)
+                .UseSnakeCaseNamingConvention(),
             contextLifetime: ServiceLifetime.Scoped,
             optionsLifetime: ServiceLifetime.Singleton);
 

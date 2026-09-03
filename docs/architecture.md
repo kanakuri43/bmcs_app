@@ -182,6 +182,17 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 - C# のクラス名・プロパティ名は PascalCase、DB のテーブル名・カラム名は `snake_case`（`docs/database-schema.md`）。変換は Infrastructure 層のマッピング設定で行う。
 - 画面の正式名称は `docs/design_document.md` の画面一覧を正とする。
 
+### エンティティ・マッピングの実装方針（Phase 1-6 で確定）
+
+- **PascalCase ↔ snake_case の変換は `EFCore.NamingConventions`（`UseSnakeCaseNamingConvention()`）に任せる。** 列ごとに `HasColumnName` を書かずに済む。ただし**数字を含む列名**（`taxable_10_amount` 等）は自動変換が意図通りにならないため、該当プロパティのみ `HasColumnName` を明示する。
+- **テーブル名は DDL の単数形に対して `ToTable()` を必ず明示する。** DbSet プロパティは複数形（`Customers` 等）で宣言するため、命名変換に任せると `customers` のように誤って複数形になる。
+- **ナビゲーションプロパティは持たせない。** 得意先元帳はアプリ側 LINQ で複数テーブルをマージする方針であり、`Include()` によるナビゲーション経由の結合を使わないため。リポジトリを作らない方針と同様、使わない抽象化を先回りして作らない。
+- **ただし FK 関係は `HasOne<TPrincipal>().WithMany().HasForeignKey(...)` で登録する（ナビゲーションプロパティなしで）。** これを省略すると、複数エンティティを同一 `SaveChangesAsync()` で保存したときに EF Core が依存関係を解決できず、INSERT 文の順序が（観測した限りでは）テーブル名のアルファベット順になり、FK 制約違反を起こす。DB 側にすでに存在する FK 制約（Phase 1-5）と対になる形で、全 FK 関係を登録する。
+- **監査列は共通基底クラスで重複を排除する。** `TrackedEntity`（`CreatedBy`/`CreatedAt`/`UpdatedBy`/`UpdatedAt`）と、これを継承し `IsDeleted`/`RowVersion` を追加する `AuditableEntity` の2段構成。共通基底クラス（`BillingTaxUnitBase` 等）を持つテーブル群は、Fluent API 側も共通拡張メソッド（`Configurations/TaxUnitConfigurationExtensions.cs`）に集約する。
+- **`decimal` は `HasPrecision(p, s)` を必ず明示する。** 省略すると既定精度（18,2）になり、`decimal(15,4)` の単価カラム等で桁落ちする。
+- **`varchar`/`char` 列は `.IsUnicode(false)` を明示する。** 省略すると EF Core が `nvarchar` パラメータを送り、SQL Server 側で暗黙変換が発生してインデックスを使えなくなる（コード系カラムは PK/FK で全 JOIN に絡むため実害が大きい）。
+- **`date` 型は C# `DateOnly` にマッピングする。** EF Core 8+ のネイティブ対応。時刻成分を持たせないことでバグを防ぐ。
+
 ## 11. MVVM の実装方針
 
 - **`CommunityToolkit.Mvvm` を使う。** `ObservableObject` や `RelayCommand` を自作しない。
