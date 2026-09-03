@@ -1,0 +1,20 @@
+<Project>
+
+  <!--
+    全プロジェクト共通のビルド設定。
+    個別の csproj には TargetFramework と、そのプロジェクト固有の設定のみを書く。
+  -->
+  <PropertyGroup>
+    <!-- CLAUDE.md の Tech stack 要件: Nullable 参照型を有効化する -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <!--
+      null 安全性の警告はビルドを失敗させる。
+      伝票金額・消込などを扱うため、null 起因の実行時例外を実装時に潰しておく。
+    -->
+    <WarningsAsErrors>nullable</WarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    ドメイン層。エンティティ・enum・消費税計算などの純粋ロジックを置く。
+    他のプロジェクトを一切参照しない（最下層）。
+    WPF の型が混入しないよう、あえて net10.0（-windows なし）とする。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+</Project>

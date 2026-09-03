@@ -1,0 +1,19 @@
+<Window x:Class="bmcs_app.Views.Menu.MainMenuWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="bmcs_app - メインメニュー"
+        Height="450" Width="800"
+        WindowStartupLocation="CenterScreen">
+    <!--
+        Phase 0-1 時点の起動確認用の仮ウィンドウ。
+        権限に応じたメニューの出し分けは Phase 2-7 で実装する。
+    -->
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+        <TextBlock Text="bmcs_app"
+                   FontSize="28"
+                   HorizontalAlignment="Center" />
+        <TextBlock Text="Phase 0-1: 骨格の起動確認"
+                   Margin="0,12,0,0"
+                   HorizontalAlignment="Center" />
+    </StackPanel>
+</Window>

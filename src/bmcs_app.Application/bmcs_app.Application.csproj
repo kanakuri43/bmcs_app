@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    業務処理層。伝票登録・請求締め・入金消込などのユースケースと、トランザクション境界を持つ。
+    DbContext を直接使うため Infrastructure を参照する（リポジトリのインターフェースは作らない）。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\bmcs_app.Domain\bmcs_app.Domain.csproj" />
+    <ProjectReference Include="..\bmcs_app.Infrastructure\bmcs_app.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

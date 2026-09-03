@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    プレゼンテーション層（WPF）。View と ViewModel を機能別フォルダに分けて置く。
+    Infrastructure は意図的に参照しない（DB アクセスは必ず Application 層を経由させる）。
+    ただし .NET SDK の ProjectReference は推移的に伝播するため、これはコンパイラでは
+    強制されない。規約として docs/architecture.md に定義している。
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\bmcs_app.Domain\bmcs_app.Domain.csproj" />
+    <ProjectReference Include="..\bmcs_app.Application\bmcs_app.Application.csproj" />
+  </ItemGroup>
+
+</Project>
