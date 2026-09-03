@@ -28,12 +28,10 @@ public static class TaxUnitConfigurationExtensions
         builder.Property(e => e.TaxAmount).HasPrecision(15, 2);
         builder.Property(e => e.CurrentBillingAmount).HasPrecision(15, 2);
 
-        // 数字を含む列名は snake_case 変換で "taxable10amount" のように
-        // アンダースコアが入らないため、DDLの実際の列名を明示する。
-        builder.Property(e => e.Taxable10Amount).HasColumnName("taxable_10_amount").HasPrecision(15, 2);
-        builder.Property(e => e.Tax10Amount).HasColumnName("tax_10_amount").HasPrecision(15, 2);
-        builder.Property(e => e.Reduced8Amount).HasColumnName("reduced_8_amount").HasPrecision(15, 2);
-        builder.Property(e => e.Tax8Amount).HasColumnName("tax_8_amount").HasPrecision(15, 2);
+        builder.Property(e => e.StandardRateTaxableAmount).HasPrecision(15, 2);
+        builder.Property(e => e.StandardRateTaxAmount).HasPrecision(15, 2);
+        builder.Property(e => e.ReducedRateTaxableAmount).HasPrecision(15, 2);
+        builder.Property(e => e.ReducedRateTaxAmount).HasPrecision(15, 2);
         builder.Property(e => e.TaxExemptAmount).HasPrecision(15, 2);
 
         builder.Property(e => e.BillingStatus).HasConversion<byte>();

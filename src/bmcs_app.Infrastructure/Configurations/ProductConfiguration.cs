@@ -18,7 +18,8 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(e => e.Specification).HasMaxLength(60);
         builder.Property(e => e.UnitName).HasMaxLength(10);
 
-        builder.Property(e => e.StandardUnitPrice).HasPrecision(15, 4);
+        builder.Property(e => e.StandardUnitPriceExclTax).HasPrecision(15, 4);
+        builder.Property(e => e.StandardUnitPriceInclTax).HasPrecision(15, 4);
         builder.Property(e => e.StandardCostPrice).HasPrecision(15, 4);
 
         builder.Property(e => e.TaxCategory).HasConversion<byte>();

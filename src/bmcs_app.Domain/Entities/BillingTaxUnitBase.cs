@@ -30,15 +30,15 @@ public abstract class BillingTaxUnitBase : AuditableEntity
 
     public required decimal CurrentBillingAmount { get; set; }
 
-    /// <summary>税率別内訳: 課税10%の対価額。</summary>
-    public required decimal Taxable10Amount { get; set; }
+    /// <summary>税率別内訳: 標準税率の対価額。</summary>
+    public required decimal StandardRateTaxableAmount { get; set; }
 
-    public required decimal Tax10Amount { get; set; }
+    public required decimal StandardRateTaxAmount { get; set; }
 
-    /// <summary>軽減8%の対価額。</summary>
-    public required decimal Reduced8Amount { get; set; }
+    /// <summary>軽減税率の対価額。</summary>
+    public required decimal ReducedRateTaxableAmount { get; set; }
 
-    public required decimal Tax8Amount { get; set; }
+    public required decimal ReducedRateTaxAmount { get; set; }
 
     public required decimal TaxExemptAmount { get; set; }
 

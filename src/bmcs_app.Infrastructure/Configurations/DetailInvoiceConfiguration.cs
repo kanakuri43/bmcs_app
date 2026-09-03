@@ -21,12 +21,10 @@ public class DetailInvoiceConfiguration : IEntityTypeConfiguration<DetailInvoice
         builder.Property(e => e.TaxAmount).HasPrecision(15, 2);
         builder.Property(e => e.TotalAmount).HasPrecision(15, 2);
 
-        // 数字を含む列名は snake_case 変換で意図通りにならないため明示する
-        // （TaxUnitConfigurationExtensions.ConfigureBillingTaxUnitColumns と同じ理由）。
-        builder.Property(e => e.Taxable10Amount).HasColumnName("taxable_10_amount").HasPrecision(15, 2);
-        builder.Property(e => e.Tax10Amount).HasColumnName("tax_10_amount").HasPrecision(15, 2);
-        builder.Property(e => e.Reduced8Amount).HasColumnName("reduced_8_amount").HasPrecision(15, 2);
-        builder.Property(e => e.Tax8Amount).HasColumnName("tax_8_amount").HasPrecision(15, 2);
+        builder.Property(e => e.StandardRateTaxableAmount).HasPrecision(15, 2);
+        builder.Property(e => e.StandardRateTaxAmount).HasPrecision(15, 2);
+        builder.Property(e => e.ReducedRateTaxableAmount).HasPrecision(15, 2);
+        builder.Property(e => e.ReducedRateTaxAmount).HasPrecision(15, 2);
         builder.Property(e => e.TaxExemptAmount).HasPrecision(15, 2);
 
         builder.Property(e => e.InvoiceStatus).HasConversion<byte>();

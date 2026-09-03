@@ -23,6 +23,8 @@ public class BmcsDbContext(DbContextOptions<BmcsDbContext> options) : DbContext(
 
     public DbSet<Product> Products => Set<Product>();
 
+    public DbSet<TaxRateMaster> TaxRateMasters => Set<TaxRateMaster>();
+
     public DbSet<CompanyInfo> CompanyInfos => Set<CompanyInfo>();
 
     public DbSet<BankAccount> BankAccounts => Set<BankAccount>();

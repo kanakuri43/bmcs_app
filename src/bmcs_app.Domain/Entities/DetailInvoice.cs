@@ -26,13 +26,13 @@ public class DetailInvoice : AuditableEntity
 
     public required decimal TotalAmount { get; set; }
 
-    public required decimal Taxable10Amount { get; set; }
+    public required decimal StandardRateTaxableAmount { get; set; }
 
-    public required decimal Tax10Amount { get; set; }
+    public required decimal StandardRateTaxAmount { get; set; }
 
-    public required decimal Reduced8Amount { get; set; }
+    public required decimal ReducedRateTaxableAmount { get; set; }
 
-    public required decimal Tax8Amount { get; set; }
+    public required decimal ReducedRateTaxAmount { get; set; }
 
     public required decimal TaxExemptAmount { get; set; }
 

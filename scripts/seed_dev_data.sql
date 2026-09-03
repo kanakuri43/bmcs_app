@@ -76,14 +76,14 @@ GO
 -- 商品: 税種別区分3種を1つずつ網羅
 INSERT INTO dbo.product
     (product_code, product_name, product_name_kana, specification, unit_name,
-     standard_unit_price, standard_cost_price, tax_category,
+     standard_unit_price_excl_tax, standard_unit_price_incl_tax, standard_cost_price, tax_category,
      created_by, created_at, updated_by, updated_at)
 VALUES
-    (N'PRD001', N'事務用品セット', N'ｼﾞﾑﾖｳﾋﾝｾｯﾄ', N'A4', N'セット', 1000.0000, 700.0000, 1,
+    (N'PRD001', N'事務用品セット', N'ｼﾞﾑﾖｳﾋﾝｾｯﾄ', N'A4', N'セット', 1000.0000, 1100.0000, 700.0000, 1,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    (N'PRD002', N'給食用食材', N'ｷｭｳｼｮｸﾖｳｼｮｸｻﾞｲ', N'1kg', N'袋', 500.0000, 350.0000, 2,
+    (N'PRD002', N'給食用食材', N'ｷｭｳｼｮｸﾖｳｼｮｸｻﾞｲ', N'1kg', N'袋', 500.0000, 540.0000, 350.0000, 2,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    (N'PRD003', N'商品券', N'ｼｮｳﾋﾝｹﾝ', NULL, N'枚', 1000.0000, 1000.0000, 3,
+    (N'PRD003', N'商品券', N'ｼｮｳﾋﾝｹﾝ', NULL, N'枚', 1000.0000, 1000.0000, 1000.0000, 3,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
@@ -155,7 +155,7 @@ GO
 INSERT INTO dbo.billing_tax_unit_invoice
     (billing_number, customer_code, customer_name, billing_date, closing_year_month,
      previous_balance, payment_amount, sales_amount, tax_amount, current_billing_amount,
-     taxable_10_amount, tax_10_amount, reduced_8_amount, tax_8_amount, tax_exempt_amount,
+     standard_rate_taxable_amount, standard_rate_tax_amount, reduced_rate_taxable_amount, reduced_rate_tax_amount, tax_exempt_amount,
      billing_status, confirmed_at, confirmed_by,
      created_by, created_at, updated_by, updated_at)
 VALUES
@@ -181,7 +181,7 @@ GO
 INSERT INTO dbo.billing_tax_unit_slip
     (billing_number, customer_code, customer_name, billing_date, closing_year_month,
      previous_balance, payment_amount, sales_amount, tax_amount, current_billing_amount,
-     taxable_10_amount, tax_10_amount, reduced_8_amount, tax_8_amount, tax_exempt_amount,
+     standard_rate_taxable_amount, standard_rate_tax_amount, reduced_rate_taxable_amount, reduced_rate_tax_amount, tax_exempt_amount,
      billing_status, confirmed_at, confirmed_by,
      created_by, created_at, updated_by, updated_at)
 VALUES
@@ -309,7 +309,7 @@ GO
 INSERT INTO dbo.detail_invoice
     (detail_invoice_number, customer_code, customer_name, addressee_name, issue_date,
      sales_amount, tax_amount, total_amount,
-     taxable_10_amount, tax_10_amount, reduced_8_amount, tax_8_amount, tax_exempt_amount,
+     standard_rate_taxable_amount, standard_rate_tax_amount, reduced_rate_taxable_amount, reduced_rate_tax_amount, tax_exempt_amount,
      invoice_status, issued_at, issued_by,
      created_by, created_at, updated_by, updated_at)
 VALUES
