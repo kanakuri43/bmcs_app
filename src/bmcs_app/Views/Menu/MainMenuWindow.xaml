@@ -2,18 +2,61 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="bmcs_app - メインメニュー"
-        Height="450" Width="800"
+        Height="420" Width="820"
         WindowStartupLocation="CenterScreen">
     <!--
-        Phase 0-1 時点の起動確認用の仮ウィンドウ。
+        Phase 0-3 時点の基盤動作確認用の画面。
         権限に応じたメニューの出し分けは Phase 2-7 で実装する。
+        書式・スタイルは Phase 0-5 で MahApps に載せる。
     -->
-    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-        <TextBlock Text="bmcs_app"
-                   FontSize="28"
-                   HorizontalAlignment="Center" />
-        <TextBlock Text="Phase 0-1: 骨格の起動確認"
-                   Margin="0,12,0,0"
-                   HorizontalAlignment="Center" />
-    </StackPanel>
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="bmcs_app"
+                   FontSize="26" />
+
+        <TextBlock Grid.Row="1"
+                   Text="Phase 0-3: 共通基盤の動作確認"
+                   Margin="0,4,0,20"
+                   Foreground="Gray" />
+
+        <Grid Grid.Row="2" VerticalAlignment="Top">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="接続先" Margin="0,0,16,8" FontWeight="Bold" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ConnectionInfo}" Margin="0,0,0,8" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="サーバ" Margin="0,0,16,8" FontWeight="Bold" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ServerVersion}" Margin="0,0,0,8" TextWrapping="Wrap" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="DbContext" Margin="0,0,16,8" FontWeight="Bold" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DbContextInstanceId}" Margin="0,0,0,8"
+                       ToolTip="ウィンドウごとにスコープが分かれていれば、開くウィンドウごとに違う値になる" />
+        </Grid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Left">
+            <Button Content="もう1つウィンドウを開く"
+                    Command="{Binding OpenAnotherWindowCommand}"
+                    Padding="16,6"
+                    Margin="0,0,12,0" />
+            <TextBlock Text="処理中..."
+                       VerticalAlignment="Center"
+                       Foreground="OrangeRed"
+                       Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </StackPanel>
+    </Grid>
 </Window>

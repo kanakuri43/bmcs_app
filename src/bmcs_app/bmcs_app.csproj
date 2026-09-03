@@ -17,4 +17,22 @@
     <ProjectReference Include="..\bmcs_app.Application\bmcs_app.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      設定ファイルを出力ディレクトリへコピーする。
+      appsettings.Development.json は接続文字列（パスワード）を含むため git 管理外。
+      存在しない端末でも起動できるよう、読み込み側では optional 扱いにしている。
+    -->
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('appsettings.Development.json')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="10.0.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+  </ItemGroup>
+
 </Project>

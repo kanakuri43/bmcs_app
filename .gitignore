@@ -480,3 +480,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# 接続文字列（パスワード）を含むためコミットしない。
+# appsettings.Development.json.sample を複製して作成する。
+appsettings.Development.json
