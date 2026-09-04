@@ -116,6 +116,9 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<CustomerMasterWindow>();
         builder.Services.AddScoped<CustomerMasterViewModel>();
 
+        builder.Services.AddScoped<PrinterSettingsWindow>();
+        builder.Services.AddScoped<PrinterSettingsViewModel>();
+
         return builder.Build();
     }
 

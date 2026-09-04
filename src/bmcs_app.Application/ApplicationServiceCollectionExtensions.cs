@@ -22,6 +22,9 @@ public static class ApplicationServiceCollectionExtensions
         // 現在操作している社員の解決。Phase 0-7 までは暫定固定値を返す（docs/architecture.md 14章）。
         services.AddSingleton<ICurrentEmployeeContext, PlaceholderCurrentEmployeeContext>();
 
+        // 端末ローカルのファイル I/O のみで DbContext に依存しないため Singleton（TODO.md 2-6）。
+        services.AddSingleton<PrinterSettingsService>();
+
         // ユースケースは DbContext と同じ Scoped で登録する。
         // ウィンドウ単位のスコープ内で DbContext を共有させるため。
         services.AddScoped<DatabaseHealthService>();

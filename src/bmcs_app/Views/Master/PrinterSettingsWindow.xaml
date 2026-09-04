@@ -1,0 +1,50 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Master.PrinterSettingsWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 Title="bmcs_app - プリンタ設定"
+                 Height="300" Width="520"
+                 ResizeMode="NoResize"
+                 WindowStartupLocation="CenterScreen"
+                 WindowTransitionsEnabled="False">
+    <Grid Margin="24">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="24" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="納品書" Margin="0,0,16,12" VerticalAlignment="Center" />
+        <ComboBox Grid.Row="0" Grid.Column="1" Margin="0,0,0,12"
+                  ItemsSource="{Binding Printers}"
+                  SelectedItem="{Binding DeliverySlipPrinter}" />
+
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="請求書" Margin="0,0,16,12" VerticalAlignment="Center" />
+        <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,0,0,12"
+                  ItemsSource="{Binding Printers}"
+                  SelectedItem="{Binding InvoicePrinter}" />
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="明細請求書" Margin="0,0,16,12" VerticalAlignment="Center" />
+        <ComboBox Grid.Row="2" Grid.Column="1" Margin="0,0,0,12"
+                  ItemsSource="{Binding Printers}"
+                  SelectedItem="{Binding LineInvoicePrinter}" />
+
+        <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+            <TextBlock Text="処理中..."
+                       VerticalAlignment="Center"
+                       Foreground="OrangeRed"
+                       Margin="0,0,12,0"
+                       Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <Button Content="保存" Command="{Binding SaveCommand}" Padding="16,6" />
+        </StackPanel>
+
+        <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="Gray" />
+    </Grid>
+</mah:MetroWindow>

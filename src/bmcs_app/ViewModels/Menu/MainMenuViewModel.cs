@@ -75,4 +75,11 @@ public partial class MainMenuViewModel(
     [RelayCommand]
     private void OpenCustomerMaster()
         => windowService.Show<CustomerMasterWindow, CustomerMasterViewModel>();
+
+    /// <summary>
+    /// プリンタ設定画面を開く。Phase 2-7 で正式なメニューに置き換わるまでの暫定導線。
+    /// </summary>
+    [RelayCommand]
+    private void OpenPrinterSettings()
+        => windowService.Show<PrinterSettingsWindow, PrinterSettingsViewModel>();
 }
