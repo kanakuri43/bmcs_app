@@ -25,10 +25,10 @@ GO
 -- 1. 既存テストデータの削除（FKの逆順）
 -- -----------------------------------------------------------------------------
 DELETE FROM dbo.detail_invoice_sales_line WHERE detail_invoice_number IN (N'DIV001', N'DIV002');
-DELETE FROM dbo.detail_payment WHERE detail_payment_number IN (N'DPY001', N'DPY002');
+DELETE FROM dbo.detail_receipt WHERE detail_receipt_number IN (N'DRC001', N'DRC002');
 DELETE FROM dbo.detail_invoice WHERE detail_invoice_number IN (N'DIV001', N'DIV002');
-DELETE FROM dbo.payment_tax_unit_invoice WHERE payment_slip_number IN (N'PAY_INV001', N'PAY_INV002');
-DELETE FROM dbo.payment_tax_unit_slip WHERE payment_slip_number IN (N'PAY_SLP001');
+DELETE FROM dbo.receipt_tax_unit_invoice WHERE receipt_slip_number IN (N'RCP_INV001', N'RCP_INV002');
+DELETE FROM dbo.receipt_tax_unit_slip WHERE receipt_slip_number IN (N'RCP_SLP001');
 DELETE FROM dbo.sales_tax_unit_invoice WHERE sales_slip_number IN (N'SALINV001', N'SALINV002');
 DELETE FROM dbo.sales_tax_unit_slip WHERE sales_slip_number IN (N'SALSLP001', N'SALSLP002');
 DELETE FROM dbo.sales_tax_unit_line WHERE sales_slip_number IN (N'SALLIN001', N'SALLIN002', N'SALLIN003', N'SALLIN004');
@@ -154,7 +154,7 @@ GO
 -- -----------------------------------------------------------------------------
 INSERT INTO dbo.billing_tax_unit_invoice
     (billing_number, customer_code, customer_name, billing_date, closing_year_month,
-     previous_balance, payment_amount, sales_amount, tax_amount, current_billing_amount,
+     previous_balance, receipt_amount, sales_amount, tax_amount, current_billing_amount,
      standard_rate_taxable_amount, standard_rate_tax_amount, reduced_rate_taxable_amount, reduced_rate_tax_amount, tax_exempt_amount,
      billing_status, confirmed_at, confirmed_by,
      created_by, created_at, updated_by, updated_at)
@@ -180,7 +180,7 @@ GO
 
 INSERT INTO dbo.billing_tax_unit_slip
     (billing_number, customer_code, customer_name, billing_date, closing_year_month,
-     previous_balance, payment_amount, sales_amount, tax_amount, current_billing_amount,
+     previous_balance, receipt_amount, sales_amount, tax_amount, current_billing_amount,
      standard_rate_taxable_amount, standard_rate_tax_amount, reduced_rate_taxable_amount, reduced_rate_tax_amount, tax_exempt_amount,
      billing_status, confirmed_at, confirmed_by,
      created_by, created_at, updated_by, updated_at)
@@ -277,28 +277,28 @@ GO
 -- -----------------------------------------------------------------------------
 -- 6. 締め入金（2テーブル。充当状態3種を網羅）
 -- -----------------------------------------------------------------------------
-INSERT INTO dbo.payment_tax_unit_invoice
-    (payment_slip_number, line_number, payment_date, customer_code, customer_name, payment_method,
-     bank_account_code, payment_amount, billing_number, allocated_amount, fee_adjustment_amount,
+INSERT INTO dbo.receipt_tax_unit_invoice
+    (receipt_slip_number, line_number, receipt_date, customer_code, customer_name, receipt_method,
+     bank_account_code, receipt_amount, billing_number, allocated_amount, fee_adjustment_amount,
      allocation_status, created_by, created_at, updated_by, updated_at)
 VALUES
     -- 充当完了
-    (N'PAY_INV001', 1, '2026-07-25', N'CUS001', N'株式会社山田商事', 2,
+    (N'RCP_INV001', 1, '2026-07-25', N'CUS001', N'株式会社山田商事', 2,
      N'BNK001', 11000.00, N'BIL_INV001', 11000.00, 0.00,
      3, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     -- 未充当（前受・過入金）
-    (N'PAY_INV002', 1, '2026-08-05', N'CUS001', N'株式会社山田商事', 1,
+    (N'RCP_INV002', 1, '2026-08-05', N'CUS001', N'株式会社山田商事', 1,
      NULL, 3000.00, NULL, 0.00, 0.00,
      1, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
-INSERT INTO dbo.payment_tax_unit_slip
-    (payment_slip_number, line_number, payment_date, customer_code, customer_name, payment_method,
-     bank_account_code, payment_amount, billing_number, allocated_amount, fee_adjustment_amount,
+INSERT INTO dbo.receipt_tax_unit_slip
+    (receipt_slip_number, line_number, receipt_date, customer_code, customer_name, receipt_method,
+     bank_account_code, receipt_amount, billing_number, allocated_amount, fee_adjustment_amount,
      allocation_status, created_by, created_at, updated_by, updated_at)
 VALUES
     -- 一部充当
-    (N'PAY_SLP001', 1, '2026-08-01', N'CUS002', N'鈴木工業株式会社', 2,
+    (N'RCP_SLP001', 1, '2026-08-01', N'CUS002', N'鈴木工業株式会社', 2,
      N'BNK001', 4000.00, N'BIL_SLP001', 4000.00, 0.00,
      2, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
@@ -344,21 +344,21 @@ GO
 -- -----------------------------------------------------------------------------
 -- 9. 明細入金（充当先2種類: 売上明細行を直接指定／明細請求書を指定）
 -- -----------------------------------------------------------------------------
-INSERT INTO dbo.detail_payment
-    (detail_payment_number, line_number, payment_date, customer_code, customer_name, payment_method,
-     bank_account_code, payment_amount, target_type,
+INSERT INTO dbo.detail_receipt
+    (detail_receipt_number, line_number, receipt_date, customer_code, customer_name, receipt_method,
+     bank_account_code, receipt_amount, target_type,
      target_sales_slip_number, target_sales_line_number, target_detail_invoice_number,
      allocated_amount, fee_adjustment_amount, allocation_status,
      created_by, created_at, updated_by, updated_at)
 VALUES
     -- target_type=SalesLine（SALLIN003を直接指定。消込完了済の実績）
-    (N'DPY001', 1, '2026-07-25', N'CUS003', N'石山市立石山小学校', 1,
+    (N'DRC001', 1, '2026-07-25', N'CUS003', N'石山市立石山小学校', 1,
      NULL, 2750.00, 1,
      N'SALLIN003', 1, NULL,
      2750.00, 0.00, 3,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     -- target_type=DetailInvoice（DIV001を指定）
-    (N'DPY002', 1, '2026-07-22', N'CUS003', N'石山市立石山小学校', 2,
+    (N'DRC002', 1, '2026-07-22', N'CUS003', N'石山市立石山小学校', 2,
      N'BNK001', 8861.00, 2,
      NULL, NULL, N'DIV001',
      8861.00, 0.00, 3,

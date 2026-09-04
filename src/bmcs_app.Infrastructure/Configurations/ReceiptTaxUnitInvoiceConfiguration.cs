@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace bmcs_app.Infrastructure.Configurations;
 
-public class PaymentTaxUnitInvoiceConfiguration : IEntityTypeConfiguration<PaymentTaxUnitInvoice>
+public class ReceiptTaxUnitInvoiceConfiguration : IEntityTypeConfiguration<ReceiptTaxUnitInvoice>
 {
-    public void Configure(EntityTypeBuilder<PaymentTaxUnitInvoice> builder)
+    public void Configure(EntityTypeBuilder<ReceiptTaxUnitInvoice> builder)
     {
-        builder.ConfigurePaymentTaxUnitColumns("payment_tax_unit_invoice");
+        builder.ConfigureReceiptTaxUnitColumns("receipt_tax_unit_invoice");
 
         builder.HasOne<BillingTaxUnitInvoice>().WithMany()
             .HasForeignKey(e => e.BillingNumber).OnDelete(DeleteBehavior.NoAction);

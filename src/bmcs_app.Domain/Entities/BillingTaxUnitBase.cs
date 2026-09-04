@@ -22,7 +22,7 @@ public abstract class BillingTaxUnitBase : AuditableEntity
 
     public required decimal PreviousBalance { get; set; }
 
-    public required decimal PaymentAmount { get; set; }
+    public required decimal ReceiptAmount { get; set; }
 
     public required decimal SalesAmount { get; set; }
 

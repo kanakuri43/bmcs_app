@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace bmcs_app.Infrastructure.Configurations;
 
 /// <summary>
-/// 税単位別テーブル（BillingTaxUnit* / SalesTaxUnit* / PaymentTaxUnit*）の
+/// 税単位別テーブル（BillingTaxUnit* / SalesTaxUnit* / ReceiptTaxUnit*）の
 /// 共通プロパティ設定をまとめる拡張メソッド。エンティティ側の共通基底クラス
 /// （BillingTaxUnitBase 等）と対になる。
 /// </summary>
@@ -23,7 +23,7 @@ public static class TaxUnitConfigurationExtensions
         builder.Property(e => e.ClosingYearMonth).HasMaxLength(6).IsFixedLength().IsUnicode(false);
 
         builder.Property(e => e.PreviousBalance).HasPrecision(15, 2);
-        builder.Property(e => e.PaymentAmount).HasPrecision(15, 2);
+        builder.Property(e => e.ReceiptAmount).HasPrecision(15, 2);
         builder.Property(e => e.SalesAmount).HasPrecision(15, 2);
         builder.Property(e => e.TaxAmount).HasPrecision(15, 2);
         builder.Property(e => e.CurrentBillingAmount).HasPrecision(15, 2);
@@ -81,23 +81,23 @@ public static class TaxUnitConfigurationExtensions
         builder.ConfigureAuditColumns();
     }
 
-    public static void ConfigurePaymentTaxUnitColumns<TEntity>(this EntityTypeBuilder<TEntity> builder, string tableName)
-        where TEntity : PaymentTaxUnitBase
+    public static void ConfigureReceiptTaxUnitColumns<TEntity>(this EntityTypeBuilder<TEntity> builder, string tableName)
+        where TEntity : ReceiptTaxUnitBase
     {
         builder.ToTable(tableName);
-        builder.HasKey(e => new { e.PaymentSlipNumber, e.LineNumber });
+        builder.HasKey(e => new { e.ReceiptSlipNumber, e.LineNumber });
 
-        builder.Property(e => e.PaymentSlipNumber).HasMaxLength(20).IsUnicode(false);
+        builder.Property(e => e.ReceiptSlipNumber).HasMaxLength(20).IsUnicode(false);
         builder.Property(e => e.CustomerCode).HasMaxLength(10).IsUnicode(false);
         builder.Property(e => e.CustomerName).HasMaxLength(60);
         builder.Property(e => e.BankAccountCode).HasMaxLength(10).IsUnicode(false);
         builder.Property(e => e.BillingNumber).HasMaxLength(20).IsUnicode(false);
 
-        builder.Property(e => e.PaymentAmount).HasPrecision(15, 2);
+        builder.Property(e => e.ReceiptAmount).HasPrecision(15, 2);
         builder.Property(e => e.AllocatedAmount).HasPrecision(15, 2);
         builder.Property(e => e.FeeAdjustmentAmount).HasPrecision(15, 2);
 
-        builder.Property(e => e.PaymentMethod).HasConversion<byte>();
+        builder.Property(e => e.ReceiptMethod).HasConversion<byte>();
         builder.Property(e => e.AllocationStatus).HasConversion<byte>();
 
         builder.HasOne<Customer>().WithMany().HasForeignKey(e => e.CustomerCode).OnDelete(DeleteBehavior.NoAction);

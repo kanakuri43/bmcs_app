@@ -170,7 +170,7 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 
 ## 10. 命名・フォルダ規約
 
-機能フォルダ名は全層で統一する: `Order`（受注）/ `Sales`（売上）/ `Billing`（請求）/ `Payment`（入金）/ `Ledger`（元帳）/ `Closing`（月次締め）/ `Master`（マスタ）/ `Search`（データ検索）/ `Common`（共通）
+機能フォルダ名は全層で統一する: `Order`（受注）/ `Sales`（売上）/ `Billing`（請求）/ `Receipt`（入金）/ `Ledger`（元帳）/ `Closing`（月次締め）/ `Master`（マスタ）/ `Search`（データ検索）/ `Common`（共通）
 
 | 層 | 規約 |
 |---|---|

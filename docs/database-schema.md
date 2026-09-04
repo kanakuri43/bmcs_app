@@ -238,8 +238,8 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | 業務概念 | テーブル | 構成 |
 |---|---|---|
 | 売上（請求単位／伝票単位／明細単位） | `sales_tax_unit_invoice` / `sales_tax_unit_slip` / `sales_tax_unit_line` | 明細行1テーブル |
-| 入金（請求単位／伝票単位） | `payment_tax_unit_invoice` / `payment_tax_unit_slip` | 明細行1テーブル |
-| 明細入金（明細単位） | `detail_payment` | 明細行1テーブル |
+| 入金（請求単位／伝票単位） | `receipt_tax_unit_invoice` / `receipt_tax_unit_slip` | 明細行1テーブル |
+| 明細入金（明細単位） | `detail_receipt` | 明細行1テーブル |
 | 請求データ（請求単位／伝票単位） | `billing_tax_unit_invoice` / `billing_tax_unit_slip` | ヘッダーのみ |
 | 明細請求書 | `detail_invoice` | ヘッダーのみ |
 | 明細請求書 ↔ 売上明細行の連携 | `detail_invoice_sales_line` | 連携（多対多） |
@@ -248,9 +248,9 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 
 | 得意先の税区分 | 売上 | 入金 | 請求 |
 |---|---|---|---|
-| 外税一括（請求単位） | `sales_tax_unit_invoice` | `payment_tax_unit_invoice` | `billing_tax_unit_invoice` |
-| 外税伝票単位 | `sales_tax_unit_slip` | `payment_tax_unit_slip` | `billing_tax_unit_slip` |
-| 内税明細単位（＝都度得意先） | `sales_tax_unit_line` | `detail_payment` | `detail_invoice`（繰越残高の概念がないため請求データではない） |
+| 外税一括（請求単位） | `sales_tax_unit_invoice` | `receipt_tax_unit_invoice` | `billing_tax_unit_invoice` |
+| 外税伝票単位 | `sales_tax_unit_slip` | `receipt_tax_unit_slip` | `billing_tax_unit_slip` |
+| 内税明細単位（＝都度得意先） | `sales_tax_unit_line` | `detail_receipt` | `detail_invoice`（繰越残高の概念がないため請求データではない） |
 
 #### 非正規化構成の帰結（重要な運用ルール）
 
@@ -306,20 +306,20 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 
 ---
 
-### 2.10. 締め入金（`payment_tax_unit_invoice` / `payment_tax_unit_slip`）
+### 2.10. 締め入金（`receipt_tax_unit_invoice` / `receipt_tax_unit_slip`）
 
-2テーブルは共通構造。**主キーは (`payment_slip_number`, `line_number`)。各明細行が1件の充当を表す。**
+2テーブルは共通構造。**主キーは (`receipt_slip_number`, `line_number`)。各明細行が1件の充当を表す。**
 
 | カラム | 型 | NULL | 内容 |
 |---|---|---|---|
-| `payment_slip_number` | `varchar(20)` | PK | 入金伝票番号 |
+| `receipt_slip_number` | `varchar(20)` | PK | 入金伝票番号 |
 | `line_number` | `smallint` | PK | 行番号 |
-| `payment_date` | `date` | × | 入金日（**伝票単位の値**） |
+| `receipt_date` | `date` | × | 入金日（**伝票単位の値**） |
 | `customer_code` | `varchar(10)` | × | （**伝票単位の値**） |
 | `customer_name` | `nvarchar(60)` | × | スナップショット |
-| `payment_method` | `tinyint` | × | `1`＝現金／`2`＝振込／`3`＝手形／`4`＝相殺 |
+| `receipt_method` | `tinyint` | × | `1`＝現金／`2`＝振込／`3`＝手形／`4`＝相殺 |
 | `bank_account_code` | `varchar(10)` | ○ | 入金先口座（FK → `bank_account`）。振込のとき使用 |
-| `payment_amount` | `decimal(15,2)` | × | 入金額（**伝票単位の値。`SUM` してはいけない**） |
+| `receipt_amount` | `decimal(15,2)` | × | 入金額（**伝票単位の値。`SUM` してはいけない**） |
 | `billing_number` | `varchar(20)` | ○ | 充当先の請求データ。**`NULL`＝前受・過入金（充当先未定）** |
 | `allocated_amount` | `decimal(15,2)` | × | この行の充当額 |
 | `fee_adjustment_amount` | `decimal(15,2)` | × | 振込手数料差額の調整額 |
@@ -329,22 +329,22 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 
 ---
 
-### 2.11. 明細入金（`detail_payment`）
+### 2.11. 明細入金（`detail_receipt`）
 
-**`payment_tax_unit_line` は作らない。** 明細単位（都度得意先）の入金はこのテーブルが担う。主キーは (`detail_payment_number`, `line_number`)。
+**`receipt_tax_unit_line` は作らない。** 明細単位（都度得意先）の入金はこのテーブルが担う。主キーは (`detail_receipt_number`, `line_number`)。
 
 締め入金との違いは**充当先が2種類あること**（売上伝票を直接指定する場合と、明細請求書を指定する場合）。
 
 | カラム | 型 | NULL | 内容 |
 |---|---|---|---|
-| `detail_payment_number` | `varchar(20)` | PK | 明細入金番号 |
+| `detail_receipt_number` | `varchar(20)` | PK | 明細入金番号 |
 | `line_number` | `smallint` | PK | 行番号 |
-| `payment_date` | `date` | × | （**伝票単位の値**） |
+| `receipt_date` | `date` | × | （**伝票単位の値**） |
 | `customer_code` | `varchar(10)` | × | （**伝票単位の値**） |
 | `customer_name` | `nvarchar(60)` | × | スナップショット |
-| `payment_method` | `tinyint` | × | 締め入金と同じ区分 |
+| `receipt_method` | `tinyint` | × | 締め入金と同じ区分 |
 | `bank_account_code` | `varchar(10)` | ○ | FK → `bank_account` |
-| `payment_amount` | `decimal(15,2)` | × | 入金額（**伝票単位の値**） |
+| `receipt_amount` | `decimal(15,2)` | × | 入金額（**伝票単位の値**） |
 | `target_type` | `tinyint` | × | `1`＝売上明細行を直接指定／`2`＝明細請求書を指定 |
 | `target_sales_slip_number` | `varchar(20)` | ○ | `target_type=1` のとき使用 |
 | `target_sales_line_number` | `smallint` | ○ | 同上 |
@@ -353,7 +353,7 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `fee_adjustment_amount` | `decimal(15,2)` | × | |
 | `allocation_status` | `tinyint` | × | 締め入金と同じ区分 |
 
-**CHECK 制約** `CK_detail_payment_target` … `target_type` と実際に埋まっているカラムを一致させる。
+**CHECK 制約** `CK_detail_receipt_target` … `target_type` と実際に埋まっているカラムを一致させる。
 
 ```
 (target_type = 1
@@ -383,7 +383,7 @@ OR
 | `billing_date` | `date` | × | 請求年月日 |
 | `closing_year_month` | `char(6)` | × | 締め対象年月（`YYYYMM`）。月次締めとの突き合わせに使う |
 | `previous_balance` | `decimal(15,2)` | × | 前月請求残高 |
-| `payment_amount` | `decimal(15,2)` | × | 期間内の入金金額 |
+| `receipt_amount` | `decimal(15,2)` | × | 期間内の入金金額 |
 | `sales_amount` | `decimal(15,2)` | × | 期間内の売上金額 |
 | `tax_amount` | `decimal(15,2)` | × | 消費税額 |
 | `current_billing_amount` | `decimal(15,2)` | × | 今回請求金額 |
@@ -514,7 +514,7 @@ M-2 の暫定設定（年度リセットなしの通し連番・採番テーブ�
 
 | カラム | 型 | NULL | 内容 |
 |---|---|---|---|
-| `sequence_key` | `varchar(30)` | PK | 伝票種別。`order_slip` / `sales_slip` / `payment_slip` / `detail_payment` / `billing` / `detail_invoice` |
+| `sequence_key` | `varchar(30)` | PK | 伝票種別。`order_slip` / `sales_slip` / `receipt_slip` / `detail_receipt` / `billing` / `detail_invoice` |
 | `current_value` | `bigint` | × | 現在の採番値。次番は `current_value + 1` |
 
 **採番は伝票登録と同一トランザクション内で行う**（`docs/architecture.md` 6章）。別トランザクションで先に採番すると登録失敗時に欠番が出るため。`UPDATE` の行ロックで直列化するので、`row_version`（楽観的排他）は持たない。
@@ -533,7 +533,7 @@ M-2 の暫定設定（年度リセットなしの通し連番・採番テーブ�
 | 売上・軸1 | 未発行／発行済 | `delivery_note_issued_at`（`NULL`＝未発行）＋ `delivery_note_issue_count` | `sales_tax_unit_*` |
 | 売上・軸2 | 未請求／請求済 | `billing_status`。紐付け先は締め請求が `billing_number`、明細請求が `detail_invoice_sales_line` | `sales_tax_unit_*` |
 | 売上・軸3 | 未消込／一部消込／消込完了 | `settlement_status` ＋ `settled_amount` | `sales_tax_unit_*` |
-| 入金 | 未充当／一部充当／充当完了 | `allocation_status` ＋ `allocated_amount` | `payment_tax_unit_*`、`detail_payment` |
+| 入金 | 未充当／一部充当／充当完了 | `allocation_status` ＋ `allocated_amount` | `receipt_tax_unit_*`、`detail_receipt` |
 | 請求データ | 確定／解除済 | `billing_status` ＋ 確定・解除の日時と実施者 | `billing_tax_unit_*` |
 | 明細請求書 | 発行済／取消 | `invoice_status` ＋ 発行・取消の日時と実施者 | `detail_invoice` |
 | 月次締め | 未締め／確定／解除済 | `closing_status`（**未締めはレコード不在で表す**） | `monthly_closing` |
@@ -551,9 +551,9 @@ M-2 の暫定設定（年度リセットなしの通し連番・採番テーブ�
 - **テーブル名・カラム名は `snake_case` とする。** C# 側のエンティティクラス名・プロパティ名は PascalCase とし、変換は EF Core の命名変換に任せる（`docs/architecture.md` 10章）。
 - **税単位別テーブルの命名は `{ドメイン}TaxUnit{税単位}` パターンとする。** 税単位を表す語だけを羅列すると意味が曖昧になるため、`TaxUnit` という語を挟んで税計算単位であることを明示する。
   - 売上: `SalesTaxUnitInvoice` / `SalesTaxUnitSlip` / `SalesTaxUnitLine`（3つすべて使う）
-  - 入金: `PaymentTaxUnitInvoice` / `PaymentTaxUnitSlip`（**2つのみ。明細単位は `DetailPayment` が該当し、`PaymentTaxUnitLine` は作らない**）
+  - 入金: `ReceiptTaxUnitInvoice` / `ReceiptTaxUnitSlip`（**2つのみ。明細単位は `DetailReceipt` が該当し、`ReceiptTaxUnitLine` は作らない**）
   - 請求データ（請求単位・伝票単位のみ。ドメイン名を `Invoice` ではなく `Billing` とし、税単位を表す `Invoice` と語が衝突しないようにする）: `BillingTaxUnitInvoice` / `BillingTaxUnitSlip`
-- **明細単位の請求・入金は、構造が異なる業務概念として `Detail` を冠して別立てで命名する: `DetailInvoice`（明細請求書）/ `DetailPayment`（明細入金）。** 税単位を表す `Line` と、業務概念を表す `Detail` を使い分けて語の衝突を避ける。明細請求書と売上明細行の連携テーブルは `DetailInvoiceSalesLine`。
+- **明細単位の請求・入金は、構造が異なる業務概念として `Detail` を冠して別立てで命名する: `DetailInvoice`（明細請求書）/ `DetailReceipt`（明細入金）。** 税単位を表す `Line` と、業務概念を表す `Detail` を使い分けて語の衝突を避ける。明細請求書と売上明細行の連携テーブルは `DetailInvoiceSalesLine`。
 - **ユーザー定義ストアドプロシージャには、プレフィックス `usp_` を付ける。**
 
 ### 3.2. DDL・スキーマ変更の運用

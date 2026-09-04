@@ -8,7 +8,7 @@ namespace bmcs_app.Domain.Entities;
 /// </summary>
 public class SlipNumberSequence : TrackedEntity
 {
-    /// <summary>伝票種別。order_slip / sales_slip / payment_slip / detail_payment / billing / detail_invoice。</summary>
+    /// <summary>伝票種別。order_slip / sales_slip / receipt_slip / detail_receipt / billing / detail_invoice。</summary>
     public required string SequenceKey { get; set; }
 
     /// <summary>現在の採番値。次番は CurrentValue + 1。</summary>
