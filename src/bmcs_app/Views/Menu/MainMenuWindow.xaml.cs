@@ -1,12 +1,12 @@
-using System.Windows;
 using bmcs_app.ViewModels.Menu;
+using MahApps.Metro.Controls;
 
 namespace bmcs_app.Views.Menu;
 
 /// <summary>
 /// メインメニュー画面。Phase 0-3 時点では共通基盤の動作確認を行う。
 /// </summary>
-public partial class MainMenuWindow : Window
+public partial class MainMenuWindow : MetroWindow
 {
     public MainMenuWindow()
     {

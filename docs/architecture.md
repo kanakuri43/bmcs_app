@@ -199,3 +199,55 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 - **ViewModel は View を参照しない。** 別ウィンドウを開く操作は、Presentation 層内のウィンドウ管理サービス経由で行う（Phase 0-3 で実装）。ViewModel が `new SalesWindow()` を書かない。
 - **入力の書式（日付・金額のカンマ区切り等）と操作性（Enter でのフォーカス移動等）は共通のスタイル・ビヘイビアで実現する**（Phase 0-5、0-6）。画面ごとに個別実装しない。
 - **入力値の形式チェックは ViewModel、業務ルールの検証は Application 層。** 「数値が入っているか」は ViewModel、「この得意先にこの税区分は登録できるか」は Application で判定する。
+
+## 12. 共通UIスタイル（Phase 0-5、暫定設定）
+
+MahApps.Metro を導入し、共通スタイルは `src/bmcs_app/Styles/`、書式整形は
+`src/bmcs_app/Behaviors/FormattedTextBoxBehavior.cs` に集約する（画面ごとに実装しない。11章参照）。
+配色・書式の具体値は `docs/product-spec.md` に指定がないため、以下は**暫定**（実機確認後に変更可）。
+
+- **テーマ**: `Light.Blue`（MahApps 標準）。`App.xaml` で `Controls.xaml` / `Fonts.xaml` /
+  `Themes/Light.Blue.xaml` を静的にマージする。実行時のテーマ切替は行わないため `ThemeManager` は使わない。
+- **フォーカス中の背景色**: `Styles/Colors.xaml` の `FocusedInputBackgroundBrush`（`#FFFFF3C4`）。
+  `TextBox` の暗黙スタイルに適用され、全画面で共通に効く。
+- **日付書式**: `yyyy/MM/dd` 固定。`DateTextBoxStyle` を付けた `TextBox` に対し `FormattedTextBoxBehavior`
+  が blur 時に整形する（`yyyyMMdd` 等の区切りなし入力も許容してから整形する）。**カレンダーピッカーは導入しない**
+  （必要とする画面が具体化した時点で追加を検討する）。**日付を保持する ViewModel プロパティは `DateOnly` ではなく
+  `string` で持つ。** `DateOnly` には既定の `TypeConverter` がなく `TextBox.Text` との双方向バインディングが
+  そのままでは失敗するため（入力の形式チェックは ViewModel の責務、という11章の方針とも整合する）。
+- **金額・数量書式**: `AmountTextBoxStyle` / `QuantityTextBoxStyle`。表示はカンマ区切り・右揃え、
+  フォーカス中はカンマなしの生数値、blur時に `N{DecimalPlaces}` で再整形する。
+  **小数桁数の既定値0は暫定。** 単価等で小数が必要な画面は `FormattedTextBoxBehavior.DecimalPlaces`
+  を個別指定して上書きする。
+- 数値・日付として解釈できない入力はそのまま残す（このビヘイビアは書式のみを担当し、値の妥当性検証は
+  ViewModel の責務とする。11章）。
+
+## 13. 共通キーボード操作ビヘイビア（Phase 0-6）
+
+11章で予告した「Enter でのフォーカス移動」「検索モーダル・明細一覧の行選択・確定」は、
+以下の2つの添付ビヘイビア（`src/bmcs_app/Behaviors/`）で実現する。12章と異なり、
+配色等の暫定値ではなく実装方針そのものなので確定事項として記載する。
+
+- **`EnterKeyNavigationBehavior`**: `IsEnabled` を画面ルート要素に付けると、`TextBox` にフォーカスが
+  ある状態での `Enter` を次項目へのフォーカス移動として扱う（`Tab` と同じ挙動）。`TextBox` 以外
+  （`Button` 等）では反応しないため、既定の `Enter` 挙動と衝突しない。
+- **`RowActivationBehavior`**: `Command` を `ListBox`/`ListView`/`DataGrid` 等の `Selector` 系コントロールに
+  付けると、行選択中に `Enter` を押したときに選択中の行を引数としてコマンドを実行する。
+  上下矢印キーによる行選択自体は `Selector` の既定動作であり、追加実装はしていない。
+  「転記」の具体的な処理（選択行のデータをどこにどう反映するか）は画面固有のコマンド実装に委ねる。
+- **両ビヘイビアともオプトイン。** `FormattedTextBoxBehavior` と同様、暗黙スタイルによる全画面自動適用は
+  行わない（ダイアログ等への意図しない波及を避けるため）。使う画面のルート要素・対象コントロールに
+  明示的に設定する。
+
+## 14. 暫定: 現在操作中の社員コードの解決（ICurrentEmployeeContext）
+
+全テーブルの監査列（`created_by`/`updated_by`、M-12）は社員コードを必須で持つが、
+起動時パラメータから社員コードを受け取る Phase 0-7 がまだ実装されていない。
+Phase 2-1（得意先マスタ画面）で監査列への書き込みが最初に発生するため、
+`src/bmcs_app.Application/Common/ICurrentEmployeeContext.cs`（`EmployeeCode` プロパティのみ）
+という最小限の抽象を導入し、**暫定実装 `PlaceholderCurrentEmployeeContext` が
+`scripts/seed_dev_data.sql` に実在する `EMP001` を固定で返す。**
+
+`ApplicationServiceCollectionExtensions.AddApplication` に `Singleton` で登録済み。
+**Phase 0-7 実装時に `PlaceholderCurrentEmployeeContext` を実装差し替えするだけで済むよう、
+インターフェースの形は変えない方針とする。** 権限判定（C-8）等 0-7 本来のスコープはここでは扱わない。

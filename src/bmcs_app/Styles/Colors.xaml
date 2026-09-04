@@ -1,0 +1,10 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        フォーカス中の入力欄の背景色。
+        暫定値（docs/architecture.md 12章参照）。spec に色指定がないため仮採用。
+    -->
+    <SolidColorBrush x:Key="FocusedInputBackgroundBrush" Color="#FFFFF3C4" />
+
+</ResourceDictionary>

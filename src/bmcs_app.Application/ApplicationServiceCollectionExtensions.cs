@@ -1,4 +1,5 @@
 using bmcs_app.Application.Common;
+using bmcs_app.Application.Master;
 using bmcs_app.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,9 +19,13 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddInfrastructure(configuration);
 
+        // 現在操作している社員の解決。Phase 0-7 までは暫定固定値を返す（docs/architecture.md 14章）。
+        services.AddSingleton<ICurrentEmployeeContext, PlaceholderCurrentEmployeeContext>();
+
         // ユースケースは DbContext と同じ Scoped で登録する。
         // ウィンドウ単位のスコープ内で DbContext を共有させるため。
         services.AddScoped<DatabaseHealthService>();
+        services.AddScoped<CustomerService>();
 
         return services;
     }

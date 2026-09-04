@@ -1,19 +1,22 @@
-<Window x:Class="bmcs_app.Views.Menu.MainMenuWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="bmcs_app - メインメニュー"
-        Height="420" Width="820"
-        WindowStartupLocation="CenterScreen">
+<mah:MetroWindow x:Class="bmcs_app.Views.Menu.MainMenuWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:beh="clr-namespace:bmcs_app.Behaviors"
+                 Title="bmcs_app - メインメニュー"
+                 Height="520" Width="820"
+                 WindowStartupLocation="CenterScreen">
     <!--
         Phase 0-3 時点の基盤動作確認用の画面。
         権限に応じたメニューの出し分けは Phase 2-7 で実装する。
-        書式・スタイルは Phase 0-5 で MahApps に載せる。
     -->
-    <Grid Margin="24">
+    <Grid Margin="24" beh:EnterKeyNavigationBehavior.IsEnabled="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -48,9 +51,33 @@
                        ToolTip="ウィンドウごとにスコープが分かれていれば、開くウィンドウごとに違う値になる" />
         </Grid>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Left">
+        <StackPanel Grid.Row="3" Orientation="Vertical" HorizontalAlignment="Left" Margin="0,0,0,16">
+            <TextBlock Text="Phase 0-5: 書式確認" Margin="0,0,0,8" Foreground="Gray" />
+            <StackPanel Orientation="Horizontal">
+                <TextBox Style="{StaticResource DateTextBoxStyle}" Text="{Binding SampleDate}" Width="120" Margin="0,0,16,0" />
+                <TextBox Style="{StaticResource AmountTextBoxStyle}" Text="{Binding SampleAmount}" Width="120" Margin="0,0,16,0" />
+                <TextBox Style="{StaticResource QuantityTextBoxStyle}" Text="{Binding SampleQuantity}" Width="80" />
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="4" Orientation="Vertical" HorizontalAlignment="Left" Margin="0,0,0,16">
+            <TextBlock Text="Phase 0-6: キーボード操作確認（↑↓で行選択、Enterで確定・転記）" Margin="0,0,0,8" Foreground="Gray" />
+            <StackPanel Orientation="Horizontal">
+                <ListBox ItemsSource="{Binding SampleItems}"
+                         beh:RowActivationBehavior.Command="{Binding TranscribeItemCommand}"
+                         Width="120" Height="70" Margin="0,0,16,0" />
+                <TextBlock Text="転記結果:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Text="{Binding TranscribedItem}" VerticalAlignment="Center" FontWeight="Bold" />
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Left">
             <Button Content="もう1つウィンドウを開く"
                     Command="{Binding OpenAnotherWindowCommand}"
+                    Padding="16,6"
+                    Margin="0,0,12,0" />
+            <Button Content="得意先マスタ"
+                    Command="{Binding OpenCustomerMasterCommand}"
                     Padding="16,6"
                     Margin="0,0,12,0" />
             <TextBlock Text="処理中..."
@@ -59,4 +86,4 @@
                        Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
         </StackPanel>
     </Grid>
-</Window>
+</mah:MetroWindow>

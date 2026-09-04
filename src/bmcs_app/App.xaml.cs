@@ -4,7 +4,9 @@ using System.Windows;
 using System.Windows.Threading;
 using bmcs_app.Application;
 using bmcs_app.Services;
+using bmcs_app.ViewModels.Master;
 using bmcs_app.ViewModels.Menu;
+using bmcs_app.Views.Master;
 using bmcs_app.Views.Menu;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -110,6 +112,9 @@ public partial class App : System.Windows.Application
         // ウィンドウ間では共有されない。
         builder.Services.AddScoped<MainMenuWindow>();
         builder.Services.AddScoped<MainMenuViewModel>();
+
+        builder.Services.AddScoped<CustomerMasterWindow>();
+        builder.Services.AddScoped<CustomerMasterViewModel>();
 
         return builder.Build();
     }

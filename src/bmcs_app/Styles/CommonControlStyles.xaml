@@ -1,0 +1,39 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:beh="clr-namespace:bmcs_app.Behaviors">
+
+    <ResourceDictionary.MergedDictionaries>
+        <!--
+            BasedOn="{StaticResource {x:Type TextBox}}" の解決には、MahApps の
+            既定 TextBox スタイルがこの辞書自身のマージスコープ内に存在する必要がある。
+            App.xaml で既に Controls.xaml をマージしていても、StaticResource は
+            参照元ファイル自身のスコープでしか解決されないため、ここでも再マージする。
+        -->
+        <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.xaml" />
+        <ResourceDictionary Source="Colors.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- 全画面共通: フォーカス中の入力欄は背景色を変える（docs/product-spec.md UI/UX節） -->
+    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Style.Triggers>
+            <Trigger Property="IsFocused" Value="True">
+                <Setter Property="Background" Value="{StaticResource FocusedInputBackgroundBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="DateTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="beh:FormattedTextBoxBehavior.Kind" Value="Date" />
+    </Style>
+
+    <Style x:Key="AmountTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="HorizontalContentAlignment" Value="Right" />
+        <Setter Property="beh:FormattedTextBoxBehavior.Kind" Value="Amount" />
+    </Style>
+
+    <Style x:Key="QuantityTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="HorizontalContentAlignment" Value="Right" />
+        <Setter Property="beh:FormattedTextBoxBehavior.Kind" Value="Quantity" />
+    </Style>
+
+</ResourceDictionary>
