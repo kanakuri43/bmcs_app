@@ -1,6 +1,6 @@
 namespace bmcs_app.Domain.Entities;
 
-/// <summary>売上（外税伝票単位の得意先）。伝票登録時に伝票単位で税額を確定する。</summary>
+/// <summary>売上（伝票単位の得意先）。伝票登録時に伝票単位で税額を確定する。</summary>
 public class SalesTaxUnitSlip : SalesTaxUnitBase
 {
     /// <summary>伝票単位の税額。同一伝票の全行に同値（SUM してはいけない）。</summary>

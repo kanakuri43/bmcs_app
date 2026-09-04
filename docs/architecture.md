@@ -210,6 +210,8 @@ MahApps.Metro を導入し、共通スタイルは `src/bmcs_app/Styles/`、書�
   `Themes/Light.Blue.xaml` を静的にマージする。実行時のテーマ切替は行わないため `ThemeManager` は使わない。
 - **フォーカス中の背景色**: `Styles/Colors.xaml` の `FocusedInputBackgroundBrush`（`#FFFFF3C4`）。
   `TextBox` の暗黙スタイルに適用され、全画面で共通に効く。
+- **ウィンドウ切替アニメーション**: 全ウィンドウで無効化する（`WindowTransitionsEnabled=False`）。
+  `CommonControlStyles.xaml` の `MetroWindow` 暗黙スタイルで一括設定し、画面ごとの個別設定はしない。
 - **日付書式**: `yyyy/MM/dd` 固定。`DateTextBoxStyle` を付けた `TextBox` に対し `FormattedTextBoxBehavior`
   が blur 時に整形する（`yyyyMMdd` 等の区切りなし入力も許容してから整形する）。**カレンダーピッカーは導入しない**
   （必要とする画面が具体化した時点で追加を検討する）。**日付を保持する ViewModel プロパティは `DateOnly` ではなく

@@ -73,14 +73,15 @@ BEGIN
             FOREIGN KEY (sales_employee_code) REFERENCES dbo.employee (employee_code),
 
         -- C-1: 税区分=内税明細単位 ⇔ closing_day=0 の相互制約。
-        -- 破綻する組み合わせ（締め得意先×明細単位／都度得意先×外税一括）を DB 側で拒否する。
+        -- 破綻する組み合わせ（締め得意先×明細単位／都度得意先×請求単位）を DB 側で拒否する。
+        -- closing_day は 1〜31 が実日付、99 が「末日締め」の専用値（実日付31と区別する）。
         CONSTRAINT CK_customer_tax_unit_closing_day
             CHECK ((tax_unit = 3 AND closing_day = 0)
-                OR (tax_unit IN (1, 2) AND closing_day BETWEEN 1 AND 31)),
+                OR (tax_unit IN (1, 2) AND (closing_day BETWEEN 1 AND 31 OR closing_day = 99))),
 
         CONSTRAINT CK_customer_tax_unit CHECK (tax_unit IN (1, 2, 3)),
         CONSTRAINT CK_customer_rounding_type CHECK (rounding_type IN (1, 2, 3)),
-        CONSTRAINT CK_customer_closing_day CHECK (closing_day BETWEEN 0 AND 31)
+        CONSTRAINT CK_customer_closing_day CHECK (closing_day BETWEEN 0 AND 31 OR closing_day = 99)
     );
 END
 GO

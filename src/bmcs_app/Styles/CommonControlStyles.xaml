@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:beh="clr-namespace:bmcs_app.Behaviors">
+                    xmlns:beh="clr-namespace:bmcs_app.Behaviors"
+                    xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls">
 
     <ResourceDictionary.MergedDictionaries>
         <!--
@@ -12,6 +13,11 @@
         <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.xaml" />
         <ResourceDictionary Source="Colors.xaml" />
     </ResourceDictionary.MergedDictionaries>
+
+    <!-- 全画面共通: ウィンドウ切替アニメーションを無効化する（アプリ全体の方針） -->
+    <Style TargetType="mah:MetroWindow">
+        <Setter Property="WindowTransitionsEnabled" Value="False" />
+    </Style>
 
     <!-- 全画面共通: フォーカス中の入力欄は背景色を変える（docs/product-spec.md UI/UX節） -->
     <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">

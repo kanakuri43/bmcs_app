@@ -9,8 +9,8 @@ public class EnumDisplayConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value switch
     {
-        TaxUnit.Invoice => "外税一括",
-        TaxUnit.Slip => "外税伝票単位",
+        TaxUnit.Invoice => "請求単位",
+        TaxUnit.Slip => "伝票単位",
         TaxUnit.Line => "内税明細単位",
         RoundingType.Floor => "切捨",
         RoundingType.RoundHalfUp => "四捨五入",

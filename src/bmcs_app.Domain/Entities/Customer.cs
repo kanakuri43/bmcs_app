@@ -27,7 +27,7 @@ public class Customer : AuditableEntity
     /// <summary>自社の営業担当社員コード。月次締めの担当者別集計キー。</summary>
     public string? SalesEmployeeCode { get; set; }
 
-    /// <summary>0＝都度・明細／1〜31＝締め日（末日締めは31）。登録後は変更不可。</summary>
+    /// <summary>0＝都度・明細／1〜31＝締め日／99＝末日締め。登録後は変更不可。</summary>
     public required byte ClosingDay { get; set; }
 
     /// <summary>登録後は変更不可。<see cref="ClosingDay"/> との組み合わせを DB の CHECK 制約が守る。</summary>

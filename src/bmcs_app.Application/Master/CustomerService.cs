@@ -131,12 +131,12 @@ public class CustomerService(
     private static void ValidateTaxUnitClosingDayCombo(byte closingDay, TaxUnit taxUnit)
     {
         var valid = (taxUnit == TaxUnit.Line && closingDay == 0)
-            || (taxUnit is TaxUnit.Invoice or TaxUnit.Slip && closingDay is >= 1 and <= 31);
+            || (taxUnit is TaxUnit.Invoice or TaxUnit.Slip && (closingDay is >= 1 and <= 31 or 99));
 
         if (!valid)
         {
             throw new CustomerValidationException(
-                "税区分と締め日の組み合わせが不正です。都度取引は内税明細単位・締日なし、締め取引は外税一括/伝票単位・締日1〜31の組み合わせにしてください。");
+                "税区分と締め日の組み合わせが不正です。都度取引は内税明細単位・締日なし、締め取引は請求単位/伝票単位・締日1〜31・99の組み合わせにしてください。");
         }
     }
 }

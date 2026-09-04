@@ -50,14 +50,14 @@ public partial class CustomerMasterViewModel(CustomerService customerService) : 
     /// <summary>締め取引かどうか（締日・税区分の入力欄の表示切替に使う）。</summary>
     public bool IsClosingTransaction => TransactionType == TransactionType.Closing;
 
-    /// <summary>締め取引で選択可能な税区分（外税一括／外税伝票単位のみ）。</summary>
+    /// <summary>締め取引で選択可能な税区分（請求単位／伝票単位のみ）。</summary>
     public static IReadOnlyList<TaxUnit> ClosingTaxUnitOptions { get; } = [TaxUnit.Invoice, TaxUnit.Slip];
 
     /// <summary>端数区分の選択肢。</summary>
     public static IReadOnlyList<RoundingType> RoundingTypeOptions { get; } =
         Enum.GetValues<RoundingType>();
 
-    /// <summary>締め取引のときのみ使用する締日（1〜31、末日締めは31）。</summary>
+    /// <summary>締め取引のときのみ使用する締日（1〜31、末日締めは99）。</summary>
     [ObservableProperty]
     public partial string ClosingDayText { get; set; } = string.Empty;
 
@@ -182,9 +182,9 @@ public partial class CustomerMasterViewModel(CustomerService customerService) : 
         }
         else
         {
-            if (!byte.TryParse(ClosingDayText, out closingDay) || closingDay is < 1 or > 31)
+            if (!byte.TryParse(ClosingDayText, out closingDay) || closingDay is (< 1 or > 31) and not 99)
             {
-                MessageBox.Show("締日は1〜31で入力してください（末日締めは31）。", "bmcs_app", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("締日は1〜31で入力してください（末日締めは99）。", "bmcs_app", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -321,13 +321,13 @@ public partial class CustomerMasterViewModel(CustomerService customerService) : 
         ClosingDayDisplay: customer.ClosingDay switch
         {
             0 => "都度",
-            31 => "末日締め",
+            99 => "末日締め",
             var day => $"{day}日締め",
         },
         TaxUnitDisplay: customer.TaxUnit switch
         {
-            TaxUnit.Invoice => "外税一括",
-            TaxUnit.Slip => "外税伝票単位",
+            TaxUnit.Invoice => "請求単位",
+            TaxUnit.Slip => "伝票単位",
             TaxUnit.Line => "内税明細単位",
             _ => customer.TaxUnit.ToString(),
         });

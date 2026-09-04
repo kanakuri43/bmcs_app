@@ -106,7 +106,7 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="締日（1〜31、末日=31）" Margin="0,0,12,8" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="締日（1〜31、末日=99）" Margin="0,0,12,8" VerticalAlignment="Center" />
                         <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ClosingDayText}" Width="80" HorizontalAlignment="Left" Margin="0,0,0,8" />
 
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="税区分" Margin="0,0,12,8" VerticalAlignment="Center" />

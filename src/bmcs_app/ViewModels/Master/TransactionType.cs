@@ -10,6 +10,6 @@ public enum TransactionType
     /// <summary>都度取引。ClosingDay=0・TaxUnit=Line に固定。</summary>
     OneOff,
 
-    /// <summary>締め取引。ClosingDay=1〜31・TaxUnit=Invoice/Slip から選択。</summary>
+    /// <summary>締め取引。ClosingDay=1〜31・99・TaxUnit=Invoice/Slip から選択。</summary>
     Closing,
 }

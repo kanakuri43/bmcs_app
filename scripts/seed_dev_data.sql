@@ -66,7 +66,7 @@ VALUES
      N'EMP001', 20, 1, 1, 0,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'CUS002', N'鈴木工業株式会社', N'ｽｽﾞｷｺｳｷﾞｮｳ', N'150-0001', N'東京都渋谷区2-2-2', N'鈴木花子',
-     N'EMP001', 31, 2, 2, 0,
+     N'EMP001', 99, 2, 2, 0,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'CUS003', N'石山市立石山小学校', N'ｲｼﾔﾏｼﾘﾂｲｼﾔﾏｼｮｳｶﾞｯｺｳ', N'400-0001', N'山梨県甲府市3-3-3', N'佐藤先生',
      N'EMP002', 0, 3, 3, 1,
@@ -196,7 +196,7 @@ GO
 -- 5. 売上（3テーブル。売上の3軸9状態＋返品を網羅）
 -- -----------------------------------------------------------------------------
 
--- sales_tax_unit_invoice（CUS001・外税一括）
+-- sales_tax_unit_invoice（CUS001・請求単位）
 INSERT INTO dbo.sales_tax_unit_invoice
     (sales_slip_number, line_number, slip_date, customer_code, customer_name, slip_type,
      product_code, product_name, quantity, unit_price, amount, cost_price,
@@ -218,7 +218,7 @@ VALUES
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
--- sales_tax_unit_slip（CUS002・外税伝票単位）
+-- sales_tax_unit_slip（CUS002・伝票単位）
 INSERT INTO dbo.sales_tax_unit_slip
     (sales_slip_number, line_number, slip_date, customer_code, customer_name, slip_type,
      product_code, product_name, quantity, unit_price, amount, cost_price,
