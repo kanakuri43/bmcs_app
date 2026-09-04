@@ -5,7 +5,8 @@
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="bmcs_app - メインメニュー"
                  Height="520" Width="820"
-                 WindowStartupLocation="CenterScreen">
+                 WindowStartupLocation="CenterScreen"
+                 WindowTransitionsEnabled="False">
     <!--
         Phase 0-3 時点の基盤動作確認用の画面。
         権限に応じたメニューの出し分けは Phase 2-7 で実装する。

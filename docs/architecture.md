@@ -211,7 +211,13 @@ MahApps.Metro を導入し、共通スタイルは `src/bmcs_app/Styles/`、書�
 - **フォーカス中の背景色**: `Styles/Colors.xaml` の `FocusedInputBackgroundBrush`（`#FFFFF3C4`）。
   `TextBox` の暗黙スタイルに適用され、全画面で共通に効く。
 - **ウィンドウ切替アニメーション**: 全ウィンドウで無効化する（`WindowTransitionsEnabled=False`）。
-  `CommonControlStyles.xaml` の `MetroWindow` 暗黙スタイルで一括設定し、画面ごとの個別設定はしない。
+  **各ウィンドウの XAML ルート要素に個別指定する。** 当初は `CommonControlStyles.xaml` の
+  `MetroWindow` 暗黙スタイル（`BasedOn` 有無いずれも）で一括設定を試みたが、実機確認したところ
+  `WindowTransitionsEnabled` の実効値が常に既定の `True` のままになり、効かないことが判明した
+  （原因は MahApps.Metro 側の内部実装によるものと推測されるが特定できていない）。
+  ローカル値（XAML 属性での直接指定）は WPF のプロパティ値優先順位で最上位のため、
+  スタイル解決の仕組みに依存せず確実に効く。画面を追加する際は、各ウィンドウのルート
+  `mah:MetroWindow` 要素に `WindowTransitionsEnabled="False"` を必ず付ける。
 - **日付書式**: `yyyy/MM/dd` 固定。`DateTextBoxStyle` を付けた `TextBox` に対し `FormattedTextBoxBehavior`
   が blur 時に整形する（`yyyyMMdd` 等の区切りなし入力も許容してから整形する）。**カレンダーピッカーは導入しない**
   （必要とする画面が具体化した時点で追加を検討する）。**日付を保持する ViewModel プロパティは `DateOnly` ではなく

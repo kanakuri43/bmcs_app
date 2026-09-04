@@ -14,11 +14,6 @@
         <ResourceDictionary Source="Colors.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
-    <!-- 全画面共通: ウィンドウ切替アニメーションを無効化する（アプリ全体の方針） -->
-    <Style TargetType="mah:MetroWindow">
-        <Setter Property="WindowTransitionsEnabled" Value="False" />
-    </Style>
-
     <!-- 全画面共通: フォーカス中の入力欄は背景色を変える（docs/product-spec.md UI/UX節） -->
     <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
         <Style.Triggers>
