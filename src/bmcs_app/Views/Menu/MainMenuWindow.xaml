@@ -81,6 +81,10 @@
                     Command="{Binding OpenCustomerMasterCommand}"
                     Padding="16,6"
                     Margin="0,0,12,0" />
+            <Button Content="商品マスタ"
+                    Command="{Binding OpenProductMasterCommand}"
+                    Padding="16,6"
+                    Margin="0,0,12,0" />
             <Button Content="プリンタ設定"
                     Command="{Binding OpenPrinterSettingsCommand}"
                     Padding="16,6"

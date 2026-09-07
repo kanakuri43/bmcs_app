@@ -1,0 +1,117 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Master.ProductMasterWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:beh="clr-namespace:bmcs_app.Behaviors"
+                 Title="bmcs_app - 商品マスタ"
+                 Height="600" Width="960"
+                 WindowStartupLocation="CenterScreen"
+                 WindowTransitionsEnabled="False">
+    <Grid Margin="16" beh:EnterKeyNavigationBehavior.IsEnabled="True">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="360" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- 左: 一覧 -->
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Button Grid.Row="0" Content="新規" Command="{Binding NewProductCommand}"
+                    Padding="16,6" Margin="0,0,0,8" HorizontalAlignment="Left" />
+
+            <ListView Grid.Row="1" ItemsSource="{Binding Products}"
+                      beh:RowActivationBehavior.Command="{Binding LoadSelectedProductCommand}">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="コード" Width="70" DisplayMemberBinding="{Binding ProductCode}" />
+                        <GridViewColumn Header="名称" Width="140" DisplayMemberBinding="{Binding ProductName}" />
+                        <GridViewColumn Header="単位" Width="50" DisplayMemberBinding="{Binding UnitName}" />
+                        <GridViewColumn Header="税種別区分" Width="90" DisplayMemberBinding="{Binding TaxCategoryDisplay}" />
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Grid>
+
+        <!-- 右: 詳細フォーム -->
+        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="基本情報" FontWeight="Bold" Margin="0,0,0,8" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="商品コード" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ProductCode}" IsEnabled="{Binding IsNew}" Margin="0,0,0,8" />
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="商品名" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ProductName}" Margin="0,0,0,8" />
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="カナ" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ProductNameKana}" Margin="0,0,0,8" />
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="規格" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Specification}" Margin="0,0,0,8" />
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="単位" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding UnitName}" Margin="0,0,0,8" />
+                </Grid>
+
+                <TextBlock Text="単価・税区分" FontWeight="Bold" Margin="0,16,0,8" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="外税単価（税抜）" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource AmountTextBoxStyle}"
+                             Text="{Binding StandardUnitPriceExclTax}" Width="140" HorizontalAlignment="Left" Margin="0,0,0,8" />
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="内税単価（税込）" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource AmountTextBoxStyle}"
+                             Text="{Binding StandardUnitPriceInclTax}" Width="140" HorizontalAlignment="Left" Margin="0,0,0,8" />
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="標準原価" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource AmountTextBoxStyle}"
+                             Text="{Binding StandardCostPrice}" Width="140" HorizontalAlignment="Left" Margin="0,0,0,8" />
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="税種別区分" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="3" Grid.Column="1" Width="160" HorizontalAlignment="Left" Margin="0,0,0,8"
+                              ItemsSource="{Binding TaxCategoryOptions}"
+                              SelectedItem="{Binding TaxCategory}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource EnumDisplayConverter}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                    <Button Content="保存" Command="{Binding SaveCommand}" Padding="16,6" Margin="0,0,12,0" />
+                    <Button Content="無効化" Command="{Binding DeactivateCommand}" Padding="16,6" Margin="0,0,12,0" />
+                    <TextBlock Text="処理中..." VerticalAlignment="Center" Foreground="OrangeRed"
+                               Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </StackPanel>
+
+                <TextBlock Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="Gray" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</mah:MetroWindow>

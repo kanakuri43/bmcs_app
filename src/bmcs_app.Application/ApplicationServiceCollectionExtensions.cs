@@ -29,6 +29,7 @@ public static class ApplicationServiceCollectionExtensions
         // ウィンドウ単位のスコープ内で DbContext を共有させるため。
         services.AddScoped<DatabaseHealthService>();
         services.AddScoped<CustomerService>();
+        services.AddScoped<ProductService>();
 
         return services;
     }
