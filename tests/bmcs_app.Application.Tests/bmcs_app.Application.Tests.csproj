@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    bmcs_app.Application の結合テスト（TODO.md 4-1）。開発用ライブDB（172.16.3.171）に対して
+    実行する（docs/architecture.md 2章「消込・締めは開発用DBに対する結合テストで担保する」の
+    初めての実体化）。Nullable・ImplicitUsings はルートの Directory.Build.props が既に
+    設定するため書かない。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\bmcs_app.Application\bmcs_app.Application.csproj" />
+    <!-- BmcsDbContext / SlipNumberSequenceCommand を直接使うため明示する（Application 経由の推移参照に頼らない）。 -->
+    <ProjectReference Include="..\..\src\bmcs_app.Infrastructure\bmcs_app.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      接続文字列を含む appsettings.Development.json は .gitignore 済み（ルート .gitignore の
+      appsettings.Development.json パターンが深さを問わず一致する。src/bmcs_app と同じ運用）。
+      .sample はコミットし、実行前に複製して Password を記入する。
+    -->
+    <None Include="appsettings.Development.json.sample">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="appsettings.Development.json" Condition="Exists('appsettings.Development.json')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

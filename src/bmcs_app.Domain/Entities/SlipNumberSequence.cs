@@ -4,7 +4,8 @@ namespace bmcs_app.Domain.Entities;
 /// 採番（slip_number_sequence）。伝票種別ごとに1行を永続保持する。
 /// 採番は UPDATE の行ロックで直列化するため、RowVersion（楽観的排他）は持たない
 /// （TrackedEntity を継承）。伝票登録と同一トランザクション内で採番すること
-/// （docs/architecture.md 6章）。
+/// （docs/architecture.md 6章）。採番は生SQLのUPDATEで行うため、このエンティティを
+/// EF Coreで追跡してはならない（参照は必ず AsNoTracking()。TODO.md 4-1）。
 /// </summary>
 public class SlipNumberSequence : TrackedEntity
 {

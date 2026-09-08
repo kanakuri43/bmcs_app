@@ -1,0 +1,7 @@
+{
+  "//": "このファイルを appsettings.Development.json に複製し、Password を記入して使う。",
+  "//コピー先": "appsettings.Development.json は .gitignore 済み（パスワードを含むためコミットしない）",
+  "ConnectionStrings": {
+    "BmcsDb": "Server=172.16.3.171;Database=bmcs_db;User Id=sa;Password=;TrustServerCertificate=True;"
+  }
+}

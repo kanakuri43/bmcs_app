@@ -131,8 +131,14 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 - **明示的なトランザクション（`BeginTransactionAsync`）を使うのは次の場合に限る。**
   1. 1回の `SaveChanges` に収まらない処理（請求締めなど、大量データを分割保存する場合）
   2. ストアドプロシージャの実行と EF Core の更新を1つの整合単位にまとめる場合
+  3. **伝票番号の採番と伝票登録を1つの整合単位にまとめる場合**（下記）
 - **ViewModel から複数のユースケースを呼んで1つの整合単位にしてはいけない。** 画面から2回呼べば2トランザクションになる。1つの整合単位が必要なら、Application 層にそれを1メソッドとして用意する。
-- **伝票番号の採番は、伝票登録と同一トランザクション内で行う。** 別トランザクションで先に採番すると、登録が失敗したときに欠番が出る。伝票番号の欠番は業務上の説明が難しいため避ける。採番テーブルの行ロックがトランザクション終了まで残るが、同時利用者は数十人規模であり実用上の問題にならない。
+- **伝票番号の採番は、伝票登録と同一トランザクション内で行う（TODO.md 4-1）。** 別トランザクションで先に採番すると、登録が失敗したときに欠番が出る。伝票番号の欠番は業務上の説明が難しいため避ける。採番テーブルの行ロックがトランザクション終了まで残るが、同時利用者は数十人規模であり実用上の問題にならない。
+  - 呼び出し順は「メモリ上でエンティティグラフを組み立てる → `BeginTransactionAsync` → `SlipNumberService.NextAsync` → 番号を明細行に代入 → `SaveChangesAsync`（1回） → `CommitAsync`」。**画面を開いた時点や入力開始時に採番してはならない。** ロックがコミットまで残るため、UI操作をまたいでトランザクションを開いたままにしない。
+  - 同一トランザクション内で複数の採番系列（`SlipNumberKind`）を取得する場合は、**列挙値の宣言順で取得する。** 取得順序が呼び出し元ごとに異なると ABBA デッドロックの可能性がある。
+  - `SlipNumberService.NextAsync` は明示トランザクションが開始されていない場合 `InvalidOperationException` を投げる（`src/bmcs_app.Application/Common/SlipNumberService.cs` 経由で `src/bmcs_app.Infrastructure/Numbering/SlipNumberSequenceCommand.cs` が検証する）。採番だけが暗黙のトランザクションで先にコミットされてしまう事故を、実行時に確実に検出するためのアサーションであり、抽象化ではない。
+  - **アンビエントトランザクション（`System.Transactions.TransactionScope`）は使わない。** `Database.CurrentTransaction` は `TransactionScope` 配下では `null` のままになり、上記のガードが常に発火してしまう。
+  - **`EnableRetryOnFailure`（EF Core の自動リトライ）は使わない。** ユーザー起動トランザクション（`BeginTransactionAsync`）は再試行戦略と併用できないため、将来これを有効化すると採番が全面的に失敗する。
 - **`DbUpdateConcurrencyException` は Application 層で捕捉し、業務的な意味を持つ結果（「他のユーザーが更新しました」）に変換して返す。** ViewModel に EF Core の例外型を漏らさない。
 
 ## 7. EF Core（LINQ）とストアドプロシージャの使い分け
@@ -145,8 +151,10 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 | 請求締め・月次締めの一括集計、大量行の一括更新 | **ストアドプロシージャを検討** | LINQ だと全件をメモリに展開する、または N+1 クエリになるため |
 
 - **判断の目安は「1回の処理で 1,000 行を超える更新・集計かどうか」。** それ未満は LINQ で書く。目安を超えても、まず LINQ で書いて実測し、実際に遅い場合にストアド化する。**推測でストアドを選ばない。**
-- **ストアドの呼び出しは Infrastructure 層に置く。** 生 SQL が Application 層に散らばらないようにする。Application からは通常のメソッドとして呼ぶ。
-- ストアド名には `usp_` を付ける（`docs/database-schema.md`）。追加・変更したストアドは DDL と同様に `scripts/` へ連番 SQL として残す。
+- **ストアドに限らず、生SQL全般の呼び出しは Infrastructure 層に置く。** Application 層に生SQLが散らばらないようにする。Application からは通常のメソッドとして呼ぶ。
+  - 例: 伝票番号の採番（`src/bmcs_app.Infrastructure/Numbering/SlipNumberSequenceCommand.cs`、TODO.md 4-1）。`UPDATE ... OUTPUT` による「+1して読む」のアトミック実行で、ストアドプロシージャではないが同じ理由で Infrastructure に置く。
+  - `dbContext.Database.SqlQuery<T>()` は、LINQ で合成していない（`Where`/`OrderBy`/`Take` 等を後付けしていない）スカラークエリに限り、生SQLをそのまま1コマンドとして発行する（EF Core が派生テーブルに包まない）。`UPDATE ... OUTPUT` のように「派生テーブルの中では書けない」文を実行する場合は、必ず `ToListAsync()` で受け取ること。`FirstOrDefaultAsync`/`SingleAsync`/`Take(1)` 等を使うと LINQ 合成と判定され、EF が派生テーブルに包んでしまい SQL Server が実行時エラーを返す（コンパイルは通るため気付きにくい）。実装例は `SlipNumberSequenceCommand.IncrementAsync` を参照。
+- ストアド名には `usp_` を付ける（`docs/database-schema.md`）。追加・変更したストアドは DDL と同様に `scripts/` へ連番 SQL として残す（採番のような生SQLで、テーブル構造の変更を伴わないものは対象外）。
 - **SQL ビューは使わない**（`docs/database-schema.md` の元帳方針と同じ理由）。
 
 ## 8. 非同期処理の方針
@@ -188,8 +196,8 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 |---|---|
 | Presentation | `Views/{機能}/{画面名}Window.xaml`、`ViewModels/{機能}/{画面名}ViewModel.cs`。モーダルは `{名前}Dialog` |
 | Application | `{機能}/{ユースケース名}Service.cs` |
-| Domain | `Entities/`、`Enums/`、`Calculations/`（消費税計算など） |
-| Infrastructure | `BmcsDbContext.cs`、`Configurations/{エンティティ名}Configuration.cs`、`StoredProcedures/`、`LocalSettings/` |
+| Domain | `Entities/`、`Enums/`、`Calculations/`（消費税計算など）、`Numbering/`（伝票番号の書式化、TODO.md 4-1） |
+| Infrastructure | `BmcsDbContext.cs`、`Configurations/{エンティティ名}Configuration.cs`、`StoredProcedures/`、`LocalSettings/`、`Numbering/`（採番の生SQL、TODO.md 4-1） |
 
 - C# のクラス名・プロパティ名は PascalCase、DB のテーブル名・カラム名は `snake_case`（`docs/database-schema.md`）。変換は Infrastructure 層のマッピング設定で行う。
 - 画面の正式名称は `docs/design_document.md` の画面一覧を正とする。
@@ -279,7 +287,7 @@ Phase 5-1（消費税計算）着手時に前倒しで構築した。
 
 - **対象は Domain の純粋ロジックのみ。** 2章で定めたとおり「DB に依存しない単体テストの対象は
   Domain に集める（消費税計算・端数処理・状態判定）」。消込・締めなど DB アクセスを伴う処理は、
-  開発用DBに対する結合テストで別途担保する（ここでは扱わない）。
+  開発用DBに対する結合テストで別途担保する（16章）。
 - **構成**: `tests/{テスト対象アセンブリ名}.Tests/`（例: `tests/bmcs_app.Domain.Tests/`）。
   テスト対象への `ProjectReference` のみを持つ。
 - **フレームワークは xUnit v2。** `dotnet new xunit` の既定構成（`Microsoft.NET.Test.Sdk` /
@@ -292,3 +300,30 @@ Phase 5-1（消費税計算）着手時に前倒しで構築した。
   プロジェクト単位で指定する）。
 - **テストメソッド名は日本語。** 完了条件が業務正確性（金額が手計算と一致するか）であり、
   非エンジニアでも行列の網羅性を確認できるようにするため。
+
+## 16. 結合テストの構成（Phase 4-1 で構築）
+
+15章「消込・締めなど DB アクセスを伴う処理は、開発用DBに対する結合テストで別途担保する」を
+はじめて実体化したもの。伝票番号の採番（TODO.md 4-1「同時登録でも採番が重複しない」）の
+実証に使い、以降の消込（7-1）・締め（6-1・9-1）の結合テストもここに集約する想定。
+
+- **構成**: `tests/bmcs_app.Application.Tests/`。単一アセンブリの単体テストではなく、
+  Application・Infrastructure・実機 SQL Server を縦串で検証するため、15章の
+  `tests/{アセンブリ名}.Tests/` とは性質が異なる（**開発用DBへの接続が前提で、繋がらなければ
+  落ちる**）が、命名は既存規約を踏襲する。
+- **DI配線ごと検証する。** `ApplicationServiceCollectionExtensions.AddApplication` を通して
+  サービスを解決する（`DevDatabaseFixture`、`tests/bmcs_app.Application.Tests/DevDatabaseFixture.cs`）。
+  モックは使わない。
+- **接続文字列**: `src/bmcs_app` と同じパターン。`appsettings.Development.json.sample`
+  （コミットする）を複製して `appsettings.Development.json`（`.gitignore` の既存パターンが
+  深さを問わず一致するため自動的に除外される）を作り、`Password` を記入する。
+- **テスト分離**: 実キー（`order_slip` 等）の `current_value` は変更しない。
+  - 並列採番の重複・欠番なしを検証するテストのみ、`"__test_slip_number"` という
+    業務キーと衝突しない使い捨てキーを使い、コミットする（変化することが検証対象のため）。
+    フィクスチャが `InitializeAsync`/`DisposeAsync` で冪等に作成・削除する。
+  - それ以外のテストは実キーを使うが、`BeginTransactionAsync` → 検証 → `RollbackAsync` で
+    DBを無変化に保つ。
+  - `DbContext` はスレッドセーフでない（8章）ため、並列実行するテストは
+    タスクごとに独立したスコープ（＝独立した `DbContext`）を使う。
+- **実行**: `dotnet test tests/bmcs_app.Application.Tests/bmcs_app.Application.Tests.csproj`
+  （`bmcs_app.sln` 単位で実行しても動くが、15章と同様プロジェクト単位を基本とする）。

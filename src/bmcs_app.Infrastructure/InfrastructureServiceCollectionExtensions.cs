@@ -1,3 +1,4 @@
+using bmcs_app.Infrastructure.Numbering;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,6 +38,9 @@ public static class InfrastructureServiceCollectionExtensions
                 .UseSnakeCaseNamingConvention(),
             contextLifetime: ServiceLifetime.Scoped,
             optionsLifetime: ServiceLifetime.Singleton);
+
+        // DbContext と同じ Scoped で登録する（TODO.md 4-1）。
+        services.AddScoped<SlipNumberSequenceCommand>();
 
         return services;
     }
