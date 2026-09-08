@@ -30,6 +30,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<DatabaseHealthService>();
         services.AddScoped<CustomerService>();
         services.AddScoped<ProductService>();
+        services.AddScoped<ProductHistoryQueryService>();
 
         return services;
     }

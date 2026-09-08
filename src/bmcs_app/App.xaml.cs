@@ -4,8 +4,10 @@ using System.Windows;
 using System.Windows.Threading;
 using bmcs_app.Application;
 using bmcs_app.Services;
+using bmcs_app.ViewModels.Common;
 using bmcs_app.ViewModels.Master;
 using bmcs_app.ViewModels.Menu;
+using bmcs_app.Views.Common;
 using bmcs_app.Views.Master;
 using bmcs_app.Views.Menu;
 using Microsoft.Extensions.Configuration;
@@ -121,6 +123,12 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<PrinterSettingsWindow>();
         builder.Services.AddScoped<PrinterSettingsViewModel>();
+
+        builder.Services.AddScoped<CustomerSearchDialog>();
+        builder.Services.AddScoped<CustomerSearchDialogViewModel>();
+
+        builder.Services.AddScoped<ProductSearchDialog>();
+        builder.Services.AddScoped<ProductSearchDialogViewModel>();
 
         return builder.Build();
     }

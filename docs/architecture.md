@@ -96,6 +96,16 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 
 実装は `src/bmcs_app/Services/WindowService.cs` が担う。`IServiceScopeFactory` でウィンドウ1つにつきスコープを1つ作り、`Window.Closed` でスコープを破棄する。**画面を追加する際は必ず `WindowService.Show<TWindow, TViewModel>()` を経由させ、`new` で直接ウィンドウを生成しない。** ウィンドウと ViewModel は `Scoped` で DI 登録する。
 
+### モーダルダイアログ（選択結果を返す画面、Phase 3 で追加）
+
+共通検索モーダルのように「呼び出し元へ選択結果を返して閉じる」画面は、上記 `Show` とは別に `WindowService.ShowDialog<TWindow, TViewModel, TResult>(Action<TViewModel>? configure = null)` を使う。
+
+- `TViewModel` は `src/bmcs_app/ViewModels/DialogViewModelBase.cs` の `DialogViewModelBase<TResult>` を継承する。`CloseWith(TResult? result)` を呼ぶと `Result` を設定し `CloseRequested` イベントを発火する。ViewModel は View を参照しない方針（11章）のため、実際に `Window.Close()` を呼ぶのは `ShowDialog` 側で `CloseRequested` を配線して行う。
+- `Show` と同様にウィンドウ1つにつきスコープを1つ作り、`window.ShowDialog()` の完了後（`finally`）にスコープを破棄する。
+- `configure` は、呼び出し元の文脈（対象得意先コード等）を ViewModel の生成後・表示前に設定するためのコールバック。
+- キャンセル操作は `DialogViewModelBase<TResult>` が提供する `CancelCommand`（`CloseWith(default)`）を使う。呼び出し元は戻り値が `null` かどうかでキャンセルを判定する。
+- 命名・配置は10章の規約どおり `Views/Common/{名前}Dialog.xaml` / `ViewModels/Common/{名前}DialogViewModel.cs`（`CustomerSearchDialog`/`ProductSearchDialog` が実装例）。
+
 ## 5. 各層の責務
 
 | 層 | 置くもの | 置かないもの |

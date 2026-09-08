@@ -4,7 +4,7 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="bmcs_app - メインメニュー"
-                 Height="520" Width="820"
+                 Height="760" Width="820"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
@@ -16,6 +16,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -72,7 +73,7 @@
             </StackPanel>
         </StackPanel>
 
-        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Left">
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,16">
             <Button Content="もう1つウィンドウを開く"
                     Command="{Binding OpenAnotherWindowCommand}"
                     Padding="16,6"
@@ -93,6 +94,18 @@
                        VerticalAlignment="Center"
                        Foreground="OrangeRed"
                        Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="6" Orientation="Vertical" HorizontalAlignment="Left">
+            <TextBlock Text="Phase 3: 共通検索モーダル動作確認" Margin="0,0,0,8" Foreground="Gray" />
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <Button Content="得意先検索モーダル" Command="{Binding OpenCustomerSearchCommand}" Padding="16,6" Margin="0,0,12,0" />
+                <Button Content="商品検索モーダル" Command="{Binding OpenProductSearchCommand}" Padding="16,6" Margin="0,0,12,0" />
+                <TextBlock Text="選択得意先:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <TextBlock Text="{Binding SelectedCustomerCode}" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,4,0" />
+                <TextBlock Text="{Binding SelectedCustomerName}" VerticalAlignment="Center" FontWeight="Bold" />
+            </StackPanel>
+            <TextBlock Text="{Binding TranscribedProducts}" TextWrapping="Wrap" />
         </StackPanel>
     </Grid>
 </mah:MetroWindow>

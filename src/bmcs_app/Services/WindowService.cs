@@ -1,4 +1,5 @@
 using System.Windows;
+using bmcs_app.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -46,6 +47,42 @@ public class WindowService(IServiceScopeFactory scopeFactory, ILogger<WindowServ
             // 表示前に失敗した場合はスコープが漏れないよう破棄する。
             scope.Dispose();
             throw;
+        }
+    }
+
+    /// <summary>
+    /// モーダルダイアログを新しいスコープで生成し、選択結果を返す。
+    /// <see cref="Show{TWindow, TViewModel}"/> と同様にウィンドウ1つにつきスコープを1つ作る。
+    /// </summary>
+    /// <param name="configure">呼び出し元の文脈（対象得意先コード等）を ViewModel へ渡すためのコールバック。</param>
+    public TResult? ShowDialog<TWindow, TViewModel, TResult>(Action<TViewModel>? configure = null)
+        where TWindow : Window
+        where TViewModel : DialogViewModelBase<TResult>
+    {
+        var scope = scopeFactory.CreateScope();
+
+        try
+        {
+            var window = scope.ServiceProvider.GetRequiredService<TWindow>();
+            var viewModel = scope.ServiceProvider.GetRequiredService<TViewModel>();
+            window.DataContext = viewModel;
+            configure?.Invoke(viewModel);
+
+            viewModel.CloseRequested += window.Close;
+
+            window.Owner = System.Windows.Application.Current.Windows
+                .OfType<Window>()
+                .FirstOrDefault(w => w.IsActive);
+
+            logger.LogInformation("{Window} をモーダルで開きます。", typeof(TWindow).Name);
+            window.ShowDialog();
+
+            return viewModel.Result;
+        }
+        finally
+        {
+            logger.LogInformation("{Window} を閉じたためスコープを破棄します。", typeof(TWindow).Name);
+            scope.Dispose();
         }
     }
 }

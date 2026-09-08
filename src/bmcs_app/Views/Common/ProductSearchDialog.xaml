@@ -1,0 +1,125 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Common.ProductSearchDialog"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:beh="clr-namespace:bmcs_app.Behaviors"
+                 Title="bmcs_app - 商品検索"
+                 Height="640" Width="960"
+                 WindowStartupLocation="CenterOwner"
+                 ShowInTaskbar="False"
+                 WindowTransitionsEnabled="False">
+    <mah:MetroWindow.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CancelCommand}" />
+        <KeyBinding Key="Enter" Modifiers="Ctrl" Command="{Binding ConfirmCommand}" />
+    </mah:MetroWindow.InputBindings>
+
+    <Grid Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="260" />
+        </Grid.ColumnDefinitions>
+
+        <!-- 左: 検索タブ（マスタから / 過去の取引履歴から） -->
+        <TabControl x:Name="SearchTabControl" Grid.Column="0" SelectionChanged="OnSearchTabSelectionChanged">
+            <TabItem Header="マスタから">
+                <Grid Margin="8" beh:EnterKeyNavigationBehavior.IsEnabled="True">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="検索（コード・名称・カナ・規格）" VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <TextBox x:Name="MasterSearchKeywordTextBox"
+                                 Text="{Binding MasterSearchKeyword, UpdateSourceTrigger=PropertyChanged}" Width="280" />
+                    </StackPanel>
+
+                    <ListView Grid.Row="1" x:Name="MasterResultsListView" ItemsSource="{Binding MasterResults}"
+                               SelectedIndex="{Binding MasterSelectedIndex}"
+                               beh:RowActivationBehavior.Command="{Binding AddMasterToBasketCommand}">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="コード" Width="70" DisplayMemberBinding="{Binding ProductCode}" />
+                                <GridViewColumn Header="名称" Width="160" DisplayMemberBinding="{Binding ProductName}" />
+                                <GridViewColumn Header="規格" Width="100" DisplayMemberBinding="{Binding Specification}" />
+                                <GridViewColumn Header="単位" Width="50" DisplayMemberBinding="{Binding UnitName}" />
+                                <GridViewColumn Header="単価" Width="80" DisplayMemberBinding="{Binding UnitPrice, StringFormat=N0}" />
+                                <GridViewColumn Header="税種別" Width="80" DisplayMemberBinding="{Binding TaxCategoryDisplay}" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </Grid>
+            </TabItem>
+
+            <TabItem x:Name="HistoryTabItem" Header="過去の取引履歴から" IsEnabled="{Binding HasCustomer}">
+                <Grid Margin="8" beh:EnterKeyNavigationBehavior.IsEnabled="True">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="先に得意先を選択してください。" Foreground="OrangeRed" Margin="0,0,0,8"
+                               Visibility="{Binding ShowCustomerRequiredNotice, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="検索（コード・名称・規格）" VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <TextBox x:Name="HistorySearchKeywordTextBox"
+                                 Text="{Binding HistorySearchKeyword, UpdateSourceTrigger=PropertyChanged}" Width="280" />
+                    </StackPanel>
+
+                    <ListView Grid.Row="2" x:Name="HistoryResultsListView" ItemsSource="{Binding HistoryResults}"
+                               SelectedIndex="{Binding HistorySelectedIndex}"
+                               beh:RowActivationBehavior.Command="{Binding AddHistoryToBasketCommand}">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="コード" Width="70" DisplayMemberBinding="{Binding ProductCode}" />
+                                <GridViewColumn Header="名称" Width="150" DisplayMemberBinding="{Binding ProductName}" />
+                                <GridViewColumn Header="規格" Width="90" DisplayMemberBinding="{Binding Specification}" />
+                                <GridViewColumn Header="単位" Width="50" DisplayMemberBinding="{Binding UnitName}" />
+                                <GridViewColumn Header="前回単価" Width="80" DisplayMemberBinding="{Binding UnitPrice, StringFormat=N0}" />
+                                <GridViewColumn Header="前回売上日" Width="90" DisplayMemberBinding="{Binding LastSlipDateDisplay}" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!-- 右: 選択カゴ（最大6件） -->
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" FontWeight="Bold" Margin="0,0,0,8">
+                <Run Text="選択中 " /><Run Text="{Binding Basket.Count, Mode=OneWay}" /><Run Text=" / 6 件" />
+            </TextBlock>
+
+            <ListBox Grid.Row="1" x:Name="BasketListBox" ItemsSource="{Binding Basket}"
+                      beh:RowActivationBehavior.Command="{Binding RemoveFromBasketCommand}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="0,2">
+                            <TextBlock Text="{Binding ProductCode}" FontWeight="Bold" />
+                            <TextBlock Text="{Binding ProductName}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding UnitPrice, StringFormat=N0}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <TextBlock Grid.Row="2" Text="Enter で除外" Foreground="Gray" Margin="0,4,0,8" />
+
+            <StackPanel Grid.Row="3">
+                <Button Content="一括転記（Ctrl+Enter）" Command="{Binding ConfirmCommand}" Padding="16,6" Margin="0,0,0,8" />
+                <Button Content="キャンセル（Esc）" Command="{Binding CancelCommand}" Padding="16,6" />
+                <TextBlock Text="{Binding StatusMessage}" Foreground="OrangeRed" Margin="0,8,0,0" TextWrapping="Wrap" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</mah:MetroWindow>

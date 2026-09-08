@@ -1,6 +1,9 @@
 using bmcs_app.Application.Common;
+using bmcs_app.Domain.Entities;
 using bmcs_app.Services;
+using bmcs_app.ViewModels.Common;
 using bmcs_app.ViewModels.Master;
+using bmcs_app.Views.Common;
 using bmcs_app.Views.Master;
 using bmcs_app.Views.Menu;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -89,4 +92,45 @@ public partial class MainMenuViewModel(
     [RelayCommand]
     private void OpenPrinterSettings()
         => windowService.Show<PrinterSettingsWindow, PrinterSettingsViewModel>();
+
+    /// <summary>選択済みの得意先（商品検索モーダルの履歴軸に渡す）。TODO.md 3-1/3-2 の動作確認用。</summary>
+    [ObservableProperty]
+    public partial string SelectedCustomerCode { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string SelectedCustomerName { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string TranscribedProducts { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 得意先検索モーダルを開く（TODO.md 3-1）。Phase 4/5 の伝票入力画面が実装されるまでの動作確認用導線。
+    /// </summary>
+    [RelayCommand]
+    private void OpenCustomerSearch()
+    {
+        var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>();
+        if (customer is null)
+        {
+            return;
+        }
+
+        SelectedCustomerCode = customer.CustomerCode;
+        SelectedCustomerName = customer.CustomerName;
+    }
+
+    /// <summary>
+    /// 商品検索モーダルを開く（TODO.md 3-2）。Phase 4/5 の伝票入力画面が実装されるまでの動作確認用導線。
+    /// </summary>
+    [RelayCommand]
+    private void OpenProductSearch()
+    {
+        var customerCode = SelectedCustomerCode;
+        var selections = windowService.ShowDialog<ProductSearchDialog, ProductSearchDialogViewModel, IReadOnlyList<ProductSelection>>(
+            vm => vm.TargetCustomerCode = string.IsNullOrWhiteSpace(customerCode) ? null : customerCode);
+
+        TranscribedProducts = selections is null || selections.Count == 0
+            ? string.Empty
+            : string.Join(Environment.NewLine, selections.Select(s => $"{s.ProductCode} {s.ProductName} @{s.UnitPrice:N0}（{s.Source}）"));
+    }
 }
