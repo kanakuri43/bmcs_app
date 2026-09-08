@@ -29,8 +29,11 @@ public class DetailReceiptConfiguration : IEntityTypeConfiguration<DetailReceipt
 
         builder.HasOne<Customer>().WithMany().HasForeignKey(e => e.CustomerCode).OnDelete(DeleteBehavior.NoAction);
         builder.HasOne<BankAccount>().WithMany().HasForeignKey(e => e.BankAccountCode).OnDelete(DeleteBehavior.NoAction);
-        builder.HasOne<SalesTaxUnitLine>().WithMany()
+        // 対象は実際には TaxUnit=Line の売上行のみ。DetailInvoiceSalesLineConfiguration と
+        // 同じ理由で複合FKにはしない（010_unify_tax_unit_tables.sql 手順8）。
+        builder.HasOne<Sales>().WithMany()
             .HasForeignKey(e => new { e.TargetSalesSlipNumber, e.TargetSalesLineNumber })
+            .HasPrincipalKey(s => new { s.SalesSlipNumber, s.LineNumber })
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne<DetailInvoice>().WithMany()
             .HasForeignKey(e => e.TargetDetailInvoiceNumber).OnDelete(DeleteBehavior.NoAction);

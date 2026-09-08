@@ -18,6 +18,8 @@ src/
  ├─ bmcs_app.Application/      … 業務処理層
  ├─ bmcs_app.Infrastructure/   … データアクセス層
  └─ bmcs_app.Domain/           … ドメイン層
+tests/
+ └─ bmcs_app.Domain.Tests/     … Domain の単体テスト（Phase 5-1 で構築。15章参照）
 ```
 
 機能別にプロジェクトを分けない理由: 全11画面という規模に対して参照管理とビルド時間の負担が見合わないため。なお、機能ごとに exe を分ける必要は無いと判断している（同時起動は後述のとおり単一 exe で実現できる）。
@@ -198,7 +200,7 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 - **テーブル名は DDL の単数形に対して `ToTable()` を必ず明示する。** DbSet プロパティは複数形（`Customers` 等）で宣言するため、命名変換に任せると `customers` のように誤って複数形になる。
 - **ナビゲーションプロパティは持たせない。** 得意先元帳はアプリ側 LINQ で複数テーブルをマージする方針であり、`Include()` によるナビゲーション経由の結合を使わないため。リポジトリを作らない方針と同様、使わない抽象化を先回りして作らない。
 - **ただし FK 関係は `HasOne<TPrincipal>().WithMany().HasForeignKey(...)` で登録する（ナビゲーションプロパティなしで）。** これを省略すると、複数エンティティを同一 `SaveChangesAsync()` で保存したときに EF Core が依存関係を解決できず、INSERT 文の順序が（観測した限りでは）テーブル名のアルファベット順になり、FK 制約違反を起こす。DB 側にすでに存在する FK 制約（Phase 1-5）と対になる形で、全 FK 関係を登録する。
-- **監査列は共通基底クラスで重複を排除する。** `TrackedEntity`（`CreatedBy`/`CreatedAt`/`UpdatedBy`/`UpdatedAt`）と、これを継承し `IsDeleted`/`RowVersion` を追加する `AuditableEntity` の2段構成。共通基底クラス（`BillingTaxUnitBase` 等）を持つテーブル群は、Fluent API 側も共通拡張メソッド（`Configurations/TaxUnitConfigurationExtensions.cs`）に集約する。
+- **監査列は共通基底クラスで重複を排除する。** `TrackedEntity`（`CreatedBy`/`CreatedAt`/`UpdatedBy`/`UpdatedAt`）と、これを継承し `IsDeleted`/`RowVersion` を追加する `AuditableEntity` の2段構成。監査列の Fluent API 設定は共通拡張メソッド（`Configurations/AuditableEntityConfigurationExtensions.cs`）に集約する。**旧 `TaxUnitConfigurationExtensions.cs`（`BillingTaxUnitBase` 等の税単位別共通基底クラス向け拡張）は、`sales`/`receipt`/`billing` の統合（2026-09-08、`docs/database-schema.md` 2.8節）に伴い削除した。** 統合後は `Sales`/`Receipt`/`Billing` それぞれに派生クラスがなくなり、共有すべき基底クラスが存在しないため。
 - **`decimal` は `HasPrecision(p, s)` を必ず明示する。** 省略すると既定精度（18,2）になり、`decimal(15,4)` の単価カラム等で桁落ちする。
 - **`varchar`/`char` 列は `.IsUnicode(false)` を明示する。** 省略すると EF Core が `nvarchar` パラメータを送り、SQL Server 側で暗黙変換が発生してインデックスを使えなくなる（コード系カラムは PK/FK で全 JOIN に絡むため実害が大きい）。
 - **`date` 型は C# `DateOnly` にマッピングする。** EF Core 8+ のネイティブ対応。時刻成分を持たせないことでバグを防ぐ。
@@ -269,3 +271,24 @@ Phase 2-1（得意先マスタ画面）で監査列への書き込みが最初�
 `ApplicationServiceCollectionExtensions.AddApplication` に `Singleton` で登録済み。
 **Phase 0-7 実装時に `PlaceholderCurrentEmployeeContext` を実装差し替えするだけで済むよう、
 インターフェースの形は変えない方針とする。** 権限判定（C-8）等 0-7 本来のスコープはここでは扱わない。
+
+## 15. 単体テストの構成（Phase 5-1 で構築）
+
+TODO.md X-1（テスト方針の決定と単体テスト基盤の構築）のうち、基盤構築部分は
+Phase 5-1（消費税計算）着手時に前倒しで構築した。
+
+- **対象は Domain の純粋ロジックのみ。** 2章で定めたとおり「DB に依存しない単体テストの対象は
+  Domain に集める（消費税計算・端数処理・状態判定）」。消込・締めなど DB アクセスを伴う処理は、
+  開発用DBに対する結合テストで別途担保する（ここでは扱わない）。
+- **構成**: `tests/{テスト対象アセンブリ名}.Tests/`（例: `tests/bmcs_app.Domain.Tests/`）。
+  テスト対象への `ProjectReference` のみを持つ。
+- **フレームワークは xUnit v2。** `dotnet new xunit` の既定構成（`Microsoft.NET.Test.Sdk` /
+  `xunit` / `xunit.runner.visualstudio` / `coverlet.collector`）をそのまま使う。
+- **`Directory.Build.props` のカーブアウトは作らない。** ルートの設定（`Nullable`/`ImplicitUsings`/
+  `WarningsAsErrors=nullable`）がそのまま継承される。テストプロジェクトの csproj には
+  `TargetFramework`（Domain と同じ `net10.0`、`-windows` は付けない）とテスト固有の設定のみ書く。
+- **実行**: `dotnet test tests/bmcs_app.Domain.Tests/bmcs_app.Domain.Tests.csproj`
+  （`bmcs_app.sln` 単位で実行すると WPF の `net10.0-windows` プロジェクトを不要に巻き込むため、
+  プロジェクト単位で指定する）。
+- **テストメソッド名は日本語。** 完了条件が業務正確性（金額が手計算と一致するか）であり、
+  非エンジニアでも行列の網羅性を確認できるようにするため。

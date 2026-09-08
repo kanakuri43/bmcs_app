@@ -11,9 +11,12 @@
 -- FKの逆順で削除してから、再投入する（他の開発者が別途入れたデータは触らない）。
 --
 -- 網羅する内容:
---   - 得意先の税単位3種（Invoice/Slip/Line）と締め区分（締め・都度）の対応
---   - 商品の税種別区分4種
+--   - 得意先の税単位3種（tax_unit=1/2/3）と締め区分（締め・都度）の対応
+--   - 商品の税種別区分3種
 --   - docs/product-spec.md「伝票の状態遷移」の全18状態
+--
+-- 010_unify_tax_unit_tables.sql での統合に追従し、sales / receipt / billing
+-- （旧・税単位別8テーブル）は tax_unit 列を持つ単一テーブルへの投入に変更した。
 --
 -- 適用: sqlcmd -S 172.16.3.171 -U sa -d bmcs_db -C -i scripts\seed_dev_data.sql
 -- =============================================================================
@@ -27,13 +30,10 @@ GO
 DELETE FROM dbo.detail_invoice_sales_line WHERE detail_invoice_number IN (N'DIV001', N'DIV002');
 DELETE FROM dbo.detail_receipt WHERE detail_receipt_number IN (N'DRC001', N'DRC002');
 DELETE FROM dbo.detail_invoice WHERE detail_invoice_number IN (N'DIV001', N'DIV002');
-DELETE FROM dbo.receipt_tax_unit_invoice WHERE receipt_slip_number IN (N'RCP_INV001', N'RCP_INV002');
-DELETE FROM dbo.receipt_tax_unit_slip WHERE receipt_slip_number IN (N'RCP_SLP001');
-DELETE FROM dbo.sales_tax_unit_invoice WHERE sales_slip_number IN (N'SALINV001', N'SALINV002');
-DELETE FROM dbo.sales_tax_unit_slip WHERE sales_slip_number IN (N'SALSLP001', N'SALSLP002');
-DELETE FROM dbo.sales_tax_unit_line WHERE sales_slip_number IN (N'SALLIN001', N'SALLIN002', N'SALLIN003', N'SALLIN004');
-DELETE FROM dbo.billing_tax_unit_invoice WHERE billing_number IN (N'BIL_INV001', N'BIL_INV002');
-DELETE FROM dbo.billing_tax_unit_slip WHERE billing_number IN (N'BIL_SLP001');
+DELETE FROM dbo.receipt WHERE receipt_slip_number IN (N'RCP_INV001', N'RCP_INV002', N'RCP_SLP001');
+DELETE FROM dbo.sales WHERE sales_slip_number IN (N'SALINV001', N'SALINV002', N'SALSLP001', N'SALSLP002',
+                                                   N'SALLIN001', N'SALLIN002', N'SALLIN003', N'SALLIN004');
+DELETE FROM dbo.billing WHERE billing_number IN (N'BIL_INV001', N'BIL_INV002', N'BIL_SLP001');
 DELETE FROM dbo.order_slip WHERE order_slip_number IN (N'ORD001', N'ORD002', N'ORD003', N'ORD004');
 DELETE FROM dbo.monthly_closing WHERE closing_year_month IN (N'202601', N'202602');
 DELETE FROM dbo.menu WHERE menu_code IN (N'MNU_SALES', N'MNU_ADMIN', N'MNU_PARENT');
@@ -150,155 +150,118 @@ VALUES
 GO
 
 -- -----------------------------------------------------------------------------
--- 4. 請求データ（先に作る。売上・入金から参照されるため）
+-- 4. 請求データ（統合版。先に作る。売上・入金から参照されるため）
 -- -----------------------------------------------------------------------------
-INSERT INTO dbo.billing_tax_unit_invoice
-    (billing_number, customer_code, customer_name, billing_date, closing_year_month,
+INSERT INTO dbo.billing
+    (billing_number, customer_code, tax_unit, customer_name, billing_date, closing_year_month,
      previous_balance, receipt_amount, sales_amount, tax_amount, current_billing_amount,
      standard_rate_taxable_amount, standard_rate_tax_amount, reduced_rate_taxable_amount, reduced_rate_tax_amount, tax_exempt_amount,
      billing_status, confirmed_at, confirmed_by,
      created_by, created_at, updated_by, updated_at)
 VALUES
-    -- 確定
-    (N'BIL_INV001', N'CUS001', N'株式会社山田商事', '2026-07-20', N'202607',
+    -- 確定（CUS001・請求単位）
+    (N'BIL_INV001', N'CUS001', 1, N'株式会社山田商事', '2026-07-20', N'202607',
      0.00, 0.00, 10000.00, 1000.00, 11000.00,
      10000.00, 1000.00, 0.00, 0.00, 0.00,
      1, '2026-07-20T10:00:00', N'EMP001',
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    -- 解除済
-    (N'BIL_INV002', N'CUS001', N'株式会社山田商事', '2026-06-20', N'202606',
+    -- 解除済（CUS001・請求単位）
+    (N'BIL_INV002', N'CUS001', 1, N'株式会社山田商事', '2026-06-20', N'202606',
      0.00, 0.00, 5000.00, 500.00, 5500.00,
      5000.00, 500.00, 0.00, 0.00, 0.00,
      2, '2026-06-20T10:00:00', N'EMP001',
-     N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
-GO
-
-UPDATE dbo.billing_tax_unit_invoice
-    SET released_at = '2026-06-25T09:00:00', released_by = N'EMP002'
-    WHERE billing_number = N'BIL_INV002';
-GO
-
-INSERT INTO dbo.billing_tax_unit_slip
-    (billing_number, customer_code, customer_name, billing_date, closing_year_month,
-     previous_balance, receipt_amount, sales_amount, tax_amount, current_billing_amount,
-     standard_rate_taxable_amount, standard_rate_tax_amount, reduced_rate_taxable_amount, reduced_rate_tax_amount, tax_exempt_amount,
-     billing_status, confirmed_at, confirmed_by,
-     created_by, created_at, updated_by, updated_at)
-VALUES
-    (N'BIL_SLP001', N'CUS002', N'鈴木工業株式会社', '2026-07-31', N'202607',
+     N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    -- 確定（CUS002・伝票単位）
+    (N'BIL_SLP001', N'CUS002', 2, N'鈴木工業株式会社', '2026-07-31', N'202607',
      0.00, 0.00, 8000.00, 800.00, 8800.00,
      8000.00, 800.00, 0.00, 0.00, 0.00,
      1, '2026-07-31T10:00:00', N'EMP001',
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
--- -----------------------------------------------------------------------------
--- 5. 売上（3テーブル。売上の3軸9状態＋返品を網羅）
--- -----------------------------------------------------------------------------
+UPDATE dbo.billing
+    SET released_at = '2026-06-25T09:00:00', released_by = N'EMP002'
+    WHERE billing_number = N'BIL_INV002';
+GO
 
--- sales_tax_unit_invoice（CUS001・請求単位）
-INSERT INTO dbo.sales_tax_unit_invoice
-    (sales_slip_number, line_number, slip_date, customer_code, customer_name, slip_type,
+-- -----------------------------------------------------------------------------
+-- 5. 売上（統合版。税単位3種 × 売上の3軸9状態＋返品を網羅）
+-- -----------------------------------------------------------------------------
+INSERT INTO dbo.sales
+    (sales_slip_number, line_number, slip_date, customer_code, tax_unit, customer_name, slip_type,
      product_code, product_name, quantity, unit_price, amount, cost_price,
-     tax_category, tax_rate, delivery_note_issued_at, delivery_note_issue_count,
+     tax_category, tax_rate, slip_tax_amount, tax_amount, delivery_note_issued_at, delivery_note_issue_count,
      billing_status, settlement_status, settled_amount, order_slip_number, order_line_number, billing_number,
      created_by, created_at, updated_by, updated_at)
 VALUES
-    -- 未発行・未請求・未消込
-    (N'SALINV001', 1, '2026-08-10', N'CUS001', N'株式会社山田商事', 1,
+    -- CUS001・請求単位: 未発行・未請求・未消込
+    (N'SALINV001', 1, '2026-08-10', N'CUS001', 1, N'株式会社山田商事', 1,
      N'PRD001', N'事務用品セット', 5.000, 1000.0000, 5000.00, 700.0000,
-     1, 10.00, NULL, 0,
+     1, 10.00, NULL, NULL, NULL, 0,
      1, 1, 0.00, N'ORD002', 1, NULL,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    -- 発行済・請求済・一部消込
-    (N'SALINV002', 1, '2026-07-15', N'CUS001', N'株式会社山田商事', 1,
+    -- CUS001・請求単位: 発行済・請求済・一部消込
+    (N'SALINV002', 1, '2026-07-15', N'CUS001', 1, N'株式会社山田商事', 1,
      N'PRD001', N'事務用品セット', 10.000, 1000.0000, 10000.00, 700.0000,
-     1, 10.00, '2026-07-15T14:00:00', 1,
+     1, 10.00, NULL, NULL, '2026-07-15T14:00:00', 1,
      2, 2, 4000.00, N'ORD003', 1, N'BIL_INV001',
-     N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
-GO
-
--- sales_tax_unit_slip（CUS002・伝票単位）
-INSERT INTO dbo.sales_tax_unit_slip
-    (sales_slip_number, line_number, slip_date, customer_code, customer_name, slip_type,
-     product_code, product_name, quantity, unit_price, amount, cost_price,
-     tax_category, tax_rate, slip_tax_amount, delivery_note_issued_at, delivery_note_issue_count,
-     billing_status, settlement_status, settled_amount, billing_number,
-     created_by, created_at, updated_by, updated_at)
-VALUES
-    -- 未発行・未請求・未消込
-    (N'SALSLP001', 1, '2026-08-11', N'CUS002', N'鈴木工業株式会社', 1,
+     N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    -- CUS002・伝票単位: 未発行・未請求・未消込
+    (N'SALSLP001', 1, '2026-08-11', N'CUS002', 2, N'鈴木工業株式会社', 1,
      N'PRD001', N'事務用品セット', 3.000, 1000.0000, 3000.00, 700.0000,
-     1, 10.00, 300.00, NULL, 0,
-     1, 1, 0.00, NULL,
+     1, 10.00, 300.00, NULL, NULL, 0,
+     1, 1, 0.00, NULL, NULL, NULL,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    -- 発行済・請求済・消込完了
-    (N'SALSLP002', 1, '2026-07-10', N'CUS002', N'鈴木工業株式会社', 1,
+    -- CUS002・伝票単位: 発行済・請求済・消込完了
+    (N'SALSLP002', 1, '2026-07-10', N'CUS002', 2, N'鈴木工業株式会社', 1,
      N'PRD001', N'事務用品セット', 8.000, 1000.0000, 8000.00, 700.0000,
-     1, 10.00, 800.00, '2026-07-10T11:00:00', 1,
-     2, 3, 8800.00, N'BIL_SLP001',
-     N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
-GO
-
--- sales_tax_unit_line（CUS003・内税明細単位＝都度得意先）
-INSERT INTO dbo.sales_tax_unit_line
-    (sales_slip_number, line_number, slip_date, customer_code, customer_name, slip_type,
-     product_code, product_name, quantity, unit_price, amount, cost_price,
-     tax_category, tax_rate, tax_amount, delivery_note_issued_at, delivery_note_issue_count,
-     billing_status, settlement_status, settled_amount,
-     created_by, created_at, updated_by, updated_at)
-VALUES
-    -- 未請求（明細請求の対象候補）
-    (N'SALLIN001', 1, '2026-08-12', N'CUS003', N'石山市立石山小学校', 1,
+     1, 10.00, 800.00, NULL, '2026-07-10T11:00:00', 1,
+     2, 3, 8800.00, NULL, NULL, N'BIL_SLP001',
+     N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    -- CUS003・内税明細単位（都度得意先）: 未請求（明細請求の対象候補）
+    (N'SALLIN001', 1, '2026-08-12', N'CUS003', 3, N'石山市立石山小学校', 1,
      N'PRD002', N'給食用食材', 20.000, 500.0000, 11000.00, 350.0000,
-     2, 8.00, 815.00, '2026-08-12T09:00:00', 1,
-     1, 1, 0.00,
+     2, 8.00, NULL, 815.00, '2026-08-12T09:00:00', 1,
+     1, 1, 0.00, NULL, NULL, NULL,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    -- 請求済（DIV001 と連携）・消込完了
-    (N'SALLIN002', 1, '2026-07-20', N'CUS003', N'石山市立石山小学校', 1,
+    -- CUS003・内税明細単位: 請求済（DIV001 と連携）・消込完了
+    (N'SALLIN002', 1, '2026-07-20', N'CUS003', 3, N'石山市立石山小学校', 1,
      N'PRD002', N'給食用食材', 15.000, 500.0000, 8250.00, 350.0000,
-     2, 8.00, 611.00, '2026-07-20T09:00:00', 1,
-     2, 3, 8250.00,
+     2, 8.00, NULL, 611.00, '2026-07-20T09:00:00', 1,
+     2, 3, 8250.00, NULL, NULL, NULL,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    -- 【境界値】未請求だが消込完了 → 明細請求の対象外になるべき行
-    (N'SALLIN003', 1, '2026-07-25', N'CUS003', N'石山市立石山小学校', 1,
+    -- CUS003・内税明細単位【境界値】: 未請求だが消込完了 → 明細請求の対象外になるべき行
+    (N'SALLIN003', 1, '2026-07-25', N'CUS003', 3, N'石山市立石山小学校', 1,
      N'PRD002', N'給食用食材', 5.000, 500.0000, 2750.00, 350.0000,
-     2, 8.00, 204.00, '2026-07-25T09:00:00', 1,
-     1, 3, 2750.00,
+     2, 8.00, NULL, 204.00, '2026-07-25T09:00:00', 1,
+     1, 3, 2750.00, NULL, NULL, NULL,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    -- 返品（マイナス数量。M-9暫定）
-    (N'SALLIN004', 1, '2026-08-13', N'CUS003', N'石山市立石山小学校', 2,
+    -- CUS003・内税明細単位: 返品（マイナス数量。M-9暫定）
+    (N'SALLIN004', 1, '2026-08-13', N'CUS003', 3, N'石山市立石山小学校', 2,
      N'PRD002', N'給食用食材', -2.000, 500.0000, -1100.00, 350.0000,
-     2, 8.00, -81.00, NULL, 0,
-     1, 1, 0.00,
+     2, 8.00, NULL, -81.00, NULL, 0,
+     1, 1, 0.00, NULL, NULL, NULL,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
 -- -----------------------------------------------------------------------------
--- 6. 締め入金（2テーブル。充当状態3種を網羅）
+-- 6. 締め入金（統合版。充当状態3種を網羅）
 -- -----------------------------------------------------------------------------
-INSERT INTO dbo.receipt_tax_unit_invoice
-    (receipt_slip_number, line_number, receipt_date, customer_code, customer_name, receipt_method,
+INSERT INTO dbo.receipt
+    (receipt_slip_number, line_number, receipt_date, customer_code, tax_unit, customer_name, receipt_method,
      bank_account_code, receipt_amount, billing_number, allocated_amount, fee_adjustment_amount,
      allocation_status, created_by, created_at, updated_by, updated_at)
 VALUES
-    -- 充当完了
-    (N'RCP_INV001', 1, '2026-07-25', N'CUS001', N'株式会社山田商事', 2,
+    -- CUS001・請求単位: 充当完了
+    (N'RCP_INV001', 1, '2026-07-25', N'CUS001', 1, N'株式会社山田商事', 2,
      N'BNK001', 11000.00, N'BIL_INV001', 11000.00, 0.00,
      3, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    -- 未充当（前受・過入金）
-    (N'RCP_INV002', 1, '2026-08-05', N'CUS001', N'株式会社山田商事', 1,
+    -- CUS001・請求単位: 未充当（前受・過入金）
+    (N'RCP_INV002', 1, '2026-08-05', N'CUS001', 1, N'株式会社山田商事', 1,
      NULL, 3000.00, NULL, 0.00, 0.00,
-     1, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
-GO
-
-INSERT INTO dbo.receipt_tax_unit_slip
-    (receipt_slip_number, line_number, receipt_date, customer_code, customer_name, receipt_method,
-     bank_account_code, receipt_amount, billing_number, allocated_amount, fee_adjustment_amount,
-     allocation_status, created_by, created_at, updated_by, updated_at)
-VALUES
-    -- 一部充当
-    (N'RCP_SLP001', 1, '2026-08-01', N'CUS002', N'鈴木工業株式会社', 2,
+     1, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    -- CUS002・伝票単位: 一部充当
+    (N'RCP_SLP001', 1, '2026-08-01', N'CUS002', 2, N'鈴木工業株式会社', 2,
      N'BNK001', 4000.00, N'BIL_SLP001', 4000.00, 0.00,
      2, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO

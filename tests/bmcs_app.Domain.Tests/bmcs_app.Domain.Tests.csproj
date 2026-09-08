@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    bmcs_app.Domain の単体テスト（TODO.md 5-1 で構築、X-1 の基盤構築を前倒し）。
+    Nullable・ImplicitUsings はルートの Directory.Build.props が既に設定するため書かない。
+    -windows を付けないのは Domain と同じ（WPF を持ち込まない）。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\bmcs_app.Domain\bmcs_app.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

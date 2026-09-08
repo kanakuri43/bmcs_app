@@ -69,9 +69,14 @@ public class CustomerService(
             throw new CustomerConcurrencyException("他のユーザーが更新しました。再読み込みしてください。");
         }
 
-        if (current.ClosingDay != customer.ClosingDay || current.TaxUnit != customer.TaxUnit)
+        if (current.ClosingDay != customer.ClosingDay
+            || current.TaxUnit != customer.TaxUnit
+            || current.RoundingType != customer.RoundingType)
         {
-            throw new CustomerValidationException("締め区分・税区分は登録後変更できません。");
+            // 端数区分が変更可能だと、発行済み伝票の消費税額（TODO.md 5-1）を
+            // 後から再現できなくなり、請求締め（Phase 6）で金額が合わなくなる。
+            // 締め区分・税区分と同じく登録後は不変にする（2026-09-08 ユーザー確認済み）。
+            throw new CustomerValidationException("締め区分・税区分・端数区分は登録後変更できません。");
         }
 
         current.CustomerName = customer.CustomerName;
@@ -83,7 +88,6 @@ public class CustomerService(
         current.FaxNumber = customer.FaxNumber;
         current.ContactPersonName = customer.ContactPersonName;
         current.SalesEmployeeCode = customer.SalesEmployeeCode;
-        current.RoundingType = customer.RoundingType;
         current.PrintRepresentativeFlag = customer.PrintRepresentativeFlag;
         current.UpdatedBy = currentEmployeeContext.EmployeeCode;
         current.UpdatedAt = DateTime.Now;

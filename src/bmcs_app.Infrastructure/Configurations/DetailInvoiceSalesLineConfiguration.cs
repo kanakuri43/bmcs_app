@@ -20,8 +20,13 @@ public class DetailInvoiceSalesLineConfiguration : IEntityTypeConfiguration<Deta
 
         builder.HasOne<DetailInvoice>().WithMany()
             .HasForeignKey(e => e.DetailInvoiceNumber).OnDelete(DeleteBehavior.NoAction);
-        builder.HasOne<SalesTaxUnitLine>().WithMany()
+        // 対象は実際には TaxUnit=Line の売上行のみだが、複合FKにすると
+        // このテーブル側にも TaxUnit を持たせる非正規化が要るため、単純な
+        // (SalesSlipNumber, LineNumber) 参照に留める。対象の絞り込みはアプリ側で行う
+        // （010_unify_tax_unit_tables.sql 手順8）。
+        builder.HasOne<Sales>().WithMany()
             .HasForeignKey(e => new { e.SalesSlipNumber, e.SalesLineNumber })
+            .HasPrincipalKey(s => new { s.SalesSlipNumber, s.LineNumber })
             .OnDelete(DeleteBehavior.NoAction);
 
         builder.ConfigureTrackedColumns();

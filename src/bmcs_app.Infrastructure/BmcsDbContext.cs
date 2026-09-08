@@ -33,19 +33,11 @@ public class BmcsDbContext(DbContextOptions<BmcsDbContext> options) : DbContext(
 
     public DbSet<OrderSlip> OrderSlips => Set<OrderSlip>();
 
-    public DbSet<BillingTaxUnitInvoice> BillingTaxUnitInvoices => Set<BillingTaxUnitInvoice>();
+    public DbSet<Billing> Billings => Set<Billing>();
 
-    public DbSet<BillingTaxUnitSlip> BillingTaxUnitSlips => Set<BillingTaxUnitSlip>();
+    public DbSet<Sales> Sales => Set<Sales>();
 
-    public DbSet<SalesTaxUnitInvoice> SalesTaxUnitInvoices => Set<SalesTaxUnitInvoice>();
-
-    public DbSet<SalesTaxUnitSlip> SalesTaxUnitSlips => Set<SalesTaxUnitSlip>();
-
-    public DbSet<SalesTaxUnitLine> SalesTaxUnitLines => Set<SalesTaxUnitLine>();
-
-    public DbSet<ReceiptTaxUnitInvoice> ReceiptTaxUnitInvoices => Set<ReceiptTaxUnitInvoice>();
-
-    public DbSet<ReceiptTaxUnitSlip> ReceiptTaxUnitSlips => Set<ReceiptTaxUnitSlip>();
+    public DbSet<Receipt> Receipts => Set<Receipt>();
 
     public DbSet<DetailInvoice> DetailInvoices => Set<DetailInvoice>();
 

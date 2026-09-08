@@ -3,11 +3,12 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Domain.Entities;
 
 /// <summary>
-/// 締め入金（receipt_tax_unit_invoice / receipt_tax_unit_slip）の共通構造。
-/// 2テーブルは共通構造（docs/database-schema.md 2.9）。
-/// 主キーは (ReceiptSlipNumber, LineNumber)。各明細行が1件の充当を表す。
+/// 締め入金（receipt）。主キーは (ReceiptSlipNumber, LineNumber)。各明細行が1件の充当を表す。
+/// 旧 ReceiptTaxUnitInvoice / ReceiptTaxUnitSlip の2テーブルを TaxUnit 列を持つ単一テーブルに
+/// 統合したもの（010_unify_tax_unit_tables.sql）。内税明細単位（都度得意先）の入金は
+/// 構造が異なるため <see cref="DetailReceipt"/> が担い、このテーブルには含めない。
 /// </summary>
-public abstract class ReceiptTaxUnitBase : AuditableEntity
+public class Receipt : AuditableEntity
 {
     public required string ReceiptSlipNumber { get; set; }
 
@@ -16,6 +17,9 @@ public abstract class ReceiptTaxUnitBase : AuditableEntity
     public required DateOnly ReceiptDate { get; set; }
 
     public required string CustomerCode { get; set; }
+
+    /// <summary>Invoice/Slip のみ（Line の得意先の入金は DetailReceipt が担う）。</summary>
+    public required TaxUnit TaxUnit { get; set; }
 
     public required string CustomerName { get; set; }
 
