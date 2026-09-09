@@ -9,6 +9,7 @@ public sealed record ProductSelection(
     string? Specification,
     string? UnitName,
     decimal UnitPrice,
+    decimal CostPrice,
     TaxCategory TaxCategory,
     ProductSelectionSource Source);
 

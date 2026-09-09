@@ -18,6 +18,10 @@ public class EnumDisplayConverter : IValueConverter
         TaxCategory.Standard => "課税10%",
         TaxCategory.Reduced => "軽減8%",
         TaxCategory.TaxExempt => "非課税",
+        OrderStatus.NotSold => "未売上",
+        OrderStatus.PartiallySold => "一部売上",
+        OrderStatus.FullySold => "売上完了",
+        OrderStatus.Cancelled => "中止",
         _ => value?.ToString() ?? string.Empty,
     };
 

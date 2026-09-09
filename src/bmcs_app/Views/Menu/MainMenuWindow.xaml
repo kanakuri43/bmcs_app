@@ -90,6 +90,10 @@
                     Command="{Binding OpenPrinterSettingsCommand}"
                     Padding="16,6"
                     Margin="0,0,12,0" />
+            <Button Content="受注入力"
+                    Command="{Binding OpenOrderEntryCommand}"
+                    Padding="16,6"
+                    Margin="0,0,12,0" />
             <TextBlock Text="処理中..."
                        VerticalAlignment="Center"
                        Foreground="OrangeRed"

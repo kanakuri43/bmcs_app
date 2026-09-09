@@ -1,0 +1,360 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Order.OrderEntryWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:beh="clr-namespace:bmcs_app.Behaviors"
+                 xmlns:common="clr-namespace:bmcs_app.Views.Common"
+                 Title="bmcs_app - 受注入力"
+                 Height="720" Width="1100"
+                 WindowStartupLocation="CenterScreen"
+                 WindowTransitionsEnabled="False">
+    <!--
+        TODO.md 4-3。旧プロトタイプ（bmcs_app.Order の OrderMainView.xaml）のレイアウトを再現する。
+        担当者・前後の受注移動・削除は、このプロジェクトのスキーマ／機能にまだ存在しないため、
+        枠のみ用意し無効化している（理由は docs/design_document.md）。
+    -->
+    <mah:MetroWindow.InputBindings>
+        <KeyBinding Key="F2"  Command="{Binding AddLineCommand}" />
+        <KeyBinding Key="F3"  Command="{Binding NewCommand}" />
+        <KeyBinding Key="F8"  Command="{Binding DeleteSlipCommand}" />
+        <KeyBinding Key="F10" Command="{Binding SaveCommand}" />
+    </mah:MetroWindow.InputBindings>
+
+    <Grid beh:EnterKeyNavigationBehavior.IsEnabled="True">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />  <!-- ToolBar -->
+            <RowDefinition Height="Auto" />  <!-- ヘッダー -->
+            <RowDefinition Height="*"    />  <!-- 明細 -->
+            <RowDefinition Height="Auto" />  <!-- フッター集計 -->
+            <RowDefinition Height="Auto" />  <!-- StatusBar -->
+        </Grid.RowDefinitions>
+
+        <!-- ===== ToolBar ===== -->
+        <ToolBar Grid.Row="0" ToolBarTray.IsLocked="True">
+            <Button Command="{Binding NewCommand}"
+                    Content="新規 (F3)"
+                    ToolTip="新規受注を作成します (F3)" />
+            <Separator />
+            <Button Command="{Binding PrevSlipCommand}"
+                    Content="|◀"
+                    ToolTip="前の受注（未実装）"
+                    Style="{DynamicResource MahApps.Styles.Button.Flat}" />
+            <Button Command="{Binding NextSlipCommand}"
+                    Content="▶|"
+                    ToolTip="次の受注（未実装）"
+                    Style="{DynamicResource MahApps.Styles.Button.Flat}" />
+            <Separator />
+        </ToolBar>
+
+        <!-- ===== 伝票ヘッダー ===== -->
+        <Border Grid.Row="1"
+                Padding="12,8"
+                BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                BorderThickness="0,0,0,1"
+                Background="{DynamicResource MahApps.Brushes.Gray10}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition Width="250" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 受注状態 -->
+                <Border Grid.Column="1"
+                        BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                        BorderThickness="1"
+                        CornerRadius="2"
+                        Padding="10,8"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Stretch">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="60" />
+                            <ColumnDefinition Width="*"  />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="受注状態："
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding OrderStatus, Converter={StaticResource EnumDisplayConverter}}"
+                                   FontSize="12"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <StackPanel Grid.Column="0">
+                    <!-- 行1: 受注日付 / 受注No. -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58"  />
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="16"  />
+                            <ColumnDefinition Width="58"  />
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="*"   />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="受注日付" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1"
+                                 Style="{StaticResource DateTextBoxStyle}"
+                                 Text="{Binding OrderDateText}" />
+
+                        <TextBlock Grid.Column="3" Text="受注No." VerticalAlignment="Center" />
+                        <TextBox Grid.Column="4"
+                                 Text="{Binding OrderSlipNumberDisplay, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 IsTabStop="False"
+                                 Foreground="{DynamicResource MahApps.Brushes.Gray3}"
+                                 ToolTip="保存時にトランザクション内で採番される（TODO.md 4-1）。手入力・既存受注の検索は未実装" />
+                    </Grid>
+
+                    <!-- 行2: 得意先 -->
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58"  />
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="8"   />
+                            <ColumnDefinition Width="*"   />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="得意先" VerticalAlignment="Center" />
+                        <TextBox x:Name="CustomerCodeBox"
+                                 Grid.Column="1"
+                                 Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="コード（Space検索）">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Space"  Command="{Binding OpenCustomerSearchCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <TextBox Grid.Column="3"
+                                 Text="{Binding CustomerName, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 IsTabStop="False"
+                                 Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    </Grid>
+
+                    <!-- 行3: 担当者（枠のみ・使用不可。order_slip に担当者列がなく、社員マスタ画面も未着手） -->
+                    <Grid Margin="0,6,0,0" IsEnabled="False">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58"  />
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="8"   />
+                            <ColumnDefinition Width="240" />
+                            <ColumnDefinition Width="*"   />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="担当者" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding EmployeeCode}"
+                                 mah:TextBoxHelper.Watermark="（未実装）" />
+                        <TextBox Grid.Column="3"
+                                 Text="{Binding EmployeeName, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 IsTabStop="False"
+                                 Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    </Grid>
+
+                    <!-- 行4: 摘要（伝票摘要。保存時に明細の全行へ複写する） -->
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition Width="*"  />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="摘要" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding SlipRemarks}" />
+                    </Grid>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ===== 明細 ===== -->
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*"    />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- 列ヘッダー（SlipLineControl の列幅と一致させる） -->
+            <Border Grid.Row="0"
+                    BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                    BorderThickness="0,1,0,1"
+                    Background="{DynamicResource MahApps.Brushes.Gray10}"
+                    Padding="0,3">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="36"  />
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="*"   />
+                        <ColumnDefinition Width="72"  />
+                        <ColumnDefinition Width="88"  />
+                        <ColumnDefinition Width="80"  />
+                        <ColumnDefinition Width="96"  />
+                        <ColumnDefinition Width="56"  />
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="28"  />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text=""       HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="1" Text="商品コード" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="2" Text="商品名"    Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="3" Text="数量"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="4" Text="単価"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="5" Text="原価"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="6" Text="金額"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="7" Text="税率"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="8" Text="行摘要" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                </Grid>
+            </Border>
+
+            <!-- 明細行リスト -->
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Lines}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <common:SlipLineControl />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- 行追加ボタン -->
+            <StackPanel Grid.Row="2"
+                        Orientation="Horizontal"
+                        Margin="4,2,4,4">
+                <Button Command="{Binding AddLineCommand}"
+                        Content="行追加 (F2)"
+                        ToolTip="明細行を追加します (F2)"
+                        Padding="8,2" />
+            </StackPanel>
+        </Grid>
+
+        <!-- ===== フッター: 集計 + 操作ボタン ===== -->
+        <Border Grid.Row="3"
+                Padding="12,8"
+                BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*"    />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 税抜金額 -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,20,0">
+                    <TextBlock Text="《税抜金額》"
+                               FontSize="11"
+                               Foreground="{DynamicResource MahApps.Brushes.Gray3}"
+                               Margin="0,0,0,2" />
+                    <TextBox Text="{Binding TaxExcludedTotal, StringFormat={}{0:N0}, Mode=OneWay}"
+                             IsReadOnly="True"
+                             TextAlignment="Right"
+                             FontWeight="Bold"
+                             FontSize="14"
+                             Width="120" />
+                </StackPanel>
+
+                <!-- 粗利 -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,20,0">
+                    <TextBlock Text="《粗利》"
+                               FontSize="11"
+                               Foreground="{DynamicResource MahApps.Brushes.Gray3}"
+                               Margin="0,0,0,2" />
+                    <TextBox Text="{Binding GrossProfit, StringFormat={}{0:N0}, Mode=OneWay}"
+                             IsReadOnly="True"
+                             TextAlignment="Right"
+                             FontWeight="Bold"
+                             FontSize="14"
+                             Width="120" />
+                </StackPanel>
+
+                <!-- 消費税計 -->
+                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <TextBlock Text="《消費税計》"
+                               FontSize="11"
+                               Foreground="{DynamicResource MahApps.Brushes.Gray3}"
+                               Margin="0,0,0,2" />
+                    <TextBox Text="{Binding TaxTotal, StringFormat={}{0:N0}, Mode=OneWay}"
+                             IsReadOnly="True"
+                             TextAlignment="Right"
+                             FontWeight="Bold"
+                             FontSize="14"
+                             Width="120" />
+                </StackPanel>
+
+                <!-- 合計ブロック (外税/合計) -->
+                <Border Grid.Column="4"
+                        BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                        BorderThickness="1"
+                        Padding="8,4"
+                        Margin="0,0,8,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="60"  />
+                            <ColumnDefinition Width="100" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="4"    />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0"
+                                   Text="（外税）"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                        <TextBox Grid.Row="0" Grid.Column="1"
+                                 Text="{Binding ExternalTaxTotal, StringFormat={}{0:N0}, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 TextAlignment="Right" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0"
+                                   Text="合計"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center"
+                                   FontWeight="Bold" />
+                        <TextBox Grid.Row="2" Grid.Column="1"
+                                 Text="{Binding GrandTotal, StringFormat={}{0:N0}, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 TextAlignment="Right"
+                                 FontWeight="Bold"
+                                 FontSize="14"
+                                 Foreground="{DynamicResource MahApps.Brushes.Accent}" />
+                    </Grid>
+                </Border>
+
+                <!-- 操作ボタン（縦並び: 保存 / 削除） -->
+                <StackPanel Grid.Column="5"
+                            Orientation="Vertical"
+                            VerticalAlignment="Center"
+                            Width="110">
+                    <Button Command="{Binding SaveCommand}"
+                            Content="保存 (F10)"
+                            ToolTip="受注を保存します (F10)"
+                            Margin="0,0,0,4"
+                            Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" />
+                    <Button Command="{Binding DeleteSlipCommand}"
+                            Content="削除 (F8)"
+                            ToolTip="未実装（TODO.md 4-4 で状態遷移として実装予定）" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ===== StatusBar ===== -->
+        <StatusBar Grid.Row="4">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" />
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</mah:MetroWindow>

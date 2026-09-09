@@ -47,4 +47,10 @@ public class OrderSlip : AuditableEntity
 
     /// <summary>売上化済数量。<see cref="OrderQuantity"/> との比較で <see cref="OrderStatus"/> を判定する。</summary>
     public required decimal SalesConfirmedQuantity { get; set; }
+
+    /// <summary>伝票摘要。同一伝票の全行に同じ値が入る（伝票単位の値）。</summary>
+    public string? SlipRemarks { get; set; }
+
+    /// <summary>行摘要。</summary>
+    public string? LineRemarks { get; set; }
 }

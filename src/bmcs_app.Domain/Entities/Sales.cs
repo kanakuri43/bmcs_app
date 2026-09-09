@@ -76,4 +76,10 @@ public class Sales : AuditableEntity
     /// TaxUnit=Line は DetailInvoiceSalesLine 経由で明細請求書と紐付ける（このため常に NULL）。
     /// </summary>
     public string? BillingNumber { get; set; }
+
+    /// <summary>伝票摘要。同一伝票の全行に同じ値が入る（伝票単位の値）。</summary>
+    public string? SlipRemarks { get; set; }
+
+    /// <summary>行摘要。</summary>
+    public string? LineRemarks { get; set; }
 }

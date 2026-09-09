@@ -1,5 +1,6 @@
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
+using bmcs_app.Application.Order;
 using bmcs_app.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ProductHistoryQueryService>();
         services.AddScoped<TaxRateQueryService>();
         services.AddScoped<SlipNumberService>();
+        services.AddScoped<OrderService>();
 
         return services;
     }

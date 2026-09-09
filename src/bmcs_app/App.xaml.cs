@@ -7,9 +7,11 @@ using bmcs_app.Services;
 using bmcs_app.ViewModels.Common;
 using bmcs_app.ViewModels.Master;
 using bmcs_app.ViewModels.Menu;
+using bmcs_app.ViewModels.Order;
 using bmcs_app.Views.Common;
 using bmcs_app.Views.Master;
 using bmcs_app.Views.Menu;
+using bmcs_app.Views.Order;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -129,6 +131,9 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<ProductSearchDialog>();
         builder.Services.AddScoped<ProductSearchDialogViewModel>();
+
+        builder.Services.AddScoped<OrderEntryWindow>();
+        builder.Services.AddScoped<OrderEntryViewModel>();
 
         return builder.Build();
     }

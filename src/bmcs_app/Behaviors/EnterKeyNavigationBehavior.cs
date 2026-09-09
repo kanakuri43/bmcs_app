@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -39,6 +40,17 @@ public static class EnterKeyNavigationBehavior
     private static void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter || e.OriginalSource is not TextBox textBox)
+        {
+            return;
+        }
+
+        // その TextBox 自身が Enter に対する KeyBinding を持つ場合はここで奪わない
+        // （商品コード欄の「Enterでコード確定」等、個別の挙動を上書きしてしまうため）。
+        // PreviewKeyDown はルートから対象へトンネリングするため、この添付ビヘイビアを
+        // 付けた祖先コンテナのハンドラは、TextBox 自身の InputBindings 処理より先に走る。
+        var hasOwnEnterBinding = textBox.InputBindings.OfType<KeyBinding>()
+            .Any(kb => kb.Key == Key.Enter && kb.Modifiers == Keyboard.Modifiers);
+        if (hasOwnEnterBinding)
         {
             return;
         }

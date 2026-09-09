@@ -40,4 +40,10 @@ public class DetailReceipt : AuditableEntity
     public required decimal FeeAdjustmentAmount { get; set; }
 
     public required AllocationStatus AllocationStatus { get; set; }
+
+    /// <summary>伝票摘要。同一伝票の全行に同じ値が入る（伝票単位の値）。</summary>
+    public string? SlipRemarks { get; set; }
+
+    /// <summary>行摘要。</summary>
+    public string? LineRemarks { get; set; }
 }

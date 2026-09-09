@@ -3,6 +3,7 @@ using System.Windows;
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
 using bmcs_app.Domain.Entities;
+using bmcs_app.Domain.Enums;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -28,6 +29,18 @@ public partial class ProductSearchDialogViewModel(
     [NotifyPropertyChangedFor(nameof(HasCustomer))]
     [NotifyPropertyChangedFor(nameof(ShowCustomerRequiredNotice))]
     public partial string? TargetCustomerCode { get; set; }
+
+    /// <summary>
+    /// 対象得意先の税区分。マスタ軸の単価列（外税／内税どちらを転記するか）を決める
+    /// （TODO.md 4-2）。呼び出し元が <see cref="TargetCustomerCode"/> と一緒に設定する。
+    /// 未設定（得意先未選択）のときは外税単価を使う（請求単位・伝票単位が多数派のため）。
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MasterUnitPriceHeader))]
+    public partial TaxUnit? TargetTaxUnit { get; set; }
+
+    /// <summary>マスタ軸の単価列ヘッダ。表示と転記される単価が食い違わないよう、転記元と同じ判定を使う。</summary>
+    public string MasterUnitPriceHeader => TargetTaxUnit == TaxUnit.Line ? "単価(税込)" : "単価(税抜)";
 
     /// <summary>履歴軸を有効化できるかどうか（対象得意先が指定されているか）。</summary>
     public bool HasCustomer => !string.IsNullOrWhiteSpace(TargetCustomerCode);
@@ -95,10 +108,12 @@ public partial class ProductSearchDialogViewModel(
                 || Contains(p.ProductNameKana, k)
                 || Contains(p.Specification, k)));
 
+        var taxUnit = TargetTaxUnit ?? TaxUnit.Invoice;
+
         MasterResults.Clear();
         foreach (var product in filtered)
         {
-            MasterResults.Add(ProductMasterSearchItem.FromEntity(product));
+            MasterResults.Add(ProductMasterSearchItem.FromEntity(product, taxUnit));
         }
 
         MasterSelectedIndex = MasterResults.Count > 0 ? 0 : -1;
@@ -146,6 +161,7 @@ public partial class ProductSearchDialogViewModel(
             searchItem.Specification,
             searchItem.UnitName,
             searchItem.UnitPrice,
+            searchItem.CostPrice,
             searchItem.TaxCategory,
             ProductSelectionSource.Master));
     }
@@ -159,12 +175,17 @@ public partial class ProductSearchDialogViewModel(
             return;
         }
 
+        // 原価は履歴軸でも商品マスタの標準原価を転記する（暫定。docs/database-schema.md 参照）。
+        // 過去の売上行が保持する原価は当時のスナップショットであり、粗利計算には現在の標準原価を使う方針のため。
+        var costPrice = _allProducts.FirstOrDefault(p => p.ProductCode == searchItem.ProductCode)?.StandardCostPrice ?? 0m;
+
         AddToBasket(new ProductSelection(
             searchItem.ProductCode,
             searchItem.ProductName,
             searchItem.Specification,
             searchItem.UnitName,
             searchItem.UnitPrice,
+            costPrice,
             searchItem.TaxCategory,
             ProductSelectionSource.History));
     }

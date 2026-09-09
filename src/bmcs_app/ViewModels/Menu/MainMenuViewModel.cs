@@ -3,9 +3,11 @@ using bmcs_app.Domain.Entities;
 using bmcs_app.Services;
 using bmcs_app.ViewModels.Common;
 using bmcs_app.ViewModels.Master;
+using bmcs_app.ViewModels.Order;
 using bmcs_app.Views.Common;
 using bmcs_app.Views.Master;
 using bmcs_app.Views.Menu;
+using bmcs_app.Views.Order;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -93,6 +95,8 @@ public partial class MainMenuViewModel(
     private void OpenPrinterSettings()
         => windowService.Show<PrinterSettingsWindow, PrinterSettingsViewModel>();
 
+    private Customer? _selectedCustomer;
+
     /// <summary>選択済みの得意先（商品検索モーダルの履歴軸に渡す）。TODO.md 3-1/3-2 の動作確認用。</summary>
     [ObservableProperty]
     public partial string SelectedCustomerCode { get; set; } = string.Empty;
@@ -115,22 +119,36 @@ public partial class MainMenuViewModel(
             return;
         }
 
+        _selectedCustomer = customer;
         SelectedCustomerCode = customer.CustomerCode;
         SelectedCustomerName = customer.CustomerName;
     }
 
     /// <summary>
     /// 商品検索モーダルを開く（TODO.md 3-2）。Phase 4/5 の伝票入力画面が実装されるまでの動作確認用導線。
+    /// 得意先の税区分（TargetTaxUnit）を渡すことで、単価列の外税／内税判定を実機確認できる（TODO.md 4-2）。
     /// </summary>
     [RelayCommand]
     private void OpenProductSearch()
     {
         var customerCode = SelectedCustomerCode;
+        var taxUnit = _selectedCustomer?.TaxUnit;
         var selections = windowService.ShowDialog<ProductSearchDialog, ProductSearchDialogViewModel, IReadOnlyList<ProductSelection>>(
-            vm => vm.TargetCustomerCode = string.IsNullOrWhiteSpace(customerCode) ? null : customerCode);
+            vm =>
+            {
+                vm.TargetCustomerCode = string.IsNullOrWhiteSpace(customerCode) ? null : customerCode;
+                vm.TargetTaxUnit = taxUnit;
+            });
 
         TranscribedProducts = selections is null || selections.Count == 0
             ? string.Empty
             : string.Join(Environment.NewLine, selections.Select(s => $"{s.ProductCode} {s.ProductName} @{s.UnitPrice:N0}（{s.Source}）"));
     }
+
+    /// <summary>
+    /// 受注入力画面を開く（TODO.md 4-2）。Phase 2-7 で正式なメニューに置き換わるまでの暫定導線。
+    /// </summary>
+    [RelayCommand]
+    private void OpenOrderEntry()
+        => windowService.Show<OrderEntryWindow, OrderEntryViewModel>();
 }

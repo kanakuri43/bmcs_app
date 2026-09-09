@@ -18,6 +18,8 @@ public class DetailReceiptConfiguration : IEntityTypeConfiguration<DetailReceipt
         builder.Property(e => e.BankAccountCode).HasMaxLength(10).IsUnicode(false);
         builder.Property(e => e.TargetSalesSlipNumber).HasMaxLength(20).IsUnicode(false);
         builder.Property(e => e.TargetDetailInvoiceNumber).HasMaxLength(20).IsUnicode(false);
+        builder.Property(e => e.SlipRemarks).HasMaxLength(200);
+        builder.Property(e => e.LineRemarks).HasMaxLength(100);
 
         builder.Property(e => e.ReceiptAmount).HasPrecision(15, 2);
         builder.Property(e => e.AllocatedAmount).HasPrecision(15, 2);

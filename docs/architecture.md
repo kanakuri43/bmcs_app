@@ -219,6 +219,7 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 - **ViewModel は View を参照しない。** 別ウィンドウを開く操作は、Presentation 層内のウィンドウ管理サービス経由で行う（Phase 0-3 で実装）。ViewModel が `new SalesWindow()` を書かない。
 - **入力の書式（日付・金額のカンマ区切り等）と操作性（Enter でのフォーカス移動等）は共通のスタイル・ビヘイビアで実現する**（Phase 0-5、0-6）。画面ごとに個別実装しない。
 - **入力値の形式チェックは ViewModel、業務ルールの検証は Application 層。** 「数値が入っているか」は ViewModel、「この得意先にこの税区分は登録できるか」は Application で判定する。
+- **伝票明細行の ViewModel は画面ごとに複製しない。** `ViewModels/Common/SlipLineViewModel.cs`（TODO.md 4-2）を受注入力・売上入力で共用する。行1つに対する UserControl（`Views/Common/SlipLineControl.xaml`）も同様に共用する。
 
 ## 12. 共通UIスタイル（Phase 0-5、暫定設定）
 
