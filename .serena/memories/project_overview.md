@@ -29,7 +29,16 @@ scripts/                       … DDL（001, 002, ... 連番。適用済みは�
 docs/                          … 設計文書（下記）
 ```
 
-**進捗（2026-09-10時点）**: Phase 0〜4は完了、Phase 5は5-1（消費税計算）・5-2（売上入力画面）まで完了。受注入力（`OrderEntryWindow`/`OrderService`）・売上入力（`SalesEntryWindow`/`SalesService`）が実装済み。両画面は`SlipLineViewModel`/`SlipLineControl`（Common）を共用。単価決定は`IUnitPriceCalculator`インターフェース（現時点の実装は`StandardUnitPriceCalculator`。将来の掛け率マスタ実装に備えた例外的な抽象化、M-3）。売上保存時の税額確定（`slip_tax_amount`/`tax_amount`のtax_unit別分岐）は`SalesTaxAmountAssigner`に一本化。詳細な残タスクは`TODO.md`を参照。
+**進捗（2026-09-10時点）**: Phase 0〜5は完了（5-1〜5-7すべて実装済み）。受注入力（`OrderEntryWindow`/`OrderService`/`OrderStatusService`/`OrderQueryService`）・売上入力（`SalesEntryWindow`/`SalesService`/`SalesQueryService`/`SalesEditLockService`）が実装済み。両画面は`SlipLineViewModel`/`SlipLineControl`（Common）を共用。単価決定は`IUnitPriceCalculator`インターフェース（現時点の実装は`StandardUnitPriceCalculator`。将来の掛け率マスタ実装に備えた例外的な抽象化、M-3）。売上保存時の税額確定（`slip_tax_amount`/`tax_amount`のtax_unit別分岐）は`SalesTaxAmountAssigner`に一本化。
+
+Phase 5-3〜5-7（2026-09-10実装）で追加した主な要素:
+- **受注からの売上確定**: `SalesService.CreateAsync`が明細行の`OrderSlipNumber`/`OrderLineNumber`から受注デルタを導出し、`OrderStatusService.ApplySalesQuantityDeltasAsync`を同一トランザクションで呼ぶ。
+- **返品・値引**: `sales.slip_type`を明細行ごとに選択可能にし、`SalesSlipTypeRules`（Domain）で数量符号・原価（値引は常に0）を正規化。
+- **過去伝票の複写・伝票検索**: 受注/売上共用の伝票検索モーダル`SlipSearchDialog`（`ViewModels/Common`）を新設。
+- **売上の訂正・取消**: `SalesService.UpdateAsync`/`CancelSlipAsync`。編集ロック判定はDomain純粋関数`SalesEditLockEvaluator`＋DB照会する`SalesEditLockService`。伝票単位の楽観的排他制御の共通処理`SlipConcurrencyGuard`（`Application/Common`）を新設（`docs/architecture.md` 9章が予告していたもの）。
+- 4-4の潜在バグ（中止済み受注に紐づく売上を後から取消できない）を修正。
+
+詳細な残タスク（Phase 6以降）は`TODO.md`を参照。
 
 依存方向: `Presentation → Application → Infrastructure → Domain`（古典的レイヤード、インターフェースでの逆転なし）。リポジトリ抽象化なし（Applicationが`DbContext`を直接使う）。
 

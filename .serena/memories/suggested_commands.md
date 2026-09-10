@@ -5,8 +5,8 @@
 - `dotnet run --project src/bmcs_app` — WPFアプリ起動（想定。要確認）
 
 ## テスト（2026-09-10時点。旧「テストプロジェクトはまだ存在しない」は廃止）
-- `dotnet test tests/bmcs_app.Domain.Tests` — DB不要の単体テスト（消費税計算・単価決定・税額分岐等）。174件。
-- `dotnet test tests/bmcs_app.Application.Tests` — 開発用ライブDBへの結合テスト（`DevDatabaseFixture`経由、実接続が必要）。採番・売上登録。8件。
+- `dotnet test tests/bmcs_app.Domain.Tests` — DB不要の単体テスト（消費税計算・単価決定・税額分岐・伝票区分正規化・編集ロック判定等）。195件。
+- `dotnet test tests/bmcs_app.Application.Tests` — 開発用ライブDBへの結合テスト（`DevDatabaseFixture`経由、実接続が必要）。採番・売上登録・受注確定・訂正取消。37件。
 - 特定テストのみ: `dotnet test <プロジェクトパス> --filter "FullyQualifiedName~<クラス名>"`
 
 ## DB（開発用ライブDB `bmcs_db`、サーバ `172.16.3.171`）

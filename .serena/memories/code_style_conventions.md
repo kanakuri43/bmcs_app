@@ -27,8 +27,10 @@
 - 画面番号（SCR-xxx等）は暫定のため使わず、画面は名称で参照する。
 
 ## テスト（2026-09-10時点で存在。旧メモの「テストプロジェクトはまだ存在しない」は廃止）
-- `tests/bmcs_app.Domain.Tests/`（xUnit v2、DB不要）: 消費税計算・単価決定・税額分岐ロジック等の単体テスト。174件。
-- `tests/bmcs_app.Application.Tests/`（DB結合テスト）: `DevDatabaseFixture`経由で開発用ライブDB（`172.16.3.171`/`bmcs_db`）に実接続。採番・売上登録の結合テスト。8件。テスト内で作成した行は`created_by`にマーカーを付け、テスト内で物理削除して後始末する（本番運用の「物理削除しない」方針とは別、検証データの後始末）。
+- `tests/bmcs_app.Domain.Tests/`（xUnit v2、DB不要）: 消費税計算・単価決定・税額分岐・伝票区分正規化・編集ロック判定ロジック等の単体テスト。195件。
+- `tests/bmcs_app.Application.Tests/`（DB結合テスト）: `DevDatabaseFixture`経由で開発用ライブDB（`172.16.3.171`/`bmcs_db`）に実接続。採番・売上登録・受注確定・訂正取消の結合テスト。37件。テスト内で作成した行は`created_by`にマーカーを付ける、または`__TEST`接頭辞のキーを使い、テスト内で物理削除して後始末する（本番運用の「物理削除しない」方針とは別、検証データの後始末）。
+- **重要**: `SalesService`/`OrderService`のユースケースメソッドは内部で独自に`BeginTransactionAsync`→`SaveChangesAsync`→`CommitAsync`を行うため、これらを呼ぶ結合テストは「外側をトランザクションで包み`RollbackAsync`する」方式が使えない（ネストした`BeginTransactionAsync`はEF Coreが例外を投げる）。この場合は使い捨てデータをコミットし`finally`で物理削除する方式（`SalesServiceTests`/`SalesServiceCorrectionTests`）を使う。一方`OrderStatusService.ApplySalesQuantityDeltasAsync`のようにトランザクションを開始しないメソッドは、外側を`BeginTransactionAsync`→`RollbackAsync`で包む方式が使える（`OrderStatusServiceTests`）。
+- テストで既存行を`ExecuteUpdateAsync`等の生SQL/バルク更新で直接書き換えた後に同じ`DbContext`でユースケースを呼ぶ場合、EF Coreの識別解決（同一インスタンスの再利用）により追跡済みエンティティのrowversionが古いまま残り、意図しない`DbUpdateConcurrencyException`になることがある。`dbContext.ChangeTracker.Clear()`を挟んで回避する（`SalesServiceCorrectionTests`で発見・対処）。
 
 ## 作業ルール（重要）
 - **指示が矛盾している場合は必ずユーザーに確認する**（自分の解釈で片方を選んで進めない）。対象は (1)過去の確定済み決定との矛盾 (2)CLAUDE.md/docsの方針との矛盾 (3)一つの指示内で両立しない要求。単なる曖昧さ（どの解釈でも成立する）は確認せず進めてよい。
