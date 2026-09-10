@@ -41,6 +41,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<TaxRateQueryService>();
         services.AddScoped<SlipNumberService>();
         services.AddScoped<OrderService>();
+        services.AddScoped<OrderStatusService>();
         services.AddScoped<SalesService>();
 
         return services;

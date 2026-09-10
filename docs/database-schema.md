@@ -519,7 +519,7 @@ OR
 
 **税のスナップショットを持つ理由は売上テーブルと同じ**（`docs/database-schema.md` 1章）。受注段階では消費税額そのものは確定しないが、見積・受注控えの表示や売上化時の初期値として使うため、商品マスタからの転記時点の税率を保持する。税額（`tax_amount` 等）は持たない。売上化時は `sales` 側で税額を計算する。
 
-**`order_status` はキャッシュ列。** 売上化・中止・売上取消のたびに、`sales_confirmed_quantity` の更新と同一トランザクション内で更新する（`docs/architecture.md` 6章）。逆遷移（売上取消時に `売上完了`／`一部売上` → `一部売上`／`未売上` に戻す）も同じ処理で扱う。
+**`order_status` はキャッシュ列。** 売上化・中止・売上取消のたびに、`sales_confirmed_quantity` の更新と同一トランザクション内で更新する（`docs/architecture.md` 6章）。逆遷移（売上取消時に `売上完了`／`一部売上` → `一部売上`／`未売上` に戻す）も同じ処理で扱う。**中止（`4`）は伝票単位の操作かつ終端状態**（`docs/product-spec.md`「受注」参照）。中止時も `sales_confirmed_quantity` は変更しない（分納済みの実績を残す）。実装は `src/bmcs_app.Application/Order/OrderStatusService.cs`（TODO.md 4-4、`docs/design_document.md` 7章）。
 
 **納品書発行状態・請求状態・消込状態は持たない。** これらは売上化された後（`sales`）で管理する状態であり、受注はまだ売上・売掛金を発生させていないため対象外。
 
