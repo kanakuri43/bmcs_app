@@ -4,7 +4,7 @@
 - Nullable参照型 **有効**、null関連警告は **エラー扱い**（`Directory.Build.props`の`WarningsAsErrors=nullable`）。伝票金額・消込を扱うため、null起因の実行時例外を実装時に潰す方針。
 - `LangVersion=latest`, `ImplicitUsings=enable`。
 - 非同期処理を適切に使い、DBアクセス等でUIスレッドをブロックしない。
-- リポジトリ抽象化・DIによる差し替えを見据えた抽象化は**行わない**（過剰設計を避ける方針、TODO.md）。
+- リポジトリ抽象化・DIによる差し替えを見据えた抽象化は**行わない**（過剰設計を避ける方針、TODO.md）。**例外: `IUnitPriceCalculator`（単価決定ロジック）は将来の掛け率マスタ実装を見据えてインターフェース化している（M-3・2026-09-10、既定方針への明示的な例外としてユーザー確認済み）。** 他の計算ロジック（`ConsumptionTaxCalculator`、`SalesTaxAmountAssigner`等）は原則どおり static クラスのまま。
 
 ## 層の依存規約
 - `Presentation → Application → Infrastructure → Domain` の一方向のみ。ViewModelは`DbContext`を直接触らず、DBアクセスは必ずApplication層経由。
@@ -26,5 +26,10 @@
 - 暫定設定を採用した場合は必ず`docs/`に「暫定」と明記して記録する（TODO.md）。
 - 画面番号（SCR-xxx等）は暫定のため使わず、画面は名称で参照する。
 
+## テスト（2026-09-10時点で存在。旧メモの「テストプロジェクトはまだ存在しない」は廃止）
+- `tests/bmcs_app.Domain.Tests/`（xUnit v2、DB不要）: 消費税計算・単価決定・税額分岐ロジック等の単体テスト。174件。
+- `tests/bmcs_app.Application.Tests/`（DB結合テスト）: `DevDatabaseFixture`経由で開発用ライブDB（`172.16.3.171`/`bmcs_db`）に実接続。採番・売上登録の結合テスト。8件。テスト内で作成した行は`created_by`にマーカーを付け、テスト内で物理削除して後始末する（本番運用の「物理削除しない」方針とは別、検証データの後始末）。
+
 ## 作業ルール（重要）
 - **指示が矛盾している場合は必ずユーザーに確認する**（自分の解釈で片方を選んで進めない）。対象は (1)過去の確定済み決定との矛盾 (2)CLAUDE.md/docsの方針との矛盾 (3)一つの指示内で両立しない要求。単なる曖昧さ（どの解釈でも成立する）は確認せず進めてよい。
+- **git commit のメッセージは日本語で書く**（CLAUDE.md、2026-09-10追加）。

@@ -3,7 +3,11 @@
 ## ビルド・実行
 - `dotnet build` — 全プロジェクトビルド（ルートで実行）。Nullable警告はエラーになるので注意。
 - `dotnet run --project src/bmcs_app` — WPFアプリ起動（想定。要確認）
-- テストプロジェクトは**まだ存在しない**（`dotnet test`対象なし、2026-09-03時点）。
+
+## テスト（2026-09-10時点。旧「テストプロジェクトはまだ存在しない」は廃止）
+- `dotnet test tests/bmcs_app.Domain.Tests` — DB不要の単体テスト（消費税計算・単価決定・税額分岐等）。174件。
+- `dotnet test tests/bmcs_app.Application.Tests` — 開発用ライブDBへの結合テスト（`DevDatabaseFixture`経由、実接続が必要）。採番・売上登録。8件。
+- 特定テストのみ: `dotnet test <プロジェクトパス> --filter "FullyQualifiedName~<クラス名>"`
 
 ## DB（開発用ライブDB `bmcs_db`、サーバ `172.16.3.171`）
 sqlcmdは `go-sqlcmd`（v1.9.0系）。認証情報は `src/bmcs_app/appsettings.Development.json` 参照（sa / 要パスワード）。
@@ -18,7 +22,7 @@ sqlcmdは `go-sqlcmd`（v1.9.0系）。認証情報は `src/bmcs_app/appsettings
 **注意**: `scripts/001_*.sql` 等の適用済みDDLファイルは絶対に改変しない。スキーマ変更は必ず新しい連番ファイルを追加する（`docs/database-schema.md` 3章）。
 
 ## Git
-- 通常のgitコマンド。コミットメッセージは日本語可、Conventional Commits形式ではない自由記述。
+- 通常のgitコマンド。**コミットメッセージは日本語で書く**（CLAUDE.md、2026-09-10追加。Conventional Commits形式ではない自由記述）。
 
 ## その他ユーティリティ（Windows）
 - ファイル検索: `Glob`/`Grep`ツール推奨（`find`/`grep`より確実）

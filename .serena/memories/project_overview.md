@@ -18,13 +18,18 @@
 bmcs_app.sln
 Directory.Build.props
 src/
- ├─ bmcs_app/                  … Presentation (WPF, exe)
- ├─ bmcs_app.Application/      … 業務処理層（ユースケース、トランザクション境界）
+ ├─ bmcs_app/                  … Presentation (WPF, exe)。ViewModels/Views を Order/Sales/Menu/Master/Common で分割
+ ├─ bmcs_app.Application/      … 業務処理層（ユースケース、トランザクション境界）。Order/Sales/Master/Common
  ├─ bmcs_app.Infrastructure/   … データアクセス層（EF Core DbContext, Configurations/）
- └─ bmcs_app.Domain/           … ドメイン層（エンティティ, enum, 消費税/端数ロジック）
+ └─ bmcs_app.Domain/           … ドメイン層（エンティティ, enum, Calculations/, Numbering/）
+tests/
+ ├─ bmcs_app.Domain.Tests/     … DB不要の単体テスト（xUnit v2）。消費税計算・単価決定・税額分岐ロジック
+ └─ bmcs_app.Application.Tests/… 開発用ライブDBへの結合テスト（DevDatabaseFixtureで実接続）。採番・売上登録
 scripts/                       … DDL（001, 002, ... 連番。適用済みは改変しない）、seed_dev_data.sql
 docs/                          … 設計文書（下記）
 ```
+
+**進捗（2026-09-10時点）**: Phase 0〜4は完了、Phase 5は5-1（消費税計算）・5-2（売上入力画面）まで完了。受注入力（`OrderEntryWindow`/`OrderService`）・売上入力（`SalesEntryWindow`/`SalesService`）が実装済み。両画面は`SlipLineViewModel`/`SlipLineControl`（Common）を共用。単価決定は`IUnitPriceCalculator`インターフェース（現時点の実装は`StandardUnitPriceCalculator`。将来の掛け率マスタ実装に備えた例外的な抽象化、M-3）。売上保存時の税額確定（`slip_tax_amount`/`tax_amount`のtax_unit別分岐）は`SalesTaxAmountAssigner`に一本化。詳細な残タスクは`TODO.md`を参照。
 
 依存方向: `Presentation → Application → Infrastructure → Domain`（古典的レイヤード、インターフェースでの逆転なし）。リポジトリ抽象化なし（Applicationが`DbContext`を直接使う）。
 
