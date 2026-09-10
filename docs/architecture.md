@@ -164,7 +164,7 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 - **`async void` は禁止**（例外を捕捉できずプロセスが落ちる）。ViewModel のコマンドハンドラは `async Task` にする。WPF のイベントハンドラのみ例外として許容する。
 - **`ConfigureAwait(false)` は付けない。** 上記のとおり同期待ちを禁止するためデッドロックは起きず、付けても効果はわずかな性能差にとどまる。全 `await` に付ける手間と読みにくさに見合わない。**付ける／付けないを混在させないことが重要**なので、統一して付けない。
 - **`DbContext` はスレッドセーフではない。** 同一の `DbContext` に対する複数の操作を `Task.WhenAll` で並行実行してはいけない。並行させたい場合はスコープを分ける。
-- **`CancellationToken` は当面、長時間処理（請求締め・月次締め・帳票の一括発行）にのみ通す。** 単票の登録・参照には導入しない（実装量に対して得るものが小さい）。
+- **`CancellationToken` を実際に呼び出し元から渡して積極的にキャンセルさせるのは、当面は長時間処理（請求締め・月次締め・帳票の一括発行）にのみ限定する。** 単票の登録・参照でキャンセル導線をUIに設けることはしない（実装量に対して得るものが小さい）。ただし Application 層の非同期メソッドは `CancellationToken cancellationToken = default` を引数に持たせることを既定のシグネチャとする（`SalesService`／`OrderService`等、TODO.md 4-1以降の全サービス）。値を渡さず既定値で呼ぶだけなら追加コストがなく、将来キャンセル導線を追加する際にシグネチャ変更が要らないため。
 - 1秒を超える可能性のある処理は進捗表示を出す。共通の仕組みは Phase 0-3 で用意する。
 
 ## 9. 楽観的排他制御（rowversion）の適用単位
@@ -180,7 +180,11 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 
 - **読み込んだ明細行すべてを更新対象に含める。** 値が変わっていない行も rowversion の照合を受けるようにし、上記1を検出する。
 - **保存時に伝票の明細行の集合を再取得し、読み込み時点と一致することを確認する。** 一致しなければ他のユーザーが追加・削除したと判断して更新を中止し、上記2を検出する。
-- この2つは伝票種別ごとに書かず、**共通処理として1箇所に実装する**（Phase 5 で実装）。
+- この2つは伝票種別ごとに書かず、**共通処理として1箇所に実装する**（Phase 5 で実装。
+  `src/bmcs_app.Application/Common/SlipConcurrencyGuard.cs`。`EnsureLineSetUnchanged` が上記2、
+  `TouchAll`（監査列を更新するだけで EF Core が該当行を Modified とマークする）が上記1を担う。
+  競合は `SlipConcurrencyException` に変換する。TODO.md 5-6 で `SalesService.UpdateAsync`／
+  `CancelSlipAsync` から利用）。
 
 その他:
 

@@ -1,0 +1,85 @@
+using System.Collections.ObjectModel;
+using bmcs_app.Application.Order;
+using bmcs_app.Application.Sales;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
+namespace bmcs_app.ViewModels.Common;
+
+/// <summary>
+/// 伝票検索モーダル（TODO.md 5-3・5-5・5-6の共通前提）。受注No.検索・売上No.検索の両方に使う
+/// （<see cref="CustomerSearchDialogViewModel"/> と同じ、全件ロード後にメモリ絞り込みする作り）。
+/// 選択された**伝票番号**だけを返す。伝票実体の読み込みは呼び出し元が自分のクエリサービスで行う。
+/// </summary>
+public partial class SlipSearchDialogViewModel(
+    SalesQueryService salesQueryService,
+    OrderQueryService orderQueryService)
+    : DialogViewModelBase<string>
+{
+    private List<SlipSearchItem> _allItems = [];
+
+    /// <summary>検索対象。<c>ShowDialog</c> の <c>configure</c> コールバックで呼び出し元が設定する。</summary>
+    public SlipSearchTarget Target { get; set; } = SlipSearchTarget.Sales;
+
+    public ObservableCollection<SlipSearchItem> Results { get; } = [];
+
+    [ObservableProperty]
+    public partial string SearchKeyword { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial int SelectedIndex { get; set; } = -1;
+
+    [RelayCommand]
+    private Task LoadAsync() => RunBusyAsync(async () =>
+    {
+        _allItems = Target == SlipSearchTarget.Sales
+            ? (await salesQueryService.SearchAsync(keyword: null))
+                .Select(SlipSearchItem.FromSalesHit)
+                .ToList()
+            : (await orderQueryService.SearchAsync(keyword: null))
+                .Select(SlipSearchItem.FromOrderHit)
+                .ToList();
+
+        ApplyFilter();
+    });
+
+    partial void OnSearchKeywordChanged(string value) => ApplyFilter();
+
+    private void ApplyFilter()
+    {
+        var keywords = SearchKeyword
+            .Split(' ', '　')
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .ToArray();
+
+        var filtered = keywords.Length == 0
+            ? _allItems
+            : _allItems.Where(i => keywords.All(k => Matches(i, k)));
+
+        Results.Clear();
+        foreach (var item in filtered)
+        {
+            Results.Add(item);
+        }
+
+        SelectedIndex = Results.Count > 0 ? 0 : -1;
+    }
+
+    private static bool Matches(SlipSearchItem item, string keyword) =>
+        Contains(item.SlipNumber, keyword)
+        || Contains(item.CustomerCode, keyword)
+        || Contains(item.CustomerName, keyword);
+
+    private static bool Contains(string? source, string keyword) =>
+        source is not null && source.Contains(keyword, StringComparison.CurrentCultureIgnoreCase);
+
+    /// <summary>一覧で選択した伝票番号を確定する（RowActivationBehavior から Enter で呼ばれる）。</summary>
+    [RelayCommand]
+    private void Confirm(object? item)
+    {
+        if (item is SlipSearchItem searchItem)
+        {
+            CloseWith(searchItem.SlipNumber);
+        }
+    }
+}

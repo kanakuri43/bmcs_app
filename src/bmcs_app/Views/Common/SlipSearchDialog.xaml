@@ -1,0 +1,50 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Common.SlipSearchDialog"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:beh="clr-namespace:bmcs_app.Behaviors"
+                 Title="bmcs_app - 伝票検索"
+                 Height="520" Width="720"
+                 WindowStartupLocation="CenterOwner"
+                 ShowInTaskbar="False"
+                 WindowTransitionsEnabled="False">
+    <mah:MetroWindow.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CancelCommand}" />
+    </mah:MetroWindow.InputBindings>
+
+    <Grid Margin="16" beh:EnterKeyNavigationBehavior.IsEnabled="True">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="検索（伝票番号・得意先コード・得意先名）" VerticalAlignment="Center" Margin="0,0,12,0" />
+            <TextBox x:Name="SearchKeywordTextBox" Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
+                     Width="360" />
+        </StackPanel>
+
+        <ListView Grid.Row="1" x:Name="ResultsListView" ItemsSource="{Binding Results}"
+                   SelectedIndex="{Binding SelectedIndex}"
+                   beh:RowActivationBehavior.Command="{Binding ConfirmCommand}">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="伝票日付" Width="90" DisplayMemberBinding="{Binding SlipDateDisplay}" />
+                    <GridViewColumn Header="伝票番号" Width="100" DisplayMemberBinding="{Binding SlipNumber}" />
+                    <GridViewColumn Header="得意先コード" Width="90" DisplayMemberBinding="{Binding CustomerCode}" />
+                    <GridViewColumn Header="得意先名" Width="180" DisplayMemberBinding="{Binding CustomerName}" />
+                    <GridViewColumn Header="金額計" Width="90" DisplayMemberBinding="{Binding TotalAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="状態" Width="110" DisplayMemberBinding="{Binding StatusDisplay}" />
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
+            <Button Content="選択（Enter）" Command="{Binding ConfirmCommand}"
+                    CommandParameter="{Binding SelectedItem, ElementName=ResultsListView}"
+                    Padding="16,6" Margin="0,0,12,0" />
+            <Button Content="キャンセル（Esc）" Command="{Binding CancelCommand}" Padding="16,6" />
+        </StackPanel>
+    </Grid>
+</mah:MetroWindow>

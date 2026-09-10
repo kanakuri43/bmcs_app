@@ -9,10 +9,10 @@
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 5-2。旧プロトタイプ（bmcs_app.Sales の SalesMainView.xaml）のレイアウトを再現するが、
-        都度売上の直接入力のみを扱う（受注からの売上確定=5-3、返品・値引=5-4、複写=5-5、
-        訂正・取消=5-6 は対象外）。受注No.・印刷・前後移動・削除・担当者は、対象フェーズが別、
-        またはこのプロジェクトのスキーマ／機能にまだ存在しないため、枠のみ用意し無効化している
+        TODO.md 5-2〜5-6。旧プロトタイプ（bmcs_app.Sales の SalesMainView.xaml）のレイアウトを
+        再現しつつ、都度売上の直接入力・受注からの売上確定・返品値引・過去伝票の複写・
+        既存伝票の訂正取消を扱う。印刷・前後移動・担当者は、対象フェーズが別、またはこの
+        プロジェクトのスキーマ／機能にまだ存在しないため、枠のみ用意し無効化している
         （理由は docs/design_document.md）。
     -->
     <mah:MetroWindow.InputBindings>
@@ -47,6 +47,10 @@
                     ToolTip="次の売上（未実装）"
                     Style="{DynamicResource MahApps.Styles.Button.Flat}" />
             <Separator />
+            <Button Command="{Binding CopyFromPastSlipCommand}"
+                    Content="複写"
+                    ToolTip="過去の売上伝票を複写して新規登録します（TODO.md 5-5）" />
+            <Separator />
         </ToolBar>
 
         <!-- ===== 伝票ヘッダー ===== -->
@@ -61,7 +65,7 @@
                     <ColumnDefinition Width="250" />
                 </Grid.ColumnDefinitions>
 
-                <!-- 請求状態・消込状態（新規登録のみを扱う本画面では常に未請求・未消込。C-6のロックはPhase 5-6の範囲） -->
+                <!-- 請求状態・消込状態（新規登録時は未請求・未消込固定。既存伝票読込時は実際の状態を表示） -->
                 <Border Grid.Column="1"
                         BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
                         BorderThickness="1"
@@ -86,7 +90,7 @@
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                         <TextBlock Grid.Row="0" Grid.Column="1"
-                                   Text="未請求"
+                                   Text="{Binding BillingStatusDisplay}"
                                    FontSize="12"
                                    FontWeight="Bold"
                                    VerticalAlignment="Center" />
@@ -97,7 +101,7 @@
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                         <TextBlock Grid.Row="2" Grid.Column="1"
-                                   Text="未消込"
+                                   Text="{Binding SettlementStatusDisplay}"
                                    FontSize="12"
                                    FontWeight="Bold"
                                    VerticalAlignment="Center" />
@@ -123,15 +127,18 @@
 
                         <TextBlock Grid.Column="3" Text="売上No." VerticalAlignment="Center" />
                         <TextBox Grid.Column="4"
-                                 Text="{Binding SalesSlipNumberDisplay, Mode=OneWay}"
-                                 IsReadOnly="True"
-                                 IsTabStop="False"
-                                 Foreground="{DynamicResource MahApps.Brushes.Gray3}"
-                                 ToolTip="保存時にトランザクション内で採番される（TODO.md 4-1）。手入力・既存売上の検索は未実装" />
+                                 Text="{Binding SalesSlipNumberDisplay, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="自動採番（Space検索）"
+                                 ToolTip="既存の売上No.を入力してEnterで読み込む（訂正・取消。TODO.md 5-6）。Spaceで検索モーダルを開く">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Space"  Command="{Binding OpenSalesSlipSearchCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding LookupSalesSlipByNumberCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
                     </Grid>
 
-                    <!-- 行2: 受注No.（枠のみ・使用不可。受注からの売上確定はPhase 5-3の範囲） -->
-                    <Grid Margin="0,6,0,0" IsEnabled="False">
+                    <!-- 行2: 受注No.（TODO.md 5-3。受注からの売上確定） -->
+                    <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="58"  />
                             <ColumnDefinition Width="140" />
@@ -140,7 +147,14 @@
 
                         <TextBlock Grid.Column="0" Text="受注No." VerticalAlignment="Center" />
                         <TextBox Grid.Column="1"
-                                 mah:TextBoxHelper.Watermark="（未実装）" />
+                                 Text="{Binding OrderSlipNumberQuery, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="任意（Space検索）"
+                                 ToolTip="受注No.を入力してEnterで残数量を明細行へ転記する。Spaceで受注検索モーダルを開く">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Space"  Command="{Binding OpenOrderSlipSearchCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding LookupOrderSlipByNumberCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
                     </Grid>
 
                     <!-- 行3: 得意先 -->
@@ -223,6 +237,7 @@
                         <ColumnDefinition Width="36"  />
                         <ColumnDefinition Width="110" />
                         <ColumnDefinition Width="*"   />
+                        <ColumnDefinition Width="68"  />
                         <ColumnDefinition Width="72"  />
                         <ColumnDefinition Width="88"  />
                         <ColumnDefinition Width="80"  />
@@ -234,12 +249,13 @@
                     <TextBlock Grid.Column="0" Text=""       HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                     <TextBlock Grid.Column="1" Text="商品コード" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                     <TextBlock Grid.Column="2" Text="商品名"    Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="3" Text="数量"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="4" Text="単価"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="5" Text="原価"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="6" Text="金額"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="7" Text="税率"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="8" Text="行摘要" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="3" Text="区分"      Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="4" Text="数量"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="5" Text="単価"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="6" Text="原価"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="7" Text="金額"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="8" Text="税率"      HorizontalAlignment="Right" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="9" Text="行摘要" Padding="4,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                 </Grid>
             </Border>
 
@@ -381,7 +397,7 @@
                             Margin="0,0,0,4" />
                     <Button Command="{Binding DeleteSlipCommand}"
                             Content="削除 (F8)"
-                            ToolTip="未実装（TODO.md 5-6 で状態遷移として実装予定）" />
+                            ToolTip="読み込んだ売上を取消します（編集ロック中は無効。TODO.md 5-6）" />
                 </StackPanel>
             </Grid>
         </Border>

@@ -42,7 +42,10 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SlipNumberService>();
         services.AddScoped<OrderService>();
         services.AddScoped<OrderStatusService>();
+        services.AddScoped<OrderQueryService>();
         services.AddScoped<SalesService>();
+        services.AddScoped<SalesEditLockService>();
+        services.AddScoped<SalesQueryService>();
 
         return services;
     }

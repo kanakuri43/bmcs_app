@@ -136,7 +136,7 @@ GUIでのsmoke testの代わりに、`tests/bmcs_app.Application.Tests/Sales/Sal
 
 ## 7. 受注の状態遷移（Phase 4-4、2026-09-10確定）
 
-`order_slip.order_status`（未売上／一部売上／売上完了／中止）と`sales_confirmed_quantity`を更新する処理を、**サービス層のみ**として実装した。**受注入力画面への配線（既存受注の読み込み、削除(F8)ボタンの有効化）は本タスクの範囲外。** 受注No.から既存伝票を読み込む機能自体が未実装のため（5章）、UI配線はその読込手段が5-3／10-1で揃った時点で行う。
+`order_slip.order_status`（未売上／一部売上／売上完了／中止）と`sales_confirmed_quantity`を更新する処理を、**サービス層のみ**として実装した。**受注入力画面への配線（既存受注の読み込み、削除(F8)ボタンの有効化）は本タスクの範囲外。** 受注No.から既存伝票を読み込む機能自体が未実装のため（5章）、UI配線はその読込手段が5-3／10-1で揃った時点で行う。**2026-09-10、Phase 5-3でこの配線を実施済み（8章参照）。**
 
 ### 決定事項（ユーザー確認済み）
 
@@ -159,3 +159,168 @@ GUI配線が無いため、GUIでのsmoke testは行わない。
 
 - 単体テスト: `tests/bmcs_app.Domain.Tests/Calculations/OrderStatusCalculatorTests.cs`（境界値：0／一部／ちょうど／超過／受注数量0）。
 - 結合テスト: `tests/bmcs_app.Application.Tests/Order/OrderStatusServiceTests.cs`。開発用ライブDBに対し、`BeginTransactionAsync`→検証→`RollbackAsync`で完結させ、seedデータ（`order_slip`のORD001〜ORD004）には触れない。分納（未売上→一部売上→売上完了）、逆遷移（売上完了→一部売上→未売上）、中止（未売上／一部売上／複数行の一括中止）、および両方の異常系（受注数量超過、マイナス残、中止済み行への売上化、存在しない行、デルタ重複、トランザクション外呼び出し、売上完了済み受注の中止、中止済み受注の再中止、存在しない受注番号）を検証済み。
+
+---
+
+## 8. 売上入力画面の拡張（Phase 5-3・5-4・5-5・5-6・5-7、2026-09-10確定）
+
+Phase 5-1（消費税計算）・5-2（都度売上の直接入力）に続き、売上入力画面へ「受注からの売上確定」
+「返品・値引」「過去伝票の複写」「既存伝票の訂正・取消」を追加した。受注入力画面（4-3）にも
+「既存受注の読み込み（表示専用）」と「中止（F8）」の配線を追加した（7章の繰り越し分）。
+
+### 8-0. 共通の前提: 伝票検索モーダル
+
+受注No.／売上No.の検索に、`CustomerSearchDialog`と同じ作りの共通モーダルを1つ新設した
+（`src/bmcs_app/Views/Common/SlipSearchDialog.xaml`／`ViewModels/Common/SlipSearchDialogViewModel.cs`）。
+受注用・売上用の画面を別々に作らず、`SlipSearchTarget`（`Order`／`Sales`）で対象を切り替える。
+全件ロード後にメモリで絞り込む方式（`CustomerSearchDialogViewModel.ApplyFilter`と同じ）。
+選択結果は**伝票番号の文字列のみ**を返し、実体の読み込みは呼び出し元が自分のクエリサービス
+（`SalesQueryService`／`OrderQueryService`。いずれも伝票単位にサマリ化した検索結果を返す）で行う。
+
+TODO.md 10-1（データ横断検索）は本モーダルとは別に、後で横断検索専用の画面として作る
+（2026-09-10ユーザー確認済み）。
+
+### 8-1. 受注からの売上確定（Phase 5-3）
+
+- `SalesService.CreateAsync`を拡張し、明細行の`OrderSlipNumber`／`OrderLineNumber`から
+  受注デルタをサービス側で導出して`OrderStatusService.ApplySalesQuantityDeltasAsync`を呼ぶ
+  （同一トランザクション・同一`SaveChangesAsync`。7章で予告していた呼び出し方）。
+  デルタは`(受注伝票番号, 受注行番号)`ごとに**合算してから**渡す（同じ受注行を複数の売上行が
+  参照するケースで、`ApplySalesQuantityDeltasAsync`の重複キー拒否に引っかからないため）。
+- 受注の消化に算入するのは`SlipType.Sales`の行のみ。**返品・値引行を受注に紐付けることは
+  禁止**とし（`SalesService`が`SalesOperationException`で拒否）、受注由来の売上を返品したい
+  場合は元の売上行を直接訂正する（5-6）運用にした。
+- 売上入力画面の受注No.欄を有効化し、`Space`で伝票検索モーダル（`Target=Order`）、`Return`で
+  直接読込。読込時は受注の**残数量**（`受注数量 - 売上化済数量`）を明細行へ転記し、税率は
+  **売上日付**で再解決する（単価・原価は受注のスナップショットを引き継ぐ）。中止・売上完了済みの
+  受注は検索結果から除外する（`OrderQueryService.SearchAsync`の既定挙動）。
+- **受注入力画面の配線（7章の繰り越し分）**: 受注No.欄から既存受注を読み込めるようにした
+  （表示専用。内容の訂正保存には対応しない＝`OrderService`に更新系ユースケースがないため）。
+  削除(F8)を`OrderStatusService.CancelSlipAsync`に配線し、受注状態バッジも読込内容に追従する。
+
+#### 4-4への追加修正: 中止済み受注への負のデルタを許可
+
+4-4実装時点の`ApplySalesQuantityDeltasAsync`は、`OrderStatus.Cancelled`の明細行への
+デルタを符号を問わず一律拒否していた。しかし「一部売上化 → 受注を中止 → その売上を
+後から訂正・取消する」という順序が起こり得るため、この場合に売上側の取消（負のデルタ）が
+永久にできなくなる不具合があった（発見: レビューエージェントの指摘）。
+**中止済み行への正のデルタ（売上化）は引き続き拒否するが、負のデルタ（売上取消）は許可する。**
+ただし状態は`Cancelled`のまま維持し、`未売上`／`一部売上`へは戻さない
+（中止は終端状態。`docs/product-spec.md`）。
+
+### 8-2. 返品・値引（Phase 5-4）
+
+M-9暫定設定（マイナス数量・マイナス金額＋伝票区分カラム）どおり実装した。旧プロトタイプに
+前例がないため新規設計。
+
+- **`sales.slip_type`は明細行ごとに選択する**（2026-09-10ユーザー確認済み）。同一伝票内に
+  売上行と値引行を混在できる。
+- **値引行も商品コードは必須のまま**とする（値引専用の擬似商品コードは作らない）。税率・
+  税種別区分がその商品から決まるのはインボイス制度上も正しいため。
+- `src/bmcs_app.Domain/Calculations/SalesSlipTypeRules.cs`に正規化ロジックを1箇所へ集約した。
+  - `NormalizeQuantity`: ユーザーは常に正の数量を入力し、符号は区分（売上／返品／値引）から
+    機械的に決まる。
+  - `NormalizeCostPrice`: **値引の原価は常に0**（現品の移動を伴わないため）。返品は商品原価を
+    そのまま使う（返品時も原価をマイナス計上することで、元の売上の粗利影響をちょうど打ち消す）。
+    `SlipLineViewModel.CostPrice`自体は破壊的に書き換えない（値引→売上と往復させても原価を
+    失わないようにするため）。正規化は粗利計算・保存時の2箇所の境界でのみ適用する。
+- `SalesService.CreateAsync`／`UpdateAsync`は保存前に次の2つを検証する。
+  - `Math.Sign(Quantity) == Math.Sign(Amount)`（数量と金額の符号が一致しない行は
+    `SalesOperationException`。正規化はViewModel側の責務であり、Application層は
+    整合性を検証するだけで黙って書き換えない）。
+  - 返品・値引行に受注紐付けがないこと（8-1参照）。
+- `ConsumptionTaxCalculator`には手を入れていない（5-1で既にマイナス金額を網羅済み。
+  `TaxRounding.RoundToYen`が絶対値で丸めて符号を戻す）。
+- `ProductHistoryQueryService.SearchAsync`に`!IsDeleted && SlipType == SlipType.Sales`の
+  条件を追加した。返品・値引行や論理削除された行（5-6）が、商品検索モーダルの
+  「過去の取引履歴から」タブに単価候補として現れないようにするため。
+- 明細行UI（`SlipLineControl.xaml`）に区分列（幅68、`EnumDisplayConverter`で表示）を追加。
+  `order_slip`には伝票区分の概念がないため、受注入力画面では列を非表示にする
+  （`SlipLineViewModel.IsSlipTypeVisible`をホストが画面単位で設定）。
+
+### 8-3. 過去伝票の複写入力（Phase 5-5）
+
+- `SalesEntryViewModel.CopyFromPastSlipCommand`（ツールバーに新設。旧プロトタイプに対応する
+  機能がないため新規UI）→ 伝票検索モーダル（`Target=Sales`）→`SalesQueryService.GetSlipAsync`
+  → 新規登録として明細行へ展開。
+- **複写するもの**: 得意先、明細行（商品・数量・単価・原価・区分・行摘要）、伝票摘要。
+- **複写しないもの**: 伝票番号（新規採番）、伝票日付（当日）、受注リンク、請求状態・消込状態・
+  消込済金額・請求番号・納品書発行状態（すべて新規登録の初期値）。
+- 税率は新しい売上日付で再解決する（単価は複写元の値を維持し、同じ取引条件の再現を優先する）。
+
+### 8-4. 既存伝票の訂正・取消（Phase 5-6）
+
+C-6（元伝票の直接修正、赤伝方式は不採用）に沿って実装した。
+
+- `SalesService.UpdateAsync`: 行の追加・更新・削除（論理削除）を1回でまとめて扱う。
+  1. 明細行の集合を再取得し、読込時点の行番号集合と比較（`SlipConcurrencyGuard.EnsureLineSetUnchanged`）。
+     不一致なら他ユーザーの行追加・削除とみなし`SlipConcurrencyException`。
+  2. 訂正前の状態で編集ロック（C-6の3条件）を判定。該当すれば`SalesOperationException`。
+  3. 受注デルタを（旧数量→新数量の差分として）収集する。
+  4. 既存行は**ホワイトリスト方式**で上書き可能な列だけコピーする（伝票日付・得意先名・区分・
+     商品・数量・単価・金額・原価・税種別・税率・受注リンク・摘要）。**得意先コード・税区分・
+     請求/消込関連の状態カラム・監査列は対象外**（`BillingNumber`は`CreateAsync`だけが
+     無条件にNULLを設定する方針を維持し、`UpdateAsync`は一切触らない）。
+  5. 読込時にあったが今回の一覧にない行は`IsDeleted=true`（M-17。物理削除しない）。
+     新規追加行は現在の最大行番号+1を採番する（主キーが(伝票番号,行番号)のため、
+     既存行の番号は詰め直さない）。
+  6. **訂正後（新状態）でも編集ロックを再判定する**（伝票日付を確定済みの月次締め年月へ
+     動かす訂正を防ぐため）。該当すれば保存前に`SalesOperationException`で中止する。
+  7. `SlipConcurrencyGuard.TouchAll`で読込済み全行（削除された行を含む）を更新対象に含め、
+     値を変えていない行もrowversion照合を受けさせる（docs/architecture.md 9章）。
+  8. `SalesTaxAmountAssigner.Assign`には**`IsDeleted=false`の行だけ**を渡す（取消済み行を
+     含めると伝票単位の合計税額・内税明細単位の行別税額が狂うため）。全行削除の場合は
+     `Assign`を呼ばない（`CancelSlipAsync`と同じ状態になるため）。
+- `SalesService.CancelSlipAsync`: 伝票取消。全明細行を`IsDeleted=true`にし、受注デルタを
+  負方向に戻す。ロック判定・排他制御は`UpdateAsync`と同じ。伝票の取消は`is_deleted`で表す
+  （`docs/database-schema.md` 2.8節。C-6は「取消も直接修正」としているが、物理削除しない
+  という既存方針と整合させるため`is_deleted`方式を採用）。
+- **編集ロック判定** (`SalesEditLockEvaluator`。Domain純粋関数＋`SalesEditLockService`が
+  `monthly_closing`を照会): ①`billing_number`が確定済み請求を指す ②対象年月の
+  `monthly_closing`が確定済み ③`settlement_status`=消込完了。理由文言を返すのみで、
+  ViewModelは業務判断をせずそのまま表示する（docs/architecture.md 5章）。
+- **伝票単位の楽観的排他制御の共通処理**（`SlipConcurrencyGuard`。docs/architecture.md 9章が
+  Phase 5での実装を予告していたもの）を`src/bmcs_app.Application/Common/`に新設し、
+  `EnsureLineSetUnchanged`／`TouchAll`の2メソッドを提供する。伝票種別ごとに書かない。
+- 売上入力画面: 売上No.欄を入力可能にし（`Space`で検索モーダル、`Return`で直接読込）、
+  請求状態・消込状態の表示を実際の値にバインドし、編集ロック中は保存・削除を無効化して
+  理由をステータスバーに表示する。削除(F8)を`CancelSlipAsync`に配線。
+  **前／次ナビゲーションは伝票検索モーダルで代替できるため実装しない**（旧プロトタイプの
+  一覧キャッシュ方式は踏襲しない）。印刷(F11)・担当者は引き続き対象外（Phase 10・2-3）。
+
+### 8-5. フェーズレビュー（Phase 5-7）
+
+完了条件「金額が狂う経路が残っていないことを確認できている」について、以下を確認した。
+
+- 新規登録（5-2）・受注確定（5-3）・複写（5-5）・訂正（5-6）のすべてが`SalesService`を経由し、
+  税額確定は`SalesTaxAmountAssigner`のみが行う（ViewModelや他のサービスが`slip_tax_amount`
+  ／`tax_amount`へ直接書き込む経路はない）。
+- 伝票単位の値（`slip_tax_amount`等）を誤って`SUM`している箇所はない。`SalesQueryService`の
+  検索結果集計は明細行ごとに異なる`amount`列の合算であり、`docs/database-schema.md` 2.8節が
+  警告する「伝票単位の値の重複計上」には当たらない。
+- 返品・値引の粗利計算は`SalesSlipTypeRulesTests`（単体）と実際の`GrossProfit`計算式で
+  符号を確認済み（値引は原価0で粗利がそのまま減る、返品は原価もマイナス計上され元の売上の
+  粗利影響を打ち消す）。
+- 状態カラム（`billing_status`／`settlement_status`／`order_status`／`sales_confirmed_quantity`）
+  の整合は結合テスト（`SalesServiceCorrectionTests`）で全経路を確認済み。
+- `IsDeleted`のフィルタ漏れ（`ProductHistoryQueryService`）を本タスク中に発見・修正した。
+
+### 検証方法
+
+- 単体テスト: `SalesSlipTypeRulesTests`（区分ごとの数量符号・原価正規化）、
+  `SalesEditLockEvaluatorTests`（C-6の3条件×単独/複合/該当なし）。
+- 結合テスト: `tests/bmcs_app.Application.Tests/Sales/SalesServiceCorrectionTests.cs`。
+  `SalesService.CreateAsync`／`UpdateAsync`／`CancelSlipAsync`はいずれも内部で独自に
+  トランザクションを開始・コミットするため、`SalesServiceTests`と同じ「使い捨てデータを
+  コミットしてfinallyで物理削除する」方式を踏襲した（外側をトランザクションで包み
+  `RollbackAsync`する方式は、ネストした`BeginTransactionAsync`が例外になるため使えない）。
+  受注からの一部／超過売上確定、返品行の登録、数量と金額の符号矛盾の拒否、返品値引行の
+  受注紐付け拒否、訂正による数量増加と受注側同期、訂正による行削除と受注側逆遷移、
+  編集ロック3条件（個別に分離した使い捨てデータで検証）、訂正後の状態が新たにロック対象に
+  なるケース、他ユーザーによる行追加時の排他エラー、取消による全行論理削除と受注側復元、
+  中止済み受注に紐づく売上の取消（8-1の4-4修正の検証）を確認済み。全37件green
+  （既存23件＋新規14件）。単体テストはDomain 195件（既存181件＋新規14件）すべてgreen。
+- 実機確認: `dotnet run --project src/bmcs_app`でアプリが正常に起動しメインメニューが
+  表示されることを確認済み。**GUI操作による実機確認（Space/Enterキー操作、モーダル表示等）は
+  本環境にWPF向けのUI自動操作ツールがなく実施していない。** ビルド成功と自動テストのみで
+  検証している。

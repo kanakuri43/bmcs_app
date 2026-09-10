@@ -1,3 +1,4 @@
+using bmcs_app.Domain.Enums;
 using bmcs_app.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,8 @@ namespace bmcs_app.Application.Common;
 /// 010_unify_tax_unit_tables.sql の統合前は得意先の税区分（TaxUnit）によって
 /// 参照する売上テーブルが3つに分かれていたが、統合後は sales 1テーブルを
 /// customer_code で絞るだけで済むため、得意先マスタへの事前SELECTも不要になった。
+/// 返品・値引行（TODO.md 5-4）と論理削除された行（TODO.md 5-6）は、単価の参考値として
+/// ふさわしくないため除外する。
 /// </summary>
 public class ProductHistoryQueryService(BmcsDbContext dbContext)
 {
@@ -20,7 +23,7 @@ public class ProductHistoryQueryService(BmcsDbContext dbContext)
     {
         var rows = await dbContext.Sales
             .AsNoTracking()
-            .Where(x => x.CustomerCode == customerCode)
+            .Where(x => x.CustomerCode == customerCode && !x.IsDeleted && x.SlipType == SlipType.Sales)
             .OrderByDescending(x => x.SlipDate)
             .ThenByDescending(x => x.SalesSlipNumber)
             .Take(MaxSourceRows)

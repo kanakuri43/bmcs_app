@@ -10,6 +10,7 @@
                 <ColumnDefinition Width="36"  />  <!-- 行番号 -->
                 <ColumnDefinition Width="110" />  <!-- 商品コード -->
                 <ColumnDefinition Width="*"   />  <!-- 商品名 -->
+                <ColumnDefinition Width="68"  />  <!-- 区分 -->
                 <ColumnDefinition Width="72"  />  <!-- 数量 -->
                 <ColumnDefinition Width="88"  />  <!-- 単価 -->
                 <ColumnDefinition Width="80"  />  <!-- 原価 -->
@@ -57,21 +58,35 @@
                 </TextBox.Style>
             </TextBox>
 
+            <!-- 区分（売上／返品／値引。TODO.md 5-4。受注入力では非表示） -->
+            <ComboBox Grid.Column="3"
+                      Visibility="{Binding IsSlipTypeVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                      ItemsSource="{Binding SlipTypeOptions}"
+                      SelectedItem="{Binding SlipType}"
+                      IsTabStop="False"
+                      Margin="2,1,0,1">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Converter={StaticResource EnumDisplayConverter}}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+
             <!-- 数量 -->
             <TextBox x:Name="QuantityBox"
-                     Grid.Column="3"
+                     Grid.Column="4"
                      Style="{StaticResource QuantityTextBoxStyle}"
                      Text="{Binding Quantity}"
                      Margin="2,1,0,1" />
 
             <!-- 単価（商品マスタから初期値が転記される。手入力で上書き可＝TODO.md 4-2） -->
-            <TextBox Grid.Column="4"
+            <TextBox Grid.Column="5"
                      Style="{StaticResource AmountTextBoxStyle}"
                      Text="{Binding UnitPrice}"
                      Margin="2,1,0,1" />
 
             <!-- 原価（表示のみ） -->
-            <TextBlock Grid.Column="5"
+            <TextBlock Grid.Column="6"
                        Text="{Binding CostPrice, StringFormat={}{0:N0}}"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Right"
@@ -79,7 +94,7 @@
                        Padding="4,0" />
 
             <!-- 金額（表示のみ） -->
-            <TextBlock Grid.Column="6"
+            <TextBlock Grid.Column="7"
                        Text="{Binding Amount, StringFormat={}{0:N0}}"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Right"
@@ -87,20 +102,20 @@
                        Padding="4,0" />
 
             <!-- 税率（表示のみ） -->
-            <TextBlock Grid.Column="7"
+            <TextBlock Grid.Column="8"
                        Text="{Binding TaxRateDisplay}"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Right"
                        Padding="4,0" />
 
             <!-- 行摘要 -->
-            <TextBox Grid.Column="8"
+            <TextBox Grid.Column="9"
                      Text="{Binding LineRemarks, UpdateSourceTrigger=PropertyChanged}"
                      mah:TextBoxHelper.Watermark="行摘要"
                      Margin="2,1,0,1" />
 
             <!-- 行削除ボタン -->
-            <Button Grid.Column="9"
+            <Button Grid.Column="10"
                     Command="{Binding DeleteCommand}"
                     Content="×"
                     IsTabStop="False"

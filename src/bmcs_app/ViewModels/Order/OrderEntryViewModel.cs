@@ -16,20 +16,29 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Order;
 
 /// <summary>
-/// 受注入力画面（TODO.md 4-3）。旧プロトタイプ（bmcs_app.Order）のレイアウトを再現する。
-/// 担当者・既存受注の検索/前後移動・削除は、このプロジェクトのスキーマ／機能にまだ
-/// 存在しないため、枠のみ用意し無効化している（詳細は docs/design_document.md）。
+/// 受注入力画面（TODO.md 4-3・5-3）。旧プロトタイプ（bmcs_app.Order）のレイアウトを再現する。
+/// 新規登録に加え、既存受注の読み込み（表示専用）と中止（F8）を扱う（TODO.md 5-3で追加。
+/// 4-4で先行実装した <see cref="OrderStatusService.CancelSlipAsync"/> の画面配線）。
+/// 既存受注の内容そのものの訂正（数量・単価等の変更保存）は本タスクの範囲外
+/// （<see cref="OrderService"/> に更新系ユースケースがないため）。担当者・前後移動は、
+/// このプロジェクトのスキーマ／機能にまだ存在しないため、枠のみ用意し無効化している
+/// （詳細は docs/design_document.md）。
 /// </summary>
 public partial class OrderEntryViewModel(
     ProductService productService,
     CustomerService customerService,
     TaxRateQueryService taxRateQueryService,
     OrderService orderService,
+    OrderQueryService orderQueryService,
+    OrderStatusService orderStatusService,
     WindowService windowService,
     IUnitPriceCalculator unitPriceCalculator) : ViewModelBase
 {
     private Customer? _customer;
     private IReadOnlyList<TaxRateMaster> _taxRateMasters = [];
+
+    /// <summary>読込中の受注伝票番号。<c>null</c> は新規（未保存）を意味する。</summary>
+    private string? _loadedOrderSlipNumber;
 
     public ObservableCollection<SlipLineViewModel> Lines { get; } = [];
 
@@ -74,8 +83,12 @@ public partial class OrderEntryViewModel(
 
     private bool CanSave => !IsSaved;
 
-    /// <summary>新規登録のみを扱う画面のため、受注状態は常に「未売上」。</summary>
-    public OrderStatus OrderStatus => OrderStatus.NotSold;
+    private bool CanDeleteSlip => _loadedOrderSlipNumber is not null && OrderStatus != OrderStatus.Cancelled;
+
+    /// <summary>受注状態バッジ。新規（未保存）は常に「未売上」、読込後は実際の状態を表示する。</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(DeleteSlipCommand))]
+    public partial OrderStatus OrderStatus { get; set; } = OrderStatus.NotSold;
 
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
@@ -191,7 +204,10 @@ public partial class OrderEntryViewModel(
         var line = new SlipLineViewModel(
             onOpenProductLookup: OnOpenProductLookupAsync,
             onLookupProductByCode: OnLookupProductByCodeAsync,
-            onDelete: OnDeleteLine);
+            onDelete: OnDeleteLine)
+        {
+            IsSlipTypeVisible = false, // order_slip に伝票区分の概念がないため（TODO.md 5-4）
+        };
 
         if (_customer is not null)
         {
@@ -382,11 +398,13 @@ public partial class OrderEntryViewModel(
     private void New()
     {
         _customer = null;
+        _loadedOrderSlipNumber = null;
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
         CustomerTaxUnitDisplay = string.Empty;
         OrderDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
         OrderSlipNumberDisplay = "（自動採番）";
+        OrderStatus = OrderStatus.NotSold;
         IsSaved = false;
 
         foreach (var line in Lines)
@@ -398,6 +416,100 @@ public partial class OrderEntryViewModel(
         Lines.Add(CreateLine());
         RenumberLines();
         StatusMessage = "新規受注";
+    }
+
+    // ── 既存受注の読み込み・中止（TODO.md 5-3） ────────────────
+    [RelayCommand]
+    private void OpenOrderSlipSearch()
+    {
+        var orderSlipNumber = windowService.ShowDialog<SlipSearchDialog, SlipSearchDialogViewModel, string>(
+            vm => vm.Target = SlipSearchTarget.Order);
+
+        if (!string.IsNullOrWhiteSpace(orderSlipNumber))
+        {
+            _ = LoadOrderForViewingAsync(orderSlipNumber);
+        }
+    }
+
+    [RelayCommand]
+    private Task LookupOrderSlipByNumberAsync() => LoadOrderForViewingAsync(OrderSlipNumberDisplay);
+
+    /// <summary>
+    /// 既存受注を表示専用で読み込む。内容の訂正保存には対応しない（クラス冒頭の注記参照）ため、
+    /// 読込後は <see cref="IsSaved"/> を立てて誤った再保存（＝新規登録）を防ぐ。
+    /// </summary>
+    private async Task LoadOrderForViewingAsync(string orderSlipNumber)
+    {
+        if (string.IsNullOrWhiteSpace(orderSlipNumber))
+        {
+            return;
+        }
+
+        var sourceLines = await orderQueryService.GetSlipAsync(orderSlipNumber);
+        if (sourceLines.Count == 0)
+        {
+            StatusMessage = $"受注No.「{orderSlipNumber}」が見つかりません。";
+            return;
+        }
+
+        var customer = await customerService.GetByCodeAsync(sourceLines[0].CustomerCode);
+        if (customer is null)
+        {
+            StatusMessage = "得意先が見つかりません。";
+            return;
+        }
+
+        _customer = customer;
+        _loadedOrderSlipNumber = orderSlipNumber;
+
+        CustomerCode = customer.CustomerCode;
+        CustomerName = sourceLines[0].CustomerName;
+        CustomerTaxUnitDisplay = customer.TaxUnit switch
+        {
+            TaxUnit.Invoice => "請求単位",
+            TaxUnit.Slip => "伝票単位",
+            TaxUnit.Line => "内税明細単位",
+            _ => customer.TaxUnit.ToString(),
+        };
+        OrderDateText = sourceLines[0].OrderDate.ToString("yyyy/MM/dd");
+        OrderSlipNumberDisplay = orderSlipNumber;
+        SlipRemarks = sourceLines[0].SlipRemarks ?? string.Empty;
+        OrderStatus = sourceLines.Any(l => l.OrderStatus == OrderStatus.Cancelled)
+            ? OrderStatus.Cancelled
+            : sourceLines.All(l => l.OrderStatus == OrderStatus.FullySold)
+                ? OrderStatus.FullySold
+                : sourceLines.Any(l => l.OrderStatus == OrderStatus.PartiallySold)
+                    ? OrderStatus.PartiallySold
+                    : OrderStatus.NotSold;
+        IsSaved = true; // 内容の訂正保存は対象外のため、新規登録用のSaveを封じる
+
+        foreach (var line in Lines)
+        {
+            line.PropertyChanged -= OnLinePropertyChanged;
+        }
+
+        Lines.Clear();
+        foreach (var source in sourceLines.OrderBy(l => l.LineNumber))
+        {
+            var line = CreateLine();
+            line.ProductCode = source.ProductCode;
+            line.ProductName = source.ProductName;
+            line.Specification = source.Specification;
+            line.UnitName = source.UnitName;
+            line.Quantity = source.OrderQuantity;
+            line.UnitPrice = source.UnitPrice;
+            line.CostPrice = source.CostPrice;
+            line.TaxCategory = source.TaxCategory;
+            line.TaxRate = source.TaxRate;
+            line.RoundingType = customer.RoundingType;
+            line.LineRemarks = source.LineRemarks ?? string.Empty;
+            line.RaiseAmountChanged();
+            Lines.Add(line);
+        }
+
+        RenumberLines();
+        RaiseTotalsChanged();
+        StatusMessage = $"受注No. {orderSlipNumber} を読み込みました（表示専用。内容の訂正は未対応）。";
     }
 
     // ── 保存 ─────────────────────────────────────────────────
@@ -468,16 +580,36 @@ public partial class OrderEntryViewModel(
     private bool CanUseUnimplementedFeature => false;
 
     /// <summary>
-    /// 削除（物理削除）。M-17「伝票は物理削除しない」・C-6「取消は状態を戻す」により、
-    /// 旧プロトタイプの物理削除はそのまま持ち込めない。取消を状態遷移として実装するのは
-    /// TODO.md 4-4 の範囲。
+    /// 中止（TODO.md 4-4・5-3）。物理削除はしない（M-17）。<see cref="OrderStatusService.CancelSlipAsync"/>
+    /// による伝票単位の中止（終端状態・解除なし）。売上完了済みの明細行を含む受注・
+    /// 既に中止済みの受注は拒否される。
     /// </summary>
-    [RelayCommand(CanExecute = nameof(CanUseUnimplementedFeature))]
-    private void DeleteSlip()
+    [RelayCommand(CanExecute = nameof(CanDeleteSlip))]
+    private Task DeleteSlipAsync() => RunBusyAsync(async () =>
     {
-    }
+        if (_loadedOrderSlipNumber is null)
+        {
+            return;
+        }
 
-    /// <summary>既存受注の一覧・検索機能が未実装のため無効化。</summary>
+        try
+        {
+            await orderStatusService.CancelSlipAsync(_loadedOrderSlipNumber);
+            var cancelledOrderSlipNumber = _loadedOrderSlipNumber;
+            New();
+            StatusMessage = $"受注No. {cancelledOrderSlipNumber} を中止しました。";
+        }
+        catch (OrderOperationException ex)
+        {
+            StatusMessage = $"中止エラー: {ex.Message}";
+        }
+        catch (OrderConcurrencyException ex)
+        {
+            StatusMessage = $"中止エラー: {ex.Message}";
+        }
+    });
+
+    /// <summary>既存受注の一覧・検索機能は伝票検索モーダルに統合済みのため、前後移動は当面実装しない。</summary>
     [RelayCommand(CanExecute = nameof(CanUseUnimplementedFeature))]
     private void PrevSlip()
     {
