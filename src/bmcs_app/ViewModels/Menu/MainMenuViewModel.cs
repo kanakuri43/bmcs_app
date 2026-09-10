@@ -4,10 +4,12 @@ using bmcs_app.Services;
 using bmcs_app.ViewModels.Common;
 using bmcs_app.ViewModels.Master;
 using bmcs_app.ViewModels.Order;
+using bmcs_app.ViewModels.Sales;
 using bmcs_app.Views.Common;
 using bmcs_app.Views.Master;
 using bmcs_app.Views.Menu;
 using bmcs_app.Views.Order;
+using bmcs_app.Views.Sales;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -151,4 +153,11 @@ public partial class MainMenuViewModel(
     [RelayCommand]
     private void OpenOrderEntry()
         => windowService.Show<OrderEntryWindow, OrderEntryViewModel>();
+
+    /// <summary>
+    /// 売上入力画面を開く（TODO.md 5-2）。Phase 2-7 で正式なメニューに置き換わるまでの暫定導線。
+    /// </summary>
+    [RelayCommand]
+    private void OpenSalesEntry()
+        => windowService.Show<SalesEntryWindow, SalesEntryViewModel>();
 }

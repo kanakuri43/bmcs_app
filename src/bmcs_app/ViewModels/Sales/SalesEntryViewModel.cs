@@ -3,7 +3,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
-using bmcs_app.Application.Order;
+using bmcs_app.Application.Sales;
 using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Entities;
 using bmcs_app.Domain.Enums;
@@ -12,19 +12,22 @@ using bmcs_app.ViewModels.Common;
 using bmcs_app.Views.Common;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SalesEntity = bmcs_app.Domain.Entities.Sales;
 
-namespace bmcs_app.ViewModels.Order;
+namespace bmcs_app.ViewModels.Sales;
 
 /// <summary>
-/// 受注入力画面（TODO.md 4-3）。旧プロトタイプ（bmcs_app.Order）のレイアウトを再現する。
-/// 担当者・既存受注の検索/前後移動・削除は、このプロジェクトのスキーマ／機能にまだ
-/// 存在しないため、枠のみ用意し無効化している（詳細は docs/design_document.md）。
+/// 売上入力画面（TODO.md 5-2）。都度売上の直接入力のみを扱う（受注からの売上確定＝5-3、
+/// 返品・値引＝5-4、過去伝票の複写＝5-5、訂正・取消＝5-6 は対象外）。
+/// 旧プロトタイプ（bmcs_app.Sales）のレイアウトを再現するが、受注No.・印刷・前後移動・削除・
+/// 担当者は、このプロジェクトのスキーマ／機能にまだ存在しない（または対象フェーズが別）ため、
+/// 枠のみ用意し無効化している（詳細は docs/design_document.md）。
 /// </summary>
-public partial class OrderEntryViewModel(
+public partial class SalesEntryViewModel(
     ProductService productService,
     CustomerService customerService,
     TaxRateQueryService taxRateQueryService,
-    OrderService orderService,
+    SalesService salesService,
     WindowService windowService,
     IUnitPriceCalculator unitPriceCalculator) : ViewModelBase
 {
@@ -44,14 +47,14 @@ public partial class OrderEntryViewModel(
     public partial string CustomerTaxUnitDisplay { get; set; } = string.Empty;
 
     [ObservableProperty]
-    public partial string OrderDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+    public partial string SlipDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
 
     /// <summary>採番は保存時にトランザクション内で行うため、保存前は固定文言を表示する（4-1）。</summary>
     [ObservableProperty]
-    public partial string OrderSlipNumberDisplay { get; set; } = "（自動採番）";
+    public partial string SalesSlipNumberDisplay { get; set; } = "（自動採番）";
 
     /// <summary>
-    /// 担当者コード・名称（枠のみ）。<see cref="OrderSlip"/> に担当者列がなく、
+    /// 担当者コード・名称（枠のみ）。<see cref="SalesEntity"/> に担当者列がなく、
     /// 社員マスタ画面（TODO.md 2-3）も未着手のため、値を持つだけで参照・更新する処理はない。
     /// </summary>
     [ObservableProperty]
@@ -60,22 +63,19 @@ public partial class OrderEntryViewModel(
     [ObservableProperty]
     public partial string EmployeeName { get; set; } = string.Empty;
 
-    /// <summary>伝票摘要。同一伝票の全行に複写して保存する（<see cref="OrderSlip.SlipRemarks"/>）。</summary>
+    /// <summary>伝票摘要。同一伝票の全行に複写して保存する（<see cref="SalesEntity.SlipRemarks"/>）。</summary>
     [ObservableProperty]
     public partial string SlipRemarks { get; set; } = string.Empty;
 
     /// <summary>
-    /// 保存済みかどうか。<see cref="OrderService"/> に更新系ユースケースがないため、
-    /// 保存済みの受注を同じ画面から再度保存（＝二重登録）できないようにする。
+    /// 保存済みかどうか。<see cref="SalesService"/> に更新系ユースケースがないため、
+    /// 保存済みの売上を同じ画面から再度保存（＝二重登録）できないようにする。
     /// </summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     public partial bool IsSaved { get; set; }
 
     private bool CanSave => !IsSaved;
-
-    /// <summary>新規登録のみを扱う画面のため、受注状態は常に「未売上」。</summary>
-    public OrderStatus OrderStatus => OrderStatus.NotSold;
 
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
@@ -97,7 +97,9 @@ public partial class OrderEntryViewModel(
     /// <summary>
     /// 得意先の税区分が内税明細単位（Line）なら明細ごとに1回の端数処理、
     /// それ以外（Invoice/Slip）は伝票全体で税率ごとに1回の端数処理（暫定 C-4b）。
-    /// 空行（商品未選択）は税種別区分が未対応値のため、計算対象から除外する。
+    /// これは画面表示専用（フッター集計）であり、保存時の税額確定は
+    /// <see cref="SalesTaxAmountAssigner"/> が別途行う。空行（商品未選択）は
+    /// 税種別区分が未対応値のため、計算対象から除外する。
     /// </summary>
     private TaxSummary ComputeTaxSummary()
     {
@@ -297,7 +299,7 @@ public partial class OrderEntryViewModel(
     /// </summary>
     private Task ApplySelectionsAsync(SlipLineViewModel invokingLine, IReadOnlyList<ProductSelection> selections)
     {
-        var orderDate = DateOnly.TryParseExact(OrderDateText, "yyyy/MM/dd", out var parsed)
+        var slipDate = DateOnly.TryParseExact(SlipDateText, "yyyy/MM/dd", out var parsed)
             ? parsed
             : DateOnly.FromDateTime(DateTime.Today);
         var roundingType = _customer?.RoundingType ?? RoundingType.Floor;
@@ -323,7 +325,7 @@ public partial class OrderEntryViewModel(
         {
             var selection = selections[i];
             var line = targetLines[i];
-            var taxRate = TaxRateResolver.ResolveRate(_taxRateMasters, orderDate, selection.TaxCategory);
+            var taxRate = TaxRateResolver.ResolveRate(_taxRateMasters, slipDate, selection.TaxCategory);
 
             line.ProductCode = selection.ProductCode;
             line.ProductName = selection.ProductName;
@@ -385,8 +387,8 @@ public partial class OrderEntryViewModel(
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
         CustomerTaxUnitDisplay = string.Empty;
-        OrderDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
-        OrderSlipNumberDisplay = "（自動採番）";
+        SlipDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+        SalesSlipNumberDisplay = "（自動採番）";
         IsSaved = false;
 
         foreach (var line in Lines)
@@ -397,7 +399,7 @@ public partial class OrderEntryViewModel(
         Lines.Clear();
         Lines.Add(CreateLine());
         RenumberLines();
-        StatusMessage = "新規受注";
+        StatusMessage = "新規売上";
     }
 
     // ── 保存 ─────────────────────────────────────────────────
@@ -417,35 +419,41 @@ public partial class OrderEntryViewModel(
             return;
         }
 
-        var orderDate = DateOnly.TryParseExact(OrderDateText, "yyyy/MM/dd", out var parsed)
+        var slipDate = DateOnly.TryParseExact(SlipDateText, "yyyy/MM/dd", out var parsed)
             ? parsed
             : DateOnly.FromDateTime(DateTime.Today);
 
         var now = DateTime.Now;
         var slipRemarks = string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks;
-        var entities = nonBlankLines.Select((line, index) => new OrderSlip
+        var entities = nonBlankLines.Select((line, index) => new SalesEntity
         {
-            OrderSlipNumber = string.Empty, // OrderService.CreateAsync がトランザクション内の採番結果で上書きする
+            SalesSlipNumber = string.Empty, // SalesService.CreateAsync がトランザクション内の採番結果で上書きする
             LineNumber = (short)(index + 1),
-            OrderDate = orderDate,
+            SlipDate = slipDate,
             CustomerCode = _customer.CustomerCode,
+            TaxUnit = _customer.TaxUnit,
             CustomerName = this.CustomerName, // ViewModelのプロパティ（手入力で上書きされていればその値。C-9・2026-09-10確定）
+            SlipType = SlipType.Sales, // 都度売上の直接入力のみ（返品・値引はPhase 5-4）
             ProductCode = line.ProductCode,
             ProductName = line.ProductName,
             Specification = line.Specification,
             UnitName = line.UnitName,
-            OrderQuantity = line.Quantity,
+            Quantity = line.Quantity,
             UnitPrice = line.UnitPrice,
             Amount = line.Amount,
             CostPrice = line.CostPrice,
             TaxCategory = line.TaxCategory,
             TaxRate = line.TaxRate,
-            AllocatedQuantity = 0m,
-            OrderStatus = OrderStatus.NotSold,
-            SalesConfirmedQuantity = 0m,
+            // SlipTaxAmount / TaxAmount は設定しない。SalesService が SalesTaxAmountAssigner で確定する。
+            DeliveryNoteIssueCount = 0, // 未発行（delivery_note_issued_at は既定でnull）
+            BillingStatus = BillingLinkStatus.Unbilled, // 新規登録は常に未請求
+            SettlementStatus = SettlementStatus.Unsettled, // 新規登録は常に未消込
+            SettledAmount = 0m,
+            // OrderSlipNumber / OrderLineNumber は設定しない（受注由来ではない。Phase 5-3の範囲）
+            // BillingNumber は設定しない（SalesService が明示的にnullを設定する）
             SlipRemarks = slipRemarks, // 伝票摘要は全行に複写する（docs/database-schema.md 1章）
             LineRemarks = string.IsNullOrWhiteSpace(line.LineRemarks) ? null : line.LineRemarks,
-            CreatedBy = string.Empty, // OrderService.CreateAsync が現在の社員コードで上書きする
+            CreatedBy = string.Empty, // SalesService.CreateAsync が現在の社員コードで上書きする
             CreatedAt = now,
             UpdatedBy = string.Empty,
             UpdatedAt = now,
@@ -453,10 +461,10 @@ public partial class OrderEntryViewModel(
 
         try
         {
-            var orderSlipNumber = await orderService.CreateAsync(entities);
-            OrderSlipNumberDisplay = orderSlipNumber;
+            var salesSlipNumber = await salesService.CreateAsync(entities, _customer.RoundingType);
+            SalesSlipNumberDisplay = salesSlipNumber;
             IsSaved = true;
-            StatusMessage = $"登録しました。受注No. {orderSlipNumber}";
+            StatusMessage = $"登録しました。売上No. {salesSlipNumber}";
         }
         catch (Exception ex)
         {
@@ -464,20 +472,35 @@ public partial class OrderEntryViewModel(
         }
     });
 
-    // ── 枠のみ・使用不可（TODO.md 4-3。理由は docs/design_document.md 参照） ──────
+    // ── 枠のみ・使用不可（TODO.md 5-2。理由は docs/design_document.md 参照） ──────
     private bool CanUseUnimplementedFeature => false;
 
     /// <summary>
-    /// 削除（物理削除）。M-17「伝票は物理削除しない」・C-6「取消は状態を戻す」により、
+    /// 削除（物理削除）。M-17「伝票は物理削除しない」・C-6「訂正は元伝票の直接修正」により、
     /// 旧プロトタイプの物理削除はそのまま持ち込めない。取消を状態遷移として実装するのは
-    /// TODO.md 4-4 の範囲。
+    /// TODO.md 5-6 の範囲。
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanUseUnimplementedFeature))]
     private void DeleteSlip()
     {
     }
 
-    /// <summary>既存受注の一覧・検索機能が未実装のため無効化。</summary>
+    /// <summary>
+    /// 印刷（納品書）。帳票エンジンは M-10（2026-09-10確定: WPF FixedDocument方式）で
+    /// TODO.md Phase 10 が実装する。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanUseUnimplementedFeature))]
+    private void Print()
+    {
+    }
+
+    /// <summary>受注からの売上化はTODO.md 5-3の範囲。</summary>
+    [RelayCommand(CanExecute = nameof(CanUseUnimplementedFeature))]
+    private void LookupOrderSlip()
+    {
+    }
+
+    /// <summary>既存売上の一覧・検索機能が未実装のため無効化。</summary>
     [RelayCommand(CanExecute = nameof(CanUseUnimplementedFeature))]
     private void PrevSlip()
     {

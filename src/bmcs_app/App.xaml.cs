@@ -8,10 +8,12 @@ using bmcs_app.ViewModels.Common;
 using bmcs_app.ViewModels.Master;
 using bmcs_app.ViewModels.Menu;
 using bmcs_app.ViewModels.Order;
+using bmcs_app.ViewModels.Sales;
 using bmcs_app.Views.Common;
 using bmcs_app.Views.Master;
 using bmcs_app.Views.Menu;
 using bmcs_app.Views.Order;
+using bmcs_app.Views.Sales;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -134,6 +136,9 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<OrderEntryWindow>();
         builder.Services.AddScoped<OrderEntryViewModel>();
+
+        builder.Services.AddScoped<SalesEntryWindow>();
+        builder.Services.AddScoped<SalesEntryViewModel>();
 
         return builder.Build();
     }

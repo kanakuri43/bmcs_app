@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
+using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Entities;
 using bmcs_app.Domain.Enums;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -16,7 +17,8 @@ namespace bmcs_app.ViewModels.Common;
 /// </summary>
 public partial class ProductSearchDialogViewModel(
     ProductService productService,
-    ProductHistoryQueryService historyQueryService)
+    ProductHistoryQueryService historyQueryService,
+    IUnitPriceCalculator unitPriceCalculator)
     : DialogViewModelBase<IReadOnlyList<ProductSelection>>
 {
     public const int MaxBasketSize = 6;
@@ -113,7 +115,7 @@ public partial class ProductSearchDialogViewModel(
         MasterResults.Clear();
         foreach (var product in filtered)
         {
-            MasterResults.Add(ProductMasterSearchItem.FromEntity(product, taxUnit));
+            MasterResults.Add(ProductMasterSearchItem.FromEntity(product, taxUnit, unitPriceCalculator));
         }
 
         MasterSelectedIndex = MasterResults.Count > 0 ? 0 : -1;

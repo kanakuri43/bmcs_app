@@ -1,6 +1,8 @@
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
 using bmcs_app.Application.Order;
+using bmcs_app.Application.Sales;
+using bmcs_app.Domain.Calculations;
 using bmcs_app.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +28,10 @@ public static class ApplicationServiceCollectionExtensions
         // 端末ローカルのファイル I/O のみで DbContext に依存しないため Singleton（TODO.md 2-6）。
         services.AddSingleton<PrinterSettingsService>();
 
+        // 単価決定ロジック。将来的に掛け率マスタ等（DBアクセスを伴う実装）へ差し替える想定のため、
+        // 現時点は状態を持たないが Scoped で登録しておく（M-3・2026-09-10確定）。
+        services.AddScoped<IUnitPriceCalculator, StandardUnitPriceCalculator>();
+
         // ユースケースは DbContext と同じ Scoped で登録する。
         // ウィンドウ単位のスコープ内で DbContext を共有させるため。
         services.AddScoped<DatabaseHealthService>();
@@ -35,6 +41,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<TaxRateQueryService>();
         services.AddScoped<SlipNumberService>();
         services.AddScoped<OrderService>();
+        services.AddScoped<SalesService>();
 
         return services;
     }

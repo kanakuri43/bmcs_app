@@ -4,7 +4,10 @@ using bmcs_app.Domain.Enums;
 
 namespace bmcs_app.Converters;
 
-/// <summary>TaxUnit/RoundingType/TaxCategory を画面表示用の日本語に変換する。</summary>
+/// <summary>
+/// TaxUnit/RoundingType/TaxCategory/OrderStatus/BillingLinkStatus/SettlementStatus/SlipType
+/// を画面表示用の日本語に変換する。
+/// </summary>
 public class EnumDisplayConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value switch
@@ -22,6 +25,14 @@ public class EnumDisplayConverter : IValueConverter
         OrderStatus.PartiallySold => "一部売上",
         OrderStatus.FullySold => "売上完了",
         OrderStatus.Cancelled => "中止",
+        BillingLinkStatus.Unbilled => "未請求",
+        BillingLinkStatus.Billed => "請求済",
+        SettlementStatus.Unsettled => "未消込",
+        SettlementStatus.PartiallySettled => "一部消込",
+        SettlementStatus.FullySettled => "消込完了",
+        SlipType.Sales => "売上",
+        SlipType.Return => "返品",
+        SlipType.Discount => "値引",
         _ => value?.ToString() ?? string.Empty,
     };
 

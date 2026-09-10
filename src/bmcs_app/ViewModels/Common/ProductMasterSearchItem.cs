@@ -18,15 +18,16 @@ public sealed record ProductMasterSearchItem(
 {
     /// <summary>
     /// 単価は得意先の税区分（<paramref name="taxUnit"/>）に応じて外税／内税を選ぶ
-    /// （TODO.md 4-2、<see cref="UnitPriceSelector"/>）。
+    /// （TODO.md 4-2、<see cref="IUnitPriceCalculator"/>）。
     /// </summary>
-    public static ProductMasterSearchItem FromEntity(Product product, TaxUnit taxUnit) => new(
+    public static ProductMasterSearchItem FromEntity(
+        Product product, TaxUnit taxUnit, IUnitPriceCalculator unitPriceCalculator) => new(
         product.ProductCode,
         product.ProductName,
         product.ProductNameKana,
         product.Specification,
         product.UnitName,
-        UnitPriceSelector.SelectStandardUnitPrice(product, taxUnit),
+        unitPriceCalculator.SelectStandardUnitPrice(product, taxUnit),
         product.StandardCostPrice,
         product.TaxCategory,
         TaxCategoryDisplayOf(product.TaxCategory));

@@ -3,6 +3,7 @@ using bmcs_app.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace bmcs_app.Application.Tests;
 
@@ -40,6 +41,7 @@ public sealed class DevDatabaseFixture : IAsyncLifetime
             .Build();
 
         var services = new ServiceCollection();
+        services.AddLogging(); // 各種サービスの ILogger<T> 依存を解決するため（既定はコンソール出力なし）
         services.AddApplication(configuration);
         _serviceProvider = services.BuildServiceProvider();
 

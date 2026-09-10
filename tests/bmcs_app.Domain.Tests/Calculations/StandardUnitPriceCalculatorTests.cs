@@ -4,8 +4,10 @@ using bmcs_app.Domain.Enums;
 
 namespace bmcs_app.Domain.Tests.Calculations;
 
-public class UnitPriceSelectorTests
+public class StandardUnitPriceCalculatorTests
 {
+    private readonly IUnitPriceCalculator _calculator = new StandardUnitPriceCalculator();
+
     [Theory]
     [InlineData(TaxUnit.Invoice)]
     [InlineData(TaxUnit.Slip)]
@@ -13,7 +15,7 @@ public class UnitPriceSelectorTests
     {
         var product = NewProduct(exclTax: 1000m, inclTax: 1100m);
 
-        Assert.Equal(1000m, UnitPriceSelector.SelectStandardUnitPrice(product, taxUnit));
+        Assert.Equal(1000m, _calculator.SelectStandardUnitPrice(product, taxUnit));
     }
 
     [Fact]
@@ -21,7 +23,7 @@ public class UnitPriceSelectorTests
     {
         var product = NewProduct(exclTax: 1000m, inclTax: 1100m);
 
-        Assert.Equal(1100m, UnitPriceSelector.SelectStandardUnitPrice(product, TaxUnit.Line));
+        Assert.Equal(1100m, _calculator.SelectStandardUnitPrice(product, TaxUnit.Line));
     }
 
     [Fact]
@@ -29,8 +31,8 @@ public class UnitPriceSelectorTests
     {
         var product = NewProduct(exclTax: 1000m, inclTax: 1000m);
 
-        Assert.Equal(1000m, UnitPriceSelector.SelectStandardUnitPrice(product, TaxUnit.Invoice));
-        Assert.Equal(1000m, UnitPriceSelector.SelectStandardUnitPrice(product, TaxUnit.Line));
+        Assert.Equal(1000m, _calculator.SelectStandardUnitPrice(product, TaxUnit.Invoice));
+        Assert.Equal(1000m, _calculator.SelectStandardUnitPrice(product, TaxUnit.Line));
     }
 
     [Fact]
@@ -39,7 +41,7 @@ public class UnitPriceSelectorTests
         var product = NewProduct(exclTax: 1000m, inclTax: 1100m);
 
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => UnitPriceSelector.SelectStandardUnitPrice(product, (TaxUnit)99));
+            () => _calculator.SelectStandardUnitPrice(product, (TaxUnit)99));
     }
 
     private static Product NewProduct(decimal exclTax, decimal inclTax) => new()

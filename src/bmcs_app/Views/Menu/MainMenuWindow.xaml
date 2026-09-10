@@ -94,6 +94,10 @@
                     Command="{Binding OpenOrderEntryCommand}"
                     Padding="16,6"
                     Margin="0,0,12,0" />
+            <Button Content="売上入力"
+                    Command="{Binding OpenSalesEntryCommand}"
+                    Padding="16,6"
+                    Margin="0,0,12,0" />
             <TextBlock Text="処理中..."
                        VerticalAlignment="Center"
                        Foreground="OrangeRed"
