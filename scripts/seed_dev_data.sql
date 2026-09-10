@@ -35,7 +35,7 @@ DELETE FROM dbo.sales WHERE sales_slip_number IN (N'SALINV001', N'SALINV002', N'
                                                    N'SALLIN001', N'SALLIN002', N'SALLIN003', N'SALLIN004');
 DELETE FROM dbo.billing WHERE billing_number IN (N'BIL_INV001', N'BIL_INV002', N'BIL_SLP001');
 DELETE FROM dbo.order_slip WHERE order_slip_number IN (N'ORD001', N'ORD002', N'ORD003', N'ORD004');
-DELETE FROM dbo.monthly_closing WHERE closing_year_month IN (N'202601', N'202602');
+DELETE FROM dbo.monthly_closing WHERE closing_date IN ('2026-01-31', '2026-02-28');
 DELETE FROM dbo.menu WHERE menu_code IN (N'MNU_SALES', N'MNU_ADMIN', N'MNU_PARENT');
 DELETE FROM dbo.customer WHERE customer_code IN (N'CUS001', N'CUS002', N'CUS003');
 DELETE FROM dbo.product WHERE product_code IN (N'PRD001', N'PRD002', N'PRD003');
@@ -331,16 +331,45 @@ VALUES
 GO
 
 -- -----------------------------------------------------------------------------
--- 10. 月次締め（確定／解除済。直近月はレコードを作らず「未締め」を再現）
+-- 10. 月次締め（得意先×月末日で1レコード。billing の締め期間とは別に暦月で集計する。
+--     確定／解除済の2状態を網羅。直近月はレコードを作らず「未締め」を再現）
 -- -----------------------------------------------------------------------------
 INSERT INTO dbo.monthly_closing
-    (closing_year_month, closing_status, confirmed_at, confirmed_by, created_by, created_at, updated_by, updated_at)
+    (closing_date, customer_code, tax_unit, customer_name,
+     previous_balance, sales_amount, receipt_amount, tax_amount, closing_balance,
+     standard_rate_taxable_amount, standard_rate_tax_amount, reduced_rate_taxable_amount, reduced_rate_tax_amount, tax_exempt_amount,
+     closing_status, confirmed_at, confirmed_by,
+     created_by, created_at, updated_by, updated_at)
 VALUES
-    (N'202601', 1, '2026-02-01T09:00:00', N'EMP002', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    (N'202602', 1, '2026-03-01T09:00:00', N'EMP002', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
+    -- 202601分（確定）
+    ('2026-01-31', N'CUS001', 1, N'株式会社山田商事',
+     0.00, 10000.00, 0.00, 1000.00, 11000.00,
+     10000.00, 1000.00, 0.00, 0.00, 0.00,
+     1, '2026-02-01T09:00:00', N'EMP002', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    ('2026-01-31', N'CUS002', 2, N'鈴木工業株式会社',
+     0.00, 8000.00, 0.00, 800.00, 8800.00,
+     8000.00, 800.00, 0.00, 0.00, 0.00,
+     1, '2026-02-01T09:00:00', N'EMP002', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    ('2026-01-31', N'CUS003', 3, N'石山市立石山小学校',
+     0.00, 8250.00, 0.00, 650.00, 8900.00,
+     0.00, 0.00, 8250.00, 650.00, 0.00,
+     1, '2026-02-01T09:00:00', N'EMP002', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    -- 202602分（確定 → 解除済に更新）
+    ('2026-02-28', N'CUS001', 1, N'株式会社山田商事',
+     11000.00, 5000.00, 11000.00, 500.00, 5500.00,
+     5000.00, 500.00, 0.00, 0.00, 0.00,
+     1, '2026-03-01T09:00:00', N'EMP002', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    ('2026-02-28', N'CUS002', 2, N'鈴木工業株式会社',
+     8800.00, 4000.00, 8800.00, 400.00, 4400.00,
+     4000.00, 400.00, 0.00, 0.00, 0.00,
+     1, '2026-03-01T09:00:00', N'EMP002', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    ('2026-02-28', N'CUS003', 3, N'石山市立石山小学校',
+     8900.00, 10185.00, 8900.00, 815.00, 11000.00,
+     0.00, 0.00, 10185.00, 815.00, 0.00,
+     1, '2026-03-01T09:00:00', N'EMP002', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
 UPDATE dbo.monthly_closing
     SET closing_status = 2, released_at = '2026-03-02T09:00:00', released_by = N'EMP002'
-    WHERE closing_year_month = N'202602';
+    WHERE closing_date = '2026-02-28';
 GO
