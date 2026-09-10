@@ -77,6 +77,14 @@ public partial class MainMenuViewModel(
         => windowService.Show<MainMenuWindow, MainMenuViewModel>();
 
     /// <summary>
+    /// Phase 2-7 のデザイン検討用モックを開く。DI登録していない単純な Window のため
+    /// WindowService は使わず直接生成する（見た目確認専用、実データとは連動しない）。
+    /// </summary>
+    [RelayCommand]
+    private void OpenMainMenuMock()
+        => new MainMenuMockWindow().Show();
+
+    /// <summary>
     /// 得意先マスタ画面を開く。Phase 2-7 で正式なメニューに置き換わるまでの暫定導線。
     /// </summary>
     [RelayCommand]
