@@ -1,3 +1,4 @@
+using bmcs_app.Application.Billing;
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
 using bmcs_app.Application.Order;
@@ -46,6 +47,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SalesService>();
         services.AddScoped<SalesEditLockService>();
         services.AddScoped<SalesQueryService>();
+        services.AddScoped<BillingClosingService>();
 
         return services;
     }

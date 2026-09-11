@@ -324,3 +324,112 @@ C-6（元伝票の直接修正、赤伝方式は不採用）に沿って実装�
   表示されることを確認済み。**GUI操作による実機確認（Space/Enterキー操作、モーダル表示等）は
   本環境にWPF向けのUI自動操作ツールがなく実施していない。** ビルド成功と自動テストのみで
   検証している。
+
+---
+
+## 9. 請求締め処理（Phase 6-1、2026-09-11確定）
+
+締め得意先（`tax_unit`＝請求単位／伝票単位、`closing_day ≠ 0`）の期間内売上・入金を集計し、
+`billing`へ請求データを確定する。Phase 5までで`sales.billing_number`を書き込む経路が
+存在せず常にNULLだったため、C-6の編集ロック条件①（請求締め済み）が実データで一度も発火
+していなかった欠落を埋める。
+
+### 9-1. 締め日の決定
+
+`ClosingDateResolver.Resolve(year, month, closingDay)`（`src/bmcs_app.Domain/Calculations/`）が
+`(対象年月, 締め日区分)`から実際の締め日（`DateOnly`）を求める。`closingDay = 99`は当月末日、
+`closingDay`がその月の日数を超える場合（31日締めの2月等）も当月末日に丸める。`closingDay = 0`
+（都度得意先）は締め対象外のため呼び出し不可（`ArgumentOutOfRangeException`）。
+
+### 9-2. 集計期間 ― 売上と入金で下限の扱いが非対称
+
+| | 下限 | 上限 | 二重集計を防ぐ手段 |
+|---|---|---|---|
+| 売上（`sales`） | なし | 締め日 | `billing_number IS NULL`（集計済みマーカー） |
+| 入金（`receipt`） | 前回確定`billing`の締め日 + 1日 | 締め日 | 期間で区切る |
+
+この非対称はデータモデルから必然的に導かれる。`receipt.billing_number`は「充当先の請求データ」
+であり、Phase 7（入金入力）が**過去の**請求へ古い順に充当したときに設定される値のため、締め処理
+の「集計済み」マーカーとして上書きすることができない。したがって入金は期間で区切るしかない。
+
+売上に下限を設けないのは締め漏れを防ぐため。前回締め日より前の日付で後から登録された売上も、
+未請求である限り次回の締めで必ず拾われる。
+
+**残存リスク（既知・許容）**: 前回締め日より前の日付で**後から登録された入金**は、どの締めの
+期間にも入らず永久に拾われない。対処は締め解除（6-2）→再締め。
+
+前回確定`billing`＝同一`customer_code`／`billing_status`＝確定／`is_deleted`＝偽のうち
+`closing_year_month`が最大のもの。存在しなければ前回残高0・入金の下限なし。
+
+### 9-3. 金額の組み立て
+
+```
+current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_amount
+```
+
+- `receipt_amount`は`receipt.receipt_amount`（伝票単位の値）を`receipt_slip_number`でまとめて
+  伝票ごとに1件へ畳んだ後の合計（`docs/database-schema.md` 2.8節の「SUMしてはいけない」規則）。
+- `sales_amount`／`tax_amount`／税率別内訳5カラムは9-4の税額計算から得る。
+
+### 9-4. 税額計算 ― 既存の`ConsumptionTaxCalculator`を税単位で使い分ける
+
+新しい計算ロジックは追加せず、5-1で用意済みのメソッドをそのまま使う。
+
+| `tax_unit` | 使うメソッド |
+|---|---|
+| 請求単位 | `CalculateExternalTaxBuckets`→`ToSummary`（請求全体で(税種別,税率)ごとに1回だけ丸める） |
+| 伝票単位 | `CalculateExternalTaxPerSlip`（伝票ごとに確定した税額を積み上げる。暫定C-4b） |
+| 内税明細単位 | 対象外（`closing_day = 0`のCHECK制約により自然に除外。サービス側でも明示的に弾く） |
+
+伝票単位は、再計算した伝票税額の合計が保存済み`slip_tax_amount`の合計と一致することを
+検証する（不一致は`BillingClosingException`）。端数区分（`rounding_type`）は登録後変更不可
+なので本来一致するはずであり、不一致はデータ異常を意味する。
+
+返品・値引行（`slip_type`＝2／3）はマイナス金額のままそのまま含める（`ConsumptionTaxCalculator`
+は5-1でマイナス対応済み）。
+
+### 9-5. 二重締め防止 ― アプリ側とDB側の二段構え
+
+**アプリ側**: 確定前に同一`customer_code`×`closing_year_month`の確定済み`billing`が無いこと
+を確認する。あればその得意先をスキップする（理由付きで結果に含める）。あわせて、より新しい
+`closing_year_month`の確定済み`billing`が既にある場合も拒否する（締め順序の逆転防止）。
+
+**DB側**: フィルタ付き一意インデックス`UQ_billing_customer_closing_ym_confirmed`
+（`ON billing (customer_code, closing_year_month) WHERE billing_status = 1 AND is_deleted = 0`。
+`scripts/013_add_billing_confirmed_unique_index.sql`）。解除済み（`billing_status = 2`）は対象外
+なので、締め解除→再締めで新番号を採番する運用（6-2）を壊さない。
+
+### 9-6. 締め対象にしない得意先
+
+- 対象売上・対象入金が無く、かつ前回残高も0 → `billing`を作らない（空の請求書を出さない）。
+- 対象が無くても前回残高≠0 → 繰越請求として`billing`を作る。
+
+### 9-7. 実装
+
+- `src/bmcs_app.Application/Billing/BillingClosingService.cs`が本体。得意先ごとの集計を
+  1つのprivateメソッドに集約し、`PreviewAsync`（保存しない読み取り専用の事前確認）・
+  `ConfirmAsync`（同条件で再集計してから確定）の両方から呼ぶ（5-7と同じ「金額を出す経路を
+  1本にする」方針）。`ConfirmAsync`はプレビュー結果を引数に取らない
+  （プレビューと確定の間に他ユーザーが伝票を登録しても古い集計値で確定しないため）。
+- トランザクション境界は`docs/architecture.md` 6章のとおり。伝票番号（`SlipNumberKind.Billing`）
+  の採番が複数得意先分必要になるため明示トランザクションで包み、`SaveChangesAsync`は最後に
+  1回だけ呼ぶ（6章が「請求締め」を明示トランザクションの例として挙げている想定どおり）。
+- 画面（`Views/Billing/BillingClosingWindow.xaml`／`ViewModels/Billing/BillingClosingViewModel.cs`）
+  は「締め日を指定して一括」処理する専用画面。対象年月・締め日区分（得意先マスタに実在する
+  `closing_day`から選択）・請求日を指定し、「締め確定」で確定する。**プレビューは対象取得
+  ボタンを持たず、画面表示時（既定条件＝当月・締め日区分の先頭）と条件変更時（対象年月・
+  締め日区分）に自動で再取得する**（2026-09-11ユーザー確認）。保存を伴う確定操作のみボタン
+  （F10）による明示操作にする。対象年月のテキストボックスは`UpdateSourceTrigger=LostFocus`
+  にし、1文字入力するごとにDB照会が走らないようにしている。一覧はチェックボックスによる
+  行選択を持たない（一括処理の方針上不要であり、既存画面にチェックボックス一覧のパターンが
+  無いため新パターンを増やさない）。
+
+### 検証方法
+
+- 単体テスト: `ClosingDateResolverTests`（通常日・末日締め・日数超過の丸め・うるう年・
+  `closing_day = 0`の例外）。
+- 結合テスト: `tests/bmcs_app.Application.Tests/Billing/BillingClosingServiceTests.cs`。
+  `ConfirmAsync`が内部で`BeginTransactionAsync`するため、`SalesServiceTests`と同じ
+  「専用のテスト得意先で確定した後、finallyで物理削除する」方式を採る。seedの得意先
+  （CUS001=20日締め／CUS002=末日締め／CUS003=都度）とは重ならない`closing_day = 15`の
+  専用テスト得意先を新設し、seedデータには一切触れない。

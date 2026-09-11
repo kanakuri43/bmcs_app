@@ -446,6 +446,8 @@ OR
 
 **締め解除では物理削除せず `billing_status` を解除済にする。** 再締めでは新しい `billing_number` を採番する。一度発行した請求書を追跡できるようにするため。
 
+**二重締め防止のフィルタ付き一意インデックス（Phase 6-1、2026-09-11追加）**: `UQ_billing_customer_closing_ym_confirmed`（`ON billing (customer_code, closing_year_month) WHERE billing_status = 1 AND is_deleted = 0`、`scripts/013_add_billing_confirmed_unique_index.sql`）。同一得意先・同一締め年月の確定済み請求データが2件存在できないことをDB側でも強制する（`docs/product-spec.md` 共通業務ルール2「二重請求はデータベース側でも拒否する」）。`billing_status = 1`（確定）のみを対象にするフィルタ付きインデックスのため、解除済み（`billing_status = 2`）は対象外になり、締め解除→再締めで新しい`billing_number`を採番する運用を壊さない。`scripts/010_unify_tax_unit_tables.sql`のインデックス作成コメントにある「UNIQUEにはできない」は非フィルタの一意制約を前提にした記述であり、フィルタ付きなら可能という点を本節で補足する。
+
 ---
 
 ### 2.13. 明細請求書（`detail_invoice`）

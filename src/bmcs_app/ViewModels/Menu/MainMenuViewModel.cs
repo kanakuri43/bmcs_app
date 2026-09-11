@@ -1,10 +1,12 @@
 using bmcs_app.Application.Common;
 using bmcs_app.Domain.Entities;
 using bmcs_app.Services;
+using bmcs_app.ViewModels.Billing;
 using bmcs_app.ViewModels.Common;
 using bmcs_app.ViewModels.Master;
 using bmcs_app.ViewModels.Order;
 using bmcs_app.ViewModels.Sales;
+using bmcs_app.Views.Billing;
 using bmcs_app.Views.Common;
 using bmcs_app.Views.Master;
 using bmcs_app.Views.Menu;
@@ -168,4 +170,11 @@ public partial class MainMenuViewModel(
     [RelayCommand]
     private void OpenSalesEntry()
         => windowService.Show<SalesEntryWindow, SalesEntryViewModel>();
+
+    /// <summary>
+    /// 請求締め処理画面を開く（TODO.md 6-1）。Phase 2-7 で正式なメニューに置き換わるまでの暫定導線。
+    /// </summary>
+    [RelayCommand]
+    private void OpenBillingClosing()
+        => windowService.Show<BillingClosingWindow, BillingClosingViewModel>();
 }

@@ -158,7 +158,7 @@ M-2（採番規則）・M-3（単価決定）・C-6（訂正・取消方式）�
 
 | 完了 | # | タスク | 推奨モデル | 前提 | 完了条件 |
 |---|---|---|---|---|---|
-| [ ] | 6-1 | 請求締め処理（対象売上・入金の集計、請求データの確定、二重集計の防止、税率別内訳の確定値保存） | Sonnet | 5-1 | 締めを2回実行しても二重計上されない |
+| [x] | 6-1 | 請求締め処理（対象売上・入金の集計、請求データの確定、二重集計の防止、税率別内訳の確定値保存） | Sonnet | 5-1 | **2026-09-11実装。** `BillingClosingService`（Application/Billing）が「締め日を指定して一括」処理する（2026-09-11ユーザー確認）。集計期間は売上（下限なし・`billing_number IS NULL`で二重集計防止）と入金（前回確定`billing`の締め日+1日を下限）で非対称（`docs/design_document.md` 9章）。税額計算は既存`ConsumptionTaxCalculator`を税単位で使い分け（請求単位＝`CalculateExternalTaxBuckets`、伝票単位＝`CalculateExternalTaxPerSlip`で保存済み`slip_tax_amount`との一致を検証）。二重締め防止はアプリ側の事前チェックとDB側のフィルタ付き一意インデックス`UQ_billing_customer_closing_ym_confirmed`（`scripts/013_add_billing_confirmed_unique_index.sql`）の二段構え。画面（`Views/Billing/BillingClosingWindow`）から一連の操作を実機確認済み（実データのCUS001に対し前回確定`billing`の残高11,000円が正しく引き継がれ、同一締め年月への二重締めが「既にこの締め年月で確定済みです」で正しくスキップされることをUI Automation経由で確認）。結合テスト`BillingClosingServiceTests`（7件、専用テスト得意先で検証）・単体テスト`ClosingDateResolverTests`（9件）を追加。全体テスト（Domain 204件／Application 44件）すべてgreen |
 | [ ] | 6-2 | 締め解除処理（請求データを解除済にし、売上の請求状態を未請求へ戻す）。**6-1とは別画面（別ウィンドウ）として実装する（C-8決定）** | Sonnet | 6-1, C-8 | 解除→再締めで金額が一致する |
 | [ ] | 6-3 | 明細請求書発行（対象条件＝未請求かつ消込完了でない売上明細行、宛名の都度入力） | Sonnet | 1-2 | 対象条件が明細行単位で正しく効いている |
 | [ ] | 6-4 | 明細請求書の取消（連携テーブルの紐付け解除と売上側の状態復帰） | Sonnet | 6-3 | 取消後に同じ売上を再度請求できる |

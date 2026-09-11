@@ -433,7 +433,9 @@ GO
 -- 締め処理の重複チェック（この得意先のこの締め月の請求データが既にあるか）、
 -- 前月請求残高の取得、得意先別の請求履歴。
 -- 締め解除 → 再締めで同一 (得意先, 締め年月) に新しい billing_number を採番する
--- 運用のため、UNIQUE にはできない。
+-- 運用のため、非フィルタの UNIQUE にはできない（解除済みの古い行と衝突する）。
+-- 確定済み行だけを対象にしたフィルタ付き UNIQUE は 013_add_billing_confirmed_unique_index.sql
+-- で別途追加した（Phase 6-1、docs/database-schema.md 2.12節）。
 IF NOT EXISTS (SELECT 1 FROM sys.indexes
                WHERE name = N'IX_billing_customer_code_closing_year_month' AND object_id = OBJECT_ID(N'dbo.billing'))
 BEGIN

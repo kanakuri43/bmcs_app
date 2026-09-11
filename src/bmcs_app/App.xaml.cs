@@ -4,11 +4,13 @@ using System.Windows;
 using System.Windows.Threading;
 using bmcs_app.Application;
 using bmcs_app.Services;
+using bmcs_app.ViewModels.Billing;
 using bmcs_app.ViewModels.Common;
 using bmcs_app.ViewModels.Master;
 using bmcs_app.ViewModels.Menu;
 using bmcs_app.ViewModels.Order;
 using bmcs_app.ViewModels.Sales;
+using bmcs_app.Views.Billing;
 using bmcs_app.Views.Common;
 using bmcs_app.Views.Master;
 using bmcs_app.Views.Menu;
@@ -145,6 +147,9 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<SalesEntryWindow>();
         builder.Services.AddScoped<SalesEntryViewModel>();
+
+        builder.Services.AddScoped<BillingClosingWindow>();
+        builder.Services.AddScoped<BillingClosingViewModel>();
 
         return builder.Build();
     }
