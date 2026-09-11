@@ -4,41 +4,12 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="bmcs_app - 商品マスタ"
-                 Height="600" Width="960"
+                 Height="600" Width="640"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <Grid Margin="16" beh:EnterKeyNavigationBehavior.IsEnabled="True">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="360" />
-            <ColumnDefinition Width="16" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-
-        <!-- 左: 一覧 -->
-        <Grid Grid.Column="0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
-
-            <Button Grid.Row="0" Content="新規" Command="{Binding NewProductCommand}"
-                    Padding="16,6" Margin="0,0,0,8" HorizontalAlignment="Left" />
-
-            <ListView Grid.Row="1" ItemsSource="{Binding Products}"
-                      beh:RowActivationBehavior.Command="{Binding LoadSelectedProductCommand}">
-                <ListView.View>
-                    <GridView>
-                        <GridViewColumn Header="コード" Width="70" DisplayMemberBinding="{Binding ProductCode}" />
-                        <GridViewColumn Header="名称" Width="140" DisplayMemberBinding="{Binding ProductName}" />
-                        <GridViewColumn Header="単位" Width="50" DisplayMemberBinding="{Binding UnitName}" />
-                        <GridViewColumn Header="税種別区分" Width="90" DisplayMemberBinding="{Binding TaxCategoryDisplay}" />
-                    </GridView>
-                </ListView.View>
-            </ListView>
-        </Grid>
-
-        <!-- 右: 詳細フォーム -->
-        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+        <!-- 詳細フォーム -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
                 <TextBlock Text="基本情報" FontWeight="Bold" Margin="0,0,0,8" />
                 <Grid>
@@ -53,7 +24,16 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="商品コード" Margin="0,0,12,8" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ProductCode}" IsEnabled="{Binding IsNew}" Margin="0,0,0,8" />
+                    <TextBox Grid.Row="0" Grid.Column="1"
+                             Text="{Binding ProductCode, UpdateSourceTrigger=PropertyChanged}"
+                             mah:TextBoxHelper.Watermark="コード（Space検索）"
+                             ToolTip="商品コードを直接入力してEnterで読み込む。未登録のコードは新規登録として扱う。Spaceで検索モーダルを開く"
+                             HorizontalAlignment="Left" Width="160" Margin="0,0,0,8">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Space"  Command="{Binding OpenProductSearchCommand}" />
+                            <KeyBinding Key="Return" Command="{Binding LookupProductByCodeCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
 
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="商品名" Margin="0,0,12,8" VerticalAlignment="Center" />
                     <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ProductName}" Margin="0,0,0,8" />
@@ -104,6 +84,7 @@
                 </Grid>
 
                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                    <Button Content="新規" Command="{Binding NewProductCommand}" Padding="16,6" Margin="0,0,12,0" />
                     <Button Content="保存" Command="{Binding SaveCommand}" Padding="16,6" Margin="0,0,12,0" />
                     <Button Content="無効化" Command="{Binding DeactivateCommand}" Padding="16,6" Margin="0,0,12,0" />
                     <TextBlock Text="処理中..." VerticalAlignment="Center" Foreground="OrangeRed"

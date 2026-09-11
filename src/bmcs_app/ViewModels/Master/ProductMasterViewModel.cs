@@ -1,18 +1,22 @@
-using System.Collections.ObjectModel;
 using System.Windows;
 using bmcs_app.Application.Master;
 using bmcs_app.Domain.Entities;
 using bmcs_app.Domain.Enums;
+using bmcs_app.Services;
+using bmcs_app.ViewModels.Common;
+using bmcs_app.Views.Common;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace bmcs_app.ViewModels.Master;
 
-/// <summary>商品マスタ画面。一覧（左）と詳細フォーム（右）を持つ。</summary>
-public partial class ProductMasterViewModel(ProductService productService) : ViewModelBase
+/// <summary>
+/// 商品マスタ画面。一覧は持たず、商品コードを直接入力するか、
+/// コード欄で Space を押して検索モーダル（<see cref="ProductMasterSearchDialog"/>）を呼び出して対象を選ぶ
+/// （得意先マスタ画面と同じ Space検索／Enter読込のパターンに揃える）。
+/// </summary>
+public partial class ProductMasterViewModel(ProductService productService, WindowService windowService) : ViewModelBase
 {
-    public ObservableCollection<ProductListItem> Products { get; } = [];
-
     [ObservableProperty]
     public partial string ProductCode { get; set; } = string.Empty;
 
@@ -52,25 +56,6 @@ public partial class ProductMasterViewModel(ProductService productService) : Vie
     private byte[]? _loadedRowVersion;
 
     [RelayCommand]
-    private Task LoadProductsAsync() => RunBusyAsync(LoadProductsCoreAsync);
-
-    /// <summary>
-    /// 一覧の再読み込み本体。<see cref="RunBusyAsync"/> でラップしない。
-    /// Save/Deactivate から呼ぶ際は既に IsBusy=true になっており、二重にラップすると
-    /// RunBusyAsync の多重実行抑止（if (IsBusy) return;）に引っかかって何もしないまま返ってしまう。
-    /// </summary>
-    private async Task LoadProductsCoreAsync()
-    {
-        var products = await productService.GetProductsAsync();
-
-        Products.Clear();
-        foreach (var product in products)
-        {
-            Products.Add(ToListItem(product));
-        }
-    }
-
-    [RelayCommand]
     private void NewProduct()
     {
         ClearForm();
@@ -78,22 +63,42 @@ public partial class ProductMasterViewModel(ProductService productService) : Vie
         StatusMessage = string.Empty;
     }
 
-    /// <summary>一覧で選択した商品をフォームへ読み込む（RowActivationBehavior から Enter で呼ばれる）。</summary>
+    /// <summary>コード欄で Space を押したときに検索モーダルを開く。</summary>
     [RelayCommand]
-    private Task LoadSelectedProductAsync(object? item) => RunBusyAsync(async () =>
+    private void OpenProductSearch()
     {
-        if (item is not ProductListItem listItem)
+        var product = windowService.ShowDialog<ProductMasterSearchDialog, ProductMasterSearchDialogViewModel, Product>();
+        if (product is not null)
+        {
+            ApplyProduct(product);
+        }
+    }
+
+    /// <summary>コード欄で Enter を押したときに、入力済みコードで直接読み込む。</summary>
+    [RelayCommand]
+    private Task LookupProductByCodeAsync() => RunBusyAsync(async () =>
+    {
+        if (string.IsNullOrWhiteSpace(ProductCode))
         {
             return;
         }
 
-        var product = await productService.GetByCodeAsync(listItem.ProductCode);
+        var product = await productService.GetByCodeAsync(ProductCode);
         if (product is null)
         {
-            StatusMessage = "商品が見つかりませんでした。再読み込みしてください。";
+            var enteredCode = ProductCode;
+            ClearForm();
+            ProductCode = enteredCode;
+            IsNew = true;
+            StatusMessage = $"商品コード「{enteredCode}」は未登録です。新規登録として入力してください。";
             return;
         }
 
+        ApplyProduct(product);
+    });
+
+    private void ApplyProduct(Product product)
+    {
         ProductCode = product.ProductCode;
         ProductName = product.ProductName;
         ProductNameKana = product.ProductNameKana ?? string.Empty;
@@ -107,7 +112,7 @@ public partial class ProductMasterViewModel(ProductService productService) : Vie
         _loadedRowVersion = product.RowVersion;
         IsNew = false;
         StatusMessage = string.Empty;
-    });
+    }
 
     [RelayCommand]
     private Task SaveAsync() => RunBusyAsync(async () =>
@@ -162,8 +167,6 @@ public partial class ProductMasterViewModel(ProductService productService) : Vie
             MessageBox.Show(ex.Message, "bmcs_app", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-
-        await LoadProductsCoreAsync();
     });
 
     [RelayCommand]
@@ -217,7 +220,6 @@ public partial class ProductMasterViewModel(ProductService productService) : Vie
         ClearForm();
         IsNew = true;
         StatusMessage = $"{product.ProductCode} を無効化しました。";
-        await LoadProductsCoreAsync();
     });
 
     private void ClearForm()
@@ -235,17 +237,4 @@ public partial class ProductMasterViewModel(ProductService productService) : Vie
     }
 
     private static string? NullIfEmpty(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
-
-    private static ProductListItem ToListItem(Product product) => new(
-        product.ProductCode,
-        product.ProductName,
-        product.ProductNameKana,
-        product.UnitName,
-        TaxCategoryDisplay: product.TaxCategory switch
-        {
-            TaxCategory.Standard => "課税10%",
-            TaxCategory.Reduced => "軽減8%",
-            TaxCategory.TaxExempt => "非課税",
-            _ => product.TaxCategory.ToString(),
-        });
 }

@@ -1,18 +1,22 @@
-using System.Collections.ObjectModel;
 using System.Windows;
 using bmcs_app.Application.Master;
 using bmcs_app.Domain.Entities;
 using bmcs_app.Domain.Enums;
+using bmcs_app.Services;
+using bmcs_app.ViewModels.Common;
+using bmcs_app.Views.Common;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace bmcs_app.ViewModels.Master;
 
-/// <summary>得意先マスタ画面。一覧（左）と詳細フォーム（右）を持つ。</summary>
-public partial class CustomerMasterViewModel(CustomerService customerService) : ViewModelBase
+/// <summary>
+/// 得意先マスタ画面。一覧は持たず、得意先コードを直接入力するか、
+/// コード欄で Space を押して検索モーダル（<see cref="CustomerSearchDialog"/>）を呼び出して対象を選ぶ
+/// （受注入力・売上入力画面と同じ Space検索／Enter読込のパターンに揃える）。
+/// </summary>
+public partial class CustomerMasterViewModel(CustomerService customerService, WindowService windowService) : ViewModelBase
 {
-    public ObservableCollection<CustomerListItem> Customers { get; } = [];
-
     [ObservableProperty]
     public partial string CustomerCode { get; set; } = string.Empty;
 
@@ -84,25 +88,6 @@ public partial class CustomerMasterViewModel(CustomerService customerService) : 
     private byte[]? _loadedRowVersion;
 
     [RelayCommand]
-    private Task LoadCustomersAsync() => RunBusyAsync(LoadCustomersCoreAsync);
-
-    /// <summary>
-    /// 一覧の再読み込み本体。<see cref="RunBusyAsync"/> でラップしない。
-    /// Save/Deactivate から呼ぶ際は既に IsBusy=true になっており、二重にラップすると
-    /// RunBusyAsync の多重実行抑止（if (IsBusy) return;）に引っかかって何もしないまま返ってしまう。
-    /// </summary>
-    private async Task LoadCustomersCoreAsync()
-    {
-        var customers = await customerService.GetCustomersAsync();
-
-        Customers.Clear();
-        foreach (var customer in customers)
-        {
-            Customers.Add(ToListItem(customer));
-        }
-    }
-
-    [RelayCommand]
     private void NewCustomer()
     {
         ClearForm();
@@ -110,22 +95,42 @@ public partial class CustomerMasterViewModel(CustomerService customerService) : 
         StatusMessage = string.Empty;
     }
 
-    /// <summary>一覧で選択した得意先をフォームへ読み込む（RowActivationBehavior から Enter で呼ばれる）。</summary>
+    /// <summary>コード欄で Space を押したときに検索モーダルを開く。</summary>
     [RelayCommand]
-    private Task LoadSelectedCustomerAsync(object? item) => RunBusyAsync(async () =>
+    private void OpenCustomerSearch()
     {
-        if (item is not CustomerListItem listItem)
+        var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>();
+        if (customer is not null)
+        {
+            ApplyCustomer(customer);
+        }
+    }
+
+    /// <summary>コード欄で Enter を押したときに、入力済みコードで直接読み込む。</summary>
+    [RelayCommand]
+    private Task LookupCustomerByCodeAsync() => RunBusyAsync(async () =>
+    {
+        if (string.IsNullOrWhiteSpace(CustomerCode))
         {
             return;
         }
 
-        var customer = await customerService.GetByCodeAsync(listItem.CustomerCode);
+        var customer = await customerService.GetByCodeAsync(CustomerCode);
         if (customer is null)
         {
-            StatusMessage = "得意先が見つかりませんでした。再読み込みしてください。";
+            var enteredCode = CustomerCode;
+            ClearForm();
+            CustomerCode = enteredCode;
+            IsNew = true;
+            StatusMessage = $"得意先コード「{enteredCode}」は未登録です。新規登録として入力してください。";
             return;
         }
 
+        ApplyCustomer(customer);
+    });
+
+    private void ApplyCustomer(Customer customer)
+    {
         CustomerCode = customer.CustomerCode;
         CustomerName = customer.CustomerName;
         CustomerNameKana = customer.CustomerNameKana ?? string.Empty;
@@ -155,7 +160,7 @@ public partial class CustomerMasterViewModel(CustomerService customerService) : 
         _loadedRowVersion = customer.RowVersion;
         IsNew = false;
         StatusMessage = string.Empty;
-    });
+    }
 
     [RelayCommand]
     private Task SaveAsync() => RunBusyAsync(async () =>
@@ -234,8 +239,6 @@ public partial class CustomerMasterViewModel(CustomerService customerService) : 
             MessageBox.Show(ex.Message, "bmcs_app", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-
-        await LoadCustomersCoreAsync();
     });
 
     [RelayCommand]
@@ -289,7 +292,6 @@ public partial class CustomerMasterViewModel(CustomerService customerService) : 
         ClearForm();
         IsNew = true;
         StatusMessage = $"{customer.CustomerCode} を無効化しました。";
-        await LoadCustomersCoreAsync();
     });
 
     private void ClearForm()
@@ -313,22 +315,4 @@ public partial class CustomerMasterViewModel(CustomerService customerService) : 
     }
 
     private static string? NullIfEmpty(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
-
-    private static CustomerListItem ToListItem(Customer customer) => new(
-        customer.CustomerCode,
-        customer.CustomerName,
-        customer.CustomerNameKana,
-        ClosingDayDisplay: customer.ClosingDay switch
-        {
-            0 => "都度",
-            99 => "末日締め",
-            var day => $"{day}日締め",
-        },
-        TaxUnitDisplay: customer.TaxUnit switch
-        {
-            TaxUnit.Invoice => "請求単位",
-            TaxUnit.Slip => "伝票単位",
-            TaxUnit.Line => "内税明細単位",
-            _ => customer.TaxUnit.ToString(),
-        });
 }

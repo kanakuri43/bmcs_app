@@ -134,6 +134,9 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<ProductSearchDialog>();
         builder.Services.AddScoped<ProductSearchDialogViewModel>();
 
+        builder.Services.AddScoped<ProductMasterSearchDialog>();
+        builder.Services.AddScoped<ProductMasterSearchDialogViewModel>();
+
         builder.Services.AddScoped<SlipSearchDialog>();
         builder.Services.AddScoped<SlipSearchDialogViewModel>();
 
