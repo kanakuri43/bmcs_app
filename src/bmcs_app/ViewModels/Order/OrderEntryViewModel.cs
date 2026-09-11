@@ -566,9 +566,11 @@ public partial class OrderEntryViewModel(
         try
         {
             var orderSlipNumber = await orderService.CreateAsync(entities);
-            OrderSlipNumberDisplay = orderSlipNumber;
-            IsSaved = true;
+
+            // 登録後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
+            New();
             StatusMessage = $"登録しました。受注No. {orderSlipNumber}";
+            NotifyResetToInitialState();
         }
         catch (Exception ex)
         {

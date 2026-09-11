@@ -153,9 +153,12 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
                 ? await productService.CreateAsync(product)
                 : await productService.UpdateAsync(product);
 
-            _loadedRowVersion = saved.RowVersion;
-            IsNew = false;
-            StatusMessage = $"{saved.ProductCode} を保存しました。";
+            // 登録後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
+            var savedProductCode = saved.ProductCode;
+            ClearForm();
+            IsNew = true;
+            StatusMessage = $"{savedProductCode} を保存しました。";
+            NotifyResetToInitialState();
         }
         catch (ProductValidationException ex)
         {

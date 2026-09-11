@@ -13,6 +13,15 @@ public abstract partial class ViewModelBase : ObservableObject
     public partial bool IsBusy { get; set; }
 
     /// <summary>
+    /// 画面を起動直後の状態へ戻したときに発火する（docs/product-spec.md UI/UX節「登録後のリセット」）。
+    /// View 側（<see cref="Behaviors.InitialFocusBehavior"/>）が先頭入力項目へフォーカスを戻すために使う。
+    /// </summary>
+    public event EventHandler? ResetToInitialState;
+
+    /// <summary>画面クリア後に呼ぶ。<see cref="ResetToInitialState"/> を発火させる。</summary>
+    protected void NotifyResetToInitialState() => ResetToInitialState?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>
     /// 処理を実行中フラグで囲む。多重実行は抑止する。
     /// </summary>
     protected async Task RunBusyAsync(Func<Task> action)

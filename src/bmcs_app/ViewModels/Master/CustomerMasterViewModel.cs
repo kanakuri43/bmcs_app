@@ -225,9 +225,12 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
                 ? await customerService.CreateAsync(customer)
                 : await customerService.UpdateAsync(customer);
 
-            _loadedRowVersion = saved.RowVersion;
-            IsNew = false;
-            StatusMessage = $"{saved.CustomerCode} を保存しました。";
+            // 登録後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
+            var savedCustomerCode = saved.CustomerCode;
+            ClearForm();
+            IsNew = true;
+            StatusMessage = $"{savedCustomerCode} を保存しました。";
+            NotifyResetToInitialState();
         }
         catch (CustomerValidationException ex)
         {

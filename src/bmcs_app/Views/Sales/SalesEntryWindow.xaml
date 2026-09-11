@@ -127,6 +127,7 @@
 
                         <TextBlock Grid.Column="3" Text="売上No." VerticalAlignment="Center" />
                         <TextBox Grid.Column="4"
+                                 beh:InitialFocusBehavior.IsInitialFocus="True"
                                  Text="{Binding SalesSlipNumberDisplay, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="自動採番（Space検索）"
                                  ToolTip="既存の売上No.を入力してEnterで読み込む（訂正・取消。TODO.md 5-6）。Spaceで検索モーダルを開く">

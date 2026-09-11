@@ -513,11 +513,11 @@ public partial class SalesEntryViewModel(
             now: now)).ToList();
 
         var salesSlipNumber = await salesService.CreateAsync(entities, _customer!.RoundingType);
-        _loadedSalesSlipNumber = salesSlipNumber;
-        _loadedLineNumbers = entities.Select(e => e.LineNumber).ToList();
-        SalesSlipNumberDisplay = salesSlipNumber;
-        IsSaved = true;
+
+        // 登録後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
+        New();
         StatusMessage = $"登録しました。売上No. {salesSlipNumber}";
+        NotifyResetToInitialState();
     }
 
     private async Task SaveCorrectionAsync(List<SlipLineViewModel> nonBlankLines)
@@ -533,10 +533,14 @@ public partial class SalesEntryViewModel(
             line: line,
             now: now)).ToList();
 
-        await salesService.UpdateAsync(_loadedSalesSlipNumber!, entities, _customer!.RoundingType, _loadedLineNumbers);
+        var correctedSalesSlipNumber = _loadedSalesSlipNumber!;
+        await salesService.UpdateAsync(correctedSalesSlipNumber, entities, _customer!.RoundingType, _loadedLineNumbers);
 
-        // 保存後の状態を再読込し、新規行に採番された行番号を画面へ反映する。
-        await LoadSalesSlipForCorrectionAsync(_loadedSalesSlipNumber!, statusOverride: $"訂正しました。売上No. {_loadedSalesSlipNumber}");
+        // 登録後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
+        // 新規登録と挙動を揃え、訂正保存だけ伝票を表示し続ける例外を作らない。
+        New();
+        StatusMessage = $"訂正しました。売上No. {correctedSalesSlipNumber}";
+        NotifyResetToInitialState();
     }
 
     private SalesEntity BuildEntity(
@@ -742,7 +746,7 @@ public partial class SalesEntryViewModel(
     [RelayCommand]
     private Task LookupSalesSlipByNumberAsync() => LoadSalesSlipForCorrectionAsync(SalesSlipNumberDisplay);
 
-    private async Task LoadSalesSlipForCorrectionAsync(string salesSlipNumber, string? statusOverride = null)
+    private async Task LoadSalesSlipForCorrectionAsync(string salesSlipNumber)
     {
         if (string.IsNullOrWhiteSpace(salesSlipNumber))
         {
@@ -817,10 +821,9 @@ public partial class SalesEntryViewModel(
         RenumberLines();
         RaiseTotalsChanged();
 
-        StatusMessage = statusOverride
-            ?? (lockResult.IsLocked
-                ? $"売上No. {salesSlipNumber} を読み込みました（編集不可: {lockResult.Reason}）"
-                : $"売上No. {salesSlipNumber} を読み込みました。");
+        StatusMessage = lockResult.IsLocked
+            ? $"売上No. {salesSlipNumber} を読み込みました（編集不可: {lockResult.Reason}）"
+            : $"売上No. {salesSlipNumber} を読み込みました。";
     }
 
     [RelayCommand(CanExecute = nameof(CanDeleteSlip))]

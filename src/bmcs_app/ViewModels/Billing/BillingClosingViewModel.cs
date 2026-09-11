@@ -70,7 +70,14 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
     /// 条件変更時（<see cref="OnSelectedClosingDayChanged"/>／<see cref="OnClosingDateTextChanged"/>）
     /// から自動的に呼ばれる。
     /// </summary>
-    private Task PreviewAsync() => RunBusyAsync(async () =>
+    private Task PreviewAsync() => RunBusyAsync(RefreshPreviewAsync);
+
+    /// <summary>
+    /// <see cref="PreviewAsync"/> の本体。<see cref="ConfirmAsync"/> の中からは
+    /// （既に <c>IsBusy</c> 状態のため）<see cref="RunBusyAsync"/> を経由せず直接呼ぶ
+    /// （確定後にリセットした既定条件で即座に再取得するため）。
+    /// </summary>
+    private async Task RefreshPreviewAsync()
     {
         if (!TryParseConditions(out var closingDay, out var closingDate))
         {
@@ -87,7 +94,7 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
         {
             StatusMessage = $"取得エラー: {ex.Message}";
         }
-    });
+    }
 
     /// <summary>
     /// 締め日区分の選択を変えたら、請求日の年月はそのまま・日だけをその締め日区分に合わせて
@@ -125,16 +132,32 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
         try
         {
             var results = await billingClosingService.ConfirmAsync(closingDay, closingDate);
-            ApplyResults(results);
-            StatusMessage =
-                $"請求締めを確定しました（確定 {results.Count(r => r.SkipReason is null)}件／" +
-                $"スキップ {results.Count(r => r.SkipReason is not null)}件）。";
+            var confirmedCount = results.Count(r => r.SkipReason is null);
+            var skippedCount = results.Count(r => r.SkipReason is not null);
+
+            // 確定後は結果一覧も含めて画面表示直後の状態に戻す（docs/product-spec.md UI/UX節
+            // 「登録後のリセット」。結果一覧は締め結果を確認できる唯一の証跡だが、確定後は
+            // 再検索する運用のためクリアする。2026-09-11ユーザー確認）。
+            Results.Clear();
+            TotalCurrentBillingAmount = 0m;
+            ResetConditionsToDefault();
+            await RefreshPreviewAsync();
+
+            StatusMessage = $"請求締めを確定しました（確定 {confirmedCount}件／スキップ {skippedCount}件）。";
+            NotifyResetToInitialState();
         }
         catch (BillingClosingException ex)
         {
             StatusMessage = $"確定エラー: {ex.Message}";
         }
     });
+
+    /// <summary>画面表示直後（<see cref="LoadAsync"/>）と同じ既定条件に戻す。</summary>
+    private void ResetConditionsToDefault()
+    {
+        SelectedClosingDay = ClosingDayOptions.FirstOrDefault();
+        ClosingDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+    }
 
     private bool TryParseConditions(out byte closingDay, out DateOnly closingDate)
     {
