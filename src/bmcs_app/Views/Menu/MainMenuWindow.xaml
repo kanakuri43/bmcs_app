@@ -102,6 +102,10 @@
                     Command="{Binding OpenBillingClosingCommand}"
                     Padding="16,6"
                     Margin="0,0,12,0" />
+            <Button Content="締め解除処理"
+                    Command="{Binding OpenBillingReleaseCommand}"
+                    Padding="16,6"
+                    Margin="0,0,12,0" />
             <Button Content="メインメニュー（デザインモック）"
                     Command="{Binding OpenMainMenuMockCommand}"
                     Padding="16,6"

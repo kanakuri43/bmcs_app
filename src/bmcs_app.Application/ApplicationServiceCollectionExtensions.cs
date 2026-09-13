@@ -48,6 +48,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SalesEditLockService>();
         services.AddScoped<SalesQueryService>();
         services.AddScoped<BillingClosingService>();
+        services.AddScoped<BillingReleaseService>();
 
         return services;
     }

@@ -177,4 +177,13 @@ public partial class MainMenuViewModel(
     [RelayCommand]
     private void OpenBillingClosing()
         => windowService.Show<BillingClosingWindow, BillingClosingViewModel>();
+
+    /// <summary>
+    /// 締め解除処理画面を開く（TODO.md 6-2）。管理者権限のみの操作だが、権限判定基盤（0-7）が
+    /// 未着手のため現時点では制限しない。請求締め処理とは別画面（C-8・2026-09-10確定）。
+    /// Phase 2-7 で正式なメニューに置き換わるまでの暫定導線。
+    /// </summary>
+    [RelayCommand]
+    private void OpenBillingRelease()
+        => windowService.Show<BillingReleaseWindow, BillingReleaseViewModel>();
 }
