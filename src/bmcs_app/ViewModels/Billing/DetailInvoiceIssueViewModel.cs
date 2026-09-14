@@ -90,13 +90,18 @@ public partial class DetailInvoiceIssueViewModel(
         StatusMessage = "新規明細請求書";
     }
 
-    /// <summary>明細請求書番号欄で Enter を押したときに、入力済み番号で直接読み込む（読み取り専用表示）。</summary>
+    /// <summary>
+    /// 明細請求書番号欄で Return を押したときの挙動。空欄なら新規登録モードとして次項目
+    /// （請求日付）へフォーカス移動するのみ。入力済みなら既存の明細請求書番号で直接読み込む
+    /// （読み取り専用表示。docs/product-spec.md UI/UX節「ジャーナル系画面の伝票No入力欄の挙動」）。
+    /// </summary>
     [RelayCommand]
     private Task LookupAsync() => RunBusyAsync(async () =>
     {
         var number = DetailInvoiceNumberQuery.Trim();
         if (string.IsNullOrWhiteSpace(number))
         {
+            RequestFocus("IssueDate");
             return;
         }
 
@@ -105,8 +110,8 @@ public partial class DetailInvoiceIssueViewModel(
             var view = await detailInvoiceService.GetByNumberAsync(number);
             if (view is null)
             {
-                ClearForm();
-                DetailInvoiceNumberQuery = number;
+                // 該当が無ければエラー表示のみに留め、新規登録モードへは進まない
+                // （入力済みの得意先・宛名・明細を破棄しない。docs/product-spec.md UI/UX節）。
                 StatusMessage = $"明細請求書番号「{number}」は見つかりません。";
                 return;
             }
@@ -118,6 +123,20 @@ public partial class DetailInvoiceIssueViewModel(
             StatusMessage = $"取得エラー: {ex.Message}";
         }
     });
+
+    /// <summary>明細請求書検索モーダルを開く（<c>Space</c>）。選択した番号は <see cref="LookupAsync"/> と同じ経路で読み込む。</summary>
+    [RelayCommand]
+    private void OpenDetailInvoiceSearch()
+    {
+        var detailInvoiceNumber = windowService.ShowDialog<SlipSearchDialog, SlipSearchDialogViewModel, string>(
+            vm => vm.Target = SlipSearchTarget.DetailInvoice);
+
+        if (!string.IsNullOrWhiteSpace(detailInvoiceNumber))
+        {
+            DetailInvoiceNumberQuery = detailInvoiceNumber;
+            _ = LookupAsync();
+        }
+    }
 
     [RelayCommand]
     private void OpenCustomerSearch()

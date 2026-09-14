@@ -27,7 +27,7 @@
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="得意先コード" Margin="0,0,12,8" VerticalAlignment="Center" />
                     <TextBox Grid.Row="0" Grid.Column="1"
-                             beh:InitialFocusBehavior.IsInitialFocus="True"
+                             beh:FocusBehavior.IsInitialFocus="True"
                              Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
                              mah:TextBoxHelper.Watermark="コード（Space検索）"
                              ToolTip="得意先コードを直接入力してEnterで読み込む。未登録のコードは新規登録として扱う。Spaceで検索モーダルを開く"

@@ -31,7 +31,7 @@
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
             <TextBlock Text="締め日" VerticalAlignment="Center" Margin="0,0,8,0" />
             <ComboBox Width="120" Margin="0,0,16,0"
-                      beh:InitialFocusBehavior.IsInitialFocus="True"
+                      beh:FocusBehavior.IsInitialFocus="True"
                       ItemsSource="{Binding ClosingDayOptions}"
                       SelectedItem="{Binding SelectedClosingDay}"
                       DisplayMemberPath="Display" />

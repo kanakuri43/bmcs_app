@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using bmcs_app.Application.Billing;
 using bmcs_app.Application.Order;
 using bmcs_app.Application.Sales;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -7,13 +8,14 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Common;
 
 /// <summary>
-/// 伝票検索モーダル（TODO.md 5-3・5-5・5-6の共通前提）。受注No.検索・売上No.検索の両方に使う
-/// （<see cref="CustomerSearchDialogViewModel"/> と同じ、全件ロード後にメモリ絞り込みする作り）。
+/// 伝票検索モーダル（TODO.md 5-3・5-5・5-6の共通前提）。受注No.検索・売上No.検索・明細請求書No.検索
+/// すべてに使う（<see cref="CustomerSearchDialogViewModel"/> と同じ、全件ロード後にメモリ絞り込みする作り）。
 /// 選択された**伝票番号**だけを返す。伝票実体の読み込みは呼び出し元が自分のクエリサービスで行う。
 /// </summary>
 public partial class SlipSearchDialogViewModel(
     SalesQueryService salesQueryService,
-    OrderQueryService orderQueryService)
+    OrderQueryService orderQueryService,
+    DetailInvoiceQueryService detailInvoiceQueryService)
     : DialogViewModelBase<string>
 {
     private List<SlipSearchItem> _allItems = [];
@@ -32,13 +34,19 @@ public partial class SlipSearchDialogViewModel(
     [RelayCommand]
     private Task LoadAsync() => RunBusyAsync(async () =>
     {
-        _allItems = Target == SlipSearchTarget.Sales
-            ? (await salesQueryService.SearchAsync(keyword: null))
+        _allItems = Target switch
+        {
+            SlipSearchTarget.Sales => (await salesQueryService.SearchAsync(keyword: null))
                 .Select(SlipSearchItem.FromSalesHit)
-                .ToList()
-            : (await orderQueryService.SearchAsync(keyword: null))
+                .ToList(),
+            SlipSearchTarget.Order => (await orderQueryService.SearchAsync(keyword: null))
                 .Select(SlipSearchItem.FromOrderHit)
-                .ToList();
+                .ToList(),
+            SlipSearchTarget.DetailInvoice => (await detailInvoiceQueryService.SearchAsync(keyword: null))
+                .Select(SlipSearchItem.FromDetailInvoiceHit)
+                .ToList(),
+            _ => throw new ArgumentOutOfRangeException(nameof(Target), Target, null),
+        };
 
         ApplyFilter();
     });

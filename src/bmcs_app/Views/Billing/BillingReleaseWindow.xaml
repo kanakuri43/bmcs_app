@@ -28,7 +28,7 @@
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
             <TextBlock Text="請求番号" VerticalAlignment="Center" Margin="0,0,8,0" />
             <TextBox Width="160"
-                     beh:InitialFocusBehavior.IsInitialFocus="True"
+                     beh:FocusBehavior.IsInitialFocus="True"
                      Text="{Binding BillingNumberQuery, UpdateSourceTrigger=PropertyChanged}"
                      mah:TextBoxHelper.Watermark="請求番号"
                      ToolTip="請求番号を直接入力してEnterで読み込む">

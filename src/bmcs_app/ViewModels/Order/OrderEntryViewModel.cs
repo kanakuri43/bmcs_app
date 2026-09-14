@@ -55,9 +55,14 @@ public partial class OrderEntryViewModel(
     [ObservableProperty]
     public partial string OrderDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
 
-    /// <summary>採番は保存時にトランザクション内で行うため、保存前は固定文言を表示する（4-1）。</summary>
+    /// <summary>
+    /// 受注No.欄。採番は保存時にトランザクション内で行うため、新規時は空欄（Watermarkで案内）。
+    /// 番号を直接入力して <c>Return</c> で読み込む、または <c>Space</c> で検索モーダルを開ける。
+    /// 空欄のまま <c>Return</c> は新規登録モードとして次項目へフォーカス移動する
+    /// （docs/product-spec.md UI/UX節「ジャーナル系画面の伝票No入力欄の挙動」）。
+    /// </summary>
     [ObservableProperty]
-    public partial string OrderSlipNumberDisplay { get; set; } = "（自動採番）";
+    public partial string OrderSlipNumberDisplay { get; set; } = string.Empty;
 
     /// <summary>
     /// 担当者コード・名称（枠のみ）。<see cref="OrderSlip"/> に担当者列がなく、
@@ -403,7 +408,7 @@ public partial class OrderEntryViewModel(
         CustomerName = string.Empty;
         CustomerTaxUnitDisplay = string.Empty;
         OrderDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
-        OrderSlipNumberDisplay = "（自動採番）";
+        OrderSlipNumberDisplay = string.Empty;
         OrderStatus = OrderStatus.NotSold;
         IsSaved = false;
 
@@ -431,8 +436,22 @@ public partial class OrderEntryViewModel(
         }
     }
 
+    /// <summary>
+    /// 受注No.欄で Return を押したときの挙動。空欄なら新規登録モードとして次項目（受注日付）へ
+    /// フォーカス移動するのみ。入力済みなら既存受注を表示専用で読み込む
+    /// （docs/product-spec.md UI/UX節「ジャーナル系画面の伝票No入力欄の挙動」）。
+    /// </summary>
     [RelayCommand]
-    private Task LookupOrderSlipByNumberAsync() => LoadOrderForViewingAsync(OrderSlipNumberDisplay);
+    private Task LookupOrderSlipByNumberAsync() => RunBusyAsync(async () =>
+    {
+        if (string.IsNullOrWhiteSpace(OrderSlipNumberDisplay))
+        {
+            RequestFocus("OrderDate");
+            return;
+        }
+
+        await LoadOrderForViewingAsync(OrderSlipNumberDisplay);
+    });
 
     /// <summary>
     /// 既存受注を表示専用で読み込む。内容の訂正保存には対応しない（クラス冒頭の注記参照）ため、
@@ -510,6 +529,7 @@ public partial class OrderEntryViewModel(
         RenumberLines();
         RaiseTotalsChanged();
         StatusMessage = $"受注No. {orderSlipNumber} を読み込みました（表示専用。内容の訂正は未対応）。";
+        RequestFocus("OrderDate");
     }
 
     // ── 保存 ─────────────────────────────────────────────────

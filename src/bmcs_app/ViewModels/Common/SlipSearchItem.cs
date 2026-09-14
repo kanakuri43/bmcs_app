@@ -1,4 +1,5 @@
 using System.Globalization;
+using bmcs_app.Application.Billing;
 using bmcs_app.Application.Order;
 using bmcs_app.Application.Sales;
 using bmcs_app.Converters;
@@ -31,6 +32,18 @@ public sealed record SlipSearchItem(
         hit.CustomerName,
         hit.TotalAmount,
         Display(hit.OrderStatus));
+
+    /// <summary>
+    /// 宛名（都度書き換え。C-9・2026-09-10確定）が得意先名と異なる場合はキーワード検索できるよう
+    /// 得意先名欄に併記する（学校のクラス・先生単位などの宛名で探せるようにするため）。
+    /// </summary>
+    public static SlipSearchItem FromDetailInvoiceHit(DetailInvoiceHit hit) => new(
+        hit.DetailInvoiceNumber,
+        hit.IssueDate.ToString("yyyy/MM/dd"),
+        hit.CustomerCode,
+        hit.AddresseeName == hit.CustomerName ? hit.CustomerName : $"{hit.CustomerName}（{hit.AddresseeName}）",
+        hit.TotalAmount,
+        Display(hit.InvoiceStatus));
 
     private static string Display(object value) =>
         (string)EnumDisplay.Convert(value, typeof(string), null, CultureInfo.CurrentCulture);

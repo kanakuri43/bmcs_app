@@ -59,11 +59,13 @@ public partial class SalesEntryViewModel(
     public partial string SlipDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
 
     /// <summary>
-    /// 売上No.欄。新規時は「（自動採番）」を表示するのみ。既存伝票の訂正・取消（TODO.md 5-6）では
+    /// 売上No.欄。新規時は空欄（Watermarkで「自動採番」を案内）。既存伝票の訂正・取消（TODO.md 5-6）では
     /// 番号を直接入力して <c>Return</c> で読み込む、または <c>Space</c> で検索モーダルを開ける。
+    /// 空欄のまま <c>Return</c> は新規登録モードとして次項目へフォーカス移動する
+    /// （docs/product-spec.md UI/UX節「ジャーナル系画面の伝票No入力欄の挙動」）。
     /// </summary>
     [ObservableProperty]
-    public partial string SalesSlipNumberDisplay { get; set; } = "（自動採番）";
+    public partial string SalesSlipNumberDisplay { get; set; } = string.Empty;
 
     /// <summary>受注No.欄（TODO.md 5-3）。<c>Space</c> で受注検索モーダル、<c>Return</c> で直接読込。</summary>
     [ObservableProperty]
@@ -443,7 +445,7 @@ public partial class SalesEntryViewModel(
         CustomerName = string.Empty;
         CustomerTaxUnitDisplay = string.Empty;
         SlipDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
-        SalesSlipNumberDisplay = "（自動採番）";
+        SalesSlipNumberDisplay = string.Empty;
         OrderSlipNumberQuery = string.Empty;
         BillingStatusDisplay = "未請求";
         SettlementStatusDisplay = "未消込";
@@ -591,8 +593,21 @@ public partial class SalesEntryViewModel(
         }
     }
 
+    /// <summary>
+    /// 受注No.欄で Return を押したときの挙動。空欄なら次項目（得意先）へフォーカス移動するのみ。
+    /// 入力済みなら受注の残数量を明細行へ転記する（docs/product-spec.md UI/UX節参照）。
+    /// </summary>
     [RelayCommand]
-    private Task LookupOrderSlipByNumberAsync() => LoadOrderIntoLinesAsync(OrderSlipNumberQuery);
+    private Task LookupOrderSlipByNumberAsync() => RunBusyAsync(async () =>
+    {
+        if (string.IsNullOrWhiteSpace(OrderSlipNumberQuery))
+        {
+            RequestFocus("CustomerCode");
+            return;
+        }
+
+        await LoadOrderIntoLinesAsync(OrderSlipNumberQuery);
+    });
 
     private async Task LoadOrderIntoLinesAsync(string orderSlipNumber)
     {
@@ -662,6 +677,7 @@ public partial class SalesEntryViewModel(
         RenumberLines();
         OrderSlipNumberQuery = orderSlipNumber;
         StatusMessage = $"受注No. {orderSlipNumber} を読み込みました（残数量を転記）。";
+        RequestFocus("CustomerCode");
     }
 
     private SlipLineViewModel AppendNewLine()
@@ -743,8 +759,22 @@ public partial class SalesEntryViewModel(
         }
     }
 
+    /// <summary>
+    /// 売上No.欄で Return を押したときの挙動（docs/product-spec.md UI/UX節「ジャーナル系画面の
+    /// 伝票No入力欄の挙動」）。空欄なら新規登録モードとして次項目（売上日付）へフォーカス移動するのみ。
+    /// 入力済みなら既存伝票の訂正・取消として読み込む。
+    /// </summary>
     [RelayCommand]
-    private Task LookupSalesSlipByNumberAsync() => LoadSalesSlipForCorrectionAsync(SalesSlipNumberDisplay);
+    private Task LookupSalesSlipByNumberAsync() => RunBusyAsync(async () =>
+    {
+        if (string.IsNullOrWhiteSpace(SalesSlipNumberDisplay))
+        {
+            RequestFocus("SlipDate");
+            return;
+        }
+
+        await LoadSalesSlipForCorrectionAsync(SalesSlipNumberDisplay);
+    });
 
     private async Task LoadSalesSlipForCorrectionAsync(string salesSlipNumber)
     {
@@ -824,6 +854,7 @@ public partial class SalesEntryViewModel(
         StatusMessage = lockResult.IsLocked
             ? $"売上No. {salesSlipNumber} を読み込みました（編集不可: {lockResult.Reason}）"
             : $"売上No. {salesSlipNumber} を読み込みました。";
+        RequestFocus("SlipDate");
     }
 
     [RelayCommand(CanExecute = nameof(CanDeleteSlip))]

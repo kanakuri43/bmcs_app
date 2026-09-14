@@ -20,7 +20,7 @@
         <KeyBinding Key="F10" Command="{Binding IssueCommand}" />
     </mah:MetroWindow.InputBindings>
 
-    <Grid>
+    <Grid beh:EnterKeyNavigationBehavior.IsEnabled="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" /> <!-- ToolBar -->
             <RowDefinition Height="Auto" /> <!-- ヘッダー -->
@@ -61,19 +61,22 @@
                     <TextBox Grid.Column="1"
                              Style="{StaticResource DateTextBoxStyle}"
                              IsReadOnly="{Binding IsExistingLoaded}"
+                             beh:FocusBehavior.FocusKey="IssueDate"
                              Text="{Binding IssueDateText, UpdateSourceTrigger=LostFocus}" />
 
                     <TextBlock Grid.Column="3" Text="請求書No." VerticalAlignment="Center" />
                     <TextBox x:Name="DetailInvoiceNumberBox"
                              Grid.Column="4"
-                             beh:InitialFocusBehavior.IsInitialFocus="True"
+                             beh:FocusBehavior.IsInitialFocus="True"
                              Text="{Binding DetailInvoiceNumberQuery, UpdateSourceTrigger=PropertyChanged}"
-                             mah:TextBoxHelper.Watermark="自動採番（既存分はEnterで読込）"
+                             mah:TextBoxHelper.Watermark="自動採番（Space検索、既存分はEnterで読込）"
                              mah:TextBoxHelper.ClearTextButton="True"
                              MaxLength="20"
                              HorizontalAlignment="Left"
-                             Width="200">
+                             Width="200"
+                             ToolTip="既存の明細請求書No.を入力してEnterで読み込む（読み取り専用表示）。Spaceで検索モーダルを開く">
                         <TextBox.InputBindings>
+                            <KeyBinding Key="Space"  Command="{Binding OpenDetailInvoiceSearchCommand}" />
                             <KeyBinding Key="Return" Command="{Binding LookupCommand}" />
                         </TextBox.InputBindings>
                     </TextBox>

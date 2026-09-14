@@ -804,3 +804,82 @@ EF Coreの例外型を漏らさない」と規定しているが、`BillingClosi
   存在しない社員コード（`NOSUCH`）起動時は権限レベル0・警告メッセージ・メニュー非表示を確認。
   起動時引数なしでは開発用フォールバック（`EMP001`）が効くことを確認。全メニュー項目
   （10画面）をクリックしてそれぞれ対応する画面が開くことを確認済み。
+
+---
+
+## 15. ジャーナル系画面の伝票No入力欄の挙動を仕様化・実装（2026-09-14実装）
+
+`docs/product-spec.md` UI/UX節に「ジャーナル系画面の伝票No入力欄の挙動」を追記し、実装済みの
+3画面（売上入力・受注入力・明細請求書発行）を合わせた。入金入力は未実装のため対象外。
+
+### 15-1. 既存実装の不具合
+
+売上入力・受注入力は伝票No欄の既定値が`"（自動採番）"`という**実テキスト**だった
+（Watermarkは別途「自動採番（Space検索）」を設定済みだったが、実テキストに隠れて効いていなかった）。
+このため起動直後に何も入力せず`Enter`を押すと、その文字列自体を伝票Noとして検索し
+「売上No.「（自動採番）」が見つかりません。」という誤ったエラーになっていた。両画面とも
+既定値を`string.Empty`に変更した。
+
+明細請求書発行の`LookupAsync`は、番号が見つからない場合に`ClearForm()`を呼んで入力済みの
+得意先・宛名・明細を全部破棄していた。仕様「該当Noが無ければエラー表示のみ（新規登録モードへは
+進まない）」に反するため、`ClearForm()`呼び出しを削除しエラーメッセージ表示のみにした。
+
+### 15-2. フォーカス移動は ViewModel 起点の1機構に統一
+
+`EnterKeyNavigationBehavior`（Enterをタブ相当として扱う既存の添付ビヘイビア）は変更していない。
+「Enterに対する`KeyBinding`を持つTextBoxでは譲る」というガードにCanExecute判定を足す案を検討したが、
+`[RelayCommand]`が生成する`AsyncRelayCommand`は既定で実行中`CanExecute()`がfalseを返すため、
+非同期Lookupの実行中にEnterを二度押すとフォーカスが勝手に飛ぶ誤爆が起きる。しかもこのビヘイビアは
+14画面に適用済みで、得意先コード欄・商品コード欄など無関係な欄にまで波及するため却下した。
+
+代わりに`ViewModelBase`へ`FocusRequested`イベント（`RequestFocus(string focusKey)`）を追加し、
+`Behaviors/InitialFocusBehavior.cs`を`FocusBehavior.cs`にリネームして`FocusKey`添付プロパティを
+持たせた。伝票No欄で空欄`Enter`／読込成功の両方から同じ`RequestFocus(key)`を呼び、対応する
+`FocusKey`を持つ入力欄（売上入力→`"SlipDate"`、受注入力→`"OrderDate"`、明細請求書発行→
+`"IssueDate"`）へフォーカスを移す。3画面ともXAMLの宣言順が「日付→伝票No」のため、
+`MoveFocus(FocusNavigationDirection.Next)`では日付欄に戻れない（タブ順の都合で別の欄に飛ぶ）。
+明示的なキー指定にしたのはこのため。
+
+売上入力の受注No.欄（受注からの売上確定、TODO.md 5-3）も同じパターンとし、
+`FocusKey="CustomerCode"`（得意先コード欄）へ移動する。
+
+**例外**: 明細請求書発行で既存分を読み込んだ場合（`IsExistingLoaded = true`）は請求日付・得意先・
+宛名がすべて`IsReadOnly`になるため、フォーカスを請求書No欄に留める（`RequestFocus`を呼ばない）。
+
+### 15-3. 明細請求書の検索モーダルを新規追加
+
+明細請求書発行画面には`Space`キーでの伝票検索ダイアログが存在しなかった。既存の汎用検索モーダル
+（`Views/Common/SlipSearchDialog.xaml`）に相乗りする形で追加した。
+
+- `SlipSearchTarget`に`DetailInvoice`を追加。
+- `DetailInvoiceService`（採番・発行・取消のコマンドサービス）に検索を足すと`SlipNumberService`等の
+  依存一式が付いてくるため、`SalesQueryService`/`OrderQueryService`と対称な
+  `DetailInvoiceQueryService.SearchAsync`を新設した（読み取り専用）。
+- 都度得意先は学校のクラス・先生単位など宛名（`AddresseeName`）で識別することが多い
+  （C-9・2026-09-10確定）ため、**宛名でも検索できるようにした**。`SlipSearchItem`の得意先名欄に
+  得意先名と宛名が異なる場合`"得意先名（宛名）"`の形で併記し、既存のキーワード一致ロジックを
+  変更せずに宛名検索を成立させている。
+- 取消済み（`DetailInvoiceStatus.Cancelled`）も検索結果に含める（`GetByNumberAsync`と同じ扱い）。
+- `EnumDisplayConverter`に`DetailInvoiceStatus`の日本語表示（発行済／取消済）を追加した
+  （既存は無変換で英語がそのまま表示されていた）。
+- 明細請求書発行画面のルート`Grid`に`EnterKeyNavigationBehavior.IsEnabled="True"`を追加した
+  （他の2画面と揃え、請求日付欄でEnter確定できるようにする副次効果もある）。
+
+### 15-4. 今回は直さなかった課題
+
+**受注入力画面は既存受注を読み込むと`IsSaved = true`で保存だけ封じるが、各入力欄は編集可能な
+まま**（読み取り専用表示という説明はコメント上のみで、`IsReadOnly`バインドが実装されていない）。
+今回のフォーカス移動追加により、この「編集できるのに保存できない」状態へ利用者を誘導する形になる。
+表示専用化（各TextBoxへの`IsReadOnly="{Binding IsSaved}"`等の追加）は本タスクの範囲外としたため、
+別タスクで対応する。
+
+### 検証方法
+
+- 単体テスト: `bmcs_app.Application.Tests`に`DetailInvoiceQueryServiceTests`を追加
+  （宛名検索・取消済みが結果に含まれることを開発用ライブDBで確認）。既存209+70件は無影響
+  （全279件成功）。
+- ビルド: `dotnet build`が警告・エラーなしで通ることを確認（`FocusBehavior`リネームのXAML参照
+  漏れが無いこと含む）。
+- 手動確認: 3画面それぞれで、起動直後の伝票No欄フォーカス／空欄`Enter`での次項目移動／
+  存在する伝票Noの読込と移動先／存在しない伝票Noでのエラー表示（データを消さないこと）／
+  `Space`での検索モーダル起動、を確認する（自動UIテストが無いため今後の実機確認が必要）。
