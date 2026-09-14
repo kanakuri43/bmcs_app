@@ -255,6 +255,182 @@ public class DetailInvoiceServiceTests(DevDatabaseFixture fixture) : IClassFixtu
             () => service.IssueAsync("CUS001", "宛名", new DateOnly(2025, 7, 10), [("__NOTEXIST", (short)1)]));
     }
 
+    [Fact]
+    public async Task 取消すると連携行が消え売上が未請求に戻り同じ売上を再度請求できる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+
+        await InsertCustomerAsync(dbContext, CustomerCode);
+
+        var slip = "__TSTDIV_CANCEL1";
+        dbContext.Sales.Add(NewSalesLine(CustomerCode, slip, 1, new DateOnly(2025, 7, 1), 1m, 110m, TaxCategory.Standard, 10m, RoundingType.Floor));
+        await dbContext.SaveChangesAsync();
+
+        string? secondInvoiceNumber = null;
+        try
+        {
+            var issued = await service.IssueAsync(CustomerCode, "宛名", new DateOnly(2025, 7, 10), [(slip, (short)1)]);
+
+            var candidatesAfterIssue = await service.GetCandidatesAsync(CustomerCode);
+            Assert.DoesNotContain(candidatesAfterIssue, c => c.SalesSlipNumber == slip);
+
+            var cancelled = await service.CancelAsync(issued.DetailInvoiceNumber);
+
+            Assert.Equal(DetailInvoiceStatus.Cancelled, cancelled.InvoiceStatus);
+            Assert.NotNull(cancelled.CancelledAt);
+            Assert.NotNull(cancelled.CancelledBy);
+            Assert.False(cancelled.IsDeleted);
+
+            var persistedHeader = await dbContext.DetailInvoices.AsNoTracking()
+                .SingleAsync(d => d.DetailInvoiceNumber == issued.DetailInvoiceNumber);
+            Assert.Equal(DetailInvoiceStatus.Cancelled, persistedHeader.InvoiceStatus);
+
+            var remainingLinks = await dbContext.DetailInvoiceSalesLines.AsNoTracking()
+                .Where(l => l.DetailInvoiceNumber == issued.DetailInvoiceNumber)
+                .ToListAsync();
+            Assert.Empty(remainingLinks);
+
+            var persistedSales = await dbContext.Sales.AsNoTracking()
+                .SingleAsync(s => s.SalesSlipNumber == slip);
+            Assert.Equal(BillingLinkStatus.Unbilled, persistedSales.BillingStatus);
+
+            var viewAfterCancel = await service.GetByNumberAsync(issued.DetailInvoiceNumber);
+            Assert.NotNull(viewAfterCancel);
+            Assert.Empty(viewAfterCancel!.Lines);
+
+            var candidatesAfterCancel = await service.GetCandidatesAsync(CustomerCode);
+            Assert.Contains(candidatesAfterCancel, c => c.SalesSlipNumber == slip);
+
+            var reissued = await service.IssueAsync(CustomerCode, "宛名2", new DateOnly(2025, 7, 11), [(slip, (short)1)]);
+            secondInvoiceNumber = reissued.DetailInvoiceNumber;
+            Assert.NotEqual(issued.DetailInvoiceNumber, reissued.DetailInvoiceNumber);
+        }
+        finally
+        {
+            if (secondInvoiceNumber is not null)
+            {
+                await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                    $"DELETE FROM dbo.detail_invoice_sales_line WHERE detail_invoice_number = {secondInvoiceNumber}");
+                await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                    $"DELETE FROM dbo.detail_invoice WHERE detail_invoice_number = {secondInvoiceNumber}");
+            }
+            await CleanupAsync(dbContext, [CustomerCode], [slip]);
+        }
+    }
+
+    [Fact]
+    public async Task 取消済みを再度取消すと例外になる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+
+        await InsertCustomerAsync(dbContext, CustomerCode);
+
+        var slip = "__TSTDIV_CANCEL2";
+        dbContext.Sales.Add(NewSalesLine(CustomerCode, slip, 1, new DateOnly(2025, 7, 1), 1m, 110m, TaxCategory.Standard, 10m, RoundingType.Floor));
+        await dbContext.SaveChangesAsync();
+
+        try
+        {
+            var issued = await service.IssueAsync(CustomerCode, "宛名", new DateOnly(2025, 7, 10), [(slip, (short)1)]);
+            await service.CancelAsync(issued.DetailInvoiceNumber);
+
+            await Assert.ThrowsAsync<DetailInvoiceException>(() => service.CancelAsync(issued.DetailInvoiceNumber));
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, [CustomerCode], [slip]);
+        }
+    }
+
+    [Fact]
+    public async Task 消込済みの売上明細行を含むと取消できない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+
+        await InsertCustomerAsync(dbContext, CustomerCode);
+
+        var slip = "__TSTDIV_CANCEL3";
+        dbContext.Sales.Add(NewSalesLine(CustomerCode, slip, 1, new DateOnly(2025, 7, 1), 1m, 110m, TaxCategory.Standard, 10m, RoundingType.Floor));
+        await dbContext.SaveChangesAsync();
+
+        try
+        {
+            var issued = await service.IssueAsync(CustomerCode, "宛名", new DateOnly(2025, 7, 10), [(slip, (short)1)]);
+
+            var salesLine = await dbContext.Sales.SingleAsync(s => s.SalesSlipNumber == slip);
+            salesLine.SettlementStatus = SettlementStatus.FullySettled;
+            await dbContext.SaveChangesAsync();
+
+            await Assert.ThrowsAsync<DetailInvoiceException>(() => service.CancelAsync(issued.DetailInvoiceNumber));
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, [CustomerCode], [slip]);
+        }
+    }
+
+    [Fact]
+    public async Task 明細入金が充当されていると取消できない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+
+        await InsertCustomerAsync(dbContext, CustomerCode);
+
+        var slip = "__TSTDIV_CANCEL4";
+        dbContext.Sales.Add(NewSalesLine(CustomerCode, slip, 1, new DateOnly(2025, 7, 1), 1m, 110m, TaxCategory.Standard, 10m, RoundingType.Floor));
+        await dbContext.SaveChangesAsync();
+
+        var detailReceiptNumber = "__TSTDIV_DRC1";
+        try
+        {
+            var issued = await service.IssueAsync(CustomerCode, "宛名", new DateOnly(2025, 7, 10), [(slip, (short)1)]);
+
+            var now = DateTime.Now;
+            dbContext.DetailReceipts.Add(new DetailReceipt
+            {
+                DetailReceiptNumber = detailReceiptNumber,
+                LineNumber = 1,
+                ReceiptDate = new DateOnly(2025, 7, 15),
+                CustomerCode = CustomerCode,
+                CustomerName = "テスト用都度得意先",
+                ReceiptMethod = ReceiptMethod.BankTransfer,
+                ReceiptAmount = 110m,
+                TargetType = DetailReceiptTargetType.DetailInvoice,
+                TargetDetailInvoiceNumber = issued.DetailInvoiceNumber,
+                AllocatedAmount = 110m,
+                FeeAdjustmentAmount = 0m,
+                AllocationStatus = AllocationStatus.FullyAllocated,
+                CreatedBy = "TEST",
+                CreatedAt = now,
+                UpdatedBy = "TEST",
+                UpdatedAt = now,
+            });
+            await dbContext.SaveChangesAsync();
+
+            var ex = await Assert.ThrowsAsync<DetailInvoiceException>(() => service.CancelAsync(issued.DetailInvoiceNumber));
+            Assert.Contains(detailReceiptNumber, ex.Message);
+        }
+        finally
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.detail_receipt WHERE detail_receipt_number = {detailReceiptNumber}");
+            await CleanupAsync(dbContext, [CustomerCode], [slip]);
+        }
+    }
+
+    [Fact]
+    public async Task 存在しない明細請求書番号を取消すと例外になる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (_, service) = Resolve(scope);
+
+        await Assert.ThrowsAsync<DetailInvoiceException>(() => service.CancelAsync("__TSTDIV_NOTEXIST"));
+    }
+
     private static (BmcsDbContext DbContext, DetailInvoiceService Service) Resolve(AsyncServiceScope scope) => (
         scope.ServiceProvider.GetRequiredService<BmcsDbContext>(),
         scope.ServiceProvider.GetRequiredService<DetailInvoiceService>());

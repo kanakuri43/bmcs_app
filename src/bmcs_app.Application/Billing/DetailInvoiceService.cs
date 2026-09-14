@@ -214,6 +214,104 @@ public class DetailInvoiceService(
     }
 
     /// <summary>
+    /// 明細請求書を取消す（TODO.md 6-4）。連携行（<c>detail_invoice_sales_line</c>）を物理削除し、
+    /// 連携先の売上明細行を未請求へ戻す。連携行が消えることで<see cref="BuildCandidateQuery"/>の
+    /// 「どの明細請求書にも連携していない」条件が再び真になり、同じ売上を再度請求できる
+    /// （完了条件）。ヘッダー（<c>detail_invoice</c>）は物理削除せず<c>invoice_status</c>を
+    /// 取消済にするだけに留める（締め解除と同じ非破壊方式。<c>docs/product-spec.md</c>）。
+    /// </summary>
+    /// <exception cref="DetailInvoiceException">
+    /// 明細請求書が存在しない、既に取消済み、連携先の売上明細行に消込済み（一部・完了とも）の行が
+    /// 含まれる、またはこの明細請求書を指定した明細入金が存在する場合。
+    /// </exception>
+    public async Task<DetailInvoice> CancelAsync(
+        string detailInvoiceNumber, CancellationToken cancellationToken = default)
+    {
+        var employeeCode = currentEmployeeContext.EmployeeCode;
+        var now = DateTime.Now;
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var header = await dbContext.DetailInvoices
+            .FirstOrDefaultAsync(d => d.DetailInvoiceNumber == detailInvoiceNumber && !d.IsDeleted, cancellationToken);
+        if (header is null)
+        {
+            throw new DetailInvoiceException($"明細請求書が見つかりません。DetailInvoiceNumber={detailInvoiceNumber}");
+        }
+
+        if (header.InvoiceStatus == DetailInvoiceStatus.Cancelled)
+        {
+            throw new DetailInvoiceException("既に取消済みです。");
+        }
+
+        // Phase 7-4（明細入金）は未実装だが、テーブル・FK・seedデータは既に存在する
+        // （docs/database-schema.md 2.11節）。取消すると入金の充当先が宙に浮くため、
+        // 7-4の実装を待たずにここで塞ぐ。
+        var linkedReceipt = await dbContext.DetailReceipts
+            .AsNoTracking()
+            .Where(r => r.TargetDetailInvoiceNumber == detailInvoiceNumber && !r.IsDeleted)
+            .Select(r => r.DetailReceiptNumber)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (linkedReceipt is not null)
+        {
+            throw new DetailInvoiceException(
+                $"この明細請求書に充当された明細入金（{linkedReceipt}）があるため取消できません。");
+        }
+
+        var links = await dbContext.DetailInvoiceSalesLines
+            .Where(l => l.DetailInvoiceNumber == detailInvoiceNumber)
+            .ToListAsync(cancellationToken);
+
+        var salesKeys = links.Select(l => (l.SalesSlipNumber, l.SalesLineNumber)).ToHashSet();
+        var slipNumbers = links.Select(l => l.SalesSlipNumber).Distinct().ToList();
+        var salesLines = await dbContext.Sales
+            .Where(s => slipNumbers.Contains(s.SalesSlipNumber))
+            .ToListAsync(cancellationToken);
+        salesLines = salesLines.Where(s => salesKeys.Contains((s.SalesSlipNumber, s.LineNumber))).ToList();
+
+        var settledLine = salesLines.FirstOrDefault(s => s.SettlementStatus != SettlementStatus.Unsettled);
+        if (settledLine is not null)
+        {
+            throw new DetailInvoiceException(
+                "入金が消し込まれている売上明細行が含まれるため取消できません。" +
+                $" SalesSlipNumber={settledLine.SalesSlipNumber} LineNumber={settledLine.LineNumber}");
+        }
+
+        header.InvoiceStatus = DetailInvoiceStatus.Cancelled;
+        header.CancelledAt = now;
+        header.CancelledBy = employeeCode;
+        header.UpdatedBy = employeeCode;
+        header.UpdatedAt = now;
+
+        dbContext.DetailInvoiceSalesLines.RemoveRange(links);
+
+        foreach (var line in salesLines)
+        {
+            line.BillingStatus = BillingLinkStatus.Unbilled;
+            line.UpdatedBy = employeeCode;
+            line.UpdatedAt = now;
+        }
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new DetailInvoiceException(
+                "他のユーザーがこの明細請求書を更新しました。再読み込みしてください。", ex);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+
+        logger.LogInformation(
+            "明細請求書を取消しました。DetailInvoiceNumber={DetailInvoiceNumber} 解除した連携行数={LinkCount}",
+            detailInvoiceNumber, links.Count);
+
+        return header;
+    }
+
+    /// <summary>
     /// 明細請求の対象条件（共通業務ルール2・product-spec.md）: 内税明細単位・未削除・消込完了でない・
     /// どの明細請求書にも連携していない。<see cref="GetCandidatesAsync"/>（表示）と
     /// <see cref="IssueAsync"/>（発行時の再確認）の両方から使い、条件を1本にする。

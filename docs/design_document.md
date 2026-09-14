@@ -584,3 +584,65 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
   得意先名・宛名の初期値がすべて正しく表示されることを確認済み。発行操作自体（保存を伴う）は
   共有のseedデータを実機操作で変更することを避け、結合テストで検証済みの内容に委ねた
   （10章の締め解除処理と同じ判断）。
+
+## 12. 明細請求書の取消（Phase 6-4、2026-09-14実装）
+
+11章（発行）と対になる、明細請求書の取消。別画面にはせず、11章の画面（`DetailInvoiceIssueWindow`）
+の「削除 (F8)」（枠のみ用意済みだった）に配線した（2026-09-14ユーザー確認）。C-8が別画面分離を
+要求しているのは締め解除・月次締め解除（管理者権限のみの操作）に限られ、明細請求書の取消は
+対象に含まれないため。
+
+### 12-1. 連携行は物理削除する
+
+`docs/database-schema.md` 2.14節のとおり、取消では`detail_invoice_sales_line`の該当行を
+**物理削除**する（このテーブルが`row_version`を持たないのは行の追加・削除しか発生しない前提
+のため）。ヘッダー（`detail_invoice`）は物理削除せず`invoice_status`を取消済（`2`）にし
+`cancelled_at`／`cancelled_by`を立てるだけに留める（締め解除と同じ非破壊方式）。
+
+連携行を削除すると、`DetailInvoiceService.BuildCandidateQuery`（11-1節）の
+「どの明細請求書にも連携していない」という条件が自動的に真に戻るため、対象の売上明細行は
+何もしなくても次回の候補に再び現れる。`UQ_detail_invoice_sales_line_sales_line`も解放される
+ため、同じ行を新しい明細請求書へ再発行できる（完了条件「取消後に同じ売上を再度請求できる」）。
+副作用として、取消済みの明細請求書を`GetByNumberAsync`で読み込むと明細行は0件になる
+（連携行自体が残っていないため）。ヘッダーの確定金額（`SalesAmount`／`TaxAmount`／`TotalAmount`
+等）は取消後もスナップショットとして残るため、金額の追跡はヘッダー側で行う。
+
+### 12-2. 取消の拒否条件（二重取消の防止に加えて2つ）
+
+締め解除（10章）と異なり、明細請求書には繰越残高の概念が無いため**締め順序の制約は無い**
+（どの明細請求書も他の明細請求書の集計に依存しない）。一方で明細請求書は入金と直接結びつくため、
+以下の場合は取消を拒否する。
+
+1. **連携先の売上明細行に消込済み（一部消込・消込完了のいずれか）の行が含まれる場合。**
+   取消して未請求に戻すと、入金済みなのに未請求という業務上あり得ない状態になるため。
+2. **この明細請求書を指定した明細入金（`detail_receipt.target_type=2`）が存在する場合。**
+   Phase 7-4（明細入金）は本タスク時点では未実装だが、テーブル・FK
+   （`FK_detail_receipt_detail_invoice`）・開発DBのseedデータ（`DRC002`→`DIV001`）は既に
+   存在する。取消すると入金の充当先が宙に浮くため、7-4の実装を待たずにここで塞ぐ
+   （7-4着手時に本チェックの妥当性を再確認する）。
+
+排他制御はヘッダーの`RowVersion`（`DetailInvoice : AuditableEntity`）に委ね、`SaveChangesAsync`の
+`DbUpdateConcurrencyException`を`DetailInvoiceException`へ変換する。複数明細行の伝票向けの
+`SlipConcurrencyGuard`（`docs/architecture.md` 9章）は、連携行が単純な追加・削除しかしない
+本ユースケースには使わない。
+
+### 12-3. 実装
+
+- `DetailInvoiceService.CancelAsync`（11章の`IssueAsync`と同じクラス。DI登録済みのため追加登録は
+  不要）。ヘッダー取得→取消済みチェック→明細入金ガード→連携行・売上行取得→消込済みチェック→
+  ヘッダー更新・連携行削除・売上行の`BillingStatus`復帰→保存、の順で明示トランザクション内で行う。
+- 画面（`DetailInvoiceIssueViewModel`）: 既存分読込時に`LoadedInvoiceStatus`を保持し、
+  取消(F8)は`IsExistingLoaded && LoadedInvoiceStatus == Issued`のときだけ有効（取消済み・新規時は
+  無効）。実行前に`MessageBox`でYes/No確認（締め解除と同じ取消系操作の既定パターン）。
+  成功後は画面を起動直後の状態に戻す（`docs/product-spec.md` UI/UX節「登録後のリセット」）。
+
+### 検証方法
+
+- 結合テスト: `tests/bmcs_app.Application.Tests/Billing/DetailInvoiceServiceTests.cs`に追加した
+  5件。完了条件「取消後に同じ売上を再度請求できる」を、発行→取消→候補への再出現→再発行
+  （別番号が採番される）まで一続きで直接検証。加えて二重取消・存在しない番号・消込済み行を
+  含む場合・明細入金が充当されている場合の拒否を確認。
+- 実機（開発用ライブDB）: 発行済みのseedデータ`DIV001`を読込むと「削除 (F8)」が有効になり、
+  実行すると連携先`SALLIN002`の消込完了と、`DIV001`を指す明細入金`DRC002`の両方を理由に
+  拒否されることを確認した（12-2の2条件が実データで両方成立するケース）。取消済みの
+  seedデータ`DIV002`を読込むと「削除 (F8)」が無効であることも確認した。

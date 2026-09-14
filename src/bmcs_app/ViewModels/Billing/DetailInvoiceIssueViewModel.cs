@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using bmcs_app.Application.Billing;
 using bmcs_app.Application.Master;
 using bmcs_app.Domain.Entities;
@@ -32,7 +33,13 @@ public partial class DetailInvoiceIssueViewModel(
     [NotifyCanExecuteChangedFor(nameof(AddCandidateCommand))]
     [NotifyCanExecuteChangedFor(nameof(RemoveLineCommand))]
     [NotifyCanExecuteChangedFor(nameof(IssueCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
     public partial bool IsExistingLoaded { get; set; }
+
+    /// <summary>読み込んだ既存明細請求書の状態（未読込時はnull）。取消(F8)の有効判定に使う。</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
+    public partial DetailInvoiceStatus? LoadedInvoiceStatus { get; set; }
 
     [ObservableProperty]
     public partial string IssueDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
@@ -66,10 +73,14 @@ public partial class DetailInvoiceIssueViewModel(
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
 
+    private string? _loadedInvoiceNumber;
+
     private bool CanEdit => !IsExistingLoaded;
 
     private bool CanIssue => !IsExistingLoaded && _customer is not null && Lines.Count > 0
         && !string.IsNullOrWhiteSpace(AddresseeName);
+
+    private bool CanCancel => IsExistingLoaded && LoadedInvoiceStatus == DetailInvoiceStatus.Issued;
 
     /// <summary>新規（F3）。画面を起動直後の状態に戻す。</summary>
     [RelayCommand]
@@ -234,6 +245,40 @@ public partial class DetailInvoiceIssueViewModel(
         }
     });
 
+    /// <summary>取消（F8）。発行済みの明細請求書を取消し、紐付いていた売上を未請求へ戻す。</summary>
+    [RelayCommand(CanExecute = nameof(CanCancel))]
+    private Task CancelAsync() => RunBusyAsync(async () =>
+    {
+        if (_loadedInvoiceNumber is null)
+        {
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            $"明細請求書 {_loadedInvoiceNumber}（{CustomerCode} 宛名: {AddresseeName}）を取消しますか？\n" +
+            "取消すると、紐付いていた売上明細行がすべて未請求に戻ります。",
+            "bmcs_app", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            var cancelled = await detailInvoiceService.CancelAsync(_loadedInvoiceNumber);
+            var cancelledNumber = cancelled.DetailInvoiceNumber;
+
+            // 取消後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
+            ClearForm();
+            StatusMessage = $"明細請求書 {cancelledNumber} を取消しました。";
+            NotifyResetToInitialState();
+        }
+        catch (DetailInvoiceException ex)
+        {
+            StatusMessage = $"取消エラー: {ex.Message}";
+        }
+    });
+
     private void ApplyView(DetailInvoiceView view)
     {
         var header = view.Header;
@@ -244,6 +289,7 @@ public partial class DetailInvoiceIssueViewModel(
         CustomerName = header.CustomerName;
         AddresseeName = header.AddresseeName;
         _customer = null;
+        _loadedInvoiceNumber = header.DetailInvoiceNumber;
 
         Candidates.Clear();
         Lines.Clear();
@@ -254,6 +300,7 @@ public partial class DetailInvoiceIssueViewModel(
 
         RaiseTotalsChanged();
         IsExistingLoaded = true;
+        LoadedInvoiceStatus = header.InvoiceStatus;
 
         StatusMessage = header.InvoiceStatus == DetailInvoiceStatus.Cancelled
             ? $"取消済みです（{header.CancelledAt:yyyy/MM/dd HH:mm} {header.CancelledBy}）。"
@@ -268,6 +315,7 @@ public partial class DetailInvoiceIssueViewModel(
         CustomerName = string.Empty;
         AddresseeName = string.Empty;
         _customer = null;
+        _loadedInvoiceNumber = null;
 
         Candidates.Clear();
         Lines.Clear();
@@ -276,6 +324,7 @@ public partial class DetailInvoiceIssueViewModel(
 
         RaiseTotalsChanged();
         IsExistingLoaded = false;
+        LoadedInvoiceStatus = null;
     }
 
     private void RaiseTotalsChanged()
