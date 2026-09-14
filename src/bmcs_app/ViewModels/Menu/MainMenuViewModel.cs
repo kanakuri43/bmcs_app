@@ -7,10 +7,12 @@ using bmcs_app.Services;
 using bmcs_app.ViewModels.Billing;
 using bmcs_app.ViewModels.Master;
 using bmcs_app.ViewModels.Order;
+using bmcs_app.ViewModels.Receipt;
 using bmcs_app.ViewModels.Sales;
 using bmcs_app.Views.Billing;
 using bmcs_app.Views.Master;
 using bmcs_app.Views.Order;
+using bmcs_app.Views.Receipt;
 using bmcs_app.Views.Sales;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -96,6 +98,9 @@ public partial class MainMenuViewModel(
                 break;
             case "detail_invoice_issue":
                 windowService.Show<DetailInvoiceIssueWindow, DetailInvoiceIssueViewModel>();
+                break;
+            case "receipt_entry":
+                windowService.Show<ReceiptEntryWindow, ReceiptEntryViewModel>();
                 break;
             case "customer_master":
                 windowService.Show<CustomerMasterWindow, CustomerMasterViewModel>();

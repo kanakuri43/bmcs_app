@@ -43,8 +43,12 @@ VALUES
     (N'MNU_BILLING_RELEASE', N'MNU_BILLING', N'締め解除処理', 2, 9, N'billing_release', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'MNU_DETAIL_INVOICE', N'MNU_BILLING', N'明細請求書発行', 3, 1, N'detail_invoice_issue', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
 
+    -- 入金
+    (N'MNU_RECEIPT', NULL, N'入金', 3, NULL, NULL, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    (N'MNU_RECEIPT_ENTRY', N'MNU_RECEIPT', N'入金入力', 1, 1, N'receipt_entry', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+
     -- マスタ管理
-    (N'MNU_MASTER', NULL, N'マスタ管理', 3, NULL, NULL, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    (N'MNU_MASTER', NULL, N'マスタ管理', 4, NULL, NULL, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'MNU_CUSTOMER_MASTER', N'MNU_MASTER', N'得意先マスタ', 1, 1, N'customer_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'MNU_PRODUCT_MASTER', N'MNU_MASTER', N'商品マスタ', 2, 1, N'product_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'MNU_EMPLOYEE_MASTER', N'MNU_MASTER', N'社員マスタ', 3, 9, N'employee_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),

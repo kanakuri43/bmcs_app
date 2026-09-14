@@ -9,12 +9,14 @@ using bmcs_app.ViewModels.Common;
 using bmcs_app.ViewModels.Master;
 using bmcs_app.ViewModels.Menu;
 using bmcs_app.ViewModels.Order;
+using bmcs_app.ViewModels.Receipt;
 using bmcs_app.ViewModels.Sales;
 using bmcs_app.Views.Billing;
 using bmcs_app.Views.Common;
 using bmcs_app.Views.Master;
 using bmcs_app.Views.Menu;
 using bmcs_app.Views.Order;
+using bmcs_app.Views.Receipt;
 using bmcs_app.Views.Sales;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -173,6 +175,9 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<DetailInvoiceIssueWindow>();
         builder.Services.AddScoped<DetailInvoiceIssueViewModel>();
+
+        builder.Services.AddScoped<ReceiptEntryWindow>();
+        builder.Services.AddScoped<ReceiptEntryViewModel>();
 
         return builder.Build();
     }

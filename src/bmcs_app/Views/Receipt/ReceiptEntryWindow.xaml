@@ -1,0 +1,255 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Receipt.ReceiptEntryWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:beh="clr-namespace:bmcs_app.Behaviors"
+                 Title="bmcs_app - 入金入力"
+                 Height="680" Width="900"
+                 WindowStartupLocation="CenterScreen"
+                 WindowTransitionsEnabled="False">
+    <!--
+        TODO.md 7-2。締め得意先（請求単位／伝票単位）専用。得意先・入金額を入力すると、確定済み
+        請求へ古い順に自動配分した明細行を自動表示する（画面レイアウト・F-key操作は
+        bmcs_app.Receipt の入金伝票画面を踏襲。技術基盤は本プロジェクトの規約に合わせる）。
+        明細行は自動配分の結果を表示するのみで手動編集はしない。振込手数料差額の入力（7-3）・
+        既存伝票の訂正／取消（7-5）は範囲外のため、取消(F8)は枠のみ用意し無効化する。
+    -->
+    <mah:MetroWindow.InputBindings>
+        <KeyBinding Key="F3"  Command="{Binding NewCommand}" />
+        <KeyBinding Key="F10" Command="{Binding SaveCommand}" />
+    </mah:MetroWindow.InputBindings>
+
+    <Grid beh:EnterKeyNavigationBehavior.IsEnabled="True">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" /> <!-- ToolBar -->
+            <RowDefinition Height="Auto" /> <!-- ヘッダー -->
+            <RowDefinition Height="*" />    <!-- 明細（自動配分プレビュー） -->
+            <RowDefinition Height="Auto" /> <!-- フッター -->
+            <RowDefinition Height="Auto" /> <!-- StatusBar -->
+        </Grid.RowDefinitions>
+
+        <!-- ===== ToolBar ===== -->
+        <ToolBar Grid.Row="0" ToolBarTray.IsLocked="True">
+            <Button Command="{Binding NewCommand}"
+                    Content="新規 (F3)"
+                    ToolTip="新規入金を作成します (F3)" />
+            <Separator />
+            <Button Command="{Binding DeleteSlipCommand}"
+                    Content="取消 (F8)"
+                    IsEnabled="False"
+                    ToolTip="入金の取消・訂正（TODO.md 7-5、未実装）" />
+        </ToolBar>
+
+        <!-- ===== ヘッダー ===== -->
+        <Border Grid.Row="1"
+                Padding="12,8"
+                BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
+                BorderThickness="0,0,0,1"
+                Background="{DynamicResource MahApps.Brushes.Gray10}">
+            <StackPanel>
+
+                <!-- 行1: 入金日付 / 入金No. -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="100" />
+                        <ColumnDefinition Width="24" />
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="入金日付" VerticalAlignment="Center" />
+                    <TextBox Grid.Column="1"
+                             Style="{StaticResource DateTextBoxStyle}"
+                             IsReadOnly="{Binding IsExistingLoaded}"
+                             beh:FocusBehavior.FocusKey="ReceiptDate"
+                             Text="{Binding ReceiptDateText, UpdateSourceTrigger=LostFocus}" />
+
+                    <TextBlock Grid.Column="3" Text="入金No." VerticalAlignment="Center" />
+                    <TextBox x:Name="ReceiptSlipNumberBox"
+                             Grid.Column="4"
+                             beh:FocusBehavior.IsInitialFocus="True"
+                             Text="{Binding ReceiptSlipNumberQuery, UpdateSourceTrigger=PropertyChanged}"
+                             mah:TextBoxHelper.Watermark="自動採番（Space検索、既存分はEnterで読込）"
+                             mah:TextBoxHelper.ClearTextButton="True"
+                             MaxLength="20"
+                             HorizontalAlignment="Left"
+                             Width="240"
+                             ToolTip="既存の入金No.を入力してEnterで読み込む（読み取り専用表示）。Spaceで検索モーダルを開く">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Space"  Command="{Binding OpenReceiptSlipSearchCommand}" />
+                            <KeyBinding Key="Return" Command="{Binding LookupCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                </Grid>
+
+                <!-- 行2: 得意先 -->
+                <Grid Margin="0,6,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="得意先" VerticalAlignment="Center" />
+                    <TextBox x:Name="CustomerCodeBox"
+                             Grid.Column="1"
+                             IsReadOnly="{Binding IsExistingLoaded}"
+                             Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
+                             mah:TextBoxHelper.Watermark="コード（Space検索）">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Space"  Command="{Binding OpenCustomerSearchCommand}" />
+                            <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <TextBox Grid.Column="3"
+                             Text="{Binding CustomerName, Mode=OneWay}"
+                             IsReadOnly="True"
+                             IsTabStop="False"
+                             Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                </Grid>
+
+                <!-- 行3: 入金方法 / 入金先口座 -->
+                <Grid Margin="0,6,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="24" />
+                        <ColumnDefinition Width="90" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="入金方法" VerticalAlignment="Center" />
+                    <ComboBox Grid.Column="1"
+                              IsEnabled="{Binding IsEditable}"
+                              ItemsSource="{Binding ReceiptMethodOptions}"
+                              SelectedValue="{Binding ReceiptMethod}"
+                              SelectedValuePath="Value"
+                              DisplayMemberPath="Display" />
+
+                    <TextBlock Grid.Column="3" Text="入金先口座" VerticalAlignment="Center"
+                               Visibility="{Binding IsBankTransferSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <ComboBox Grid.Column="4"
+                              IsEnabled="{Binding IsEditable}"
+                              Visibility="{Binding IsBankTransferSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                              ItemsSource="{Binding BankAccounts}"
+                              SelectedValue="{Binding BankAccountCode}"
+                              SelectedValuePath="BankAccountCode"
+                              DisplayMemberPath="BankName" />
+                </Grid>
+
+                <!-- 行4: 入金額 -->
+                <Grid Margin="0,6,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="160" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="入金額" VerticalAlignment="Center" />
+                    <TextBox Grid.Column="1"
+                             IsReadOnly="{Binding IsExistingLoaded}"
+                             Text="{Binding ReceiptAmountText, UpdateSourceTrigger=LostFocus}"
+                             TextAlignment="Right"
+                             FontWeight="SemiBold"
+                             ToolTip="入金額を入力すると確定済み請求へ古い順に自動配分します" />
+                </Grid>
+
+                <!-- 行5: 摘要 -->
+                <Grid Margin="0,6,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="摘要" VerticalAlignment="Center" />
+                    <TextBox Grid.Column="1"
+                             IsReadOnly="{Binding IsExistingLoaded}"
+                             Text="{Binding SlipRemarks, UpdateSourceTrigger=PropertyChanged}"
+                             mah:TextBoxHelper.Watermark="（任意）"
+                             MaxLength="200" />
+                </Grid>
+
+            </StackPanel>
+        </Border>
+
+        <!-- ===== 明細（自動配分プレビュー・読み取り専用） ===== -->
+        <Grid Grid.Row="2" Margin="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="請求への充当（古い順に自動配分。手動編集不可）" FontWeight="Bold" Margin="0,0,0,4" />
+
+            <ListView Grid.Row="1" ItemsSource="{Binding Lines}">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="請求No." Width="120">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding BillingNumber, TargetNullValue=（前受・過入金）}" />
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="請求日" Width="100">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding BillingDate, StringFormat={}{0:yyyy/MM/dd}, TargetNullValue=''}" />
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="未収額" Width="110">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Outstanding, StringFormat={}{0:N0}, TargetNullValue=''}" HorizontalAlignment="Right" />
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="充当額" Width="110" DisplayMemberBinding="{Binding AllocatedAmount, StringFormat={}{0:N0}}" />
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Grid>
+
+        <!-- ===== フッター ===== -->
+        <Grid Grid.Row="3" Margin="8,0,8,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,16,0" VerticalAlignment="Center">
+                <StackPanel Margin="0,0,16,0">
+                    <TextBlock Text="《請求への充当額》" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Text="{Binding AllocatedToBillingTotal, StringFormat={}{0:N0}}" HorizontalAlignment="Right" FontWeight="Bold" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="《前受・過入金》" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Text="{Binding UnallocatedTotal, StringFormat={}{0:N0}}"
+                               HorizontalAlignment="Right" FontWeight="Bold" FontSize="16"
+                               Foreground="{DynamicResource MahApps.Brushes.Accent}" />
+                </StackPanel>
+            </StackPanel>
+
+            <Button Grid.Column="2"
+                    Content="保存 (F10)"
+                    Command="{Binding SaveCommand}"
+                    ToolTip="入金を保存します (F10)"
+                    Padding="16,6"
+                    Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" />
+        </Grid>
+
+        <!-- ===== StatusBar ===== -->
+        <StatusBar Grid.Row="4">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" />
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock Text="処理中..." Foreground="OrangeRed"
+                           Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</mah:MetroWindow>

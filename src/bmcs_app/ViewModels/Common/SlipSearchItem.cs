@@ -1,6 +1,7 @@
 using System.Globalization;
 using bmcs_app.Application.Billing;
 using bmcs_app.Application.Order;
+using bmcs_app.Application.Receipt;
 using bmcs_app.Application.Sales;
 using bmcs_app.Converters;
 
@@ -44,6 +45,14 @@ public sealed record SlipSearchItem(
         hit.AddresseeName == hit.CustomerName ? hit.CustomerName : $"{hit.CustomerName}（{hit.AddresseeName}）",
         hit.TotalAmount,
         Display(hit.InvoiceStatus));
+
+    public static SlipSearchItem FromReceiptHit(ReceiptHit hit) => new(
+        hit.ReceiptSlipNumber,
+        hit.ReceiptDate.ToString("yyyy/MM/dd"),
+        hit.CustomerCode,
+        hit.CustomerName,
+        hit.ReceiptAmount,
+        Display(hit.AllocationStatus));
 
     private static string Display(object value) =>
         (string)EnumDisplay.Convert(value, typeof(string), null, CultureInfo.CurrentCulture);

@@ -58,6 +58,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<DetailInvoiceService>();
         services.AddScoped<DetailInvoiceQueryService>();
         services.AddScoped<SettlementService>();
+        services.AddScoped<ReceiptEntryService>();
+        services.AddScoped<ReceiptQueryService>();
 
         return services;
     }

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using bmcs_app.Application.Billing;
 using bmcs_app.Application.Order;
+using bmcs_app.Application.Receipt;
 using bmcs_app.Application.Sales;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -8,14 +9,16 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Common;
 
 /// <summary>
-/// 伝票検索モーダル（TODO.md 5-3・5-5・5-6の共通前提）。受注No.検索・売上No.検索・明細請求書No.検索
-/// すべてに使う（<see cref="CustomerSearchDialogViewModel"/> と同じ、全件ロード後にメモリ絞り込みする作り）。
-/// 選択された**伝票番号**だけを返す。伝票実体の読み込みは呼び出し元が自分のクエリサービスで行う。
+/// 伝票検索モーダル（TODO.md 5-3・5-5・5-6の共通前提）。受注No.検索・売上No.検索・明細請求書No.検索・
+/// 入金No.検索すべてに使う（<see cref="CustomerSearchDialogViewModel"/> と同じ、全件ロード後に
+/// メモリ絞り込みする作り）。選択された**伝票番号**だけを返す。伝票実体の読み込みは呼び出し元が
+/// 自分のクエリサービスで行う。
 /// </summary>
 public partial class SlipSearchDialogViewModel(
     SalesQueryService salesQueryService,
     OrderQueryService orderQueryService,
-    DetailInvoiceQueryService detailInvoiceQueryService)
+    DetailInvoiceQueryService detailInvoiceQueryService,
+    ReceiptQueryService receiptQueryService)
     : DialogViewModelBase<string>
 {
     private List<SlipSearchItem> _allItems = [];
@@ -44,6 +47,9 @@ public partial class SlipSearchDialogViewModel(
                 .ToList(),
             SlipSearchTarget.DetailInvoice => (await detailInvoiceQueryService.SearchAsync(keyword: null))
                 .Select(SlipSearchItem.FromDetailInvoiceHit)
+                .ToList(),
+            SlipSearchTarget.Receipt => (await receiptQueryService.SearchAsync(keyword: null))
+                .Select(SlipSearchItem.FromReceiptHit)
                 .ToList(),
             _ => throw new ArgumentOutOfRangeException(nameof(Target), Target, null),
         };

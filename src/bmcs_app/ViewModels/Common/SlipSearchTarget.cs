@@ -6,4 +6,5 @@ public enum SlipSearchTarget
     Sales,
     Order,
     DetailInvoice,
+    Receipt,
 }

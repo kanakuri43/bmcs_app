@@ -6,7 +6,7 @@ namespace bmcs_app.Converters;
 
 /// <summary>
 /// TaxUnit/RoundingType/TaxCategory/OrderStatus/BillingLinkStatus/SettlementStatus/SlipType/BillingStatus/
-/// DetailInvoiceStatus/BankAccountType
+/// DetailInvoiceStatus/BankAccountType/AllocationStatus/ReceiptMethod
 /// を画面表示用の日本語に変換する。
 /// </summary>
 public class EnumDisplayConverter : IValueConverter
@@ -40,6 +40,13 @@ public class EnumDisplayConverter : IValueConverter
         DetailInvoiceStatus.Cancelled => "取消済",
         BankAccountType.Ordinary => "普通",
         BankAccountType.Checking => "当座",
+        AllocationStatus.Unallocated => "未充当",
+        AllocationStatus.PartiallyAllocated => "一部充当",
+        AllocationStatus.FullyAllocated => "充当完了",
+        ReceiptMethod.Cash => "現金",
+        ReceiptMethod.BankTransfer => "振込",
+        ReceiptMethod.PromissoryNote => "手形",
+        ReceiptMethod.Offset => "相殺",
         _ => value?.ToString() ?? string.Empty,
     };
 
