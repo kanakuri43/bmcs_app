@@ -81,7 +81,7 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
 | 受注日付・得意先（コード+名称、Space/Enter対応）・明細行・フッター集計・保存(F10)・新規(F3)・行追加(F2) | **実装済み** | `order_slip` に対応する列があり、既存の `ConsumptionTaxCalculator`／`IUnitPriceCalculator`／`SlipNumberService` を再利用できる |
 | 受注No. | 実装済みだが**読み取り専用表示**。手入力・Space/Enterでの検索は行わない | 採番は保存時にトランザクション内で1回だけ行う方針（`docs/architecture.md` 6章）であり、画面を開いた時点や入力中の手入力・検索を許さない |
 | 得意先名の編集（諸口得意先） | **未実装** | `Customer` に「諸口」相当のフラグがない |
-| 担当者（コード＋名称） | **枠のみ・使用不可** | `order_slip` に担当者列がなく、社員マスタ画面（TODO.md 2-3）も未着手。将来列を追加する場合は属性追加（`ALTER TABLE`）で対応する |
+| 担当者（コード＋名称） | **枠のみ・使用不可** | `order_slip` に担当者列がない（社員マスタ画面自体は2-3で実装済み）。将来列を追加する場合は属性追加（`ALTER TABLE`）で対応する |
 | 摘要（伝票摘要） | **実装済み（2026-09-09）** | ジャーナル系テーブル（`sales`／`receipt`／`detail_receipt`／`order_slip`）に `slip_remarks` 列を追加し（`scripts/011_add_slip_and_line_remarks.sql`）、`order_slip` に対しては本画面から保存できる。同一伝票の全明細行に複写して保存する（`docs/database-schema.md` 1章） |
 | 行摘要（明細行摘要） | **実装済み（2026-09-09）** | 上記と同時に `line_remarks` 列を追加。`src/bmcs_app/Views/Common/SlipLineControl.xaml` の行摘要 TextBox の `IsEnabled="False"` を解除した。`SlipLineControl` は売上入力（Phase 5-2）とも共用するため、両方に効く。`sales`／`receipt`／`detail_receipt` はエンティティ・EF設定まで追加済みだが、対応する入力画面自体が未実装（Phase 5-2／7章）のため画面側の配線はまだない |
 | 受注状態バッジ | 「受注状態：未売上」を実装（`OrderStatus.NotSold` 固定表示） | 本画面は新規登録のみを扱うため常にこの値で正しい。状態遷移ロジック自体は 4-4 で `OrderStatusService`（サービス層）として実装済み（7章）だが、既存受注を読み込む機能がまだ無いため、本画面のバッジ表示への配線は既存受注の読み込み手段（5-3／10-1）が揃うまで先送りする |
@@ -111,7 +111,7 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
 | 印刷（F11） | **枠のみ・使用不可** | 帳票エンジンはM-10（2026-09-10確定：WPF FixedDocument方式）でPhase 10が実装する |
 | 前の売上／次の売上（ナビゲーション） | **枠のみ・使用不可** | 既存売上の一覧・検索機能が未実装（受注入力画面と同一理由） |
 | 削除（F8） | **枠のみ・使用不可** | M-17「伝票は物理削除しない」・C-6「訂正は元伝票の直接修正」と旧プロトタイプの物理削除が矛盾するため。取消を状態遷移として実装するのはPhase 5-6の範囲 |
-| 担当者 | **枠のみ・使用不可** | `sales`に担当者列がなく、社員マスタ画面（Phase 2-3）も未着手（受注入力画面と同一理由） |
+| 担当者 | **枠のみ・使用不可** | `sales`に担当者列がない（社員マスタ画面自体は2-3で実装済み。受注入力画面と同一理由） |
 | 摘要・行摘要 | **実装済み** | `sales.slip_remarks`／`line_remarks`は既にDDL・エンティティ・EF設定済み。受注入力画面の完了メモにあった「`sales`は画面側の配線がまだ」はこのタスクで解消した |
 
 ### 保存時の税額確定ロジック
@@ -130,7 +130,7 @@ GUIでのsmoke testの代わりに、`tests/bmcs_app.Application.Tests/Sales/Sal
 
 `DevDatabaseFixture`（`tests/bmcs_app.Application.Tests/`）にロギング登録（`services.AddLogging()`）が欠けており、`ILogger<T>`を要求するサービス（`SalesService`／`CustomerService`等）がDIで解決できない既存の環境不備を本タスクで修正した。
 
-実装ファイル: `src/bmcs_app.Application/Sales/SalesService.cs`、`src/bmcs_app.Domain/Calculations/SalesTaxAmountAssigner.cs`、`src/bmcs_app/ViewModels/Sales/SalesEntryViewModel.cs`、`src/bmcs_app/Views/Sales/SalesEntryWindow.xaml`。メインメニューへの導線（`OpenSalesEntryCommand`）は受注入力画面と同じ「Phase 2-7で正式なメニューに置き換わるまでの暫定導線」。
+実装ファイル: `src/bmcs_app.Application/Sales/SalesService.cs`、`src/bmcs_app.Domain/Calculations/SalesTaxAmountAssigner.cs`、`src/bmcs_app/ViewModels/Sales/SalesEntryViewModel.cs`、`src/bmcs_app/Views/Sales/SalesEntryWindow.xaml`。メインメニューへの導線は Phase 2-7 でメニュー構成マスタ駆動（`screen_key="sales_entry"`）に置き換わった。
 
 ---
 
@@ -479,8 +479,7 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
   状態・確定/解除の日時と実施者）を読み取り専用で表示し、「解除実行」（F8）で確定する。
   取消系の操作のため、実行前に得意先マスタの無効化と同様の確認ダイアログ（Yes/No）を挟む。
   解除成功後は画面を起動直後の状態へ戻す（`docs/product-spec.md` UI/UX節「登録後のリセット」）。
-- 権限判定（管理者権限のみ）は基盤（Phase 0-7）が未着手のため、本画面では行わない。
-  メインメニューへの導線もPhase 2-7までの暫定ボタンとして追加した。
+- 権限判定（管理者権限のみ）は、C-8の方針どおりメニュー単位（Phase 2-7、`scripts/014_seed_menu_structure.sql`で本画面を権限レベル9に設定）で行う。画面内アクション単位の権限チェックは持たない。
 
 ### 検証方法
 
@@ -742,3 +741,66 @@ EF Coreの例外型を漏らさない」と規定しているが、`BillingClosi
   を`sqlcmd`で確認済み。
 - 実機確認: 本レビューはコードレビューと結合テストが中心のため、GUI操作による実機確認は
   行っていない（ビルド成功と自動テストのみで検証）。
+
+---
+
+## 14. メインメニュー画面（Phase 2-7、2026-09-14実装。0-7を先行実装）
+
+デザインモック（旧`Views/Menu/MainMenuMockWindow.xaml`、A/B/Cの3案を比較する検討専用画面）から
+**C案＝リスト・アコーディオン型を採用**（ユーザー指示）。ウィンドウは横長のモック（1240×820）から
+**縦長（440×820、`MainMenuWindow.xaml`）に変更**した（ユーザー指示）。方針が確定したため
+モック画面自体は削除し、実装（メニュー構成マスタ駆動）に一本化した。
+
+### 14-1. 前提: Phase 0-7 を本タスクで先行実装
+
+2-7の完了条件「権限レベルの異なる社員コードで起動すると表示メニューが変わる」を満たすには
+起動時パラメータの受け取り（Phase 0-7、未着手）が必要だったため、ユーザー確認のうえ0-7を
+本タスクに含めた。`ICurrentEmployeeContext`の実装を`PlaceholderCurrentEmployeeContext`（固定値）
+から`StartupArgsCurrentEmployeeContext`（ショートカット引数の1つ目を社員コードとして使う。
+引数なしは開発用に`EMP001`へフォールバック）へ差し替えた。詳細は`docs/architecture.md` 14章。
+
+### 14-2. メニュー構成マスタは画面から編集しない
+
+「メニュー構成マスタ＋メインメニュー画面」というタスク名だが、完了条件にメニュー項目自体の
+登録・編集操作は含まれていないため、**メニューマスタの編集用CRUD画面は作らない**（曖昧さの解釈。
+他マスタと違い、必要な項目は実装フェーズごとに`scripts/`のSQLへ直接追記する運用とした）。
+実データは`scripts/014_seed_menu_structure.sql`が投入する（開発用テストデータの
+`scripts/seed_dev_data.sql`とは分離。menuは実運用でも使う本物の構成データのため）。
+
+### 14-3. 階層・権限フィルタの実装
+
+- `MenuTreeBuilder`（Domain/Calculations、純粋関数）が`menu`の全行と社員の権限レベルから
+  「カテゴリ（親）→表示可能な機能（子）」の階層を組み立てる。子の
+  `required_permission_level ≦ 社員の権限レベル`のものだけを残し、表示できる子が1件も無い
+  カテゴリはメニュー自体を表示しない（単体テスト`MenuTreeBuilderTests`4件）。
+- `MenuService.GetMenuTreeAsync`（Application/Master）が`menu`全行（論理削除除く）を取得する
+  だけで、フィルタは行わない（フィルタはDomain層の責務）。
+- `MainMenuViewModel.LoadAsync`が`ICurrentEmployeeContext.EmployeeCode`から
+  `EmployeeService.GetByCodeAsync`で社員名・権限レベルを取得し、上記フィルタを適用して
+  `Categories`（画面表示用の`MenuCategoryDisplayItem`/`MenuItemDisplayItem`）を組み立てる。
+  社員コードが見つからない場合は権限レベル0として扱い、警告メッセージを表示する
+  （メニューが1件も表示されない状態になる。実機確認済み）。
+- 画面遷移は`screen_key`文字列を`switch`する`OpenMenuItemCommand`に一本化した
+  （個別の`OpenXxxCommand`は全廃）。未知の`screen_key`は警告メッセージを表示し、
+  例外にしない（`menu`データの入力誤りに対する防御）。
+- カテゴリの色分け（アコーディオン見出しの左バー・ホバー色）は表示順に応じた固定パレットを
+  循環させる。ViewModelはWPFのMedia型（Brush）を持たず整数インデックス（`ColorIndex`）のみを
+  持ち、View側の`MenuAccentColorConverter`がインデックス→Brushへ変換する
+  （ViewModelをWPF依存にしない、既存の`EnumDisplayConverter`と同じ方針）。
+
+### 14-4. 実装済み画面のみを対象にする
+
+未実装フェーズ（入金・元帳・月次締め・データ検索等）の画面はメニューに追加していない。該当
+フェーズの実装時に`scripts/014_seed_menu_structure.sql`へ追記する。締め解除処理（C-8で権限差を
+別画面として表現する対象）と社員マスタ・自社情報（機微な情報のため）は権限レベル9（管理者専用）、
+それ以外は1（一般）とした。数値の重み付けは暫定の解釈であり、`scripts/014_seed_menu_structure.sql`
+の値を書き換えるだけで調整できる（コード変更は不要）。
+
+### 検証方法
+
+- 単体テスト: `MenuTreeBuilderTests`（4件、権限フィルタ・カテゴリ非表示・表示順を検証）。
+- 実機確認（UI Automation）: `EMP001`（権限レベル1）起動時は一般項目のみ、`EMP002`
+  （権限レベル9）起動時は締め解除処理・社員マスタ・自社情報を含む全項目が表示されることを確認。
+  存在しない社員コード（`NOSUCH`）起動時は権限レベル0・警告メッセージ・メニュー非表示を確認。
+  起動時引数なしでは開発用フォールバック（`EMP001`）が効くことを確認。全メニュー項目
+  （10画面）をクリックしてそれぞれ対応する画面が開くことを確認済み。

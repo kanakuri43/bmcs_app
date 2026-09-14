@@ -36,7 +36,6 @@ DELETE FROM dbo.sales WHERE sales_slip_number IN (N'SALINV001', N'SALINV002', N'
 DELETE FROM dbo.billing WHERE billing_number IN (N'BIL_INV001', N'BIL_INV002', N'BIL_SLP001');
 DELETE FROM dbo.order_slip WHERE order_slip_number IN (N'ORD001', N'ORD002', N'ORD003', N'ORD004');
 DELETE FROM dbo.monthly_closing WHERE closing_date IN ('2026-01-31', '2026-02-28');
-DELETE FROM dbo.menu WHERE menu_code IN (N'MNU_SALES', N'MNU_ADMIN', N'MNU_PARENT');
 DELETE FROM dbo.customer WHERE customer_code IN (N'CUS001', N'CUS002', N'CUS003');
 DELETE FROM dbo.product WHERE product_code IN (N'PRD001', N'PRD002', N'PRD003');
 DELETE FROM dbo.bank_account WHERE bank_account_code IN (N'BNK001');
@@ -103,19 +102,6 @@ INSERT INTO dbo.company_info
 VALUES
     (1, N'株式会社石山商店', N'T1234567890123', N'400-0000', N'山梨県甲府市本町1-1',
      N'055-000-0000', N'石山一郎', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
-GO
-
--- メニュー: 親子階層＋CK_menu_leaf（親は権限NULL、子は権限あり）
-INSERT INTO dbo.menu
-    (menu_code, parent_menu_code, menu_name, display_order, required_permission_level, screen_key,
-     created_by, created_at, updated_by, updated_at)
-VALUES
-    (N'MNU_PARENT', NULL, N'売上管理', 1, NULL, NULL,
-     N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    (N'MNU_SALES', N'MNU_PARENT', N'売上入力', 1, 1, N'sales_entry',
-     N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    (N'MNU_ADMIN', N'MNU_PARENT', N'月次締め', 2, 9, N'monthly_closing',
-     N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
 -- -----------------------------------------------------------------------------

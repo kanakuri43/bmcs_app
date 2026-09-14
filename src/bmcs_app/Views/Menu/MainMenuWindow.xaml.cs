@@ -3,9 +3,7 @@ using MahApps.Metro.Controls;
 
 namespace bmcs_app.Views.Menu;
 
-/// <summary>
-/// メインメニュー画面。Phase 0-3 時点では共通基盤の動作確認を行う。
-/// </summary>
+/// <summary>メインメニュー画面（TODO.md 2-7）。</summary>
 public partial class MainMenuWindow : MetroWindow
 {
     public MainMenuWindow()

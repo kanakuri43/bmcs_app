@@ -42,7 +42,7 @@ public sealed class DevDatabaseFixture : IAsyncLifetime
 
         var services = new ServiceCollection();
         services.AddLogging(); // 各種サービスの ILogger<T> 依存を解決するため（既定はコンソール出力なし）
-        services.AddApplication(configuration);
+        services.AddApplication(configuration, []);
         _serviceProvider = services.BuildServiceProvider();
 
         await using var scope = _serviceProvider.CreateAsyncScope();

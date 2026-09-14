@@ -26,6 +26,7 @@
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <conv:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
             <conv:EnumDisplayConverter x:Key="EnumDisplayConverter" />
+            <conv:MenuAccentColorConverter x:Key="MenuAccentColorConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -19,12 +19,14 @@ public static class ApplicationServiceCollectionExtensions
 {
     public static IServiceCollection AddApplication(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        string[] startupArgs)
     {
         services.AddInfrastructure(configuration);
 
-        // 現在操作している社員の解決。Phase 0-7 までは暫定固定値を返す（docs/architecture.md 14章）。
-        services.AddSingleton<ICurrentEmployeeContext, PlaceholderCurrentEmployeeContext>();
+        // 現在操作している社員の解決。起動時パラメータ（ショートカット引数）の1つ目を社員コードとして扱う
+        // （TODO.md 0-7、docs/architecture.md 14章）。
+        services.AddSingleton<ICurrentEmployeeContext>(new StartupArgsCurrentEmployeeContext(startupArgs));
 
         // 端末ローカルのファイル I/O のみで DbContext に依存しないため Singleton（TODO.md 2-6）。
         services.AddSingleton<PrinterSettingsService>();
@@ -35,9 +37,12 @@ public static class ApplicationServiceCollectionExtensions
 
         // ユースケースは DbContext と同じ Scoped で登録する。
         // ウィンドウ単位のスコープ内で DbContext を共有させるため。
-        services.AddScoped<DatabaseHealthService>();
         services.AddScoped<CustomerService>();
         services.AddScoped<ProductService>();
+        services.AddScoped<EmployeeService>();
+        services.AddScoped<CompanyInfoService>();
+        services.AddScoped<BankAccountService>();
+        services.AddScoped<MenuService>();
         services.AddScoped<ProductHistoryQueryService>();
         services.AddScoped<TaxRateQueryService>();
         services.AddScoped<SlipNumberService>();

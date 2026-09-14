@@ -26,7 +26,9 @@ namespace bmcs_app;
 
 /// <summary>
 /// アプリケーションのエントリポイント。DI・設定・ロギング・例外ハンドリングを構成する。
-/// 起動時パラメータ（社員コード）の解析と権限判定は Phase 0-7 で追加する。
+/// 起動時パラメータ（ショートカット引数の1つ目＝社員コード）は <see cref="OnStartup"/> で受け取り、
+/// <c>StartupArgsCurrentEmployeeContext</c>（TODO.md 0-7）へ渡す。権限レベルの判定はメニュー画面
+/// （TODO.md 2-7）が社員マスタを参照して行う。
 /// </summary>
 public partial class App : System.Windows.Application
 {
@@ -45,7 +47,7 @@ public partial class App : System.Windows.Application
 
         try
         {
-            _host = BuildHost();
+            _host = BuildHost(e.Args);
             await _host.StartAsync();
 
             RegisterGlobalExceptionHandlers();
@@ -84,7 +86,7 @@ public partial class App : System.Windows.Application
         base.OnExit(e);
     }
 
-    private static IHost BuildHost()
+    private static IHost BuildHost(string[] startupArgs)
     {
         var builder = Host.CreateApplicationBuilder();
 
@@ -111,7 +113,7 @@ public partial class App : System.Windows.Application
 
         // Application 層の登録。内部で Infrastructure も登録されるため、
         // Presentation は Infrastructure を参照しない（docs/architecture.md 2章）。
-        builder.Services.AddApplication(builder.Configuration);
+        builder.Services.AddApplication(builder.Configuration, startupArgs);
 
         builder.Services.AddSingleton<WindowService>();
 
@@ -127,6 +129,15 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<ProductMasterWindow>();
         builder.Services.AddScoped<ProductMasterViewModel>();
 
+        builder.Services.AddScoped<EmployeeMasterWindow>();
+        builder.Services.AddScoped<EmployeeMasterViewModel>();
+
+        builder.Services.AddScoped<CompanyInfoSettingsWindow>();
+        builder.Services.AddScoped<CompanyInfoSettingsViewModel>();
+
+        builder.Services.AddScoped<BankAccountMasterWindow>();
+        builder.Services.AddScoped<BankAccountMasterViewModel>();
+
         builder.Services.AddScoped<PrinterSettingsWindow>();
         builder.Services.AddScoped<PrinterSettingsViewModel>();
 
@@ -138,6 +149,12 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<ProductMasterSearchDialog>();
         builder.Services.AddScoped<ProductMasterSearchDialogViewModel>();
+
+        builder.Services.AddScoped<EmployeeMasterSearchDialog>();
+        builder.Services.AddScoped<EmployeeMasterSearchDialogViewModel>();
+
+        builder.Services.AddScoped<BankAccountMasterSearchDialog>();
+        builder.Services.AddScoped<BankAccountMasterSearchDialogViewModel>();
 
         builder.Services.AddScoped<SlipSearchDialog>();
         builder.Services.AddScoped<SlipSearchDialogViewModel>();

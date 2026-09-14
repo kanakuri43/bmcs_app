@@ -272,18 +272,22 @@ MahApps.Metro を導入し、共通スタイルは `src/bmcs_app/Styles/`、書�
   行わない（ダイアログ等への意図しない波及を避けるため）。使う画面のルート要素・対象コントロールに
   明示的に設定する。
 
-## 14. 暫定: 現在操作中の社員コードの解決（ICurrentEmployeeContext）
+## 14. 現在操作中の社員コードの解決（ICurrentEmployeeContext、Phase 0-7 で確定）
 
-全テーブルの監査列（`created_by`/`updated_by`、M-12）は社員コードを必須で持つが、
-起動時パラメータから社員コードを受け取る Phase 0-7 がまだ実装されていない。
-Phase 2-1（得意先マスタ画面）で監査列への書き込みが最初に発生するため、
-`src/bmcs_app.Application/Common/ICurrentEmployeeContext.cs`（`EmployeeCode` プロパティのみ）
-という最小限の抽象を導入し、**暫定実装 `PlaceholderCurrentEmployeeContext` が
-`scripts/seed_dev_data.sql` に実在する `EMP001` を固定で返す。**
+全テーブルの監査列（`created_by`/`updated_by`、M-12）は社員コードを必須で持つ。
+Phase 2-1（得意先マスタ画面）で監査列への書き込みが最初に発生した時点では起動時パラメータの受け取りが
+未実装だったため、`src/bmcs_app.Application/Common/ICurrentEmployeeContext.cs`（`EmployeeCode` プロパティのみ）
+という最小限の抽象を先に導入し、暫定実装 `PlaceholderCurrentEmployeeContext` が固定の `EMP001` を返していた。
 
-`ApplicationServiceCollectionExtensions.AddApplication` に `Singleton` で登録済み。
-**Phase 0-7 実装時に `PlaceholderCurrentEmployeeContext` を実装差し替えするだけで済むよう、
-インターフェースの形は変えない方針とする。** 権限判定（C-8）等 0-7 本来のスコープはここでは扱わない。
+**2026-09-14、Phase 0-7 で `StartupArgsCurrentEmployeeContext` に差し替えた。** ショートカット引数の
+1つ目を社員コードとして扱う（`App.xaml.cs` の `OnStartup` が `e.Args` を受け取り、
+`ApplicationServiceCollectionExtensions.AddApplication(services, configuration, startupArgs)` へ渡す）。
+引数が渡されない場合（IDEからの起動等）は開発用に `EMP001` を既定値とする。インターフェースの形は
+変えていないため、`ApplicationServiceCollectionExtensions` 側の登録を1箇所差し替えるだけで完了した。
+
+社員コードの実在確認・権限レベルの取得は、ここでは行わない。実際に使う側（メインメニュー画面、
+Phase 2-7）が `EmployeeService.GetByCodeAsync` を通じて解決する。存在しない社員コードが渡された場合は
+権限レベル0（メニュー項目が1つも表示されない）として扱う。
 
 ## 15. 単体テストの構成（Phase 5-1 で構築）
 

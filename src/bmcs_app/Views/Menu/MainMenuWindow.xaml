@@ -4,132 +4,178 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="bmcs_app - メインメニュー"
-                 Height="760" Width="820"
+                 Height="820" Width="440"
+                 MinHeight="600" MinWidth="380"
                  WindowStartupLocation="CenterScreen"
-                 WindowTransitionsEnabled="False">
+                 WindowTransitionsEnabled="False"
+                 Background="#FFF3F5F8">
     <!--
-        Phase 0-3 時点の基盤動作確認用の画面。
-        権限に応じたメニューの出し分けは Phase 2-7 で実装する。
+        TODO.md 2-7。デザインモック（旧 MainMenuMockWindow）のC案＝リスト・アコーディオン型を
+        採用し、メニュー構成マスタ（menu）駆動・権限フィルタ済みの内容を表示する（縦長ウィンドウ）。
     -->
+    <mah:MetroWindow.Resources>
+
+        <!-- カテゴリ内の機能項目（リーフ）の行ボタン -->
+        <Style x:Key="ListRowButtonStyle" TargetType="Button">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="#FF2B2F36" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="Transparent" BorderBrush="#FFE8EAED" BorderThickness="0,0,0,1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="4" />
+                                    <ColumnDefinition Width="24" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="AccentBar" Grid.Column="0" Background="Transparent" />
+                                <TextBlock Grid.Column="1" Text="&#9656;" FontSize="12" Foreground="#FFB0B6C0" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                <ContentPresenter Grid.Column="2" VerticalAlignment="Center" Margin="4,0,0,0" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#FFF5F7FA" />
+                                <Setter TargetName="AccentBar" Property="Background" Value="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#FFF5F7FA" />
+                                <Setter TargetName="AccentBar" Property="Background" Value="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- カテゴリ見出しを折りたたむアコーディオン -->
+        <Style x:Key="AccordionSectionStyle" TargetType="Expander">
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <StackPanel>
+                            <ToggleButton x:Name="HeaderToggle"
+                                          Content="{TemplateBinding Header}"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          Cursor="Hand"
+                                          HorizontalAlignment="Left"
+                                          HorizontalContentAlignment="Left">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <StackPanel Margin="0,10,0,10">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock x:Name="Chevron"
+                                                           Text="&#9656;"
+                                                           FontSize="14"
+                                                           Foreground="#FF8A93A3"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,8,0"
+                                                           RenderTransformOrigin="0.5,0.5">
+                                                    <TextBlock.RenderTransform>
+                                                        <RotateTransform Angle="0" />
+                                                    </TextBlock.RenderTransform>
+                                                </TextBlock>
+                                                <TextBlock Text="{TemplateBinding Content}" FontSize="17" FontWeight="Bold" Foreground="#FF2B2F36" />
+                                            </StackPanel>
+                                            <Border Height="3" Width="40"
+                                                    Background="{Binding Tag, RelativeSource={RelativeSource AncestorType=Expander}}"
+                                                    CornerRadius="1.5"
+                                                    HorizontalAlignment="Left"
+                                                    Margin="22,6,0,0" />
+                                        </StackPanel>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Chevron" Property="RenderTransform">
+                                                    <Setter.Value>
+                                                        <RotateTransform Angle="90" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Chevron" Property="Foreground" Value="{Binding Tag, RelativeSource={RelativeSource AncestorType=Expander}}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter x:Name="ExpandSite" Visibility="Collapsed" Margin="0,0,0,4" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+    </mah:MetroWindow.Resources>
+
     <Grid Margin="24" beh:EnterKeyNavigationBehavior.IsEnabled="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0"
-                   Text="bmcs_app"
-                   FontSize="26" />
+        <!-- ヘッダー -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="石山商店" FontSize="12" Foreground="#FF8A93A3" />
+            <TextBlock Text="販売管理システム" FontSize="24" FontWeight="Bold" Foreground="#FF1F2430" Margin="0,0,0,12" />
 
-        <TextBlock Grid.Row="1"
-                   Text="Phase 0-3: 共通基盤の動作確認"
-                   Margin="0,4,0,20"
-                   Foreground="Gray" />
-
-        <Grid Grid.Row="2" VerticalAlignment="Top">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="接続先" Margin="0,0,16,8" FontWeight="Bold" />
-            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ConnectionInfo}" Margin="0,0,0,8" />
-
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="サーバ" Margin="0,0,16,8" FontWeight="Bold" />
-            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ServerVersion}" Margin="0,0,0,8" TextWrapping="Wrap" />
-
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="DbContext" Margin="0,0,16,8" FontWeight="Bold" />
-            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DbContextInstanceId}" Margin="0,0,0,8"
-                       ToolTip="ウィンドウごとにスコープが分かれていれば、開くウィンドウごとに違う値になる" />
-        </Grid>
-
-        <StackPanel Grid.Row="3" Orientation="Vertical" HorizontalAlignment="Left" Margin="0,0,0,16">
-            <TextBlock Text="Phase 0-5: 書式確認" Margin="0,0,0,8" Foreground="Gray" />
-            <StackPanel Orientation="Horizontal">
-                <TextBox Style="{StaticResource DateTextBoxStyle}" Text="{Binding SampleDate}" Width="120" Margin="0,0,16,0" />
-                <TextBox Style="{StaticResource AmountTextBoxStyle}" Text="{Binding SampleAmount}" Width="120" Margin="0,0,16,0" />
-                <TextBox Style="{StaticResource QuantityTextBoxStyle}" Text="{Binding SampleQuantity}" Width="80" />
-            </StackPanel>
+            <Border Background="White" CornerRadius="18" Padding="14,8" BorderBrush="#FFE3E6EA" BorderThickness="1"
+                    HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="30" Height="30" CornerRadius="15" Background="#FF1E88E5" Margin="0,0,10,0">
+                        <TextBlock Text="{Binding EmployeeInitial}" Foreground="White" FontWeight="Bold" FontSize="13"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding EmployeeName}" FontSize="13" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding PermissionLevel, StringFormat=権限レベル {0}}" FontSize="11" Foreground="#FF8A93A3" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </StackPanel>
 
-        <StackPanel Grid.Row="4" Orientation="Vertical" HorizontalAlignment="Left" Margin="0,0,0,16">
-            <TextBlock Text="Phase 0-6: キーボード操作確認（↑↓で行選択、Enterで確定・転記）" Margin="0,0,0,8" Foreground="Gray" />
-            <StackPanel Orientation="Horizontal">
-                <ListBox ItemsSource="{Binding SampleItems}"
-                         beh:RowActivationBehavior.Command="{Binding TranscribeItemCommand}"
-                         Width="120" Height="70" Margin="0,0,16,0" />
-                <TextBlock Text="転記結果:" VerticalAlignment="Center" Margin="0,0,8,0" />
-                <TextBlock Text="{Binding TranscribedItem}" VerticalAlignment="Center" FontWeight="Bold" />
-            </StackPanel>
-        </StackPanel>
+        <!-- メニュー本体（C案: リスト・アコーディオン型） -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Categories}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Expander Style="{StaticResource AccordionSectionStyle}"
+                                  Header="{Binding MenuName}"
+                                  Tag="{Binding ColorIndex, Converter={StaticResource MenuAccentColorConverter}}"
+                                  IsExpanded="True">
+                            <ItemsControl ItemsSource="{Binding Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Content="{Binding MenuName}"
+                                                Style="{StaticResource ListRowButtonStyle}"
+                                                Tag="{Binding ColorIndex, Converter={StaticResource MenuAccentColorConverter}}"
+                                                Command="{Binding DataContext.OpenMenuItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding ScreenKey}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Expander>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
 
-        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,16">
-            <Button Content="もう1つウィンドウを開く"
-                    Command="{Binding OpenAnotherWindowCommand}"
-                    Padding="16,6"
-                    Margin="0,0,12,0" />
-            <Button Content="得意先マスタ"
-                    Command="{Binding OpenCustomerMasterCommand}"
-                    Padding="16,6"
-                    Margin="0,0,12,0" />
-            <Button Content="商品マスタ"
-                    Command="{Binding OpenProductMasterCommand}"
-                    Padding="16,6"
-                    Margin="0,0,12,0" />
-            <Button Content="プリンタ設定"
-                    Command="{Binding OpenPrinterSettingsCommand}"
-                    Padding="16,6"
-                    Margin="0,0,12,0" />
-            <Button Content="受注入力"
-                    Command="{Binding OpenOrderEntryCommand}"
-                    Padding="16,6"
-                    Margin="0,0,12,0" />
-            <Button Content="売上入力"
-                    Command="{Binding OpenSalesEntryCommand}"
-                    Padding="16,6"
-                    Margin="0,0,12,0" />
-            <Button Content="請求締め処理"
-                    Command="{Binding OpenBillingClosingCommand}"
-                    Padding="16,6"
-                    Margin="0,0,12,0" />
-            <Button Content="締め解除処理"
-                    Command="{Binding OpenBillingReleaseCommand}"
-                    Padding="16,6"
-                    Margin="0,0,12,0" />
-            <Button Content="明細請求書発行"
-                    Command="{Binding OpenDetailInvoiceIssueCommand}"
-                    Padding="16,6"
-                    Margin="0,0,12,0" />
-            <Button Content="メインメニュー（デザインモック）"
-                    Command="{Binding OpenMainMenuMockCommand}"
-                    Padding="16,6"
-                    Margin="0,0,12,0" />
-            <TextBlock Text="処理中..."
-                       VerticalAlignment="Center"
-                       Foreground="OrangeRed"
+        <!-- フッター -->
+        <StackPanel Grid.Row="2" Margin="0,12,0,0">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="#FFD9822B" TextWrapping="Wrap" />
+            <TextBlock Text="処理中..." Foreground="OrangeRed"
                        Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
-        </StackPanel>
-
-        <StackPanel Grid.Row="6" Orientation="Vertical" HorizontalAlignment="Left">
-            <TextBlock Text="Phase 3: 共通検索モーダル動作確認" Margin="0,0,0,8" Foreground="Gray" />
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <Button Content="得意先検索モーダル" Command="{Binding OpenCustomerSearchCommand}" Padding="16,6" Margin="0,0,12,0" />
-                <Button Content="商品検索モーダル" Command="{Binding OpenProductSearchCommand}" Padding="16,6" Margin="0,0,12,0" />
-                <TextBlock Text="選択得意先:" VerticalAlignment="Center" Margin="0,0,4,0" />
-                <TextBlock Text="{Binding SelectedCustomerCode}" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,4,0" />
-                <TextBlock Text="{Binding SelectedCustomerName}" VerticalAlignment="Center" FontWeight="Bold" />
-            </StackPanel>
-            <TextBlock Text="{Binding TranscribedProducts}" TextWrapping="Wrap" />
         </StackPanel>
     </Grid>
 </mah:MetroWindow>

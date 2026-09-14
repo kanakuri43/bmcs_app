@@ -5,7 +5,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Converters;
 
 /// <summary>
-/// TaxUnit/RoundingType/TaxCategory/OrderStatus/BillingLinkStatus/SettlementStatus/SlipType/BillingStatus
+/// TaxUnit/RoundingType/TaxCategory/OrderStatus/BillingLinkStatus/SettlementStatus/SlipType/BillingStatus/BankAccountType
 /// を画面表示用の日本語に変換する。
 /// </summary>
 public class EnumDisplayConverter : IValueConverter
@@ -35,6 +35,8 @@ public class EnumDisplayConverter : IValueConverter
         SlipType.Discount => "値引",
         BillingStatus.Confirmed => "確定",
         BillingStatus.Released => "解除済",
+        BankAccountType.Ordinary => "普通",
+        BankAccountType.Checking => "当座",
         _ => value?.ToString() ?? string.Empty,
     };
 

@@ -73,7 +73,7 @@
 | [x] | 0-4 | 開発用DBの接続確認（接続文字列の外部化、`appsettings.Development.json` は git 管理外） | Sonnet | C-5 | `172.16.3.171` / `bmcs_db` への接続確認済み。DDL適用は 1-5 で実施 |
 | [x] | 0-5 | MahApps.Metro テーマ適用と共通スタイル（日付 `YYYY/MM/DD`、金額・数量のカンマ区切り右揃え、blur時整形、フォーカス中の背景色） | Sonnet | — | サンプル画面で表示・入力書式が仕様どおり |
 | [x] | 0-6 | 共通キーボード操作ビヘイビアの実装（Enterでの次項目フォーカス移動、上下矢印での行選択、Enterで確定・転記） | Sonnet | — | マウスを使わず入力を完結できる。誤送信しない |
-| [ ] | 0-7 | 起動時パラメータ（社員コード）の受け取りと権限判定の基盤 | Sonnet | C-8 | ショートカット引数から社員を特定し、権限レベルを取得できる |
+| [x] | 0-7 | 起動時パラメータ（社員コード）の受け取りと権限判定の基盤 | Sonnet | C-8 | **2026-09-14実装（2-7の前提として先行実装。ユーザー確認済み）。** `ICurrentEmployeeContext`の実装を`PlaceholderCurrentEmployeeContext`（固定値）から`StartupArgsCurrentEmployeeContext`へ差し替え、`App.xaml.cs`の`OnStartup`が受け取る`e.Args`の1つ目を社員コードとして使う（引数なしは開発用に`EMP001`へフォールバック）。権限レベルの取得自体は2-7（メインメニュー画面）が`EmployeeService`経由で行う。詳細は`docs/architecture.md` 14章 |
 
 ---
 
@@ -111,11 +111,11 @@ M-2（採番規則）・M-3（単価決定）・C-6（訂正・取消方式）�
 |---|---|---|---|---|---|
 | [x] | 2-1 | 得意先マスタ画面（税区分×締日の整合バリデーション、登録後は締め区分・税区分を編集不可にする） | **Opus** | C-1, 0-5, 0-6 | 破綻する組み合わせが登録できない。既存得意先で締め区分・税区分が編集できない。**端数区分も同様に編集不可（5-1で追加、2026-09-08決定）** |
 | [x] | 2-2 | 商品マスタ画面（税種別区分＝課税10%／軽減8%／非課税を持つ） | Sonnet | 0-5, 0-6 | 商品ごとの税種別が設定でき、売上明細へ転記できる |
-| [ ] | 2-3 | 社員マスタ画面（権限レベル） | Sonnet | C-8, 0-5, 0-6 | 社員コードから権限レベルが解決できる |
-| [ ] | 2-4 | 自社情報マスタ画面（適格請求書発行事業者の登録番号・自社名・住所・代表者名・振込口座） | Sonnet | 0-5, 0-6 | 帳票の発行元情報がDBから取得できる |
-| [ ] | 2-5 | 銀行マスタ画面（単価計算マスタは暫定方針では使わないため作らない） | Sonnet | 0-5, 0-6 | 入金入力で参照する銀行を登録できる |
+| [x] | 2-3 | 社員マスタ画面（権限レベル） | Sonnet | C-8, 0-5, 0-6 | **2026-09-14実装。** 得意先マスタ・商品マスタ（2-1/2-2）と同じ「一覧を持たず、コード直接入力＋Enter読込、コード欄でSpace検索モーダル」のパターンで実装。`EmployeeService`（Application/Master）＋`EmployeeMasterViewModel`（`Views/Master/EmployeeMasterWindow`）＋専用の社員検索モーダル（`EmployeeMasterSearchDialog`、`ProductMasterSearchDialog`と同じ「マスタ全件ロード後にメモリで絞り込む」方式）。権限レベルは`menu.required_permission_level`と比較する数値のため固定選択肢を設けず、文字列入力（`PermissionLevelText`）を保存時に0〜255の数値として検証する構成にした（メニュー構成マスタ側の必要権限値が2-7でまだ未定のため）。実機（UI Automation）でseedデータEMP001のコード直接読込、新規登録の保存とDB反映、無効化（論理削除）のDB反映、Space検索モーダルからのEMP002選択・転記を確認済み。 |
+| [x] | 2-4 | 自社情報マスタ画面（適格請求書発行事業者の登録番号・自社名・住所・代表者名・振込口座） | Sonnet | 0-5, 0-6 | **2026-09-14実装。** `company_info`は1レコード運用（`CompanyInfoId`固定値1）のため、得意先・商品・社員マスタ（2-1〜2-3）とは異なりコード検索・新規登録・無効化を持たない。プリンタ設定（2-6）と同じ「画面表示時に読み込み→編集→保存」の構成で、`CompanyInfoService`（Application/Master、GetAsync/SaveAsync＝upsert）＋`CompanyInfoSettingsViewModel`（`Views/Master/CompanyInfoSettingsWindow`）として実装。旧WPFプロトタイプ（`bmcs_app.Views.CompanyInfoSettingsWindow`）を画面イメージの参考にしたが、振込口座欄は本プロジェクトでは`bank_account`マスタ（Phase 2-5、未実装）で別管理するため持たず、代わりに現行スキーマ（`docs/database-schema.md` 2.5）に合わせて郵便番号・住所1/2・代表者名を追加した。登録番号は「T+13桁」形式をViewModelで検証（旧プロトタイプと同じ正規表現）。実機（UI Automation）でseedデータの8項目全読込、FAX番号の更新・DB反映・元の値への復元、および不正な登録番号形式での保存が警告メッセージで拒否されることを確認済み。 |
+| [x] | 2-5 | 銀行マスタ画面（単価計算マスタは暫定方針では使わないため作らない） | Sonnet | 0-5, 0-6 | **2026-09-14実装。** 得意先・商品・社員マスタ（2-1〜2-3）と同じ「一覧を持たず、コード直接入力＋Enter読込、コード欄でSpace検索モーダル」のパターンで実装。`BankAccountService`（Application/Master）＋`BankAccountMasterViewModel`（`Views/Master/BankAccountMasterWindow`）＋専用の銀行口座検索モーダル（`BankAccountMasterSearchDialog`）。口座種別（普通／当座）は`TaxCategory`と同じ`ComboBox`＋`EnumDisplayConverter`（`BankAccountType`の表示文字列を追加）。表示順は社員マスタの権限レベルと同じ文字列入力＋保存時数値検証。実機（UI Automation）でseedデータBNK001のコード直接読込、新規登録の保存とDB反映、無効化（論理削除）のDB反映、Space検索モーダルからのBNK001選択・転記を確認済み。 |
 | [x] | 2-6 | プリンタ環境設定（端末ローカルのファイルへ保存。DB管理しない） | Sonnet | 0-5 | 端末ごとに設定が保持され、再起動後も復元される。`bmcs_config.json`（exeと同フォルダ）にプリンタ設定のみ保存。接続文字列は既存の appsettings.json 方式を維持（ユーザー確認済み） |
-| [ ] | 2-7 | メニュー構成マスタ＋メインメニュー画面（親子階層、権限による出し分け、ログインUIなし）。現状 `MainMenuViewModel` にある暫定導線（得意先/商品マスタ・プリンタ設定・得意先/商品検索・受注/売上入力への直接遷移ボタン）をメニュー構成マスタ駆動の表示に置き換える | Sonnet | 0-5, 0-6, 0-7 | 権限レベルの異なる社員コードで起動すると表示メニューが変わる。`MainMenuViewModel` の暫定導線コマンドが撤去され、メニュー構成マスタの内容で置き換わっている |
+| [x] | 2-7 | メニュー構成マスタ＋メインメニュー画面（親子階層、権限による出し分け、ログインUIなし）。現状 `MainMenuViewModel` にある暫定導線（得意先/商品マスタ・プリンタ設定・得意先/商品検索・受注/売上入力への直接遷移ボタン）をメニュー構成マスタ駆動の表示に置き換える | Sonnet | 0-5, 0-6, 0-7 | **2026-09-14実装。** デザインモックのC案（リスト・アコーディオン型）を採用し、ウィンドウは縦長（440×820）に変更（ユーザー指示）。決定確定によりモック画面（`MainMenuMockWindow`）は削除。`MenuTreeBuilder`（Domain、純粋関数、単体テスト4件）が`menu`テーブルと社員の権限レベルから表示可能な階層を組み立て、`MainMenuViewModel`が`screen_key`文字列で画面遷移を一本化（個別の`OpenXxxCommand`は全廃）。**メニュー構成マスタの編集用CRUD画面は作らない**（完了条件に含まれないため。項目追加は`scripts/014_seed_menu_structure.sql`を直接書き換える運用）。実機（UI Automation）でEMP001（権限レベル1）・EMP002（権限レベル9）それぞれ起動時に表示メニューが変わること、存在しない社員コードでは権限レベル0・警告表示・メニュー非表示になること、全メニュー項目（10画面）が正しく開くことを確認済み。Phase 0-3時点の動作確認用コード（`DatabaseHealthService`、書式・キーボード操作のサンプル表示）も本タスクで削除した（既に各実画面で確認済みのため）。詳細は`docs/design_document.md` 14章 |
 
 ---
 
