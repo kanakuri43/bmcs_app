@@ -4,7 +4,7 @@ using bmcs_app.Domain.Enums;
 
 namespace bmcs_app.Domain.Tests.Calculations;
 
-/// <summary>売上の編集ロック（C-6の3条件。TODO.md 5-6）の判定テスト。</summary>
+/// <summary>売上の編集ロック（C-6の4条件。TODO.md 5-6・6-5）の判定テスト。</summary>
 public class SalesEditLockEvaluatorTests
 {
     [Fact]
@@ -12,7 +12,7 @@ public class SalesEditLockEvaluatorTests
     {
         var lines = new[] { NewLine(billingNumber: null, settlementStatus: SettlementStatus.Unsettled) };
 
-        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: false);
+        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: false, detailInvoiceLinked: false);
 
         Assert.False(result.IsLocked);
         Assert.Null(result.Reason);
@@ -23,7 +23,18 @@ public class SalesEditLockEvaluatorTests
     {
         var lines = new[] { NewLine(billingNumber: "BIL00000001", settlementStatus: SettlementStatus.Unsettled) };
 
-        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: false);
+        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: false, detailInvoiceLinked: false);
+
+        Assert.True(result.IsLocked);
+        Assert.NotNull(result.Reason);
+    }
+
+    [Fact]
+    public void 条件1_明細請求書発行済みなら編集不可()
+    {
+        var lines = new[] { NewLine(billingNumber: null, settlementStatus: SettlementStatus.Unsettled) };
+
+        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: false, detailInvoiceLinked: true);
 
         Assert.True(result.IsLocked);
         Assert.NotNull(result.Reason);
@@ -34,7 +45,7 @@ public class SalesEditLockEvaluatorTests
     {
         var lines = new[] { NewLine(billingNumber: null, settlementStatus: SettlementStatus.Unsettled) };
 
-        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: true);
+        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: true, detailInvoiceLinked: false);
 
         Assert.True(result.IsLocked);
         Assert.NotNull(result.Reason);
@@ -45,7 +56,7 @@ public class SalesEditLockEvaluatorTests
     {
         var lines = new[] { NewLine(billingNumber: null, settlementStatus: SettlementStatus.FullySettled) };
 
-        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: false);
+        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: false, detailInvoiceLinked: false);
 
         Assert.True(result.IsLocked);
         Assert.NotNull(result.Reason);
@@ -56,7 +67,7 @@ public class SalesEditLockEvaluatorTests
     {
         var lines = new[] { NewLine(billingNumber: null, settlementStatus: SettlementStatus.PartiallySettled) };
 
-        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: false);
+        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: false, detailInvoiceLinked: false);
 
         Assert.False(result.IsLocked);
     }
@@ -66,7 +77,7 @@ public class SalesEditLockEvaluatorTests
     {
         var lines = new[] { NewLine(billingNumber: "BIL00000001", settlementStatus: SettlementStatus.FullySettled) };
 
-        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: true);
+        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: true, detailInvoiceLinked: true);
 
         Assert.True(result.IsLocked);
     }
@@ -80,7 +91,7 @@ public class SalesEditLockEvaluatorTests
             NewLine(billingNumber: null, settlementStatus: SettlementStatus.FullySettled),
         };
 
-        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: false);
+        var result = SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed: false, detailInvoiceLinked: false);
 
         Assert.True(result.IsLocked);
     }

@@ -94,6 +94,10 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
         {
             StatusMessage = $"取得エラー: {ex.Message}";
         }
+        catch (Exception ex)
+        {
+            StatusMessage = $"取得エラー: {ex.Message}";
+        }
     }
 
     /// <summary>
@@ -147,6 +151,10 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
             NotifyResetToInitialState();
         }
         catch (BillingClosingException ex)
+        {
+            StatusMessage = $"確定エラー: {ex.Message}";
+        }
+        catch (Exception ex)
         {
             StatusMessage = $"確定エラー: {ex.Message}";
         }

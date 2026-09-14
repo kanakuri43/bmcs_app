@@ -31,6 +31,14 @@ public class SalesEditLockService(BmcsDbContext dbContext)
                     && m.ClosingStatus == ClosingStatus.Confirmed,
                 cancellationToken);
 
-        return SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed);
+        var slipNumber = lines[0].SalesSlipNumber;
+        var lineNumbers = lines.Select(l => l.LineNumber).ToList();
+        var detailInvoiceLinked = await dbContext.DetailInvoiceSalesLines
+            .AsNoTracking()
+            .AnyAsync(
+                l => l.SalesSlipNumber == slipNumber && lineNumbers.Contains(l.SalesLineNumber),
+                cancellationToken);
+
+        return SalesEditLockEvaluator.Evaluate(lines, monthlyClosingConfirmed, detailInvoiceLinked);
     }
 }

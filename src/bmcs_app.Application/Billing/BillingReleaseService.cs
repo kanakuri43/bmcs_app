@@ -85,7 +85,16 @@ public class BillingReleaseService(
             line.UpdatedAt = now;
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new BillingReleaseException(
+                "他のユーザーがこの請求データを更新しました。再読み込みしてください。", ex);
+        }
+
         await transaction.CommitAsync(cancellationToken);
 
         logger.LogInformation(
@@ -97,4 +106,4 @@ public class BillingReleaseService(
 }
 
 /// <summary>締め解除処理の業務ルール違反。</summary>
-public sealed class BillingReleaseException(string message) : Exception(message);
+public sealed class BillingReleaseException(string message, Exception? inner = null) : Exception(message, inner);

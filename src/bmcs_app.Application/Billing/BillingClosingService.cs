@@ -111,7 +111,21 @@ public class BillingClosingService(
             results.Add(candidate.ToTarget(billingNumber));
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new BillingClosingException(
+                "他のユーザーが同じ売上・入金を更新しました。再読み込みしてください。", ex);
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new BillingClosingException(
+                "他のユーザーが同時に同じ得意先を締めました。再読み込みしてください。", ex);
+        }
+
         await transaction.CommitAsync(cancellationToken);
 
         logger.LogInformation(
@@ -288,4 +302,4 @@ public class BillingClosingService(
 }
 
 /// <summary>請求締め処理の業務ルール違反（データ異常の検出）。</summary>
-public sealed class BillingClosingException(string message) : Exception(message);
+public sealed class BillingClosingException(string message, Exception? inner = null) : Exception(message, inner);

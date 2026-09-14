@@ -100,16 +100,23 @@ public partial class DetailInvoiceIssueViewModel(
             return;
         }
 
-        var view = await detailInvoiceService.GetByNumberAsync(number);
-        if (view is null)
+        try
         {
-            ClearForm();
-            DetailInvoiceNumberQuery = number;
-            StatusMessage = $"明細請求書番号「{number}」は見つかりません。";
-            return;
-        }
+            var view = await detailInvoiceService.GetByNumberAsync(number);
+            if (view is null)
+            {
+                ClearForm();
+                DetailInvoiceNumberQuery = number;
+                StatusMessage = $"明細請求書番号「{number}」は見つかりません。";
+                return;
+            }
 
-        ApplyView(view);
+            ApplyView(view);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"取得エラー: {ex.Message}";
+        }
     });
 
     [RelayCommand]
@@ -118,7 +125,7 @@ public partial class DetailInvoiceIssueViewModel(
         var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>();
         if (customer is not null)
         {
-            _ = ApplyCustomerAsync(customer);
+            _ = RunBusyAsync(() => ApplyCustomerAsync(customer));
         }
     }
 
@@ -130,14 +137,21 @@ public partial class DetailInvoiceIssueViewModel(
             return;
         }
 
-        var customer = await customerService.GetByCodeAsync(CustomerCode);
-        if (customer is null)
+        try
         {
-            StatusMessage = $"得意先コード「{CustomerCode}」が見つかりません。";
-            return;
-        }
+            var customer = await customerService.GetByCodeAsync(CustomerCode);
+            if (customer is null)
+            {
+                StatusMessage = $"得意先コード「{CustomerCode}」が見つかりません。";
+                return;
+            }
 
-        await ApplyCustomerAsync(customer);
+            await ApplyCustomerAsync(customer);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"取得エラー: {ex.Message}";
+        }
     });
 
     private async Task ApplyCustomerAsync(Customer customer)
@@ -159,9 +173,16 @@ public partial class DetailInvoiceIssueViewModel(
             AddresseeName = customer.CustomerName;
         }
 
-        await LoadCandidatesAsync();
+        try
+        {
+            await LoadCandidatesAsync();
+            StatusMessage = $"得意先: {customer.CustomerName}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"取得エラー: {ex.Message}";
+        }
 
-        StatusMessage = $"得意先: {customer.CustomerName}";
         IssueCommand.NotifyCanExecuteChanged();
     }
 
@@ -243,6 +264,10 @@ public partial class DetailInvoiceIssueViewModel(
         {
             StatusMessage = $"発行エラー: {ex.Message}";
         }
+        catch (Exception ex)
+        {
+            StatusMessage = $"発行エラー: {ex.Message}";
+        }
     });
 
     /// <summary>取消（F8）。発行済みの明細請求書を取消し、紐付いていた売上を未請求へ戻す。</summary>
@@ -274,6 +299,10 @@ public partial class DetailInvoiceIssueViewModel(
             NotifyResetToInitialState();
         }
         catch (DetailInvoiceException ex)
+        {
+            StatusMessage = $"取消エラー: {ex.Message}";
+        }
+        catch (Exception ex)
         {
             StatusMessage = $"取消エラー: {ex.Message}";
         }

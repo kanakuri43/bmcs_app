@@ -86,16 +86,23 @@ public partial class BillingReleaseViewModel(BillingReleaseService billingReleas
             return;
         }
 
-        var billing = await billingReleaseService.GetByNumberAsync(billingNumber);
-        if (billing is null)
+        try
         {
-            ClearForm();
-            BillingNumberQuery = billingNumber;
-            StatusMessage = $"請求番号「{billingNumber}」は見つかりません。";
-            return;
-        }
+            var billing = await billingReleaseService.GetByNumberAsync(billingNumber);
+            if (billing is null)
+            {
+                ClearForm();
+                BillingNumberQuery = billingNumber;
+                StatusMessage = $"請求番号「{billingNumber}」は見つかりません。";
+                return;
+            }
 
-        ApplyBilling(billing);
+            ApplyBilling(billing);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"取得エラー: {ex.Message}";
+        }
     });
 
     [RelayCommand(CanExecute = nameof(CanRelease))]
@@ -126,6 +133,10 @@ public partial class BillingReleaseViewModel(BillingReleaseService billingReleas
             NotifyResetToInitialState();
         }
         catch (BillingReleaseException ex)
+        {
+            StatusMessage = $"解除エラー: {ex.Message}";
+        }
+        catch (Exception ex)
         {
             StatusMessage = $"解除エラー: {ex.Message}";
         }

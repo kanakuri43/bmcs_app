@@ -276,8 +276,9 @@ C-6（元伝票の直接修正、赤伝方式は不採用）に沿って実装�
   （`docs/database-schema.md` 2.8節。C-6は「取消も直接修正」としているが、物理削除しない
   という既存方針と整合させるため`is_deleted`方式を採用）。
 - **編集ロック判定** (`SalesEditLockEvaluator`。Domain純粋関数＋`SalesEditLockService`が
-  `monthly_closing`を照会): ①`billing_number`が確定済み請求を指す ②対象年月の
-  `monthly_closing`が確定済み ③`settlement_status`=消込完了。理由文言を返すのみで、
+  `monthly_closing`／`detail_invoice_sales_line`を照会): ①`billing_number`が確定済み請求を指す
+  ①'明細請求書発行済み（`detail_invoice_sales_line`に連携している。Phase 6-5で追加。13章参照）
+  ②対象年月の`monthly_closing`が確定済み ③`settlement_status`=消込完了。理由文言を返すのみで、
   ViewModelは業務判断をせずそのまま表示する（docs/architecture.md 5章）。
 - **伝票単位の楽観的排他制御の共通処理**（`SlipConcurrencyGuard`。docs/architecture.md 9章が
   Phase 5での実装を予告していたもの）を`src/bmcs_app.Application/Common/`に新設し、
@@ -646,3 +647,98 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
   実行すると連携先`SALLIN002`の消込完了と、`DIV001`を指す明細入金`DRC002`の両方を理由に
   拒否されることを確認した（12-2の2条件が実データで両方成立するケース）。取消済みの
   seedデータ`DIV002`を読込むと「削除 (F8)」が無効であることも確認した。
+
+---
+
+## 13. 請求フェーズのレビュー（Phase 6-5、2026-09-14実施）
+
+完了条件「締め・解除・発行・取消の全組み合わせで整合が保たれる」について、9〜12章
+（Phase 6-1〜6-4）の実装をレビューした。個別の機能は結合テストで検証済みだが、**機能間の
+組み合わせ**と、**請求と売上訂正・取消（Phase 5-6・8章）の相互作用**は未検証だったため、
+本レビューではこの2点を対象にした。
+
+### 13-1. 組み合わせの棚卸し ― 締め請求と明細請求は構造的に分離している
+
+締め得意先（`tax_unit`＝請求単位／伝票単位。6-1・6-2が対象）と都度得意先（`tax_unit`＝内税明細
+単位。6-3・6-4が対象）は`customer.tax_unit`（登録後不変）で完全に分離され、`sales.tax_unit`も
+これをスナップショットする。`BillingClosingService.BuildCandidatesAsync`は
+`TaxUnit.Invoice || TaxUnit.Slip`の得意先のみを対象にし、`DetailInvoiceService.BuildCandidateQuery`
+は`TaxUnit.Line`のみを対象にするため、**同じ売上明細行が締め請求と明細請求の両方に載る経路は
+構造的に存在しない**。`CK_customer_tax_unit_closing_day`（内税明細単位⇔`closing_day=0`）により、
+都度得意先が締め処理の対象得意先抽出条件（`closing_day`一致）に紛れ込むこともない。
+
+締め順序（9-5）と解除順序（10-1）は対称な判定で、前回残高チェーンが破綻しない。二重締めは
+アプリ側チェック＋フィルタ付き一意インデックス、二重請求はアプリ側再確認＋UNIQUE制約の
+二段構えで、いずれもDB側の最終防衛線がある。`receipt_amount`の伝票単位重複計上も
+`GroupBy(ReceiptSlipNumber).First()`で回避済み（既存テストで確認済み）。
+
+### 13-2. 発見した問題1 ― 明細請求書発行済みの売上が編集ロックされていなかった（修正済み）
+
+売上の編集ロック（C-6・`SalesEditLockEvaluator`）は①請求締め（`billing_number`）②月次締め
+③消込完了の3条件のみで、「都度得意先の明細請求書発行自体はロック条件に含めない」としていた
+（`docs/product-spec.md`共通業務ルール5、旧記述）。しかし`tax_unit=3`の`billing_number`は
+`CK_sales_billing_number_by_tax_unit`により常にNULLのため、①は都度得意先には決して発火せず、
+**明細請求書を発行済みでも売上入力画面から自由に訂正・取消できてしまっていた**。結果:
+
+- `detail_invoice`ヘッダーの確定金額（スナップショット）が実データと乖離する。
+- 訂正で行を論理削除しても`detail_invoice_sales_line`の連携行は残り、`IsDeleted=true`の売上を
+  指し続ける（`DetailInvoiceService.GetByNumberAsync`は`!IsDeleted`で絞っていないため、その行を
+  明細として表示し続ける）。
+
+**対応（C-6改訂・2026-09-14ユーザー確認）**: 編集ロックに4つ目の条件「明細請求書発行済み
+（いずれかの明細行が`detail_invoice_sales_line`に連携している）」を追加した。判定順は
+①請求締め→①'明細請求書発行済→②月次締め→③消込完了（`SalesEditLockEvaluator.Evaluate`、
+`docs/product-spec.md`共通業務ルール5・`docs/database-schema.md` 2.0節を合わせて改訂）。
+DBアクセス（`detail_invoice_sales_line`の存在確認）は`SalesEditLockService.EvaluateAsync`に
+追加し、判定ロジック自体は純粋関数のまま維持した。`SalesService.UpdateAsync`／`CancelSlipAsync`
+は`SalesEditLockService`経由のため呼び出し側の変更は不要で、訂正後の再判定にも自動的に効く。
+
+### 13-3. 発見した問題2 ― 締め・解除がEF例外を業務例外へ変換していなかった（修正済み）
+
+`docs/architecture.md`は「`DbUpdateConcurrencyException`はApplication層で捕捉し、ViewModelに
+EF Coreの例外型を漏らさない」と規定しているが、`BillingClosingService.ConfirmAsync`・
+`BillingReleaseService.ReleaseAsync`は`SaveChangesAsync`を無防備に呼んでおり、同時実行時の
+`DbUpdateException`（二重締めのユニーク制約違反）・`DbUpdateConcurrencyException`（rowversion
+競合）が生のまま伝播していた。`DetailInvoiceService`（6-3・6-4）は`IssueAsync`／`CancelAsync`の
+両方で既に変換済みで、非対称だった。
+
+**対応**: 両サービスの`SaveChangesAsync`をtry/catchで包み、それぞれ`BillingClosingException`／
+`BillingReleaseException`へ変換した（`DetailInvoiceService`と同じ形）。両例外クラスを
+`DetailInvoiceException`と同じ`(string message, Exception? inner = null)`シグネチャに拡張した。
+
+あわせて、請求系3画面のViewModel（`BillingClosingViewModel`・`BillingReleaseViewModel`・
+`DetailInvoiceIssueViewModel`）は業務例外だけをcatchし`catch (Exception)`のフォールバックを
+持たない不整合があった（`SalesEntryViewModel`／`OrderEntryViewModel`は持つ）ため、同じ形の
+フォールバックを追加した。`BillingClosingViewModel`の`_ = PreviewAsync()`と
+`DetailInvoiceIssueViewModel`の`_ = ApplyCustomerAsync(...)`（いずれもfire-and-forget）は
+例外が`TaskScheduler.UnobservedTaskException`（ログのみ・UI通知なし）に落ち一覧が黙って古いまま
+になる経路だったため、各メソッド内部にtry/catchを足して塞いだ（呼び出し側の構造は変更していない）。
+
+### 13-4. 残存リスク（既知・許容、対応しない）
+
+- **入金の下限（9-2の再掲）**: 前回締め日より前の日付で後から登録された入金は、どの締めの期間
+  にも入らず永久に拾われない。対処は締め解除（6-2）→再締め。
+- **`sales.billing_status`とリンクの一致にDB側の防波堤が無い（新規確認・対応しない）**:
+  `billing_status`（請求済／未請求）と実際の紐付け（`tax_unit`1/2は`billing_number`、
+  `tax_unit=3`は`detail_invoice_sales_line`の存在）の一致は、アプリのトランザクションだけが
+  担保しており、DB側のCHECK制約は無い。二重請求側（`UQ_detail_invoice_sales_line_sales_line`）・
+  二重締め側（`UQ_billing_customer_closing_ym_confirmed`）はDB側の最終防衛線を持つのと非対称だが、
+  `tax_unit=3`側は連携テーブルの存在確認が必要でCHECK制約として書けないため、`tax_unit`1/2側だけ
+  追加しても非対称が残る。2026-09-14ユーザー確認により、DB制約は追加せずレビュー結果としてここに
+  記録するのみとした。
+
+### 検証方法
+
+- 単体テスト: `SalesEditLockEvaluatorTests`に条件1'（明細請求書発行済み）を追加（既存7件＋新規2件）。
+- 結合テスト: 新規`tests/bmcs_app.Application.Tests/Billing/BillingPhaseReviewTests.cs`（6件）。
+  締め請求と明細請求が互いの対象を拾わないこと、締め→解除→売上訂正→再締めが二重計上せず
+  訂正後の金額で確定すること、発行→取消→売上訂正→再発行も同様に訂正後の金額になること、
+  請求締め済み・明細請求書発行済みの売上がそれぞれ訂正・取消を拒否されること（後者は取消後に
+  再び編集できることも含む）、締め→解除→再締めを繰り返しても確定済み`billing`が常に1件だけ
+  であることを検証。専用のテスト得意先（`__TPHR01`〜`__TPHR07`、`closing_day = 17`）で実行後、
+  finallyで物理削除する方式（既存の`BillingClosingServiceTests`等と同じ）。全体テスト
+  （Domain 205件／Application 68件）すべてgreen。実行後にテスト用の行が
+  `customer`／`sales`／`billing`／`detail_invoice`／`detail_invoice_sales_line`に残っていないこと
+  を`sqlcmd`で確認済み。
+- 実機確認: 本レビューはコードレビューと結合テストが中心のため、GUI操作による実機確認は
+  行っていない（ビルド成功と自動テストのみで検証）。
