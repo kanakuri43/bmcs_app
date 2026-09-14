@@ -211,6 +211,145 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
     }
 
     [Fact]
+    public async Task 一部消込の売上を訂正して金額を減らすと消込済金額が新しい金額に丸められる()
+    {
+        // TODO.md 7-1レビューで発見した既存不整合の修正確認: UpdateAsyncは消込完了(3)のみを
+        // 編集ロック対象にし一部消込(2)は編集を許すため、金額を減らす訂正でsettled_amountが
+        // 新しいamountを超えて取り残る経路があった。SettlementService.RecalculateForCustomerAsync
+        // を配線したことで、実際の入金データ（detail_receipt）に基づき新しい金額へ丸め直される
+        // ことを確認する。内税明細単位（都度得意先）はbilling_numberを持たないため、
+        // 一部消込のままUpdateAsyncの編集ロックに引っかからない（CUS001は請求単位で
+        // billing_numberが付くと編集ロック条件1に該当するため、この検証には使えない）。
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, salesService, _) = Resolve(scope);
+
+        const string testCustomerCode = "__TSTCOR1";
+        var now = DateTime.Now;
+        dbContext.Customers.Add(new Customer
+        {
+            CustomerCode = testCustomerCode,
+            CustomerName = "テスト用得意先",
+            ClosingDay = 0,
+            TaxUnit = TaxUnit.Line,
+            RoundingType = RoundingType.Floor,
+            PrintRepresentativeFlag = false,
+            CreatedBy = "TEST",
+            CreatedAt = now,
+            UpdatedBy = "TEST",
+            UpdatedAt = now,
+        });
+        await dbContext.SaveChangesAsync();
+
+        var createLine = new SalesEntity
+        {
+            SalesSlipNumber = string.Empty,
+            LineNumber = 1,
+            SlipDate = DateOnly.FromDateTime(DateTime.Today),
+            CustomerCode = testCustomerCode,
+            TaxUnit = TaxUnit.Line,
+            CustomerName = "テスト用得意先",
+            SlipType = SlipType.Sales,
+            ProductCode = ProductCode,
+            ProductName = "テスト用商品",
+            Quantity = 6m,
+            UnitPrice = 1000m,
+            Amount = 6000m,
+            CostPrice = 700m,
+            TaxCategory = TaxCategory.Reduced,
+            TaxRate = 8m,
+            DeliveryNoteIssueCount = 0,
+            BillingStatus = BillingLinkStatus.Unbilled,
+            SettlementStatus = SettlementStatus.Unsettled,
+            SettledAmount = 0m,
+            CreatedBy = "TEST",
+            CreatedAt = now,
+            UpdatedBy = "TEST",
+            UpdatedAt = now,
+        };
+
+        string? salesSlipNumber = null;
+        try
+        {
+            salesSlipNumber = await salesService.CreateAsync([createLine], RoundingType.Floor);
+            var loadedLineNumbers = await dbContext.Sales
+                .Where(s => s.SalesSlipNumber == salesSlipNumber)
+                .Select(s => s.LineNumber)
+                .ToListAsync();
+
+            // 実際の明細入金（都度得意先・直接指定）で5,500円分を消込済にする（一部消込）。
+            dbContext.DetailReceipts.Add(new DetailReceipt
+            {
+                DetailReceiptNumber = "__TSTCOR_DRC01",
+                LineNumber = 1,
+                ReceiptDate = DateOnly.FromDateTime(DateTime.Today),
+                CustomerCode = testCustomerCode,
+                CustomerName = "テスト用得意先",
+                ReceiptMethod = ReceiptMethod.Cash,
+                ReceiptAmount = 5500m,
+                TargetType = DetailReceiptTargetType.SalesLine,
+                TargetSalesSlipNumber = salesSlipNumber,
+                TargetSalesLineNumber = loadedLineNumbers[0],
+                AllocatedAmount = 5500m,
+                FeeAdjustmentAmount = 0m,
+                AllocationStatus = AllocationStatus.Unallocated,
+                CreatedBy = "TEST",
+                CreatedAt = now,
+                UpdatedBy = "TEST",
+                UpdatedAt = now,
+            });
+            await dbContext.SaveChangesAsync();
+
+            var updated = new SalesEntity
+            {
+                SalesSlipNumber = salesSlipNumber,
+                LineNumber = loadedLineNumbers[0],
+                SlipDate = createLine.SlipDate,
+                CustomerCode = testCustomerCode,
+                TaxUnit = TaxUnit.Line,
+                CustomerName = "テスト用得意先",
+                SlipType = SlipType.Sales,
+                ProductCode = ProductCode,
+                ProductName = "テスト用商品",
+                Quantity = 4m,
+                UnitPrice = 1000m,
+                Amount = 4000m,
+                CostPrice = 700m,
+                TaxCategory = TaxCategory.Reduced,
+                TaxRate = 8m,
+                DeliveryNoteIssueCount = 0,
+                BillingStatus = BillingLinkStatus.Unbilled,
+                SettlementStatus = SettlementStatus.Unsettled,
+                SettledAmount = 0m,
+                CreatedBy = "TEST",
+                CreatedAt = now,
+                UpdatedBy = "TEST",
+                UpdatedAt = now,
+            };
+
+            await salesService.UpdateAsync(salesSlipNumber, [updated], RoundingType.Floor, loadedLineNumbers);
+
+            var persisted = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == salesSlipNumber);
+            // 実際の入金5,500円は新しい金額4,000円を上回るため、消込済金額は4,000円に
+            // 丸められ消込完了になる（訂正前の5,500円のまま取り残らない）。
+            Assert.Equal(4000m, persisted.SettledAmount);
+            Assert.Equal(SettlementStatus.FullySettled, persisted.SettlementStatus);
+        }
+        finally
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.detail_receipt WHERE detail_receipt_number = {"__TSTCOR_DRC01"}");
+            if (salesSlipNumber is not null)
+            {
+                await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                    $"DELETE FROM dbo.sales WHERE sales_slip_number = {salesSlipNumber}");
+            }
+
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.customer WHERE customer_code = {testCustomerCode}");
+        }
+    }
+
+    [Fact]
     public async Task 請求締め済みの売上は訂正できない()
     {
         await using var scope = fixture.Services.CreateAsyncScope();

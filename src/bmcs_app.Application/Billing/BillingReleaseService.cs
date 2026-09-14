@@ -1,4 +1,5 @@
 using bmcs_app.Application.Common;
+using bmcs_app.Application.Receipt;
 using bmcs_app.Domain.Enums;
 using bmcs_app.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,7 @@ namespace bmcs_app.Application.Billing;
 /// </summary>
 public class BillingReleaseService(
     BmcsDbContext dbContext,
+    SettlementService settlementService,
     ICurrentEmployeeContext currentEmployeeContext,
     ILogger<BillingReleaseService> logger)
 {
@@ -94,6 +96,12 @@ public class BillingReleaseService(
             throw new BillingReleaseException(
                 "他のユーザーがこの請求データを更新しました。再読み込みしてください。", ex);
         }
+
+        // 解除で billing_number が外れた売上行は充当先を失うため、消込キャッシュ列を未消込へ
+        // 戻す（TODO.md 7-1。解除前は消込完了/一部消込のまま取り残されていた既存の不整合の修正）。
+        // 解除した請求に充当されていた入金（receipt.allocated_amount）自体は本処理では
+        // 付け替えない（再消込は7-2の責務。docs/design_document.md 16章「既知の限界」）。
+        await settlementService.RecalculateForCustomerAsync(billing.CustomerCode, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
 

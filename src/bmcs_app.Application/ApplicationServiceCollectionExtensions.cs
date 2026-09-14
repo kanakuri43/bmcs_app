@@ -2,6 +2,7 @@ using bmcs_app.Application.Billing;
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
 using bmcs_app.Application.Order;
+using bmcs_app.Application.Receipt;
 using bmcs_app.Application.Sales;
 using bmcs_app.Domain.Calculations;
 using bmcs_app.Infrastructure;
@@ -56,6 +57,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<BillingReleaseService>();
         services.AddScoped<DetailInvoiceService>();
         services.AddScoped<DetailInvoiceQueryService>();
+        services.AddScoped<SettlementService>();
 
         return services;
     }

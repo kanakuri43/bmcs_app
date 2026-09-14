@@ -5,6 +5,7 @@ using bmcs_app.Domain.Enums;
 using bmcs_app.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using ReceiptEntity = bmcs_app.Domain.Entities.Receipt;
 using SalesEntity = bmcs_app.Domain.Entities.Sales;
 
 namespace bmcs_app.Application.Tests.Billing;
@@ -304,7 +305,7 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
         var now = DateTime.Now;
         // 1件の入金伝票を2つの請求へ充当する想定の2明細行（receipt_amountは伝票単位の値で同一）。
         dbContext.Receipts.AddRange(
-            new Receipt
+            new ReceiptEntity
             {
                 ReceiptSlipNumber = receiptSlip,
                 LineNumber = 1,
@@ -320,7 +321,7 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
                 AllocationStatus = AllocationStatus.PartiallyAllocated,
                 CreatedBy = "TEST", CreatedAt = now, UpdatedBy = "TEST", UpdatedAt = now,
             },
-            new Receipt
+            new ReceiptEntity
             {
                 ReceiptSlipNumber = receiptSlip,
                 LineNumber = 2,
@@ -435,12 +436,12 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
         }
     }
 
-    private static Receipt NewReceiptLine(
+    private static ReceiptEntity NewReceiptLine(
         string customerCode, TaxUnit taxUnit, string receiptSlipNumber, short lineNumber,
         DateOnly receiptDate, decimal receiptAmount)
     {
         var now = DateTime.Now;
-        return new Receipt
+        return new ReceiptEntity
         {
             ReceiptSlipNumber = receiptSlipNumber,
             LineNumber = lineNumber,

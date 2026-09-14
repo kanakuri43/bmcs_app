@@ -63,6 +63,45 @@ public class BillingReleaseServiceTests(DevDatabaseFixture fixture) : IClassFixt
     }
 
     [Fact]
+    public async Task 締め解除すると解除対象の売上行の消込状態も未消込へ戻る()
+    {
+        // TODO.md 7-1レビューで発見した既存不整合の修正確認: 解除前にbilling_numberが外れる
+        // ことだけを見ていたため、消込キャッシュ列（settlement_status/settled_amount）が
+        // 消込完了のまま取り残されていた。BillingReleaseService.ReleaseAsyncに
+        // SettlementService.RecalculateForCustomerAsyncを配線したことで解消したことを確認する。
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, closingService, releaseService) = Resolve(scope);
+
+        await InsertCustomerAsync(dbContext, CustomerCode);
+
+        var slip = "__TSTREL_SETTLED";
+        dbContext.Sales.Add(NewSalesLine(slip, 1, new DateOnly(2025, 7, 1), quantity: 5m, unitPrice: 1000m));
+        await dbContext.SaveChangesAsync();
+
+        try
+        {
+            var confirmed = await closingService.ConfirmAsync(TestClosingDay, new DateOnly(2025, 7, 15));
+            var billingNumber = Assert.Single(confirmed, r => r.CustomerCode == CustomerCode).BillingNumber!;
+
+            // 実際の入金（Phase 7-2未実装）を経ずに、消込完了済みの状態を直接再現する。
+            var salesLine = await dbContext.Sales.SingleAsync(s => s.SalesSlipNumber == slip);
+            salesLine.SettlementStatus = SettlementStatus.FullySettled;
+            salesLine.SettledAmount = salesLine.Amount;
+            await dbContext.SaveChangesAsync();
+
+            await releaseService.ReleaseAsync(billingNumber);
+
+            var persistedSales = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == slip);
+            Assert.Equal(SettlementStatus.Unsettled, persistedSales.SettlementStatus);
+            Assert.Equal(0m, persistedSales.SettledAmount);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, CustomerCode, [slip]);
+        }
+    }
+
+    [Fact]
     public async Task 解除済みの請求データを再度解除しようとすると例外になる()
     {
         await using var scope = fixture.Services.CreateAsyncScope();

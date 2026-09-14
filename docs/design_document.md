@@ -883,3 +883,177 @@ EF Coreの例外型を漏らさない」と規定しているが、`BillingClosi
 - 手動確認: 3画面それぞれで、起動直後の伝票No欄フォーカス／空欄`Enter`での次項目移動／
   存在する伝票Noの読込と移動先／存在しない伝票Noでのエラー表示（データを消さないこと）／
   `Space`での検索モーダル起動、を確認する（自動UIテストが無いため今後の実機確認が必要）。
+
+---
+
+## 16. 入金消込サービスの実装（Phase 7-1、2026-09-14実装）
+
+`Receipt`/`DetailReceipt`エンティティ・DDL・採番系列はPhase 1で用意済みだったが、書き込む
+コードが一つも無く、`sales.settlement_status`/`settled_amount`は常に未消込／0のままだった
+（4-4の`order_slip`と同じ「テーブルはあるが導出ロジックが無い」欠落）。Phase 4-4（受注状態
+遷移）と同じ前例に従い、**本タスクはサービス層＋テストのみ**。画面（7-2 入金入力・7-4 明細
+入金・7-5 入金の取消訂正）は後続タスクで別途実装し、UI配線・実機確認は行わない。
+
+### 16-1. 決定事項（ユーザー確認済み・2026-09-14）
+
+1. **消込対象額は売上明細行の`amount`をそのまま使う。** 請求単位・伝票単位（外税）は税抜
+   金額、内税明細単位は税込金額（`amount`が既に税込）であり、消費税分は明細行レベルの
+   消込には載せない。例: 明細6,000円＋4,000円＝10,000円の請求（税1,000円）に全額11,000円
+   入金すると両行とも消込完了になり、残1,000円（税額分）は行に載らない。
+2. **振込手数料差額（`fee_adjustment_amount`）は消込済金額に含める。** 売上明細行への
+   充当額は`allocated_amount + fee_adjustment_amount`。入金側自身の充当状態
+   （`AllocationStatus`）の判定には含めない（実際に受け取った現金の消化状況を表すため）。
+3. **締め入金（`receipt`）は`billing`単位で充当するが、キャッシュ列は`sales`明細行にある。**
+   `billing_number`へ充当した額を、その`billing_number`を持つ売上明細行へ伝票日付→伝票
+   番号→行番号の古い順に配分する。
+4. **既存の取り残しバグ2件を本タスクの範囲に含めて修正する**（16-7参照）。
+
+### 16-2. アーキテクチャ: デルタ方式ではなく「得意先スコープの再計算方式」
+
+完了条件は「登録・取消・訂正のいずれでもキャッシュ列が実態と一致する」であり、4-4の
+`OrderStatusService`と同じデルタ方式（差分だけを適用する）ではドリフトを許す（訂正で
+充当先自体が変わるケースを追跡しきれない）。代わりに`SettlementService`は**入金データ
+（`receipt`／`detail_receipt`）から得意先単位で毎回全件再計算して書き戻す**。
+
+スコープを「伝票」ではなく「得意先」にした理由:
+
+- `customer_code`は`sales`/`receipt`/`detail_receipt`いずれも伝票単位の値で、訂正でも
+  変わらない。訂正で充当先（`billing_number`等）が変わった場合、変更前・変更後の両方の
+  グループを自動的に再計算できる（差分追跡が不要になる）。
+- 都度得意先の「直接指定（`target_type=1`）」と「明細請求書経由（`target_type=2`）」の
+  合算が、得意先の全売上・全明細入金が同時に視界に入ることで単純なローカル計算になる。
+- 7-6（消込整合性レビュー）が同じ関数を「実態」の定義として再利用できる。
+
+公開メソッドは`SettlementService.RecalculateForCustomerAsync(string customerCode)`の
+1本のみ。得意先の`TaxUnit`で締め得意先向け（`RecalculateClosingAsync`）・都度得意先向け
+（`RecalculateDetailAsync`）に内部分岐する。
+
+### 16-3. 配分アルゴリズム（返品・値引の符号を正しく扱う）
+
+対象額（`amount`）はマイナス（返品・値引行）を含みうる。素朴な「マイナス行を先に全額
+充当し、その分を残額に戻す」方式は、入金が全く無い（`pool = 0`）場合でも返品行だけが
+消込完了になる事故を起こす（`SalesEditLockEvaluator`の編集ロック条件4・
+`DetailInvoiceService`の明細請求書候補除外に波及する実害がある）。
+
+`SettlementAllocator.Allocate`（`src/bmcs_app.Domain/Calculations/`）は次の2分岐で、
+この事故を起こさずに全額充当・過入金・不足の各ケースを扱う。
+
+1. `pool == 0` → 全行0。
+2. 対象額の合計（`netTarget`）が`pool`と同符号かつ`|pool| >= |netTarget|` → 各行を
+   対象額のとおりに配分する（返品・値引行も含めて全額消込完了になる。超過分は行に
+   載せない）。
+3. それ以外（不足） → `pool`と同符号の行だけに、呼び出し元が整列した順（伝票日付→
+   伝票番号→行番号の古い順）で`min(残額, 残対象額)`を配分する。符号が異なる行は0の
+   まま据え置く（返品行を消し込むには全額充当が必要という業務上の前提と一致する安全側
+   の挙動）。
+
+### 16-4. 直接指定と明細請求書経由の合算順序
+
+都度得意先（内税明細単位）の売上明細行は、明細入金の「直接指定」と「明細請求書経由」の
+両方から同時に充当されうる（`docs/database-schema.md` 2.11節）。`RecalculateDetailAsync`
+は**直接指定分を先に確定し、残額（`amount - 直接充当額`）を明細請求書経由の配分に回す**
+（名指しした明示的な指示を、システムが行う配分（導出）より優先する）。
+
+### 16-5. トランザクション境界と監査列
+
+再計算方式は「入金行を保存→DBを読み直して再計算」という構造上、1ユースケース内で
+`SaveChangesAsync`を2回呼ぶ（①呼び出し元の入金行保存 → ②`SettlementService`内の
+消込キャッシュ列の保存）。`docs/architecture.md` 6章の明示トランザクションの許容ケース
+に4番目として追記した。`SettlementService`自身は`BeginTransactionAsync`/`CommitAsync`を
+呼ばず、呼び出し元が開始した明示トランザクションに参加する（`OrderStatusService`と同じ
+構成）。明示トランザクションが開始されていない場合は`InvalidOperationException`を投げる
+（`SlipNumberService.NextAsync`と同じアサーション）。
+
+キャッシュ再計算は**値が実際に変わった行だけ**をModifiedにする（`SlipConcurrencyGuard.
+TouchAll`とは逆方針。`TouchAll`は編集中の1伝票に対する意図的な照合強制だが、再計算は
+得意先の全行に及ぶ派生更新であり、全行を対象にすると無関係な伝票を編集中の別ユーザーを
+不要に弾いてしまう。`docs/architecture.md` 9章に追記）。
+
+### 16-6. 名前空間の衝突に関する注意（実装時に発見）
+
+`docs/architecture.md` 10章の機能フォルダ規約に従い`SettlementService`は
+`src/bmcs_app.Application/Receipt/`（名前空間`bmcs_app.Application.Receipt`）に置いた。
+これにより、**`bmcs_app.Application.*`名前空間配下（`Application`本体・`Application.Tests`
+の両方）で`using bmcs_app.Domain.Entities;`により`Receipt`型を裸で参照しているコードが、
+名前空間`bmcs_app.Application.Receipt`と衝突してコンパイルエラーになる**（C#は enclosing
+namespace のメンバーを using 導入の型より優先して解決するため）。既存の
+`BillingClosingServiceTests.cs`がこれに該当し、`using ReceiptEntity = bmcs_app.Domain.
+Entities.Receipt;`のエイリアスへ変更して解消した。**今後`bmcs_app.Application.*`配下に
+ファイルを追加する際、エンティティ`Receipt`を裸で参照しないこと**（`ReceiptEntity`等の
+エイリアスを使う。`SettlementService.cs`・`SettlementServiceTests.cs`は既にこの形）。
+
+### 16-7. 既存の取り残しバグ2件の修正
+
+レビューで発見し、本タスクの範囲に含めて修正した（2026-09-14ユーザー確認）。
+
+1. **締め解除後に売上行の消込キャッシュが取り残される。** `BillingReleaseService.
+   ReleaseAsync`は`sales.billing_number`をNULLに戻すが、`settlement_status`/
+   `settled_amount`は触れておらず、解除前が消込完了のままだと解除後も編集不可
+   （C-6条件④）のまま宙に浮いていた。`ReleaseAsync`の`SaveChangesAsync`後・
+   `CommitAsync`前に`SettlementService.RecalculateForCustomerAsync`を呼ぶ配線を追加。
+   解除で`billing_number`が外れた行は充当先を失うため未消込へ戻る。
+2. **売上訂正で金額を減らすと消込済金額が新しい金額を超えて取り残る。**
+   `SalesEditLockEvaluator`の編集ロック条件4は`FullySettled`のみを対象にし
+   `PartiallySettled`は編集を許すため、一部消込の行を金額を減らす方向へ訂正できる経路
+   があった（訂正前は`settled_amount`が編集ロックに関与せず素通りしていた）。
+   `SalesService.UpdateAsync`／`CancelSlipAsync`の`SaveChangesAsync`後・`CommitAsync`前
+   に同様の配線を追加。実際の入金データ（`detail_receipt`等）に基づき新しい金額へ
+   丸め直される。
+
+### 16-8. 既知の限界（対応しない。将来の課題として記録）
+
+- **解除済み`billing`を指したままの`receipt`行は`allocated_amount`が入力データとして
+  残る。** `SettlementService`は入力データ（`allocated_amount`／`fee_adjustment_amount`）
+  を書き換えない。解除された充当の付け替え（別のbillingへ回す等）は7-2（入金入力）の
+  責務とし、7-6（消込整合性レビュー）で棚卸しする。
+- **返品・値引行（マイナスの`amount`）が明細入金から直接指定される場合の符号の組み合わせ
+  は実務上の発生例が未確認。** `SettlementAllocator`・`SettlementStatusCalculator`は
+  符号対称に実装済みだが、実データでの検証は行っていない（他の「残存リスク」節と同じ
+  扱い。発生した場合に単体テストを追加して確認する）。
+
+### 16-9. seedデータの不整合修正
+
+新しい消込ルールで自己整合するよう`scripts/seed_dev_data.sql`を修正した
+（2026-09-14。状態の境界値は維持し、金額のみ調整）。
+
+- `RCP_INV001`（CUS001締め入金）: 11,000.00→4,000.00（全額入金だと`SALINV002`が消込完了
+  になり、既存の一部消込という境界値が再現できなくなるため一部入金に変更）。
+- `RCP_SLP001`（CUS002締め入金）: 4,000.00→10,000.00／充当額4,000.00→8,800.00（過入金にし、
+  請求額8,800.00に対する一部充当という境界値を維持）。
+- `SALSLP002`（CUS002売上）: `settled_amount` 8,800.00→8,000.00（決定1により対象額は
+  `amount`＝税抜8,000.00。税800.00は行に載せない）。
+- `SALLIN002`（CUS003売上）: `tax_amount` 611.00→612.00（CUS003の端数区分は切上。
+  8,250×8÷108=611.111…を切上すると612.00。`SALLIN004`と同種の見落とし）。
+- `DIV001`（CUS003明細請求書）: `sales_amount`/`tax_amount`/`total_amount`/
+  `reduced_rate_taxable_amount`/`reduced_rate_tax_amount`を7,638.00/612.00/8,250.00/
+  7,638.00/612.00へ修正（`DetailInvoiceService.IssueAsync`は税抜金額を`sales_amount`に
+  入れるが、旧値は税込金額`amount`をそのまま入れており税額を二重に加算していた）。
+- `DRC002`（CUS003明細入金）: 8,861.00→8,250.00（DIV001の`total_amount`修正に追従）。
+
+修正後、以下の整合性チェック（sqlcmd）が0件であることを確認した。
+
+```sql
+SELECT * FROM dbo.sales WHERE is_deleted = 0 AND ABS(settled_amount) > ABS(amount);
+SELECT * FROM dbo.sales WHERE is_deleted = 0 AND (
+  (settled_amount = 0 AND settlement_status <> 1) OR
+  (settled_amount <> 0 AND ABS(settled_amount) >= ABS(amount)
+    AND SIGN(settled_amount) = SIGN(amount) AND settlement_status <> 3));
+```
+
+### 検証方法
+
+- 単体テスト: `tests/bmcs_app.Domain.Tests/Calculations/`に`SettlementAllocatorTests`・
+  `SettlementStatusCalculatorTests`・`AllocationStatusCalculatorTests`を追加（境界値・
+  過入金・返品混在・`pool=0`での返品誤消込の回帰を含む）。
+- 結合テスト: `tests/bmcs_app.Application.Tests/Receipt/SettlementServiceTests.cs`
+  （16件）。決定1〜3の検証例、手数料差額、返品混在の全額/一部充当、前受、過入金、
+  直接指定/明細請求書経由の合算順序、**完了条件の直接検証（登録→訂正→取消を通して
+  キャッシュ列が実態と一致し続けること）**、冪等性、トランザクション外呼び出し・
+  存在しない得意先の例外を検証。得意先・売上・入金・請求・明細請求書のすべてを
+  同一トランザクション内で作成しロールバックする方式のため、seedデータには一切触れず
+  後始末の物理削除も不要（`SettlementService`が自前でトランザクションを開かないため
+  可能な方式）。
+- `Billing/BillingReleaseServiceTests.cs`・`Sales/SalesServiceCorrectionTests.cs`に
+  16-7の回帰テストを各1件追加。
+- 全体テスト: Domain 239件／Application 88件、すべてgreen。
+- 実機確認は行わない（UI未実装のため。4-4と同じ扱い）。

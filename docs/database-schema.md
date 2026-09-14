@@ -321,6 +321,8 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `billing_status` | `tinyint` | × | `1`＝未請求／`2`＝請求済 |
 | `settlement_status` | `tinyint` | × | `1`＝未消込／`2`＝一部消込／`3`＝消込完了 |
 | `settled_amount` | `decimal(15,2)` | × | 消込済金額 |
+
+**`settlement_status`／`settled_amount` はキャッシュ列。** `SettlementService.RecalculateForCustomerAsync`（`src/bmcs_app.Application/Receipt/`、TODO.md 7-1）が入金データから得意先単位で再計算する。対象額は本テーブルの `amount`（税抜・税込いずれも `amount` がそのまま対象額になり、消費税分は行レベルの消込に載せない）。`tax_unit`=1/2 は `receipt`（`billing_number` 経由）、`tax_unit`=3 は `detail_receipt`（直接指定・明細請求書経由の合算）が充当元になる。詳細は `docs/design_document.md` 16章。
 | `order_slip_number` | `varchar(20)` | ○ | 受注からの売上化の場合の受注伝票番号 |
 | `order_line_number` | `smallint` | ○ | 同、行番号 |
 | `billing_number` | `varchar(20)` | ○ | 請求データへの参照。**`NULL`＝未請求**、または `tax_unit=3`（明細請求書との紐付けは連携テーブル2.14で行うため常にNULL） |
@@ -362,13 +364,13 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `bank_account_code` | `varchar(10)` | ○ | 入金先口座（FK → `bank_account`）。振込のとき使用 |
 | `receipt_amount` | `decimal(15,2)` | × | 入金額（**伝票単位の値。`SUM` してはいけない**） |
 | `billing_number` | `varchar(20)` | ○ | 充当先の請求データ。**`NULL`＝前受・過入金（充当先未定）** |
-| `allocated_amount` | `decimal(15,2)` | × | この行の充当額 |
-| `fee_adjustment_amount` | `decimal(15,2)` | × | 振込手数料差額の調整額 |
-| `allocation_status` | `tinyint` | × | `1`＝未充当／`2`＝一部充当／`3`＝充当完了 |
+| `allocated_amount` | `decimal(15,2)` | × | この行の充当額。**入力データ**（再計算の対象外） |
+| `fee_adjustment_amount` | `decimal(15,2)` | × | 振込手数料差額の調整額。**入力データ**。売上明細行への消込済金額には `allocated_amount + fee_adjustment_amount` として反映するが、`allocation_status` の判定には含めない |
+| `allocation_status` | `tinyint` | × | `1`＝未充当／`2`＝一部充当／`3`＝充当完了。**キャッシュ列**。同一伝票の `allocated_amount` 合計と `receipt_amount` の比較から `SettlementService` が導出する（TODO.md 7-1） |
 | `slip_remarks` | `nvarchar(200)` | ○ | 伝票摘要（**伝票単位の値**。同一伝票の全行に複写。1章参照） |
 | `line_remarks` | `nvarchar(100)` | ○ | 行摘要 |
 
-締め得意先は請求単位で古い順に自動消込するため、1回の入金が複数の請求にまたがる場合は複数行になる。
+締め得意先は請求単位で古い順に自動消込するため、1回の入金が複数の請求にまたがる場合は複数行になる。`billing_number` へ充当された額は、`SettlementService` がその billing に紐づく売上明細行へ伝票日付→伝票番号→行番号の古い順に配分する（TODO.md 7-1・`docs/design_document.md` 16章）。
 
 ---
 
@@ -392,13 +394,15 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `target_sales_slip_number` | `varchar(20)` | ○ | `target_type=1` のとき使用。**FK参照先は `sales`**（統合後） |
 | `target_sales_line_number` | `smallint` | ○ | 同上 |
 | `target_detail_invoice_number` | `varchar(20)` | ○ | `target_type=2` のとき使用 |
-| `allocated_amount` | `decimal(15,2)` | × | この行の充当額 |
-| `fee_adjustment_amount` | `decimal(15,2)` | × | |
-| `allocation_status` | `tinyint` | × | 締め入金と同じ区分 |
+| `allocated_amount` | `decimal(15,2)` | × | この行の充当額。**入力データ**（再計算の対象外） |
+| `fee_adjustment_amount` | `decimal(15,2)` | × | **入力データ**。締め入金と同じ扱い（消込済金額には含めるが充当状態の判定には含めない） |
+| `allocation_status` | `tinyint` | × | 締め入金と同じ区分。**キャッシュ列**（`SettlementService`が導出） |
 | `slip_remarks` | `nvarchar(200)` | ○ | 伝票摘要（**伝票単位の値**。同一伝票の全行に複写。1章参照） |
 | `line_remarks` | `nvarchar(100)` | ○ | 行摘要 |
 
 **CHECK 制約** `CK_detail_receipt_target` … `target_type` と実際に埋まっているカラムを一致させる。
+
+**`target_type=1`（直接指定）と `target_type=2`（明細請求書経由）は、同じ売上明細行に同時に効きうる。** `SettlementService`（TODO.md 7-1）は直接指定分を先に確定し、残額（`amount - 直接充当額`）を明細請求書経由の配分に回す（名指しした指示を導出より優先する）。索引は `IX_detail_receipt_customer_code_receipt_date`／`IX_detail_receipt_target_sales`／`IX_detail_receipt_target_detail_invoice`（`scripts/015_add_detail_receipt_indexes.sql`）。
 
 ```
 (target_type = 1

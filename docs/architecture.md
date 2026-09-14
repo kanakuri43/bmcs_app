@@ -132,6 +132,19 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
   1. 1回の `SaveChanges` に収まらない処理（請求締めなど、大量データを分割保存する場合）
   2. ストアドプロシージャの実行と EF Core の更新を1つの整合単位にまとめる場合
   3. **伝票番号の採番と伝票登録を1つの整合単位にまとめる場合**（下記）
+  4. **キャッシュ列を「書いた内容をDBから読み直して」再計算する場合**（入金消込。TODO.md 7-1）。
+     `SettlementService.RecalculateForCustomerAsync`（`src/bmcs_app.Application/Receipt/`）は、
+     入金明細（`receipt`／`detail_receipt`）から得意先の売上明細行の消込キャッシュ列
+     （`sales.settlement_status`／`settled_amount`）を再計算する。再計算方式（差分ではなく
+     毎回全件から導出する。docs/design_document.md 16章）は、呼び出し元が入金行を保存した
+     **後**でなければ再計算の入力（DB上の確定値）が揃わないため、1ユースケース内で
+     `SaveChangesAsync` を2回呼ぶ構成になる（①入金行の保存 → ②
+     `RecalculateForCustomerAsync` 内部での消込キャッシュ列の保存）。1つの整合単位である
+     ことは明示トランザクションで担保する。`SettlementService` 自身は
+     `BeginTransactionAsync`／`CommitAsync` を呼ばず、呼び出し元が開始した明示トランザクション
+     に参加する（`OrderStatusService.ApplySalesQuantityDeltasAsync` と同じ構成）。明示
+     トランザクションが開始されていない場合は `InvalidOperationException` を投げる
+     （`SlipNumberService.NextAsync` と同じアサーション）。
 - **ViewModel から複数のユースケースを呼んで1つの整合単位にしてはいけない。** 画面から2回呼べば2トランザクションになる。1つの整合単位が必要なら、Application 層にそれを1メソッドとして用意する。
 - **伝票番号の採番は、伝票登録と同一トランザクション内で行う（TODO.md 4-1）。** 別トランザクションで先に採番すると、登録が失敗したときに欠番が出る。伝票番号の欠番は業務上の説明が難しいため避ける。採番テーブルの行ロックがトランザクション終了まで残るが、同時利用者は数十人規模であり実用上の問題にならない。
   - 呼び出し順は「メモリ上でエンティティグラフを組み立てる → `BeginTransactionAsync` → `SlipNumberService.NextAsync` → 番号を明細行に代入 → `SaveChangesAsync`（1回） → `CommitAsync`」。**画面を開いた時点や入力開始時に採番してはならない。** ロックがコミットまで残るため、UI操作をまたいでトランザクションを開いたままにしない。
@@ -191,6 +204,14 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 - **マスタは1レコードが編集単位なので、rowversion がそのまま機能する。** 追加の考慮は不要。
 - **請求データ・月次締めは rowversion だけに頼らない。** 「確定済みのものを再確定しない」「解除済みのものを再解除しない」といった状態遷移の前提条件を、更新前に必ず確認する。rowversion は同時更新を検出するだけで、業務的に不正な遷移は防げない。
 - 競合を検出したときは、画面に「他のユーザーが更新しました。再読み込みしてください」と表示し、**自動マージや後勝ちでの上書きは行わない**（金額が静かに壊れることを避ける）。
+- **派生（キャッシュ）列の再計算では `TouchAll` を使わない（TODO.md 7-1）。** `TouchAll` は
+  ユーザーが伝票を編集するときに「自分が変更しなかった行を他人が変更した」を検出するための
+  意図的な rowversion 照合強制であり、対象は編集中の1伝票に限られる。一方、消込キャッシュ列
+  の再計算（`SettlementService.RecalculateForCustomerAsync`）は得意先の全売上・全入金行に
+  及ぶ派生更新であり、ここで全行を Modified にすると、再計算のたびに無関係な伝票を編集中の
+  別ユーザーが不要に弾かれる。**値が実際に変わった行だけを Modified にする。** 真に競合すべき
+  ケース（同一 `billing` への2つの入金の同時登録）は、両方が実際に `settled_amount` を書き換え
+  るため、変更行だけを対象にしても rowversion で正しく検出される。
 
 ## 10. 命名・フォルダ規約
 

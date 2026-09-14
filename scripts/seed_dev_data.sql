@@ -14,14 +14,24 @@
 --   - 得意先の税単位3種（tax_unit=1/2/3）と締め区分（締め・都度）の対応
 --   - 商品の税種別区分3種
 --   - docs/product-spec.md「伝票の状態遷移」の全18状態
+--   - sales/receipt/detail_receiptの消込・充当キャッシュ列は、SettlementService
+--     （TODO.md 7-1）の再計算ルールで再現可能な値になっている（2026-09-14修正）
 --
 -- 010_unify_tax_unit_tables.sql での統合に追従し、sales / receipt / billing
 -- （旧・税単位別8テーブル）は tax_unit 列を持つ単一テーブルへの投入に変更した。
 --
--- 適用: sqlcmd -S 172.16.3.171 -U sa -d bmcs_db -C -i scripts\seed_dev_data.sql
+-- 適用: sqlcmd -S 172.16.3.171 -U sa -d bmcs_db -C -I -i scripts\seed_dev_data.sql
 -- =============================================================================
 
 USE bmcs_db;
+GO
+
+-- scripts/013_add_billing_confirmed_unique_index.sql が billing にフィルタ付き一意索引を
+-- 追加したため、sqlcmd既定の QUOTED_IDENTIFIER OFF のままだと本スクリプトの billing への
+-- DML自体が失敗する。フィルタ付き索引を持つテーブルへのDMLは QUOTED_IDENTIFIER ON が必須
+-- （sqlcmdは既定でOFF。呼び出し側は -I オプションでも ON にできるが、本スクリプト単体で
+-- 再実行できるようここでも明示する。TODO.md 7-1の実装検証で発見）。
+SET QUOTED_IDENTIFIER ON;
 GO
 
 -- -----------------------------------------------------------------------------
@@ -199,10 +209,13 @@ VALUES
      1, 1, 0.00, NULL, NULL, NULL,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     -- CUS002・伝票単位: 発行済・請求済・消込完了
+    -- settled_amount は8000.00（2026-09-14修正: TODO.md 7-1決定1により消込の対象額は
+    -- amount（税抜）そのもの。消費税分（800円）は明細行レベルの消込に載せない。
+    -- 旧値8800.00（税込）は再計算方式の消込ルールと不整合だった）。
     (N'SALSLP002', 1, '2026-07-10', N'CUS002', 2, N'鈴木工業株式会社', 1,
      N'PRD001', N'事務用品セット', 8.000, 1000.0000, 8000.00, 700.0000,
      1, 10.00, 800.00, NULL, '2026-07-10T11:00:00', 1,
-     2, 3, 8800.00, NULL, NULL, N'BIL_SLP001',
+     2, 3, 8000.00, NULL, NULL, N'BIL_SLP001',
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     -- CUS003・内税明細単位（都度得意先）: 未請求（明細請求の対象候補）
     -- unit_price は内税単価（550）を転記する。amount=11000 は 20×550 で既に整合している
@@ -213,9 +226,12 @@ VALUES
      1, 1, 0.00, NULL, NULL, NULL,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     -- CUS003・内税明細単位: 請求済（DIV001 と連携）・消込完了
+    -- tax_amount は612.00（2026-09-14修正: CUS003のrounding_type=3=切上。
+    -- 8250×8÷108=611.111…を切上すると612.00になる。旧値611.00はSALLIN004と同種の
+    -- 見落としだった。TODO.md 7-1の実装検証で発見）。
     (N'SALLIN002', 1, '2026-07-20', N'CUS003', 3, N'石山市立石山小学校', 1,
      N'PRD002', N'給食用食材', 15.000, 550.0000, 8250.00, 350.0000,
-     2, 8.00, NULL, 611.00, '2026-07-20T09:00:00', 1,
+     2, 8.00, NULL, 612.00, '2026-07-20T09:00:00', 1,
      2, 3, 8250.00, NULL, NULL, NULL,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     -- CUS003・内税明細単位【境界値】: 未請求だが消込完了 → 明細請求の対象外になるべき行
@@ -244,16 +260,25 @@ INSERT INTO dbo.receipt
      allocation_status, created_by, created_at, updated_by, updated_at)
 VALUES
     -- CUS001・請求単位: 充当完了
+    -- receipt_amount/allocated_amountは4000.00（2026-09-14修正: TODO.md 7-1決定3により
+    -- billingへの充当額はその請求に紐づくsales行へ配分される。全額11000.00を充当すると
+    -- SALINV002（amount=10000）が消込完了になり、既存のSALINV002の消込状態（一部消込・
+    -- settled_amount=4000.00）という境界値が再現できなくなる。一部入金に変更し、
+    -- SALINV002の既存値と整合させた）。
     (N'RCP_INV001', 1, '2026-07-25', N'CUS001', 1, N'株式会社山田商事', 2,
-     N'BNK001', 11000.00, N'BIL_INV001', 11000.00, 0.00,
+     N'BNK001', 4000.00, N'BIL_INV001', 4000.00, 0.00,
      3, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     -- CUS001・請求単位: 未充当（前受・過入金）
     (N'RCP_INV002', 1, '2026-08-05', N'CUS001', 1, N'株式会社山田商事', 1,
      NULL, 3000.00, NULL, 0.00, 0.00,
      1, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     -- CUS002・伝票単位: 一部充当
+    -- receipt_amount=10000.00／allocated_amount=8800.00（2026-09-14修正: 旧値は両方
+    -- 4000.00で、TODO.md 7-1決定1（対象額=amount=税抜8000.00）だと充当完了になり
+    -- 一部充当の境界値が消える。請求額8800.00（税込）を超える過入金にすることで、
+    -- 一部充当（8800.00 < 10000.00）の境界値を維持しつつ、過入金ケースも網羅する）。
     (N'RCP_SLP001', 1, '2026-08-01', N'CUS002', 2, N'鈴木工業株式会社', 2,
-     N'BNK001', 4000.00, N'BIL_SLP001', 4000.00, 0.00,
+     N'BNK001', 10000.00, N'BIL_SLP001', 8800.00, 0.00,
      2, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
@@ -268,9 +293,15 @@ INSERT INTO dbo.detail_invoice
      created_by, created_at, updated_by, updated_at)
 VALUES
     -- 発行済
+    -- sales_amount/tax_amount/total_amount/reduced_rate_*は2026-09-14修正。
+    -- DetailInvoiceService.IssueAsyncはConsumptionTaxCalculator.CalculateInternalTaxPerLineの
+    -- TaxableAmount（=Amount-Tax。税抜）をsales_amountに入れるため、SALLIN002（amount=8250、
+    -- tax_amount=612。上記修正と連動）から sales_amount=8250-612=7638・tax_amount=612・
+    -- total_amount=7638+612=8250 が正しい。旧値（8250/611/8861）はamount（税込）をそのまま
+    -- sales_amountに入れており、税額を二重に加算した誤り（TODO.md 7-1の実装検証で発見）。
     (N'DIV001', N'CUS003', N'石山市立石山小学校', N'石山小学校5年1組 佐藤先生', '2026-07-20',
-     8250.00, 611.00, 8861.00,
-     0.00, 0.00, 8250.00, 611.00, 0.00,
+     7638.00, 612.00, 8250.00,
+     0.00, 0.00, 7638.00, 612.00, 0.00,
      1, '2026-07-20T10:00:00', N'EMP001',
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     -- 取消済
@@ -312,10 +343,13 @@ VALUES
      2750.00, 0.00, 3,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     -- target_type=DetailInvoice（DIV001を指定）
+    -- receipt_amount/allocated_amountは8250.00（2026-09-14修正: DIV001のtotal_amount修正
+    -- （8861.00→8250.00）に追従。DIV001を全額入金した実績のため常にDIV001.total_amountと
+    -- 一致させる）。
     (N'DRC002', 1, '2026-07-22', N'CUS003', N'石山市立石山小学校', 2,
-     N'BNK001', 8861.00, 2,
+     N'BNK001', 8250.00, 2,
      NULL, NULL, N'DIV001',
-     8861.00, 0.00, 3,
+     8250.00, 0.00, 3,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
