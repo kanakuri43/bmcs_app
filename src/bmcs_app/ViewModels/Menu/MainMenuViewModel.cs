@@ -186,4 +186,11 @@ public partial class MainMenuViewModel(
     [RelayCommand]
     private void OpenBillingRelease()
         => windowService.Show<BillingReleaseWindow, BillingReleaseViewModel>();
+
+    /// <summary>
+    /// 明細請求書発行画面を開く（TODO.md 6-3）。Phase 2-7 で正式なメニューに置き換わるまでの暫定導線。
+    /// </summary>
+    [RelayCommand]
+    private void OpenDetailInvoiceIssue()
+        => windowService.Show<DetailInvoiceIssueWindow, DetailInvoiceIssueViewModel>();
 }

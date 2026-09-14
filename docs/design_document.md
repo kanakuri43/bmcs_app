@@ -491,3 +491,96 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
   請求番号入力→Enter読込→得意先名・税区分・金額・状態が正しく表示されることを確認済み
   （既存のseedデータ`BIL_INV001`で確認。解除操作自体は結合テストで検証済みのため、
   共有のseedデータを実機操作で変更することは避けた）。
+
+---
+
+## 11. 明細請求書発行（Phase 6-3、2026-09-14実装）
+
+都度得意先（`tax_unit = 3` 内税明細単位）の未請求かつ消込完了でない売上明細行を数件選び、
+`detail_invoice`／`detail_invoice_sales_line`へ確定する。`detail_invoice`テーブル・EFエンティティ・
+採番系列（`SlipNumberKind.DetailInvoice`）はPhase 1で作成済みだったが、そこへ書き込む経路が
+一つも無かった欠落を本タスクで埋める。
+
+### 11-1. 対象条件 ― 連携テーブルの存在が唯一の正
+
+共通業務ルール2（`docs/product-spec.md`）のとおり、対象条件は**未請求かつ消込完了でない**
+売上明細行（`tax_unit = 3`）。「未請求」の判定は`sales.billing_status`（キャッシュ）ではなく
+**`detail_invoice_sales_line`に連携行が存在しないこと**で行う。締め請求（`billing_number`）とは
+異なり、明細請求は連携テーブルの有無が唯一の正であり、`billing_status`はその写しに過ぎないため
+（万一両者が食い違っても、連携行が無い行は候補に出て再請求でき、自己修復になる）。
+
+この抽出条件は`DetailInvoiceService.BuildCandidateQuery`（private）に1本化し、画面表示用の
+`GetCandidatesAsync`と、発行時にトランザクション内で再確認する`IssueAsync`の両方から使う
+（9章「金額を出す経路を1本にする」と同じ方針）。
+
+### 11-2. 税額計算・二重請求防止
+
+新しい計算ロジックは追加せず、5-1で用意済みの`ConsumptionTaxCalculator.CalculateInternalTaxPerLine`
+（XMLコメントに「明細請求書用」と明記済み）をそのまま使う。返品行（`slip_type`=2）を含めても
+マイナス金額のまま計算に含まれ、5-1の符号対称な端数処理により元の売上の税額をちょうど打ち消す。
+
+発行時は、再計算した明細行ごとの税額合計が保存済み`sales.tax_amount`の合計と一致することを
+検証する（9-4が伝票単位で行っている検証と対称。端数区分は登録後不変のため、本来一致するはず
+のデータ異常を検出する）。
+
+二重請求防止は`detail_invoice_sales_line`のDB側UNIQUE制約（`UQ_detail_invoice_sales_line_sales_line`）
+とアプリ側の事前チェック（11-1の対象条件クエリを発行直前にトランザクション内で再実行）の二段構え。
+`detail_invoice_sales_line`はrowversionを持たない（行の追加・削除のみで更新が無いテーブルのため）
+ので、この再確認とDB側のUNIQUE制約が排他制御の担保になる（`docs/architecture.md` 9章）。
+
+**`tax_unit = 3`の締め請求データ（`sales.billing_number`）は常にNULLのまま。** `CK_sales_billing_number_by_tax_unit`
+により内税明細単位は締め請求データを持てないため、発行時に更新するのは`sales.billing_status`
+（`BillingLinkStatus.Billed`）のみで、紐付けは連携テーブルのみで行う。
+
+### 11-3. 実装
+
+- `src/bmcs_app.Application/Billing/DetailInvoiceService.cs`が本体。`GetCandidatesAsync`
+  （画面表示用、保存しない）・`GetByNumberAsync`（既存分の読み取り専用取得。明細は連携テーブル
+  経由で売上ジャーナルから組み立てる）・`IssueAsync`（発行の確定）を持つ。`IssueAsync`は
+  伝票番号の採番（`SlipNumberKind.DetailInvoice`）を伴うため明示トランザクションで包む
+  （`docs/architecture.md` 6章）。
+- 画面（`Views/Billing/DetailInvoiceIssueWindow.xaml`／`ViewModels/Billing/DetailInvoiceIssueViewModel.cs`）
+  は左＝取込候補／右＝請求書明細の2ペイン構成。一覧は`ListView`＋`GridView`（本プロジェクトの
+  既存画面が一貫して使う一覧パターン。`DataGrid`は使わない）で、候補行↔明細行の移動は
+  `RowActivationBehavior`によるEnter／ダブルクリックと、同じコマンドを再利用する「選択した行を
+  追加 ▶」／「◀ 除外」ボタンの両方から行える。
+- 一覧を持たず、明細請求書No.を直接入力してEnterで既存分を読み込む方式（得意先／商品マスタ・
+  締め解除処理と同じコード直接入力方式。2026-09-14ユーザー確認）。既存分を読み込んだ場合は
+  読み取り専用表示にする。`detail_invoice`は「発行済／取消」の2状態で訂正の概念が無いため
+  （訂正はPhase 6-4の取消→再発行で行う想定）。
+- 宛名（`addressee_name`）は得意先コード確定時に得意先名を初期値として転記し、手入力で
+  上書き可能にする（C-9・2026-09-10確定。他のジャーナル系画面と同じ「名称欄を直接書き換える」
+  方式だが、`detail_invoice`は`customer_name`（得意先マスタのスナップショット）と
+  `addressee_name`（印字用宛名）を別カラムで持つため、本画面では宛名専用の入力欄として分離した）。
+- 発行成功後は完了メッセージを出して画面を起動直後の状態に戻す（`docs/product-spec.md` UI/UX節
+  「登録後のリセット」）。
+- 削除（Phase 6-4の取消）・印刷（Phase 10-3／10-5の帳票基盤・請求書実装）は本タスクの範囲外の
+  ため、ツールバーに枠のみ用意し常に無効化する（2026-09-14ユーザー確認。4-3の受注入力画面と
+  同じ扱い）。
+- デモ（`bmcs_app.LineInvoice`）にあった前後の請求書ナビゲーション・登録件数表示・請求書検索
+  モーダル・上書き保存（Upsert）は採用しなかった（2026-09-14ユーザー確認）。理由は前項および
+  「一覧を持たずコード直接入力」という既存画面の統一パターンを優先したため。
+
+### 11-4. seedデータの不整合修正
+
+`scripts/seed_dev_data.sql`のCUS003返品行（`SALLIN004`）の`tax_amount`が`-81.00`と記録されて
+いたが、正しくは`-82.00`（CUS003の端数区分=切上。`-1100×8÷108=-81.4815…`を符号対称な切上で
+丸めると`-82.00`になる）。本タスクの実装検証（11-2の税額一致チェック）で発見し、seed側を修正した
+（4-2でのCUS003単価不整合修正と同じ扱い。スキーマ変更を伴わないため`scripts/`への連番SQLは
+追加していない）。
+
+### 検証方法
+
+- 結合テスト: `tests/bmcs_app.Application.Tests/Billing/DetailInvoiceServiceTests.cs`（8件）。
+  完了条件「対象条件が明細行単位で正しく効いている」を、未請求・請求済（連携あり）・消込完了・
+  削除済・他得意先の5パターンを1テストで揃えて直接検証。加えて税率混在（標準10%／軽減8%）の
+  内訳計算、返品行を含めた打ち消し、二重請求・消込完了行・0件・内税明細単位以外の得意先を
+  指定したときの例外を検証。専用のテスト得意先（`__TSTDIV1`／`__TSTDIV2`）で発行後、
+  finallyで物理削除する方式（`BillingClosingServiceTests`と同じ。`IssueAsync`が内部で
+  `BeginTransactionAsync`するため）。
+- 実機確認: メインメニューの「明細請求書発行」ボタンから画面を開き、UI Automation経由で
+  得意先コード`CUS003`を入力→Enter照会→取込候補が`SALLIN001`・`SALLIN004`の2行のみ
+  （`SALLIN002`＝請求済、`SALLIN003`＝消込完了は表示されない）であり、金額・消費税・
+  得意先名・宛名の初期値がすべて正しく表示されることを確認済み。発行操作自体（保存を伴う）は
+  共有のseedデータを実機操作で変更することを避け、結合テストで検証済みの内容に委ねた
+  （10章の締め解除処理と同じ判断）。

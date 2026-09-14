@@ -239,9 +239,12 @@ VALUES
      1, 3, 2750.00, NULL, NULL, NULL,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     -- CUS003・内税明細単位: 返品（マイナス数量。M-9暫定）
+    -- tax_amount は -82.00（2026-09-14修正: CUS003のrounding_type=3=切上。符号対称な切上のため
+    -- -1100×8÷108=-81.4815…はMath.Floor(-81.4815)=-82.00になる。旧値-81.00はTaxRoundingの
+    -- 符号対称規則を反映していない不整合値だった。TODO.md 6-3の実装検証で発見）。
     (N'SALLIN004', 1, '2026-08-13', N'CUS003', 3, N'石山市立石山小学校', 2,
      N'PRD002', N'給食用食材', -2.000, 550.0000, -1100.00, 350.0000,
-     2, 8.00, NULL, -81.00, NULL, 0,
+     2, 8.00, NULL, -82.00, NULL, 0,
      1, 1, 0.00, NULL, NULL, NULL,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO

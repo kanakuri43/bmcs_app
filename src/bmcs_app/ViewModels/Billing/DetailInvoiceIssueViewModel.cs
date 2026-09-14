@@ -1,0 +1,287 @@
+using System.Collections.ObjectModel;
+using bmcs_app.Application.Billing;
+using bmcs_app.Application.Master;
+using bmcs_app.Domain.Entities;
+using bmcs_app.Domain.Enums;
+using bmcs_app.Services;
+using bmcs_app.ViewModels.Common;
+using bmcs_app.Views.Common;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
+namespace bmcs_app.ViewModels.Billing;
+
+/// <summary>
+/// 明細請求書発行画面（TODO.md 6-3）。都度得意先（内税明細単位）の未請求かつ消込完了でない
+/// 売上明細行を選び、明細請求書を発行する。左＝取込候補／右＝請求書明細の2ペイン構成
+/// （デモ<c>bmcs_app.LineInvoice</c>のレイアウトを踏襲。差異は docs/design_document.md 11章）。
+/// 既存の明細請求書番号を読み込んだ場合は読み取り専用表示にする（訂正の概念が無いため）。
+/// </summary>
+public partial class DetailInvoiceIssueViewModel(
+    DetailInvoiceService detailInvoiceService,
+    CustomerService customerService,
+    WindowService windowService) : ViewModelBase
+{
+    private Customer? _customer;
+
+    [ObservableProperty]
+    public partial string DetailInvoiceNumberQuery { get; set; } = string.Empty;
+
+    /// <summary>既存の明細請求書を読み込んだ状態かどうか。真のときは読み取り専用（訂正不可）。</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddCandidateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveLineCommand))]
+    [NotifyCanExecuteChangedFor(nameof(IssueCommand))]
+    public partial bool IsExistingLoaded { get; set; }
+
+    [ObservableProperty]
+    public partial string IssueDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+
+    [ObservableProperty]
+    public partial string CustomerCode { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string CustomerName { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(IssueCommand))]
+    public partial string AddresseeName { get; set; } = string.Empty;
+
+    public ObservableCollection<DetailInvoiceSalesLineItem> Candidates { get; } = [];
+
+    public ObservableCollection<DetailInvoiceSalesLineItem> Lines { get; } = [];
+
+    [ObservableProperty]
+    public partial DetailInvoiceSalesLineItem? SelectedCandidate { get; set; }
+
+    [ObservableProperty]
+    public partial DetailInvoiceSalesLineItem? SelectedLine { get; set; }
+
+    public decimal TaxExcludedTotal => Lines.Sum(l => l.Amount - l.TaxAmount);
+
+    public decimal TaxTotal => Lines.Sum(l => l.TaxAmount);
+
+    public decimal GrandTotal => Lines.Sum(l => l.Amount);
+
+    [ObservableProperty]
+    public partial string StatusMessage { get; set; } = string.Empty;
+
+    private bool CanEdit => !IsExistingLoaded;
+
+    private bool CanIssue => !IsExistingLoaded && _customer is not null && Lines.Count > 0
+        && !string.IsNullOrWhiteSpace(AddresseeName);
+
+    /// <summary>新規（F3）。画面を起動直後の状態に戻す。</summary>
+    [RelayCommand]
+    private void New()
+    {
+        ClearForm();
+        StatusMessage = "新規明細請求書";
+    }
+
+    /// <summary>明細請求書番号欄で Enter を押したときに、入力済み番号で直接読み込む（読み取り専用表示）。</summary>
+    [RelayCommand]
+    private Task LookupAsync() => RunBusyAsync(async () =>
+    {
+        var number = DetailInvoiceNumberQuery.Trim();
+        if (string.IsNullOrWhiteSpace(number))
+        {
+            return;
+        }
+
+        var view = await detailInvoiceService.GetByNumberAsync(number);
+        if (view is null)
+        {
+            ClearForm();
+            DetailInvoiceNumberQuery = number;
+            StatusMessage = $"明細請求書番号「{number}」は見つかりません。";
+            return;
+        }
+
+        ApplyView(view);
+    });
+
+    [RelayCommand]
+    private void OpenCustomerSearch()
+    {
+        var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>();
+        if (customer is not null)
+        {
+            _ = ApplyCustomerAsync(customer);
+        }
+    }
+
+    [RelayCommand]
+    private Task LookupCustomerByCodeAsync() => RunBusyAsync(async () =>
+    {
+        if (string.IsNullOrWhiteSpace(CustomerCode))
+        {
+            return;
+        }
+
+        var customer = await customerService.GetByCodeAsync(CustomerCode);
+        if (customer is null)
+        {
+            StatusMessage = $"得意先コード「{CustomerCode}」が見つかりません。";
+            return;
+        }
+
+        await ApplyCustomerAsync(customer);
+    });
+
+    private async Task ApplyCustomerAsync(Customer customer)
+    {
+        if (customer.TaxUnit != TaxUnit.Line)
+        {
+            StatusMessage = "内税明細単位（都度得意先）以外は明細請求書の対象外です。";
+            return;
+        }
+
+        _customer = customer;
+        CustomerCode = customer.CustomerCode;
+        CustomerName = customer.CustomerName;
+
+        // 宛名は得意先名を初期値として転記し、手入力で上書き可能にする
+        // （C-9・2026-09-10確定。子得意先マスタは持たず都度書き換え方式に一本化）。
+        if (string.IsNullOrWhiteSpace(AddresseeName))
+        {
+            AddresseeName = customer.CustomerName;
+        }
+
+        await LoadCandidatesAsync();
+
+        StatusMessage = $"得意先: {customer.CustomerName}";
+        IssueCommand.NotifyCanExecuteChanged();
+    }
+
+    private async Task LoadCandidatesAsync()
+    {
+        Candidates.Clear();
+        if (_customer is null)
+        {
+            return;
+        }
+
+        var alreadyOnSlip = Lines.Select(l => (l.SalesSlipNumber, l.SalesLineNumber)).ToHashSet();
+        var candidates = await detailInvoiceService.GetCandidatesAsync(_customer.CustomerCode);
+        foreach (var candidate in candidates.Where(c => !alreadyOnSlip.Contains((c.SalesSlipNumber, c.SalesLineNumber))))
+        {
+            Candidates.Add(candidate);
+        }
+    }
+
+    /// <summary>候補行を請求書明細へ追加する。<see cref="bmcs_app.Behaviors.RowActivationBehavior"/>の
+    /// Enter／ダブルクリックと、「選択した行を追加」ボタン（<see cref="SelectedCandidate"/>）の両方から呼ぶ。</summary>
+    [RelayCommand(CanExecute = nameof(CanEdit))]
+    private void AddCandidate(object? item)
+    {
+        if (item is not DetailInvoiceSalesLineItem line)
+        {
+            return;
+        }
+
+        Candidates.Remove(line);
+        Lines.Add(line);
+        RaiseTotalsChanged();
+        IssueCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>請求書明細から候補へ戻す。Enter／ダブルクリックと「除外」ボタンの両方から呼ぶ。</summary>
+    [RelayCommand(CanExecute = nameof(CanEdit))]
+    private void RemoveLine(object? item)
+    {
+        if (item is not DetailInvoiceSalesLineItem line)
+        {
+            return;
+        }
+
+        Lines.Remove(line);
+        Candidates.Add(line);
+        RaiseTotalsChanged();
+        IssueCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>発行（F10）。</summary>
+    [RelayCommand(CanExecute = nameof(CanIssue))]
+    private Task IssueAsync() => RunBusyAsync(async () =>
+    {
+        if (_customer is null || Lines.Count == 0)
+        {
+            return;
+        }
+
+        if (!DateOnly.TryParseExact(IssueDateText, "yyyy/MM/dd", out var issueDate))
+        {
+            StatusMessage = "請求日付の形式が不正です（yyyy/MM/dd）。";
+            return;
+        }
+
+        var lineKeys = Lines.Select(l => (l.SalesSlipNumber, l.SalesLineNumber)).ToList();
+
+        try
+        {
+            var issued = await detailInvoiceService.IssueAsync(
+                _customer.CustomerCode, AddresseeName.Trim(), issueDate, lineKeys);
+
+            // 発行成功後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
+            ClearForm();
+            StatusMessage = $"明細請求書 {issued.DetailInvoiceNumber} を発行しました。";
+            NotifyResetToInitialState();
+        }
+        catch (DetailInvoiceException ex)
+        {
+            StatusMessage = $"発行エラー: {ex.Message}";
+        }
+    });
+
+    private void ApplyView(DetailInvoiceView view)
+    {
+        var header = view.Header;
+
+        DetailInvoiceNumberQuery = header.DetailInvoiceNumber;
+        IssueDateText = header.IssueDate.ToString("yyyy/MM/dd");
+        CustomerCode = header.CustomerCode;
+        CustomerName = header.CustomerName;
+        AddresseeName = header.AddresseeName;
+        _customer = null;
+
+        Candidates.Clear();
+        Lines.Clear();
+        foreach (var line in view.Lines)
+        {
+            Lines.Add(line);
+        }
+
+        RaiseTotalsChanged();
+        IsExistingLoaded = true;
+
+        StatusMessage = header.InvoiceStatus == DetailInvoiceStatus.Cancelled
+            ? $"取消済みです（{header.CancelledAt:yyyy/MM/dd HH:mm} {header.CancelledBy}）。"
+            : $"発行済みです（{header.IssuedAt:yyyy/MM/dd HH:mm} {header.IssuedBy}）。";
+    }
+
+    private void ClearForm()
+    {
+        DetailInvoiceNumberQuery = string.Empty;
+        IssueDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+        CustomerCode = string.Empty;
+        CustomerName = string.Empty;
+        AddresseeName = string.Empty;
+        _customer = null;
+
+        Candidates.Clear();
+        Lines.Clear();
+        SelectedCandidate = null;
+        SelectedLine = null;
+
+        RaiseTotalsChanged();
+        IsExistingLoaded = false;
+    }
+
+    private void RaiseTotalsChanged()
+    {
+        OnPropertyChanged(nameof(TaxExcludedTotal));
+        OnPropertyChanged(nameof(TaxTotal));
+        OnPropertyChanged(nameof(GrandTotal));
+    }
+}

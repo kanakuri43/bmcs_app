@@ -49,6 +49,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SalesQueryService>();
         services.AddScoped<BillingClosingService>();
         services.AddScoped<BillingReleaseService>();
+        services.AddScoped<DetailInvoiceService>();
 
         return services;
     }

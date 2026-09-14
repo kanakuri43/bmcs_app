@@ -154,6 +154,9 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<BillingReleaseWindow>();
         builder.Services.AddScoped<BillingReleaseViewModel>();
 
+        builder.Services.AddScoped<DetailInvoiceIssueWindow>();
+        builder.Services.AddScoped<DetailInvoiceIssueViewModel>();
+
         return builder.Build();
     }
 
