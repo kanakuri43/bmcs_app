@@ -1,0 +1,26 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <!--
+        全画面デザイン統一（2026-09-15）。入力欄（TextBox/ComboBox/DatePicker）の高さを
+        揃えるための共通値。MahApps 2.4.11 の既定は TextBox/ComboBox/DatePicker いずれも
+        MinHeight="26" だが、ComboBox の実 desired height が最大でヘッダ部（ComboBoxなし）
+        と明細部（ComboBoxあり）で高さがズレるため、3種の自然高の最大値以上を
+        MinHeight として明示する（CommonControlStyles.xaml で使用）。
+        値は実測で確定（2026-09-15、ComboBox の自然高が TextBox より大きかったため）。
+    -->
+    <sys:Double x:Key="InputControlHeight">30</sys:Double>
+
+    <!--
+        明細行UserControl（SlipLineControl / ReceiptLineControl / DetailReceiptLineControl）の
+        入力欄セルの余白。セル間ギャップは「次セルの左マージン」だけが持つ方式（両側に付けると
+        二重ギャップになり列幅指定と実効幅の関係が読めなくなるため）。上下1は行の下境界線
+        （Border BorderThickness="0,0,0,1"）との接触回避。
+    -->
+    <Thickness x:Key="SlipLineCellMargin">2,1,0,1</Thickness>
+
+    <!-- 最終列（削除ボタン）だけ、パネル右端との間に最小の余白を残すため右側にも1を付ける。 -->
+    <Thickness x:Key="SlipLineLastCellMargin">2,1,1,1</Thickness>
+
+</ResourceDictionary>

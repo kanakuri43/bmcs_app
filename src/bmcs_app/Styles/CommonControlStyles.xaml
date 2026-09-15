@@ -9,13 +9,30 @@
             既定 TextBox スタイルがこの辞書自身のマージスコープ内に存在する必要がある。
             App.xaml で既に Controls.xaml をマージしていても、StaticResource は
             参照元ファイル自身のスコープでしか解決されないため、ここでも再マージする。
+            Metrics.xaml も同じ理由でここに再マージする（App.xaml へ足すだけでは
+            このファイル内の StaticResource InputControlHeight 等は解決できない）。
         -->
         <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.xaml" />
         <ResourceDictionary Source="Colors.xaml" />
+        <ResourceDictionary Source="Metrics.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
-    <!-- 全画面共通: フォーカス中の入力欄は背景色を変える（docs/product-spec.md UI/UX節） -->
-    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <!--
+        全画面共通の入力欄高さ（全画面デザイン統一・2026-09-15）。TextBox/ComboBox/DatePicker の
+        自然高がばらつき、同じ行に並べたときに高さが揃わない問題への対応（詳細は
+        docs/architecture.md 12章）。
+        - MinHeight だけでは行の Stretch により他コントロールに引き伸ばされてしまうため、
+          VerticalAlignment="Center" を併せて設定し、常に自身の自然高（か MinHeight の
+          大きい方）だけを取るようにする。
+        - VerticalContentAlignment="Center" は、MinHeight が自然高より大きいときに
+          文字が上端に寄るのを防ぐ。
+        キー付きスタイルとして基底に置き、Amount/Quantity 等の派生スタイルが高さを
+        確実に継承していることを BasedOn の連鎖で目視確認できるようにする。
+    -->
+    <Style x:Key="InputTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="MinHeight" Value="{StaticResource InputControlHeight}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
         <Style.Triggers>
             <Trigger Property="IsFocused" Value="True">
                 <Setter Property="Background" Value="{StaticResource FocusedInputBackgroundBrush}" />
@@ -23,18 +40,50 @@
         </Style.Triggers>
     </Style>
 
-    <Style x:Key="DateTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <!-- 全画面共通: XAML で Style を明示しない TextBox にも上記の高さ・背景色を適用する。 -->
+    <Style TargetType="TextBox" BasedOn="{StaticResource InputTextBoxStyle}" />
+
+    <Style x:Key="DateTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource InputTextBoxStyle}">
         <Setter Property="beh:FormattedTextBoxBehavior.Kind" Value="Date" />
     </Style>
 
-    <Style x:Key="AmountTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <Style x:Key="AmountTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource InputTextBoxStyle}">
         <Setter Property="HorizontalContentAlignment" Value="Right" />
         <Setter Property="beh:FormattedTextBoxBehavior.Kind" Value="Amount" />
     </Style>
 
-    <Style x:Key="QuantityTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <Style x:Key="QuantityTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource InputTextBoxStyle}">
         <Setter Property="HorizontalContentAlignment" Value="Right" />
         <Setter Property="beh:FormattedTextBoxBehavior.Kind" Value="Quantity" />
+    </Style>
+
+    <!-- ComboBox にも TextBox と同じ高さ3点セットを適用し、同一行に並べたときに高さを揃える。 -->
+    <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+        <Setter Property="MinHeight" Value="{StaticResource InputControlHeight}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <!--
+        DatePicker。MahApps.Styles.DatePicker は暗黙スタイルとして定義されていない
+        （x:Key 指定必須）ため、この暗黙スタイルが「MahApps の見た目にする」役も兼ねる。
+        beh:DatePickerInputBehavior.IsEnabled の Setter は全画面デザイン統一フェーズ4で追加する。
+    -->
+    <Style TargetType="DatePicker" BasedOn="{StaticResource MahApps.Styles.DatePicker}">
+        <Setter Property="MinHeight" Value="{StaticResource InputControlHeight}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <!--
+        Button。ComboBox/DatePicker/Button が横一列に並ぶ画面（請求締め・締め解除等）で
+        天地を揃えるため MinHeight のみ適用する。VerticalAlignment=Center は付けない
+        （明細行の削除ボタンが Stretch で行高に追随している現状を壊さないため）。
+        Style="{DynamicResource MahApps.Styles.Button.Flat}" 等を明示指定している要素には
+        暗黙スタイルは継承されない（明示 Style が暗黙 Style を置換するため）。
+    -->
+    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="MinHeight" Value="{StaticResource InputControlHeight}" />
     </Style>
 
 </ResourceDictionary>
