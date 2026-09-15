@@ -23,8 +23,18 @@ namespace bmcs_app.Application.Receipt;
 /// Domainクラスを作らず、7-1で実装済みの<see cref="SettlementAllocator"/>をそのまま流用する。
 /// 全額を割り当てきれない残額（前受・過入金）は<c>billing_number = NULL</c>の1行にまとめる。
 ///
-/// 振込手数料差額の入力（TODO.md 7-3）・既存伝票の訂正／取消（TODO.md 7-5）はこの画面の
-/// スコープ外（別タスク）。この画面は新規登録と、既存伝票番号による読み取り専用の読込のみを扱う。
+/// 振込手数料差額の入力（TODO.md 7-3）はこの画面のスコープ外。既存伝票の訂正・取消（TODO.md 7-5）は
+/// <see cref="UpdateAsync"/>／<see cref="CancelSlipAsync"/> が担う。
+///
+/// 編集ロックは<see cref="EvaluateEditLockAsync"/>が判定する。C-6の4条件のうち①②④は`sales`側にのみ
+/// 適用し、`receipt`自体には適用しない（充当完了直後にほぼ必ずなるため、適用すると訂正・取消できる
+/// 入金がほぼ無くなり7-5の目的と矛盾する。2026-09-15ユーザー確認）。代わりに、月次締めに加えて
+/// 「請求締めスナップショット」（対象の<c>receipt_date</c>が、その得意先の確定済み<c>billing</c>の
+/// 集計期間に含まれるか）を独自にロック条件とする。
+/// <see cref="bmcs_app.Application.Billing.BillingClosingService"/>が締め時点で
+/// <c>billing.CurrentBillingAmount</c>へ<c>receipt.Amount</c>の合計を焼き込み、以後
+/// 誰も再計算しないため、この期間の`receipt`を取消・訂正すると確定済み請求の残高が永久に狂う
+/// （詳細は docs/design_document.md 19章）。
 /// </summary>
 public class ReceiptEntryService(
     BmcsDbContext dbContext,
@@ -151,7 +161,7 @@ public class ReceiptEntryService(
         return receiptSlipNumber;
     }
 
-    /// <summary>入金No.で1件取得する（読み取り専用表示用。保存しない）。訂正・取消はTODO.md 7-5。</summary>
+    /// <summary>入金No.で1件取得する（読み取り専用表示用・訂正の読込元の両方に使う。保存しない）。</summary>
     public Task<List<ReceiptEntity>> GetByNumberAsync(
         string receiptSlipNumber, CancellationToken cancellationToken = default)
         => dbContext.Receipts
@@ -159,6 +169,309 @@ public class ReceiptEntryService(
             .Where(r => r.ReceiptSlipNumber == receiptSlipNumber && !r.IsDeleted)
             .OrderBy(r => r.LineNumber)
             .ToListAsync(cancellationToken);
+
+    /// <summary>
+    /// 対象の`receipt`行が訂正・取消不可かどうかを判定する（TODO.md 7-5）。
+    /// ①月次締め: 得意先・伝票日付の年月に対応する確定済み<c>monthly_closing</c>が存在する
+    /// （Phase 9未実装のため現状は常に false だが、実装時に自動的に効くようクエリだけ用意しておく）。
+    /// ②請求締めスナップショット: 伝票日付が、その得意先の確定済み<c>billing</c>のうち最新の
+    /// <c>billing_date</c>以前（＝いずれかの確定済み請求の集計期間に含まれる）。
+    /// このクラスの doc comment を参照（なぜ充当完了・請求への充当自体をロック条件にしないか）。
+    /// </summary>
+    public async Task<SalesEditLock> EvaluateEditLockAsync(
+        IReadOnlyList<ReceiptEntity> lines, CancellationToken cancellationToken = default)
+    {
+        var customerCode = lines[0].CustomerCode;
+        var receiptDate = lines[0].ReceiptDate;
+        var monthEndDate = new DateOnly(
+            receiptDate.Year, receiptDate.Month, DateTime.DaysInMonth(receiptDate.Year, receiptDate.Month));
+
+        var monthlyClosingConfirmed = await dbContext.MonthlyClosings
+            .AsNoTracking()
+            .AnyAsync(
+                m => m.CustomerCode == customerCode
+                    && m.ClosingDate == monthEndDate
+                    && m.ClosingStatus == ClosingStatus.Confirmed,
+                cancellationToken);
+        if (monthlyClosingConfirmed)
+        {
+            return new SalesEditLock(true, "月次締め済みのため訂正・取消できません。");
+        }
+
+        var latestConfirmedBillingDate = await dbContext.Billings
+            .AsNoTracking()
+            .Where(b => b.CustomerCode == customerCode && !b.IsDeleted && b.BillingStatus == BillingStatus.Confirmed)
+            .Select(b => (DateOnly?)b.BillingDate)
+            .MaxAsync(cancellationToken);
+
+        if (latestConfirmedBillingDate is not null && receiptDate <= latestConfirmedBillingDate.Value)
+        {
+            return new SalesEditLock(
+                true, "請求締め済みの期間の入金のため訂正・取消できません。先に締め解除してから操作してください。");
+        }
+
+        return SalesEditLock.Unlocked;
+    }
+
+    /// <summary>
+    /// 既存の入金伝票を訂正する（TODO.md 7-5）。元伝票の直接修正（C-6）であり、赤伝は発行しない。
+    /// 明細行（支払手段の内訳）の追加・更新・削除を行い、請求への充当（<see cref="ReceiptAllocationEntity"/>）は
+    /// 新しい合計額で全面再構築する（充当は導出データであり、ユーザーが直接編集するものではないため）。
+    /// </summary>
+    /// <param name="receiptSlipNumber">対象の入金伝票番号。</param>
+    /// <param name="receiptDate">訂正後の入金日付（伝票単位の値）。</param>
+    /// <param name="slipRemarks">訂正後の伝票摘要（伝票単位の値）。</param>
+    /// <param name="lines">
+    /// 保存後にあるべき明細行の集合。既存行は読込時と同じ<see cref="ReceiptLineCorrection.LineNumber"/>を
+    /// 維持すること。新規追加する行は<c>0</c>を指定する（本メソッドが採番する）。読込時にあった行番号の
+    /// うち含まれないものは論理削除する。
+    /// </param>
+    /// <param name="loadedLineNumbers">
+    /// 画面が伝票を読み込んだ時点の明細行番号の集合（<see cref="SlipConcurrencyGuard"/>と同じ理由で
+    /// 呼び出し元が読込時にキャプチャしておく）。
+    /// </param>
+    /// <exception cref="ReceiptEntryException">
+    /// 対象の入金が存在しない、編集ロックに該当する、または明細行の内容が不正な場合。
+    /// </exception>
+    /// <exception cref="SlipConcurrencyException">他のユーザーが同じ伝票を更新済みの場合。</exception>
+    public async Task UpdateAsync(
+        string receiptSlipNumber,
+        DateOnly receiptDate,
+        string? slipRemarks,
+        IReadOnlyList<ReceiptLineCorrection> lines,
+        IReadOnlyList<short> loadedLineNumbers,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateLines(lines.Select(l => l.ToInput()).ToList());
+
+        var employeeCode = currentEmployeeContext.EmployeeCode;
+        var now = DateTime.Now;
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var currentLines = await dbContext.Receipts
+            .Where(r => r.ReceiptSlipNumber == receiptSlipNumber && !r.IsDeleted)
+            .ToListAsync(cancellationToken);
+
+        if (currentLines.Count == 0)
+        {
+            throw new ReceiptEntryException($"入金が見つかりません。ReceiptSlipNumber={receiptSlipNumber}");
+        }
+
+        SlipConcurrencyGuard.EnsureLineSetUnchanged(
+            loadedLineNumbers, currentLines.Select(l => l.LineNumber).ToList());
+
+        var lockResultBefore = await EvaluateEditLockAsync(currentLines, cancellationToken);
+        if (lockResultBefore.IsLocked)
+        {
+            throw new ReceiptEntryException(lockResultBefore.Reason!);
+        }
+
+        var customerCode = currentLines[0].CustomerCode;
+        var customerName = currentLines[0].CustomerName;
+        var taxUnit = currentLines[0].TaxUnit;
+
+        var currentByLineNumber = currentLines.ToDictionary(l => l.LineNumber);
+        var incomingKept = lines.Where(l => l.LineNumber != 0).ToList();
+        var incomingNew = lines.Where(l => l.LineNumber == 0).ToList();
+
+        var keptLineNumbers = incomingKept.Select(l => l.LineNumber).ToHashSet();
+        if (incomingKept.Any(l => !currentByLineNumber.ContainsKey(l.LineNumber)))
+        {
+            throw new ReceiptEntryException("存在しない明細行番号が指定されています。");
+        }
+
+        // 読込時にあったが今回の一覧に含まれない行は論理削除する（M-17: 物理削除しない）。
+        foreach (var current in currentLines.Where(l => !keptLineNumbers.Contains(l.LineNumber)))
+        {
+            current.IsDeleted = true;
+        }
+
+        foreach (var incoming in incomingKept)
+        {
+            var current = currentByLineNumber[incoming.LineNumber];
+            current.ReceiptMethod = incoming.ReceiptMethod;
+            current.BankAccountCode = incoming.BankAccountCode;
+            current.BillDueDate = incoming.BillDueDate;
+            current.Amount = incoming.Amount;
+            current.LineRemarks = incoming.LineRemarks;
+        }
+
+        var nextLineNumber = (short)(currentLines.Max(l => l.LineNumber) + 1);
+        var newEntities = new List<ReceiptEntity>(incomingNew.Count);
+        foreach (var incoming in incomingNew)
+        {
+            newEntities.Add(new ReceiptEntity
+            {
+                ReceiptSlipNumber = receiptSlipNumber,
+                LineNumber = nextLineNumber++,
+                ReceiptDate = receiptDate,
+                CustomerCode = customerCode,
+                TaxUnit = taxUnit,
+                CustomerName = customerName,
+                ReceiptMethod = incoming.ReceiptMethod,
+                BankAccountCode = incoming.BankAccountCode,
+                BillDueDate = incoming.BillDueDate,
+                Amount = incoming.Amount,
+                AllocationStatus = AllocationStatus.Unallocated,
+                SlipRemarks = slipRemarks,
+                LineRemarks = incoming.LineRemarks,
+                CreatedBy = employeeCode,
+                CreatedAt = now,
+                UpdatedBy = employeeCode,
+                UpdatedAt = now,
+                IsDeleted = false,
+            });
+        }
+
+        dbContext.Receipts.AddRange(newEntities);
+
+        var activeLines = currentLines.Where(l => !l.IsDeleted).Concat(newEntities).ToList();
+        foreach (var line in activeLines)
+        {
+            line.ReceiptDate = receiptDate;
+            line.SlipRemarks = slipRemarks;
+        }
+
+        // 訂正後（新状態）で編集ロック対象にならないかも確認する（例: 入金日付を確定済み請求の
+        // 集計期間・確定済み月次締め年月へ動かす訂正を防ぐ）。
+        var lockResultAfter = await EvaluateEditLockAsync(activeLines, cancellationToken);
+        if (lockResultAfter.IsLocked)
+        {
+            throw new ReceiptEntryException($"訂正後の内容は編集ロック対象になるため保存できません: {lockResultAfter.Reason}");
+        }
+
+        // 読み込んだ全行（削除された行を含む）を更新対象に含め、rowversion の照合を全行で効かせる
+        // （docs/architecture.md 9章）。
+        SlipConcurrencyGuard.TouchAll(currentLines, employeeCode, now);
+
+        var currentAllocations = await dbContext.ReceiptAllocations
+            .Where(a => a.ReceiptSlipNumber == receiptSlipNumber && !a.IsDeleted)
+            .ToListAsync(cancellationToken);
+        foreach (var allocation in currentAllocations)
+        {
+            allocation.IsDeleted = true;
+        }
+        SlipConcurrencyGuard.TouchAll(currentAllocations, employeeCode, now);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new SlipConcurrencyException("他のユーザーが更新しました。再読み込みしてください。", ex);
+        }
+
+        // 充当（receipt_allocation）は導出データのため、新しい合計額で全面再構築する。上の
+        // SaveChangesAsync で自伝票の旧充当を確定させてから請求残高を問い合わせる必要がある
+        // （GetOutstandingBillingsAsync はサーバー側クエリで ChangeTracker 上の未コミット変更を
+        // 見ないため。docs/architecture.md 6章に許容ケースとして追記済み）。
+        var outstanding = await GetOutstandingBillingsAsync(customerCode, cancellationToken);
+        var newTotal = activeLines.Sum(l => l.Amount);
+        var newAllocationLines = BuildAllocationLines(outstanding, newTotal);
+
+        var allocationLineNumber = (short)(
+            currentAllocations.Count == 0 ? 1 : currentAllocations.Max(a => a.LineNumber) + 1);
+        var newAllocationEntities = new List<ReceiptAllocationEntity>(newAllocationLines.Count);
+        foreach (var allocation in newAllocationLines)
+        {
+            newAllocationEntities.Add(new ReceiptAllocationEntity
+            {
+                ReceiptSlipNumber = receiptSlipNumber,
+                LineNumber = allocationLineNumber++,
+                CustomerCode = customerCode,
+                TaxUnit = taxUnit,
+                BillingNumber = allocation.BillingNumber,
+                AllocatedAmount = allocation.AllocatedAmount,
+                FeeAdjustmentAmount = 0m,
+                CreatedBy = employeeCode,
+                CreatedAt = now,
+                UpdatedBy = employeeCode,
+                UpdatedAt = now,
+            });
+        }
+
+        dbContext.ReceiptAllocations.AddRange(newAllocationEntities);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new ReceiptEntryException("入金の保存に失敗しました。", ex);
+        }
+
+        await settlementService.RecalculateForCustomerAsync(customerCode, cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        logger.LogInformation("入金を訂正しました。ReceiptSlipNumber={ReceiptSlipNumber}", receiptSlipNumber);
+    }
+
+    /// <summary>
+    /// 入金伝票を取消する（TODO.md 7-5）。全明細行と、紐づく充当（<see cref="ReceiptAllocationEntity"/>）を
+    /// 論理削除する（M-17）。編集ロックに該当する伝票は取消できない。
+    /// </summary>
+    /// <exception cref="ReceiptEntryException">対象の入金が存在しない、または編集ロックに該当する場合。</exception>
+    /// <exception cref="SlipConcurrencyException">他のユーザーが同じ伝票を更新済みの場合。</exception>
+    public async Task CancelSlipAsync(string receiptSlipNumber, CancellationToken cancellationToken = default)
+    {
+        var employeeCode = currentEmployeeContext.EmployeeCode;
+        var now = DateTime.Now;
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var lines = await dbContext.Receipts
+            .Where(r => r.ReceiptSlipNumber == receiptSlipNumber && !r.IsDeleted)
+            .ToListAsync(cancellationToken);
+
+        if (lines.Count == 0)
+        {
+            throw new ReceiptEntryException($"入金が見つかりません。ReceiptSlipNumber={receiptSlipNumber}");
+        }
+
+        var lockResult = await EvaluateEditLockAsync(lines, cancellationToken);
+        if (lockResult.IsLocked)
+        {
+            throw new ReceiptEntryException(lockResult.Reason!);
+        }
+
+        var allocations = await dbContext.ReceiptAllocations
+            .Where(a => a.ReceiptSlipNumber == receiptSlipNumber && !a.IsDeleted)
+            .ToListAsync(cancellationToken);
+
+        foreach (var line in lines)
+        {
+            line.IsDeleted = true;
+            line.UpdatedBy = employeeCode;
+            line.UpdatedAt = now;
+        }
+
+        foreach (var allocation in allocations)
+        {
+            allocation.IsDeleted = true;
+            allocation.UpdatedBy = employeeCode;
+            allocation.UpdatedAt = now;
+        }
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new SlipConcurrencyException("他のユーザーが更新しました。再読み込みしてください。", ex);
+        }
+
+        await settlementService.RecalculateForCustomerAsync(lines[0].CustomerCode, cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        logger.LogInformation(
+            "入金を取消しました。ReceiptSlipNumber={ReceiptSlipNumber} 行数={LineCount}", receiptSlipNumber, lines.Count);
+    }
 
     private static void ValidateLines(IReadOnlyList<ReceiptLineInput> lines)
     {
@@ -276,6 +589,22 @@ public sealed record ReceiptLineInput(
     DateOnly? BillDueDate,
     decimal Amount,
     string? LineRemarks);
+
+/// <summary>
+/// 訂正（<see cref="ReceiptEntryService.UpdateAsync"/>）用の入金明細行の入力。<see cref="ReceiptLineInput"/>に
+/// 永続行番号を加えたもの。<see cref="LineNumber"/>が<c>0</c>の行は新規追加を意味する
+/// （<see cref="bmcs_app.Application.Sales.SalesService.UpdateAsync"/>と同じ規約）。
+/// </summary>
+public sealed record ReceiptLineCorrection(
+    short LineNumber,
+    ReceiptMethod ReceiptMethod,
+    string? BankAccountCode,
+    DateOnly? BillDueDate,
+    decimal Amount,
+    string? LineRemarks)
+{
+    public ReceiptLineInput ToInput() => new(ReceiptMethod, BankAccountCode, BillDueDate, Amount, LineRemarks);
+}
 
 /// <summary>
 /// 入金額の配分結果（請求単位。内部データ）。<see cref="BillingNumber"/>が<c>null</c>の行は

@@ -145,6 +145,13 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
      に参加する（`OrderStatusService.ApplySalesQuantityDeltasAsync` と同じ構成）。明示
      トランザクションが開始されていない場合は `InvalidOperationException` を投げる
      （`SlipNumberService.NextAsync` と同じアサーション）。
+  5. **導出データを「書いた内容をDBから読み直して」再構築する場合**（入金の訂正。TODO.md 7-5）。
+     `ReceiptEntryService.UpdateAsync`は、明細行（支払手段の内訳）を更新した直後に
+     `receipt_allocation`（請求への充当。導出データ）を全部論理削除して`SaveChangesAsync`を
+     1回呼び、その**後**に`GetOutstandingBillingsAsync`（サーバー側クエリ）で請求残高を
+     再取得して新しい充当を組み立てる。上記4番目のケースと同じ理由（サーバー側クエリは
+     ChangeTracker上の未コミット変更を見ないため、確定させてから読み直す必要がある）で、
+     1ユースケース内で`SaveChangesAsync`を2回呼ぶ（詳細は`docs/design_document.md` 19章）。
 - **ViewModel から複数のユースケースを呼んで1つの整合単位にしてはいけない。** 画面から2回呼べば2トランザクションになる。1つの整合単位が必要なら、Application 層にそれを1メソッドとして用意する。
 - **伝票番号の採番は、伝票登録と同一トランザクション内で行う（TODO.md 4-1）。** 別トランザクションで先に採番すると、登録が失敗したときに欠番が出る。伝票番号の欠番は業務上の説明が難しいため避ける。採番テーブルの行ロックがトランザクション終了まで残るが、同時利用者は数十人規模であり実用上の問題にならない。
   - 呼び出し順は「メモリ上でエンティティグラフを組み立てる → `BeginTransactionAsync` → `SlipNumberService.NextAsync` → 番号を明細行に代入 → `SaveChangesAsync`（1回） → `CommitAsync`」。**画面を開いた時点や入力開始時に採番してはならない。** ロックがコミットまで残るため、UI操作をまたいでトランザクションを開いたままにしない。

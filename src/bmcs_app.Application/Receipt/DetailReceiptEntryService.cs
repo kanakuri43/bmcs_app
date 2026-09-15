@@ -1,4 +1,5 @@
 using bmcs_app.Application.Common;
+using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Enums;
 using bmcs_app.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -23,11 +24,23 @@ namespace bmcs_app.Application.Receipt;
 ///
 /// 金額（<see cref="DetailReceiptEntity.AllocatedAmount"/>）は常に対象の全額（または残額）を
 /// 充当し、手入力では変更できない。前受金は無く、充当先が未定の行は作らない。
-/// 振込手数料差額の入力（TODO.md 7-3）・既存伝票の訂正／取消（TODO.md 7-5）はこの画面の
-/// スコープ外。実装範囲は新規登録と、既存伝票番号による読み取り専用の読込のみ。
+/// 振込手数料差額の入力（TODO.md 7-3）はこの画面のスコープ外。既存伝票の訂正・取消（TODO.md 7-5）は
+/// <see cref="UpdateAsync"/>／<see cref="CancelSlipAsync"/> が担う。
+///
+/// <see cref="UpdateAsync"/>は充当先の追加を許さない（変更できるのは入金日付・伝票摘要・各行の
+/// 入金方法・入金先口座・行摘要・行の削除のみ）。候補判定（<see cref="BuildSalesLineCandidateQuery"/>／
+/// <see cref="BuildDetailInvoiceCandidateQuery"/>）は自伝票自身の充当を除外する仕組みを持たない
+/// サーバー側クエリのため、追加を許すと自伝票の充当状況によって候補条件やあるべき金額が変わる
+/// ケースを扱う必要が生じる。同じ理由で、既存行の<see cref="DetailReceiptEntity.AllocatedAmount"/>は
+/// 訂正時に再計算せず読込時の値をそのまま保持する（2026-09-15ユーザー確認）。
+///
+/// 編集ロック（<see cref="EvaluateEditLockAsync"/>）は月次締めのみを見る。`receipt`（締め入金）と
+/// 異なり、`detail_invoice`（明細請求書）の金額は`sales`から都度導出され、`detail_receipt`からは
+/// 導出されない（スナップショットを焼き込む処理が無い）ため、請求締めスナップショット相当の
+/// ロック条件は不要（詳細は<see cref="ReceiptEntryService"/>のdoc comment）。
 ///
 /// 詳細な設計判断（候補条件・保存時の検証・同時実行制御の考え方）は
-/// <c>docs/design_document.md</c> 18章を参照。
+/// <c>docs/design_document.md</c> 18・19章を参照。
 /// </summary>
 public class DetailReceiptEntryService(
     BmcsDbContext dbContext,
@@ -267,7 +280,7 @@ public class DetailReceiptEntryService(
         return detailReceiptNumber;
     }
 
-    /// <summary>明細入金No.で1件取得する（読み取り専用表示用。保存しない）。訂正・取消はTODO.md 7-5。</summary>
+    /// <summary>明細入金No.で1件取得する（読み取り専用表示用・訂正の読込元の両方に使う。保存しない）。</summary>
     public Task<List<DetailReceiptEntity>> GetByNumberAsync(
         string detailReceiptNumber, CancellationToken cancellationToken = default)
         => dbContext.DetailReceipts
@@ -275,6 +288,225 @@ public class DetailReceiptEntryService(
             .Where(r => r.DetailReceiptNumber == detailReceiptNumber && !r.IsDeleted)
             .OrderBy(r => r.LineNumber)
             .ToListAsync(cancellationToken);
+
+    /// <summary>
+    /// 対象の`detail_receipt`行が訂正・取消不可かどうかを判定する（TODO.md 7-5）。月次締めのみを
+    /// 見る（このクラスの doc comment を参照。`receipt`と異なり請求締めスナップショット相当は無い）。
+    /// </summary>
+    public async Task<SalesEditLock> EvaluateEditLockAsync(
+        IReadOnlyList<DetailReceiptEntity> lines, CancellationToken cancellationToken = default)
+    {
+        var customerCode = lines[0].CustomerCode;
+        var receiptDate = lines[0].ReceiptDate;
+        var monthEndDate = new DateOnly(
+            receiptDate.Year, receiptDate.Month, DateTime.DaysInMonth(receiptDate.Year, receiptDate.Month));
+
+        var monthlyClosingConfirmed = await dbContext.MonthlyClosings
+            .AsNoTracking()
+            .AnyAsync(
+                m => m.CustomerCode == customerCode
+                    && m.ClosingDate == monthEndDate
+                    && m.ClosingStatus == ClosingStatus.Confirmed,
+                cancellationToken);
+
+        return monthlyClosingConfirmed
+            ? new SalesEditLock(true, "月次締め済みのため訂正・取消できません。")
+            : SalesEditLock.Unlocked;
+    }
+
+    /// <summary>
+    /// 既存の明細入金伝票を訂正する（TODO.md 7-5）。元伝票の直接修正（C-6）であり、赤伝は発行しない。
+    /// 充当先の追加はできない（このクラスの doc comment を参照）。変更できるのは入金日付・伝票摘要
+    /// （伝票単位）、各行の入金方法・入金先口座・行摘要、および行の削除のみ。
+    /// </summary>
+    /// <param name="detailReceiptNumber">対象の明細入金伝票番号。</param>
+    /// <param name="receiptDate">訂正後の入金日付（伝票単位の値）。</param>
+    /// <param name="slipRemarks">訂正後の伝票摘要（伝票単位の値）。</param>
+    /// <param name="lines">
+    /// 保存後にあるべき明細行の集合。全て読込時に存在した
+    /// <see cref="DetailReceiptLineCorrection.LineNumber"/>を指定すること（新規追加は不可）。
+    /// 読込時にあった行番号のうち含まれないものは論理削除する。
+    /// </param>
+    /// <param name="loadedLineNumbers">画面が伝票を読み込んだ時点の明細行番号の集合。</param>
+    /// <exception cref="DetailReceiptEntryException">
+    /// 対象の明細入金が存在しない、編集ロックに該当する、充当先の追加を試みた、全行削除しようと
+    /// した、または明細行の内容が不正な場合。
+    /// </exception>
+    /// <exception cref="SlipConcurrencyException">他のユーザーが同じ伝票を更新済みの場合。</exception>
+    public async Task UpdateAsync(
+        string detailReceiptNumber,
+        DateOnly receiptDate,
+        string? slipRemarks,
+        IReadOnlyList<DetailReceiptLineCorrection> lines,
+        IReadOnlyList<short> loadedLineNumbers,
+        CancellationToken cancellationToken = default)
+    {
+        var employeeCode = currentEmployeeContext.EmployeeCode;
+        var now = DateTime.Now;
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var currentLines = await dbContext.DetailReceipts
+            .Where(r => r.DetailReceiptNumber == detailReceiptNumber && !r.IsDeleted)
+            .ToListAsync(cancellationToken);
+
+        if (currentLines.Count == 0)
+        {
+            throw new DetailReceiptEntryException($"明細入金が見つかりません。DetailReceiptNumber={detailReceiptNumber}");
+        }
+
+        SlipConcurrencyGuard.EnsureLineSetUnchanged(
+            loadedLineNumbers, currentLines.Select(l => l.LineNumber).ToList());
+
+        var lockResultBefore = await EvaluateEditLockAsync(currentLines, cancellationToken);
+        if (lockResultBefore.IsLocked)
+        {
+            throw new DetailReceiptEntryException(lockResultBefore.Reason!);
+        }
+
+        var currentByLineNumber = currentLines.ToDictionary(l => l.LineNumber);
+        if (lines.Any(l => !currentByLineNumber.ContainsKey(l.LineNumber)))
+        {
+            throw new DetailReceiptEntryException("訂正で充当先を追加することはできません。別伝票で登録してください。");
+        }
+
+        ValidateLineFieldsForCorrection(lines);
+
+        var keptLineNumbers = lines.Select(l => l.LineNumber).ToHashSet();
+        foreach (var current in currentLines.Where(l => !keptLineNumbers.Contains(l.LineNumber)))
+        {
+            current.IsDeleted = true;
+        }
+
+        foreach (var incoming in lines)
+        {
+            var current = currentByLineNumber[incoming.LineNumber];
+            current.ReceiptMethod = incoming.ReceiptMethod;
+            current.BankAccountCode = incoming.ReceiptMethod == ReceiptMethod.BankTransfer
+                ? incoming.BankAccountCode : null;
+            current.LineRemarks = incoming.LineRemarks;
+        }
+
+        var activeLines = currentLines.Where(l => !l.IsDeleted).ToList();
+        if (activeLines.Count == 0)
+        {
+            throw new DetailReceiptEntryException("訂正で全行を削除することはできません。取消をご利用ください。");
+        }
+
+        // 伝票単位の値を生き残る全行へ反映する。receipt_amount は全行同値の不変条件
+        // （DetailReceiptEntryService.SaveNewAsync 参照）を、行の一部だけを論理削除した後も
+        // 維持する必要があるため、Σ AllocatedAmount を都度ここで書き直す
+        // （AllocatedAmount 自体は再計算しない。このクラスの doc comment を参照）。
+        var newReceiptAmount = activeLines.Sum(l => l.AllocatedAmount);
+        foreach (var line in activeLines)
+        {
+            line.ReceiptDate = receiptDate;
+            line.SlipRemarks = slipRemarks;
+            line.ReceiptAmount = newReceiptAmount;
+        }
+
+        var lockResultAfter = await EvaluateEditLockAsync(activeLines, cancellationToken);
+        if (lockResultAfter.IsLocked)
+        {
+            throw new DetailReceiptEntryException(
+                $"訂正後の内容は編集ロック対象になるため保存できません: {lockResultAfter.Reason}");
+        }
+
+        SlipConcurrencyGuard.TouchAll(currentLines, employeeCode, now);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new SlipConcurrencyException("他のユーザーが更新しました。再読み込みしてください。", ex);
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new DetailReceiptEntryException("明細入金の保存に失敗しました。", ex);
+        }
+
+        await settlementService.RecalculateForCustomerAsync(currentLines[0].CustomerCode, cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        logger.LogInformation("明細入金を訂正しました。DetailReceiptNumber={DetailReceiptNumber}", detailReceiptNumber);
+    }
+
+    /// <summary>
+    /// 明細入金伝票を取消する（TODO.md 7-5）。全明細行を論理削除する（M-17）。編集ロックに該当する
+    /// 伝票は取消できない。
+    /// </summary>
+    /// <exception cref="DetailReceiptEntryException">対象の明細入金が存在しない、または編集ロックに該当する場合。</exception>
+    /// <exception cref="SlipConcurrencyException">他のユーザーが同じ伝票を更新済みの場合。</exception>
+    public async Task CancelSlipAsync(string detailReceiptNumber, CancellationToken cancellationToken = default)
+    {
+        var employeeCode = currentEmployeeContext.EmployeeCode;
+        var now = DateTime.Now;
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var lines = await dbContext.DetailReceipts
+            .Where(r => r.DetailReceiptNumber == detailReceiptNumber && !r.IsDeleted)
+            .ToListAsync(cancellationToken);
+
+        if (lines.Count == 0)
+        {
+            throw new DetailReceiptEntryException($"明細入金が見つかりません。DetailReceiptNumber={detailReceiptNumber}");
+        }
+
+        var lockResult = await EvaluateEditLockAsync(lines, cancellationToken);
+        if (lockResult.IsLocked)
+        {
+            throw new DetailReceiptEntryException(lockResult.Reason!);
+        }
+
+        foreach (var line in lines)
+        {
+            line.IsDeleted = true;
+            line.UpdatedBy = employeeCode;
+            line.UpdatedAt = now;
+        }
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new SlipConcurrencyException("他のユーザーが更新しました。再読み込みしてください。", ex);
+        }
+
+        await settlementService.RecalculateForCustomerAsync(lines[0].CustomerCode, cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        logger.LogInformation(
+            "明細入金を取消しました。DetailReceiptNumber={DetailReceiptNumber} 行数={LineCount}",
+            detailReceiptNumber, lines.Count);
+    }
+
+    /// <summary>
+    /// 訂正で編集可能なフィールド（入金方法・入金先口座）のみを検証する。<see cref="ValidateLineFields"/>
+    /// と異なり充当先の妥当性は見ない（訂正では充当先を変更できないため）。
+    /// </summary>
+    private static void ValidateLineFieldsForCorrection(IReadOnlyList<DetailReceiptLineCorrection> lines)
+    {
+        foreach (var line in lines)
+        {
+            if (line.ReceiptMethod == ReceiptMethod.PromissoryNote)
+            {
+                throw new DetailReceiptEntryException(
+                    "この画面では入金方法に手形を指定できません（明細入金は手形期日を保持する列を持ちません）。");
+            }
+
+            if (line.ReceiptMethod == ReceiptMethod.BankTransfer && string.IsNullOrWhiteSpace(line.BankAccountCode))
+            {
+                throw new DetailReceiptEntryException("振込の行は入金先口座を指定してください。");
+            }
+        }
+    }
 
     private static void ValidateLineFields(IReadOnlyList<DetailReceiptLineInput> lines)
     {
@@ -401,6 +633,17 @@ public sealed record DetailReceiptLineInput(
     string? TargetSalesSlipNumber,
     short? TargetSalesLineNumber,
     string? TargetDetailInvoiceNumber,
+    ReceiptMethod ReceiptMethod,
+    string? BankAccountCode,
+    string? LineRemarks);
+
+/// <summary>
+/// 訂正（<see cref="DetailReceiptEntryService.UpdateAsync"/>）用の明細行の入力。充当先
+/// （<see cref="DetailReceiptLineInput.TargetType"/>等）を持たない＝設計上、訂正で充当先を
+/// 変更できないことをシグネチャで表す（このクラスの doc comment を参照）。
+/// </summary>
+public sealed record DetailReceiptLineCorrection(
+    short LineNumber,
     ReceiptMethod ReceiptMethod,
     string? BankAccountCode,
     string? LineRemarks);

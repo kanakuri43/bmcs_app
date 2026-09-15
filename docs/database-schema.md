@@ -46,13 +46,17 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 - **月次締め（`monthly_closing`）は、得意先ごとの暦月末時点の売掛残高を保持するテーブルとする（2026-09-09決定。得意先×月末日で1レコード、`billing`類似レイアウト）。** 締め得意先への請求（`billing`）は得意先ごとの締め日（`closing_day`）期間で集計するが、会計上の月次売掛金は全得意先を暦月（月初〜月末）で集計する必要があり、両者の集計期間が一致しないため。**「請求締め」と「月次締め」は別々の締め処理として併存する。** 都度得意先（`tax_unit=3`）も含め全得意先が対象。
   - 20日締めの得意先の例: `billing`は1/21〜2/20を集計するが、`monthly_closing`は2/1〜2/28を集計する。2/21〜2/28分の売上は、その得意先自身の請求締め（次回3/20締め）をまだ通っておらず、`tax_unit=1`（請求単位）の得意先は伝票時点で税額を確定しない設計（2.9節）のため、この区間の税額は`monthly_closing`確定処理が`ConsumptionTaxCalculator`を「確定させずに」呼び出して仮計算し、`monthly_closing`側のカラムにのみ保存する（`sales.slip_tax_amount`には書き込まない。CHECK制約 `CK_sales_tax_amount_by_tax_unit` に違反するため）。
   - 状態（確定／解除済）、確定日時・確定者、解除日時・解除者を保持する（`billing`と同じ非破壊方式。締め解除で物理削除しない）。
-- **ジャーナル系テーブル（`sales`／`receipt`／`detail_receipt`／`order_slip`）の編集ロック・訂正方式（C-6・2026-09-10確定、2026-09-14 Phase 6-5レビューで4条件に改訂）。** 訂正・取消は**元伝票の直接修正**とし、赤伝（マイナス伝票）方式は採用しない。伝票側にフラグを持たず、次のいずれかに該当する伝票行のみ編集不可（それ以外は直接修正可能）:
-  1. **請求締め**: 対象行が確定済みの `billing` に集計済み（`sales.billing_number`／`receipt.billing_number` が確定済み `billing` を指す）
+- **ジャーナル系テーブル（`sales`／`receipt`／`detail_receipt`／`order_slip`）の編集ロック・訂正方式（C-6・2026-09-10確定、2026-09-14 Phase 6-5レビューで4条件に改訂、2026-09-15 Phase 7-5レビューでテーブルごとに条件を分離）。** 訂正・取消は**元伝票の直接修正**とし、赤伝（マイナス伝票）方式は採用しない。伝票側にフラグを持たず、次のいずれかに該当する伝票行のみ編集不可（それ以外は直接修正可能）。**4条件は`sales`にのみそのまま適用し、`receipt`／`detail_receipt`／`order_slip`はテーブルごとに適用範囲が異なる（後述）。**
+  1. **請求締め**: 対象行が確定済みの `billing` に集計済み（`sales.billing_number` が確定済み `billing` を指す）
   2. **明細請求書発行済み**（2026-09-14追加）: 都度得意先（`tax_unit=3`）の対象行が `detail_invoice_sales_line` に連携済み。当初「都度得意先の明細請求書発行自体はロック条件に含めない」としていたが、発行済みの `detail_invoice` ヘッダー（確定金額のスナップショット）が実データと乖離する不具合が見つかったため追加した（`docs/design_document.md` 13章）
   3. **月次締め**: 対象行の `customer_code` と伝票日付の年月に一致する `monthly_closing` レコードが存在し、`closing_status`＝確定
-  4. **入金済み**（2026-09-10追加）: `sales` は `settlement_status`＝消込完了、`receipt`／`detail_receipt` は `allocation_status`＝充当完了
-  - 締め・解除のたびに大量の伝票行を更新するのを避けるため、既存のキャッシュ列（`billing_number`／`closing_status`／`settlement_status`／`allocation_status`／`detail_invoice_sales_line`の存在等）のみで導出する。**この「編集不可」はユーザーによる伝票内容の直接編集を指す。** 締め処理自身が状態カラム（`billing_number`等）を更新することはロック対象外（システム内部の状態遷移であり、ユーザー編集ではないため）。
+  4. **入金済み**（2026-09-10追加）: `sales.settlement_status`＝消込完了
+  - 締め・解除のたびに大量の伝票行を更新するのを避けるため、既存のキャッシュ列（`billing_number`／`closing_status`／`settlement_status`／`detail_invoice_sales_line`の存在等）のみで導出する。**この「編集不可」はユーザーによる伝票内容の直接編集を指す。** 締め処理自身が状態カラム（`billing_number`等）を更新することはロック対象外（システム内部の状態遷移であり、ユーザー編集ではないため）。
   - **`order_slip`（受注）はこの4条件のいずれにも該当しない**（受注は請求・消込の対象外）。したがって受注は状態にかかわらず常に直接修正可能。
+  - **`receipt`（締め入金）・`detail_receipt`（明細入金）はsalesとは別の条件を持つ（2026-09-15 Phase 7-5確定）。** 当初は条件④（入金済み＝`allocation_status`＝充当完了）を`receipt`／`detail_receipt`自身にもそのまま適用する想定だったが、入金は保存直後にほぼ必ず充当完了になるため、これを適用すると訂正・取消できる入金がほぼ存在しなくなり、Phase 7-5（入金の取消・訂正）の目的自体が成立しなくなることが実装時に判明した。条件①（旧`receipt.billing_number`）も、Phase 7-2で `billing_number` を `receipt_allocation` へ分離した現スキーマとは既に乖離していた。改めて整理した結果:
+    - **`detail_receipt`**: ③（月次締めのみ）。`detail_invoice`（明細請求書）の金額は`sales`から都度導出され`detail_receipt`からスナップショットを焼き込まれないため、締め請求のような追加ロックは不要。
+    - **`receipt`**: ③（月次締め）に加え、**「請求締めスナップショット」**という独自条件を持つ: `receipt_date <= その得意先の確定済み billing のうち最新の billing_date`。`BillingClosingService`が締め処理時に `receipt.Amount` の合計（前回確定`billing.billing_date`〜今回`closing_date`の期間で集計）を `billing.current_billing_amount` へスナップショットとして焼き込み、以後誰も再計算しないため、この期間に属する`receipt`を無条件に取消・訂正できると確定済み請求の残高が二重計上・二重減算のいずれかで永久に狂う。この期間の`receipt`を訂正・取消したい場合は、対象の`billing`を締め解除（6-2）してから行う（解除により対象外の確定済み`billing`が別に存在すれば、それが新たな基準日になる）。
+    - 実装は`ReceiptEntryService.EvaluateEditLockAsync`／`DetailReceiptEntryService.EvaluateEditLockAsync`（Application/Receipt、TODO.md 7-5）。専用の編集ロック判定クラス（`SalesEditLockService`相当）は作らず、判定条件が単純なため各サービスの public メソッドとして実装した。詳細は`docs/design_document.md` 19章。
 - **ステータス値はDB側 `tinyint`、C#側は enum で扱う。** 文字列コードは使わず、画面表示名はアプリ側で解決する。
 - それ以外の設計判断は未確定。詳細は4章「未確定のDB設計判断」を参照。
 
@@ -593,18 +597,22 @@ OR
 
 #### 編集ロックは導出方式（伝票側にフラグを持たない）
 
-売上・入金の編集可否は、**`customer_code`＋伝票日付の年月と本テーブルを突き合わせて判定する**（1章の編集ロック方針を参照。`billing`への集計済みかどうか・入金済みかどうかも合わせて判定する。C-6・2026-09-10確定で入金済み条件を追加）。
+**`sales`（売上）の編集可否**は、`customer_code`＋伝票日付の年月と本テーブルを突き合わせて判定する（1章の編集ロック方針を参照。`billing`への集計済みかどうか・入金済みかどうかも合わせて判定する。C-6・2026-09-10確定で入金済み条件を追加）。
 
 ```
-編集不可 ⇔
+sales の編集不可 ⇔
   (customer_code, slip_dateの年月) に一致する monthly_closing レコードが存在し closing_status = 1（確定）
   OR
-  billing_number IS NOT NULL（＝紐づく billing.billing_status = 確定。sales/receipt 共通）
+  billing_number IS NOT NULL（＝紐づく billing.billing_status = 確定）
   OR
-  入金済み（sales.settlement_status = 消込完了 ／ receipt・detail_receipt.allocation_status = 充当完了）
+  対象行が detail_invoice_sales_line に連携済み（明細請求書発行済み）
+  OR
+  settlement_status = 消込完了（入金済み）
 ```
 
-`order_slip`（受注）はこの3条件のいずれにも該当しないため常に直接修正可能（受注は請求・消込の対象外。C-6）。
+`order_slip`（受注）はこれらの条件のいずれにも該当しないため常に直接修正可能（受注は請求・消込の対象外。C-6）。
+
+**`receipt`（締め入金）・`detail_receipt`（明細入金）は`sales`と条件が異なる**（2026-09-15 Phase 7-5確定。1章末尾「ジャーナル系テーブルの編集ロック・訂正方式」参照）。`receipt`は「月次締め」に加え「請求締めスナップショット」（`receipt_date`が確定済み`billing`の集計期間に含まれるか）、`detail_receipt`は「月次締め」のみを見る。`sales`と同じ4条件をそのまま適用しない理由は、入金は保存直後にほぼ必ず充当完了になるため、`allocation_status`＝充当完了をロック条件にすると訂正・取消できる入金がほぼ存在しなくなるため。
 
 伝票側にロックフラグを持たせない理由は、締め・解除のたびに大量の伝票行を更新することになるため（`docs/architecture.md` 9章、および本ファイル1章の方針）。
 

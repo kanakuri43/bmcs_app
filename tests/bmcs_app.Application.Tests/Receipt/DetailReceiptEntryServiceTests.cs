@@ -1,4 +1,5 @@
 using bmcs_app.Application.Billing;
+using bmcs_app.Application.Common;
 using bmcs_app.Application.Receipt;
 using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Entities;
@@ -11,12 +12,14 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Receipt;
 
 /// <summary>
-/// 明細入金画面（TODO.md 7-4）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
-/// （docs/architecture.md 16章）。都度得意先（内税明細単位）専用。充当先は売上明細行の直接指定
-/// （target_type=1）と明細請求書まるごと1行（target_type=2）の2種類（docs/design_document.md 18章）。
+/// 明細入金画面（TODO.md 7-4）・明細入金の取消訂正（TODO.md 7-5）の結合テスト。開発用ライブDB
+/// （172.16.3.171）に対して実行する（docs/architecture.md 16章）。都度得意先（内税明細単位）専用。
+/// 充当先は売上明細行の直接指定（target_type=1）と明細請求書まるごと1行（target_type=2）の2種類
+/// （docs/design_document.md 18章）。
 /// </summary>
 /// <remarks>
-/// <see cref="DetailReceiptEntryService.SaveNewAsync"/> は自前で<c>BeginTransactionAsync</c>する
+/// <see cref="DetailReceiptEntryService.SaveNewAsync"/>／<see cref="DetailReceiptEntryService.UpdateAsync"/>／
+/// <see cref="DetailReceiptEntryService.CancelSlipAsync"/> はいずれも自前で<c>BeginTransactionAsync</c>する
 /// ため、<c>SettlementServiceTests</c>のような「外側をトランザクションで包む」方式は使えない。
 /// <see cref="ReceiptEntryServiceTests"/>と同じ明示クリーンアップ方式を採る。
 /// </remarks>
@@ -575,6 +578,341 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
         }
     }
 
+    // ── 取消（TODO.md 7-5） ──────────────────────────────────────
+
+    [Fact]
+    public async Task 明細入金_直接指定_を取消すると対象売上明細行が未消込に戻る()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service, _) = Resolve(scope);
+        var customerCode = "__TSTDCC01";
+        var slip = "__TSTDRC_SCC01";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            dbContext.Sales.Add(NewSalesLine(customerCode, slip, 1, new DateOnly(2026, 8, 1), 1m, 1100m, TaxCategory.Standard, 10m, RoundingType.Floor));
+            await dbContext.SaveChangesAsync();
+
+            var detailReceiptNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLineToSales(slip, 1)]);
+
+            await service.CancelSlipAsync(detailReceiptNumber);
+
+            var salesLine = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == slip);
+            Assert.Equal(SettlementStatus.Unsettled, salesLine.SettlementStatus);
+            Assert.Equal(0m, salesLine.SettledAmount);
+
+            var lines = await ReloadAsync(dbContext, detailReceiptNumber);
+            Assert.All(lines, l => Assert.True(l.IsDeleted));
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, [customerCode], [slip]);
+        }
+    }
+
+    [Fact]
+    public async Task 明細入金_明細請求書指定_を取消すると連携先売上が未消込に戻り明細請求書を再取消できる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service, detailInvoiceService) = Resolve(scope);
+        var customerCode = "__TSTDCC02";
+        var slip = "__TSTDRC_SCC02";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            dbContext.Sales.Add(NewSalesLine(customerCode, slip, 1, new DateOnly(2026, 8, 1), 1m, 1100m, TaxCategory.Standard, 10m, RoundingType.Floor));
+            await dbContext.SaveChangesAsync();
+
+            var issued = await detailInvoiceService.IssueAsync(
+                customerCode, "宛名", new DateOnly(2026, 8, 5), [(slip, (short)1)]);
+
+            var detailReceiptNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null,
+                lines: [CashLineToInvoice(issued.DetailInvoiceNumber)]);
+
+            // 消込済みのため取消できない（DetailInvoiceService.CancelAsyncの既存ガード）。
+            await Assert.ThrowsAsync<DetailInvoiceException>(
+                () => detailInvoiceService.CancelAsync(issued.DetailInvoiceNumber));
+
+            await service.CancelSlipAsync(detailReceiptNumber);
+
+            var salesLine = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == slip);
+            Assert.Equal(SettlementStatus.Unsettled, salesLine.SettlementStatus);
+
+            // 消込が巻き戻ったため、明細請求書の取消ガードも解除される（完了条件の直接検証）。
+            await detailInvoiceService.CancelAsync(issued.DetailInvoiceNumber);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, [customerCode], [slip]);
+        }
+    }
+
+    [Fact]
+    public async Task 返品行を含む明細入金を取消すると返品行が未消込に戻る()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service, _) = Resolve(scope);
+        var customerCode = "__TSTDCC03";
+        var saleSlip = "__TSTDRC_SCC03A";
+        var returnSlip = "__TSTDRC_SCC03B";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            dbContext.Sales.Add(NewSalesLine(customerCode, saleSlip, 1, new DateOnly(2026, 8, 1), 1m, 1100m, TaxCategory.Standard, 10m, RoundingType.Floor));
+            dbContext.Sales.Add(NewSalesLine(customerCode, returnSlip, 1, new DateOnly(2026, 8, 2), -1m, 100m, TaxCategory.Standard, 10m, RoundingType.Floor,
+                slipType: SlipType.Return));
+            await dbContext.SaveChangesAsync();
+
+            var detailReceiptNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null,
+                lines: [CashLineToSales(saleSlip, 1), CashLineToSales(returnSlip, 1)]);
+
+            await service.CancelSlipAsync(detailReceiptNumber);
+
+            var returnLine = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == returnSlip);
+            Assert.Equal(SettlementStatus.Unsettled, returnLine.SettlementStatus);
+            Assert.Equal(0m, returnLine.SettledAmount);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, [customerCode], [saleSlip, returnSlip]);
+        }
+    }
+
+    [Fact]
+    public async Task 月次締め確定済みの年月の明細入金は取消できない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service, _) = Resolve(scope);
+        var customerCode = "__TSTDCL01";
+        var slip = "__TSTDRC_SCL01";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            dbContext.Sales.Add(NewSalesLine(customerCode, slip, 1, new DateOnly(2026, 8, 1), 1m, 1100m, TaxCategory.Standard, 10m, RoundingType.Floor));
+            await dbContext.SaveChangesAsync();
+
+            var detailReceiptNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLineToSales(slip, 1)]);
+
+            await InsertMonthlyClosingAsync(dbContext, customerCode, new DateOnly(2026, 8, 31));
+
+            var ex = await Assert.ThrowsAsync<DetailReceiptEntryException>(
+                () => service.CancelSlipAsync(detailReceiptNumber));
+            Assert.Contains("月次締め", ex.Message);
+        }
+        finally
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.monthly_closing WHERE customer_code = {customerCode}");
+            await CleanupAsync(dbContext, [customerCode], [slip]);
+        }
+    }
+
+    // ── 訂正（TODO.md 7-5） ──────────────────────────────────────
+
+    [Fact]
+    public async Task 明細入金の訂正では充当先の候補条件を再評価しないため他の伝票の影響を受けない()
+    {
+        // 明細請求書指定の明細入金は、保存した時点で自分自身が「この請求書を指す未削除の明細入金」
+        // として存在するため、候補条件（BuildDetailInvoiceCandidateQuery）を訂正時に再実行すると
+        // 常に自分自身の存在で弾かれてしまう（P3の回帰）。UpdateAsyncは候補条件を再評価せず、
+        // 読込時の充当額をそのまま保持することでこれを構造的に回避している。
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service, detailInvoiceService) = Resolve(scope);
+        var customerCode = "__TSTDCU01";
+        var slip = "__TSTDRC_SCU01";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            dbContext.Sales.Add(NewSalesLine(customerCode, slip, 1, new DateOnly(2026, 8, 1), 1m, 1100m, TaxCategory.Standard, 10m, RoundingType.Floor));
+            await dbContext.SaveChangesAsync();
+
+            var issued = await detailInvoiceService.IssueAsync(
+                customerCode, "宛名", new DateOnly(2026, 8, 5), [(slip, (short)1)]);
+
+            var detailReceiptNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null,
+                lines: [CashLineToInvoice(issued.DetailInvoiceNumber)]);
+            var loaded = await ReloadAsync(dbContext, detailReceiptNumber);
+            var loadedLineNumbers = loaded.Select(l => l.LineNumber).ToList();
+
+            await service.UpdateAsync(
+                detailReceiptNumber, new DateOnly(2026, 8, 26), "訂正後の摘要",
+                [new DetailReceiptLineCorrection(loadedLineNumbers[0], ReceiptMethod.Cash, null, null)],
+                loadedLineNumbers);
+
+            var corrected = await ReloadAsync(dbContext, detailReceiptNumber);
+            var activeLine = Assert.Single(corrected, l => !l.IsDeleted);
+            Assert.Equal(1100m, activeLine.AllocatedAmount);
+            Assert.Equal(1100m, activeLine.ReceiptAmount);
+            Assert.Equal(new DateOnly(2026, 8, 26), activeLine.ReceiptDate);
+            Assert.Equal("訂正後の摘要", activeLine.SlipRemarks);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, [customerCode], [slip]);
+        }
+    }
+
+    [Fact]
+    public async Task 明細入金の訂正で行を削除すると残る全行の入金額が新しい合計に揃って更新される()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service, _) = Resolve(scope);
+        var customerCode = "__TSTDCU02";
+        var slipA = "__TSTDRC_SCU02A";
+        var slipB = "__TSTDRC_SCU02B";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            dbContext.Sales.Add(NewSalesLine(customerCode, slipA, 1, new DateOnly(2026, 8, 1), 1m, 1000m, TaxCategory.Standard, 10m, RoundingType.Floor));
+            dbContext.Sales.Add(NewSalesLine(customerCode, slipB, 1, new DateOnly(2026, 8, 1), 1m, 500m, TaxCategory.Standard, 10m, RoundingType.Floor));
+            await dbContext.SaveChangesAsync();
+
+            var detailReceiptNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null,
+                lines: [CashLineToSales(slipA, 1), CashLineToSales(slipB, 1)]);
+            var loaded = await ReloadAsync(dbContext, detailReceiptNumber);
+            var keepLineNumber = loaded.Single(l => l.TargetSalesSlipNumber == slipA).LineNumber;
+            var loadedLineNumbers = loaded.Select(l => l.LineNumber).ToList();
+
+            // slipB を指す行を削除し、slipA を指す行だけを残す。
+            await service.UpdateAsync(
+                detailReceiptNumber, new DateOnly(2026, 8, 25), null,
+                [new DetailReceiptLineCorrection(keepLineNumber, ReceiptMethod.Cash, null, null)],
+                loadedLineNumbers);
+
+            var corrected = (await ReloadAsync(dbContext, detailReceiptNumber)).Where(l => !l.IsDeleted).ToList();
+            var remaining = Assert.Single(corrected);
+            Assert.Equal(1000m, remaining.AllocatedAmount);
+            Assert.Equal(1000m, remaining.ReceiptAmount);
+
+            var slipBLine = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == slipB);
+            Assert.Equal(SettlementStatus.Unsettled, slipBLine.SettlementStatus);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, [customerCode], [slipA, slipB]);
+        }
+    }
+
+    [Fact]
+    public async Task 明細入金の訂正で新しい充当先を追加しようとすると拒否される()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service, _) = Resolve(scope);
+        var customerCode = "__TSTDCU03";
+        var slip = "__TSTDRC_SCU03";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            dbContext.Sales.Add(NewSalesLine(customerCode, slip, 1, new DateOnly(2026, 8, 1), 1m, 1000m, TaxCategory.Standard, 10m, RoundingType.Floor));
+            await dbContext.SaveChangesAsync();
+
+            var detailReceiptNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLineToSales(slip, 1)]);
+            var loaded = await ReloadAsync(dbContext, detailReceiptNumber);
+            var loadedLineNumbers = loaded.Select(l => l.LineNumber).ToList();
+            var newLineNumber = (short)(loadedLineNumbers.Max() + 1);
+
+            var ex = await Assert.ThrowsAsync<DetailReceiptEntryException>(() => service.UpdateAsync(
+                detailReceiptNumber, new DateOnly(2026, 8, 25), null,
+                [
+                    new DetailReceiptLineCorrection(loadedLineNumbers[0], ReceiptMethod.Cash, null, null),
+                    new DetailReceiptLineCorrection(newLineNumber, ReceiptMethod.Cash, null, null),
+                ],
+                loadedLineNumbers));
+            Assert.Contains("充当先を追加する", ex.Message);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, [customerCode], [slip]);
+        }
+    }
+
+    [Fact]
+    public async Task 明細入金の訂正で全行を削除しようとすると拒否される()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service, _) = Resolve(scope);
+        var customerCode = "__TSTDCU04";
+        var slip = "__TSTDRC_SCU04";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            dbContext.Sales.Add(NewSalesLine(customerCode, slip, 1, new DateOnly(2026, 8, 1), 1m, 1000m, TaxCategory.Standard, 10m, RoundingType.Floor));
+            await dbContext.SaveChangesAsync();
+
+            var detailReceiptNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLineToSales(slip, 1)]);
+            var loadedLineNumbers = (await ReloadAsync(dbContext, detailReceiptNumber)).Select(l => l.LineNumber).ToList();
+
+            var ex = await Assert.ThrowsAsync<DetailReceiptEntryException>(() => service.UpdateAsync(
+                detailReceiptNumber, new DateOnly(2026, 8, 25), null, [], loadedLineNumbers));
+            Assert.Contains("取消をご利用ください", ex.Message);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, [customerCode], [slip]);
+        }
+    }
+
+    [Fact]
+    public async Task 他ユーザーが明細行を追加していた明細入金は訂正できない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service, _) = Resolve(scope);
+        var customerCode = "__TSTDCU05";
+        var slip = "__TSTDRC_SCU05";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            dbContext.Sales.Add(NewSalesLine(customerCode, slip, 1, new DateOnly(2026, 8, 1), 1m, 1000m, TaxCategory.Standard, 10m, RoundingType.Floor));
+            await dbContext.SaveChangesAsync();
+
+            var detailReceiptNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLineToSales(slip, 1)]);
+            var loadedLineNumbers = (await ReloadAsync(dbContext, detailReceiptNumber)).Select(l => l.LineNumber).ToList();
+
+            // 別ユーザーが行を追加した状況を再現する（充当先はダミーで別の売上行を指す必要はなく、
+            // 行の集合が変化したことだけを検出できればよい）。
+            var now = DateTime.Now;
+            dbContext.DetailReceipts.Add(new DetailReceipt
+            {
+                DetailReceiptNumber = detailReceiptNumber,
+                LineNumber = 99,
+                ReceiptDate = new DateOnly(2026, 8, 25),
+                CustomerCode = customerCode,
+                CustomerName = "テスト用都度得意先",
+                ReceiptMethod = ReceiptMethod.Cash,
+                ReceiptAmount = 1000m,
+                TargetType = DetailReceiptTargetType.SalesLine,
+                TargetSalesSlipNumber = slip,
+                TargetSalesLineNumber = 1,
+                AllocatedAmount = 0m,
+                FeeAdjustmentAmount = 0m,
+                AllocationStatus = AllocationStatus.Unallocated,
+                CreatedBy = "TEST",
+                CreatedAt = now,
+                UpdatedBy = "TEST",
+                UpdatedAt = now,
+            });
+            await dbContext.SaveChangesAsync();
+
+            await Assert.ThrowsAsync<SlipConcurrencyException>(() => service.UpdateAsync(
+                detailReceiptNumber, new DateOnly(2026, 8, 25), null,
+                [new DetailReceiptLineCorrection(loadedLineNumbers[0], ReceiptMethod.Cash, null, null)],
+                loadedLineNumbers));
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, [customerCode], [slip]);
+        }
+    }
+
     private static DetailReceiptLineInput CashLineToSales(string salesSlipNumber, short lineNumber) =>
         new(DetailReceiptTargetType.SalesLine, salesSlipNumber, lineNumber, null, ReceiptMethod.Cash, null, null);
 
@@ -697,6 +1035,36 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
             .Where(r => r.DetailReceiptNumber == detailReceiptNumber)
             .OrderBy(r => r.LineNumber)
             .ToListAsync();
+
+    private static Task InsertMonthlyClosingAsync(BmcsDbContext dbContext, string customerCode, DateOnly closingDate)
+    {
+        var now = DateTime.Now;
+        dbContext.MonthlyClosings.Add(new MonthlyClosing
+        {
+            ClosingDate = closingDate,
+            CustomerCode = customerCode,
+            TaxUnit = TaxUnit.Line,
+            CustomerName = "テスト用都度得意先",
+            PreviousBalance = 0m,
+            SalesAmount = 0m,
+            ReceiptAmount = 0m,
+            TaxAmount = 0m,
+            ClosingBalance = 0m,
+            StandardRateTaxableAmount = 0m,
+            StandardRateTaxAmount = 0m,
+            ReducedRateTaxableAmount = 0m,
+            ReducedRateTaxAmount = 0m,
+            TaxExemptAmount = 0m,
+            ClosingStatus = ClosingStatus.Confirmed,
+            ConfirmedAt = now,
+            ConfirmedBy = "TEST",
+            CreatedBy = "TEST",
+            CreatedAt = now,
+            UpdatedBy = "TEST",
+            UpdatedAt = now,
+        });
+        return dbContext.SaveChangesAsync();
+    }
 
     /// <summary>
     /// 作成したテストデータを後始末する。<see cref="DetailReceiptEntryService.SaveNewAsync"/>は

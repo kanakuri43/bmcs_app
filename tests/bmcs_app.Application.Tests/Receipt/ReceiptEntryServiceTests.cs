@@ -1,3 +1,5 @@
+using bmcs_app.Application.Billing;
+using bmcs_app.Application.Common;
 using bmcs_app.Application.Receipt;
 using bmcs_app.Domain.Enums;
 using bmcs_app.Infrastructure;
@@ -5,19 +7,22 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using BillingEntity = bmcs_app.Domain.Entities.Billing;
 using CustomerEntity = bmcs_app.Domain.Entities.Customer;
+using MonthlyClosingEntity = bmcs_app.Domain.Entities.MonthlyClosing;
 using ReceiptAllocationEntity = bmcs_app.Domain.Entities.ReceiptAllocation;
+using ReceiptEntity = bmcs_app.Domain.Entities.Receipt;
 using SalesEntity = bmcs_app.Domain.Entities.Sales;
 
 namespace bmcs_app.Application.Tests.Receipt;
 
 /// <summary>
-/// 入金入力画面（TODO.md 7-2）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
-/// （docs/architecture.md 16章）。明細行は支払手段の内訳（入金方法＋金額）であり、請求への充当
-/// （<see cref="ReceiptAllocationEntity"/>）は保存時に内部で自動計算される
-/// （docs/design_document.md 17章、2026-09-15改訂）。
+/// 入金入力画面（TODO.md 7-2）・入金の取消訂正（TODO.md 7-5）の結合テスト。開発用ライブDB
+/// （172.16.3.171）に対して実行する（docs/architecture.md 16章）。明細行は支払手段の内訳
+/// （入金方法＋金額）であり、請求への充当（<see cref="ReceiptAllocationEntity"/>）は保存時に
+/// 内部で自動計算される（docs/design_document.md 17章、2026-09-15改訂）。
 /// </summary>
 /// <remarks>
-/// <see cref="ReceiptEntryService.SaveNewAsync"/> は自前で<c>BeginTransactionAsync</c>する
+/// <see cref="ReceiptEntryService.SaveNewAsync"/>／<see cref="ReceiptEntryService.UpdateAsync"/>／
+/// <see cref="ReceiptEntryService.CancelSlipAsync"/> はいずれも自前で<c>BeginTransactionAsync</c>する
 /// ため、<c>SettlementServiceTests</c>のような「外側をトランザクションで包む」方式は使えない。
 /// 代わりに保存後、テスト末尾で作成した伝票を明示的に論理削除して後始末する
 /// （<c>DetailInvoiceServiceTests</c>と同じ方式）。
@@ -339,6 +344,334 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         }
     }
 
+    // ── 取消（TODO.md 7-5） ──────────────────────────────────────
+
+    [Fact]
+    public async Task 取消すると売上の消込状態と消込済金額が入金前に戻る()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRCC01";
+        var salesSlipNumber = "__TSTSAL_RCC01";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            await InsertBillingAsync(dbContext, "__TSTBIL_RCC01", customerCode, 10000m);
+            await InsertSalesLineAsync(dbContext, salesSlipNumber, customerCode, "__TSTBIL_RCC01", 10000m);
+
+            var receiptSlipNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(10000m)]);
+
+            var settledSalesLine = await dbContext.Sales.AsNoTracking()
+                .SingleAsync(s => s.SalesSlipNumber == salesSlipNumber);
+            Assert.Equal(SettlementStatus.FullySettled, settledSalesLine.SettlementStatus);
+
+            await service.CancelSlipAsync(receiptSlipNumber);
+
+            var revertedSalesLine = await dbContext.Sales.AsNoTracking()
+                .SingleAsync(s => s.SalesSlipNumber == salesSlipNumber);
+            Assert.Equal(SettlementStatus.Unsettled, revertedSalesLine.SettlementStatus);
+            Assert.Equal(0m, revertedSalesLine.SettledAmount);
+
+            var receiptLines = await ReloadReceiptAsync(dbContext, receiptSlipNumber);
+            Assert.All(receiptLines, l => Assert.True(l.IsDeleted));
+            var allocations = await ReloadAllocationAsync(dbContext, receiptSlipNumber);
+            Assert.All(allocations, a => Assert.True(a.IsDeleted));
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode, salesSlipNumber);
+        }
+    }
+
+    [Fact]
+    public async Task 取消しても他の入金による消込は残る()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRCC02";
+        var salesSlipNumber = "__TSTSAL_RCC02";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            await InsertBillingAsync(dbContext, "__TSTBIL_RCC02", customerCode, 10000m);
+            await InsertSalesLineAsync(dbContext, salesSlipNumber, customerCode, "__TSTBIL_RCC02", 10000m);
+
+            await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 20), slipRemarks: null, lines: [CashLine(5000m)]);
+            var receiptSlipNumber2 = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(6000m)]);
+
+            await service.CancelSlipAsync(receiptSlipNumber2);
+
+            var salesLine = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == salesSlipNumber);
+            Assert.Equal(SettlementStatus.PartiallySettled, salesLine.SettlementStatus);
+            Assert.Equal(5000m, salesLine.SettledAmount);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode, salesSlipNumber);
+        }
+    }
+
+    // ── 編集ロック（請求締めスナップショット。TODO.md 7-5） ──────────────
+
+    [Fact]
+    public async Task 確定済み請求の集計期間内の締め入金は取消できない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRCL01";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            await InsertBillingAsync(
+                dbContext, "__TSTBIL_RCL01", customerCode, 10000m, billingDate: new DateOnly(2026, 7, 20));
+
+            var receiptSlipNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 7, 15), slipRemarks: null, lines: [CashLine(1000m)]);
+
+            var ex = await Assert.ThrowsAsync<ReceiptEntryException>(() => service.CancelSlipAsync(receiptSlipNumber));
+            Assert.Contains("請求締め", ex.Message);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    [Fact]
+    public async Task 確定済み請求の集計期間内の締め入金は訂正できない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRCL02";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            await InsertBillingAsync(
+                dbContext, "__TSTBIL_RCL02", customerCode, 10000m, billingDate: new DateOnly(2026, 7, 20));
+
+            var receiptSlipNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 7, 15), slipRemarks: null, lines: [CashLine(1000m)]);
+            var loadedLineNumbers = await LoadLineNumbersAsync(dbContext, receiptSlipNumber);
+
+            var ex = await Assert.ThrowsAsync<ReceiptEntryException>(() => service.UpdateAsync(
+                receiptSlipNumber, new DateOnly(2026, 7, 15), null,
+                [new ReceiptLineCorrection(loadedLineNumbers[0], ReceiptMethod.Cash, null, null, 2000m, null)],
+                loadedLineNumbers));
+            Assert.Contains("請求締め", ex.Message);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    [Fact]
+    public async Task 締め解除すると請求締め済みだった締め入金が取消できるようになる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var releaseService = scope.ServiceProvider.GetRequiredService<BillingReleaseService>();
+        var customerCode = "__TSTRCL03";
+        const string billingNumber = "__TSTBIL_RCL03";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            await InsertBillingAsync(dbContext, billingNumber, customerCode, 10000m, billingDate: new DateOnly(2026, 7, 20));
+
+            var receiptSlipNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 7, 15), slipRemarks: null, lines: [CashLine(1000m)]);
+
+            await Assert.ThrowsAsync<ReceiptEntryException>(() => service.CancelSlipAsync(receiptSlipNumber));
+
+            await releaseService.ReleaseAsync(billingNumber);
+            dbContext.ChangeTracker.Clear();
+
+            await service.CancelSlipAsync(receiptSlipNumber);
+
+            var receiptLines = await ReloadReceiptAsync(dbContext, receiptSlipNumber);
+            Assert.All(receiptLines, l => Assert.True(l.IsDeleted));
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    [Fact]
+    public async Task 訂正で入金日付を確定済み請求の期間内へ移動する変更は拒否される()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRCL04";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            await InsertBillingAsync(
+                dbContext, "__TSTBIL_RCL04", customerCode, 10000m, billingDate: new DateOnly(2026, 7, 20));
+
+            var receiptSlipNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(1000m)]);
+            var loadedLineNumbers = await LoadLineNumbersAsync(dbContext, receiptSlipNumber);
+
+            var ex = await Assert.ThrowsAsync<ReceiptEntryException>(() => service.UpdateAsync(
+                receiptSlipNumber, new DateOnly(2026, 7, 10), null,
+                [new ReceiptLineCorrection(loadedLineNumbers[0], ReceiptMethod.Cash, null, null, 1000m, null)],
+                loadedLineNumbers));
+            Assert.Contains("訂正後の内容は編集ロック対象になる", ex.Message);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    [Fact]
+    public async Task 月次締め確定済みの年月の締め入金は取消できない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRCL05";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+
+            var receiptSlipNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(1000m)]);
+
+            await InsertMonthlyClosingAsync(dbContext, customerCode, new DateOnly(2026, 8, 31));
+
+            var ex = await Assert.ThrowsAsync<ReceiptEntryException>(() => service.CancelSlipAsync(receiptSlipNumber));
+            Assert.Contains("月次締め", ex.Message);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    // ── 訂正の充当再構築（TODO.md 7-5） ──────────────────────────────
+
+    [Fact]
+    public async Task 締め入金の金額を訂正すると自分自身の旧充当を除いた残高に対して再配分される()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRCU01";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            await InsertBillingAsync(dbContext, "__TSTBIL_RCU01", customerCode, 10000m);
+
+            var receiptSlipNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(10000m)]);
+            var loadedLineNumbers = await LoadLineNumbersAsync(dbContext, receiptSlipNumber);
+
+            // 全額充当済み（outstanding=0）の状態から8,000円へ減額訂正する。SaveChangesAsyncを
+            // 挟まずに再配分すると自分自身の旧充当（10,000円）が見えたままになり outstanding が
+            // 0のまま判定され、8,000円全額が前受行に落ちる（Q1の回帰）。
+            await service.UpdateAsync(
+                receiptSlipNumber, new DateOnly(2026, 8, 25), null,
+                [new ReceiptLineCorrection(loadedLineNumbers[0], ReceiptMethod.Cash, null, null, 8000m, null)],
+                loadedLineNumbers);
+
+            var allocations = (await ReloadAllocationAsync(dbContext, receiptSlipNumber))
+                .Where(a => !a.IsDeleted).ToList();
+            var billingAllocation = Assert.Single(allocations);
+            Assert.Equal("__TSTBIL_RCU01", billingAllocation.BillingNumber);
+            Assert.Equal(8000m, billingAllocation.AllocatedAmount);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    [Fact]
+    public async Task 締め入金の訂正で行を削除すると充当も再構築される()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRCU02";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            await InsertBillingAsync(dbContext, "__TSTBIL_RCU02", customerCode, 10000m);
+
+            var receiptSlipNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null,
+                lines: [CashLine(4000m), BankTransferLine(6000m)]);
+            var loadedLines = await dbContext.Receipts
+                .Where(r => r.ReceiptSlipNumber == receiptSlipNumber && !r.IsDeleted)
+                .OrderBy(r => r.LineNumber)
+                .ToListAsync();
+            var cashLineNumber = loadedLines.Single(l => l.ReceiptMethod == ReceiptMethod.Cash).LineNumber;
+            var loadedLineNumbers = loadedLines.Select(l => l.LineNumber).ToList();
+
+            // 銀行振込の行を削除し、現金4,000円のみ残す。
+            await service.UpdateAsync(
+                receiptSlipNumber, new DateOnly(2026, 8, 25), null,
+                [new ReceiptLineCorrection(cashLineNumber, ReceiptMethod.Cash, null, null, 4000m, null)],
+                loadedLineNumbers);
+
+            var allocations = (await ReloadAllocationAsync(dbContext, receiptSlipNumber))
+                .Where(a => !a.IsDeleted).ToList();
+            var billingAllocation = Assert.Single(allocations);
+            Assert.Equal(4000m, billingAllocation.AllocatedAmount);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    [Fact]
+    public async Task 他ユーザーが明細行を追加していた締め入金は訂正できない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRCU03";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+
+            var receiptSlipNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(1000m)]);
+            var loadedLineNumbers = await LoadLineNumbersAsync(dbContext, receiptSlipNumber);
+
+            // 別ユーザーが行を追加した状況を再現する。
+            var now = DateTime.Now;
+            dbContext.Receipts.Add(new ReceiptEntity
+            {
+                ReceiptSlipNumber = receiptSlipNumber,
+                LineNumber = 99,
+                ReceiptDate = new DateOnly(2026, 8, 25),
+                CustomerCode = customerCode,
+                TaxUnit = TaxUnit.Invoice,
+                CustomerName = "テスト用得意先",
+                ReceiptMethod = ReceiptMethod.Cash,
+                Amount = 500m,
+                AllocationStatus = AllocationStatus.Unallocated,
+                CreatedBy = "TEST",
+                CreatedAt = now,
+                UpdatedBy = "TEST",
+                UpdatedAt = now,
+            });
+            await dbContext.SaveChangesAsync();
+
+            await Assert.ThrowsAsync<SlipConcurrencyException>(() => service.UpdateAsync(
+                receiptSlipNumber, new DateOnly(2026, 8, 25), null,
+                [new ReceiptLineCorrection(loadedLineNumbers[0], ReceiptMethod.Cash, null, null, 2000m, null)],
+                loadedLineNumbers));
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
     private static (BmcsDbContext DbContext, ReceiptEntryService Service) Resolve(AsyncServiceScope scope) => (
         scope.ServiceProvider.GetRequiredService<BmcsDbContext>(),
         scope.ServiceProvider.GetRequiredService<ReceiptEntryService>());
@@ -447,6 +780,43 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             .OrderBy(a => a.LineNumber)
             .ToListAsync();
 
+    /// <summary>訂正（<see cref="ReceiptEntryService.UpdateAsync"/>）の<c>loadedLineNumbers</c>引数を取得する。</summary>
+    private static Task<List<short>> LoadLineNumbersAsync(BmcsDbContext dbContext, string receiptSlipNumber) =>
+        dbContext.Receipts
+            .Where(r => r.ReceiptSlipNumber == receiptSlipNumber && !r.IsDeleted)
+            .Select(r => r.LineNumber)
+            .ToListAsync();
+
+    private static Task InsertMonthlyClosingAsync(BmcsDbContext dbContext, string customerCode, DateOnly closingDate)
+    {
+        var now = DateTime.Now;
+        dbContext.MonthlyClosings.Add(new MonthlyClosingEntity
+        {
+            ClosingDate = closingDate,
+            CustomerCode = customerCode,
+            TaxUnit = TaxUnit.Invoice,
+            CustomerName = "テスト用得意先",
+            PreviousBalance = 0m,
+            SalesAmount = 0m,
+            ReceiptAmount = 0m,
+            TaxAmount = 0m,
+            ClosingBalance = 0m,
+            StandardRateTaxableAmount = 0m,
+            StandardRateTaxAmount = 0m,
+            ReducedRateTaxableAmount = 0m,
+            ReducedRateTaxAmount = 0m,
+            TaxExemptAmount = 0m,
+            ClosingStatus = ClosingStatus.Confirmed,
+            ConfirmedAt = now,
+            ConfirmedBy = "TEST",
+            CreatedBy = "TEST",
+            CreatedAt = now,
+            UpdatedBy = "TEST",
+            UpdatedAt = now,
+        });
+        return dbContext.SaveChangesAsync();
+    }
+
     /// <summary>
     /// 作成したテストデータを後始末する。<see cref="ReceiptEntryService.SaveNewAsync"/>は自前で
     /// トランザクションをコミットするため、<c>SettlementServiceTests</c>のような外側Rollback方式は
@@ -455,6 +825,8 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
     private static async Task CleanupAsync(
         BmcsDbContext dbContext, string customerCode, string? salesSlipNumber = null)
     {
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"DELETE FROM dbo.monthly_closing WHERE customer_code = {customerCode}");
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM dbo.receipt_allocation WHERE customer_code = {customerCode}");
         await dbContext.Database.ExecuteSqlInterpolatedAsync(

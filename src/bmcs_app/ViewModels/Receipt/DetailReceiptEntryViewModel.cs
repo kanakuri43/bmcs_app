@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using bmcs_app.Application.Billing;
+using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
 using bmcs_app.Application.Receipt;
 using bmcs_app.Domain.Entities;
@@ -14,7 +15,7 @@ using DetailReceiptEntity = bmcs_app.Domain.Entities.DetailReceipt;
 namespace bmcs_app.ViewModels.Receipt;
 
 /// <summary>
-/// 明細入金画面（TODO.md 7-4）。都度得意先（内税明細単位）専用。締め得意先（請求単位／伝票単位）の
+/// 明細入金画面（TODO.md 7-4・7-5）。都度得意先（内税明細単位）専用。締め得意先（請求単位／伝票単位）の
 /// 入金は入金入力画面（TODO.md 7-2）が担う。
 ///
 /// 画面レイアウト・操作方法は旧デモ<c>bmcs_app.LineReceipt</c>を踏襲する（左＝入金登録の明細行、
@@ -24,8 +25,10 @@ namespace bmcs_app.ViewModels.Receipt;
 /// 金額は常に対象の全額（または残額）で固定・読み取り専用。前受金は無く、充当先が未定の行は
 /// 作らない。
 ///
-/// 振込手数料差額の入力（TODO.md 7-3）・既存伝票の訂正／取消（TODO.md 7-5）はこの画面の
-/// スコープ外。伝票No.欄で既存の明細入金を読み込んだ場合は読み取り専用表示にする。
+/// 振込手数料差額の入力（TODO.md 7-3）はこの画面のスコープ外。既存伝票の訂正・取消（TODO.md 7-5）は
+/// 伝票No.欄で読み込んだ後、入金方法・入金先口座・行摘要・伝票摘要・入金日付の変更と行の削除のみ
+/// 保存(F10)＝訂正として扱う（<see cref="DetailReceiptEntryService"/>のdoc comment参照。**充当先の
+/// 追加はできない**ため、読込時は右ペインの候補一覧を表示しない）。取消(F8)＝取消。
 /// </summary>
 public partial class DetailReceiptEntryViewModel(
     DetailReceiptEntryService detailReceiptEntryService,
@@ -35,6 +38,8 @@ public partial class DetailReceiptEntryViewModel(
     WindowService windowService) : ViewModelBase
 {
     private Customer? _customer;
+    private string? _loadedDetailReceiptNumber;
+    private IReadOnlyList<short> _loadedLineNumbers = [];
 
     public ObservableCollection<BankAccount> BankAccounts { get; } = [];
 
@@ -51,15 +56,38 @@ public partial class DetailReceiptEntryViewModel(
     [ObservableProperty]
     public partial string DetailReceiptNumberQuery { get; set; } = string.Empty;
 
-    /// <summary>既存の明細入金を読み込んだ状態かどうか。真のときは読み取り専用（訂正・取消はTODO.md 7-5）。</summary>
+    /// <summary>
+    /// 既存の明細入金を読み込んだ状態かどうか。真の間は得意先コードを変更できない
+    /// （<see cref="IsEditLocked"/>と異なり、ロックの有無に関わらず得意先の付け替えは常に禁止する）。
+    /// </summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteSlipCommand))]
     [NotifyCanExecuteChangedFor(nameof(AddLineCommand))]
     [NotifyPropertyChangedFor(nameof(IsEditable))]
+    [NotifyPropertyChangedFor(nameof(IsHeaderLocked))]
     public partial bool IsExistingLoaded { get; set; }
 
-    /// <summary>ヘッダー・明細の編集可否（<see cref="IsExistingLoaded"/>の否定）。</summary>
-    public bool IsEditable => !IsExistingLoaded;
+    /// <summary>
+    /// 編集ロック中かどうか（<see cref="DetailReceiptEntryService.EvaluateEditLockAsync"/>の結果。
+    /// TODO.md 7-5）。ViewModelは判定せず、結果をそのまま表示・反映するだけにする
+    /// （docs/architecture.md 5章）。
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteSlipCommand))]
+    [NotifyPropertyChangedFor(nameof(IsEditable))]
+    [NotifyPropertyChangedFor(nameof(IsHeaderLocked))]
+    public partial bool IsEditLocked { get; set; }
+
+    /// <summary>
+    /// ヘッダー（入金日付・摘要）・明細行（入金方法・入金先口座・行摘要・削除）の編集可否。
+    /// 新規登録時は常に編集可能、既存読込時は編集ロックされていない場合のみ編集可能（＝訂正できる）。
+    /// </summary>
+    public bool IsEditable => !IsExistingLoaded || !IsEditLocked;
+
+    /// <summary>入金日付・摘要のIsReadOnlyバインディング用（得意先コードは<see cref="IsExistingLoaded"/>を直接使う）。</summary>
+    public bool IsHeaderLocked => !IsEditable;
 
     [ObservableProperty]
     public partial string ReceiptDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
@@ -114,11 +142,16 @@ public partial class DetailReceiptEntryViewModel(
         ? (object?)SelectedSlipLine
         : SelectedInvoiceCandidate;
 
-    private bool CanSave => !IsExistingLoaded && _customer is not null && Lines.Count > 0;
+    private bool CanSave => IsEditable && _customer is not null && Lines.Count > 0;
 
-    private bool CanEdit => IsEditable;
+    /// <summary>
+    /// 候補（売上伝票・明細請求書）から新しい充当先を追加できるかどうか（F2）。新規登録時のみ許可し、
+    /// 訂正モードでは編集ロックの有無に関わらず不可（<see cref="DetailReceiptEntryService"/>の
+    /// doc comment参照。充当先の追加自体が設計上禁止されているため）。
+    /// </summary>
+    private bool CanAddNewTarget => _loadedDetailReceiptNumber is null;
 
-    private bool CanUseUnimplementedFeature => false;
+    private bool CanDeleteSlip => _loadedDetailReceiptNumber is not null && !IsEditLocked;
 
     [RelayCommand]
     private Task LoadAsync() => RunBusyAsync(async () =>
@@ -312,8 +345,9 @@ public partial class DetailReceiptEntryViewModel(
 
     /// <summary>
     /// 候補行を明細入金の明細行へ追加する（F2、または各リストの「入金」ボタン・Enter・ダブルクリック）。
+    /// 訂正モードでは使用不可（<see cref="CanAddNewTarget"/>参照）。
     /// </summary>
-    [RelayCommand(CanExecute = nameof(CanEdit))]
+    [RelayCommand(CanExecute = nameof(CanAddNewTarget))]
     private void AddLine(object? candidate)
     {
         switch (candidate)
@@ -392,7 +426,7 @@ public partial class DetailReceiptEntryViewModel(
     /// <summary>
     /// 入金No.欄で Return を押したときの挙動（docs/product-spec.md UI/UX節「ジャーナル系画面の
     /// 伝票No入力欄の挙動」）。空欄なら新規登録モードとして次項目（入金日付）へフォーカス移動する
-    /// のみ。入力済みなら既存の明細入金No.で直接読み込む（読み取り専用表示。訂正・取消はTODO.md 7-5）。
+    /// のみ。入力済みなら既存の明細入金No.で直接読み込む（訂正・取消モード。TODO.md 7-5）。
     /// </summary>
     [RelayCommand]
     private Task LookupAsync() => RunBusyAsync(async () =>
@@ -411,7 +445,7 @@ public partial class DetailReceiptEntryViewModel(
             return;
         }
 
-        ApplyExisting(number, lines);
+        await ApplyExisting(number, lines);
     });
 
     /// <summary>明細入金検索モーダルを開く（<c>Space</c>）。選択した番号は <see cref="LookupAsync"/> と同じ経路で読み込む。</summary>
@@ -428,7 +462,7 @@ public partial class DetailReceiptEntryViewModel(
         }
     }
 
-    /// <summary>保存（F10）。</summary>
+    /// <summary>保存（F10）。<see cref="_loadedDetailReceiptNumber"/>が設定されていれば訂正、無ければ新規登録。</summary>
     [RelayCommand(CanExecute = nameof(CanSave))]
     private Task SaveAsync() => RunBusyAsync(async () =>
     {
@@ -443,54 +477,113 @@ public partial class DetailReceiptEntryViewModel(
             return;
         }
 
-        var lineInputs = Lines.Select(l => new DetailReceiptLineInput(
-            l.TargetType,
-            l.TargetSalesSlipNumber,
-            l.TargetSalesLineNumber,
-            l.TargetDetailInvoiceNumber,
-            l.ReceiptMethod,
-            l.BankAccountCode,
-            string.IsNullOrWhiteSpace(l.LineRemarks) ? null : l.LineRemarks)).ToList();
-
         try
         {
-            var detailReceiptNumber = await detailReceiptEntryService.SaveNewAsync(
-                _customer.CustomerCode,
-                receiptDate,
-                string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks,
-                lineInputs);
+            if (_loadedDetailReceiptNumber is null)
+            {
+                var lineInputs = Lines.Select(l => new DetailReceiptLineInput(
+                    l.TargetType,
+                    l.TargetSalesSlipNumber,
+                    l.TargetSalesLineNumber,
+                    l.TargetDetailInvoiceNumber,
+                    l.ReceiptMethod,
+                    l.BankAccountCode,
+                    string.IsNullOrWhiteSpace(l.LineRemarks) ? null : l.LineRemarks)).ToList();
 
-            // 登録成功後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
-            ClearForm();
-            StatusMessage = $"明細入金No. {detailReceiptNumber} を登録しました。";
+                var detailReceiptNumber = await detailReceiptEntryService.SaveNewAsync(
+                    _customer.CustomerCode,
+                    receiptDate,
+                    string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks,
+                    lineInputs);
+
+                // 登録成功後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
+                ClearForm();
+                StatusMessage = $"明細入金No. {detailReceiptNumber} を登録しました。";
+            }
+            else
+            {
+                // 訂正では充当先を追加できないため、全行が読込時から存在する行
+                // （PersistedLineNumber が設定済み）のはず（このクラスの doc comment参照）。
+                var lineCorrections = Lines.Select(l => new DetailReceiptLineCorrection(
+                    l.PersistedLineNumber!.Value,
+                    l.ReceiptMethod,
+                    l.BankAccountCode,
+                    string.IsNullOrWhiteSpace(l.LineRemarks) ? null : l.LineRemarks)).ToList();
+
+                var correctedDetailReceiptNumber = _loadedDetailReceiptNumber;
+                await detailReceiptEntryService.UpdateAsync(
+                    correctedDetailReceiptNumber,
+                    receiptDate,
+                    string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks,
+                    lineCorrections,
+                    _loadedLineNumbers);
+
+                // 新規登録と挙動を揃え、訂正保存だけ伝票を表示し続ける例外を作らない
+                // （docs/product-spec.md UI/UX節「登録後のリセット」）。
+                ClearForm();
+                StatusMessage = $"明細入金No. {correctedDetailReceiptNumber} を訂正しました。";
+            }
+
             NotifyResetToInitialState();
         }
         catch (DetailReceiptEntryException ex)
         {
-            StatusMessage = $"登録エラー: {ex.Message}";
+            StatusMessage = $"保存エラー: {ex.Message}";
+        }
+        catch (SlipConcurrencyException ex)
+        {
+            StatusMessage = $"保存エラー: {ex.Message}";
         }
         catch (Exception ex)
         {
-            StatusMessage = $"登録エラー: {ex.Message}";
+            StatusMessage = $"保存エラー: {ex.Message}";
         }
     });
 
-    /// <summary>明細入金の訂正・取消はTODO.md 7-5で実装する（枠のみ・使用不可）。</summary>
-    [RelayCommand(CanExecute = nameof(CanUseUnimplementedFeature))]
-    private void DeleteSlip()
+    /// <summary>取消（F8、TODO.md 7-5）。</summary>
+    [RelayCommand(CanExecute = nameof(CanDeleteSlip))]
+    private Task DeleteSlipAsync() => RunBusyAsync(async () =>
     {
-    }
+        if (_loadedDetailReceiptNumber is null)
+        {
+            return;
+        }
 
-    private void ApplyExisting(string detailReceiptNumber, List<DetailReceiptEntity> lines)
+        try
+        {
+            await detailReceiptEntryService.CancelSlipAsync(_loadedDetailReceiptNumber);
+            var cancelledDetailReceiptNumber = _loadedDetailReceiptNumber;
+            New();
+            StatusMessage = $"明細入金No. {cancelledDetailReceiptNumber} を取消しました。";
+        }
+        catch (DetailReceiptEntryException ex)
+        {
+            StatusMessage = $"取消エラー: {ex.Message}";
+        }
+        catch (SlipConcurrencyException ex)
+        {
+            StatusMessage = $"取消エラー: {ex.Message}";
+        }
+    });
+
+    /// <summary>
+    /// 既存の明細入金を読み込む（訂正・取消モード。TODO.md 7-5）。訂正では充当先を追加できない
+    /// ため、右ペインの候補一覧は表示しない（<see cref="SalesCandidates"/>／<see cref="InvoiceCandidates"/>
+    /// は空のまま）。
+    /// </summary>
+    private async Task ApplyExisting(string detailReceiptNumber, List<DetailReceiptEntity> lines)
     {
         var header = lines[0];
+
+        var customer = await customerService.GetByCodeAsync(header.CustomerCode);
+        var lockResult = await detailReceiptEntryService.EvaluateEditLockAsync(lines);
 
         DetailReceiptNumberQuery = detailReceiptNumber;
         ReceiptDateText = header.ReceiptDate.ToString("yyyy/MM/dd");
         CustomerCode = header.CustomerCode;
         CustomerName = header.CustomerName;
         SlipRemarks = header.SlipRemarks ?? string.Empty;
-        _customer = null;
+        _customer = customer;
 
         ClearLines();
         SalesCandidates.Clear();
@@ -507,6 +600,7 @@ public partial class DetailReceiptEntryViewModel(
             Lines.Add(new DetailReceiptLineViewModel(OnDeleteLine)
             {
                 LineNumber = line.LineNumber,
+                PersistedLineNumber = line.LineNumber,
                 TargetType = line.TargetType,
                 TargetSalesSlipNumber = line.TargetSalesSlipNumber,
                 TargetSalesLineNumber = line.TargetSalesLineNumber,
@@ -520,9 +614,13 @@ public partial class DetailReceiptEntryViewModel(
         }
 
         OnPropertyChanged(nameof(ReceiptTotal));
+        _loadedDetailReceiptNumber = detailReceiptNumber;
+        _loadedLineNumbers = lines.Select(l => l.LineNumber).ToList();
         IsExistingLoaded = true;
-        SaveCommand.NotifyCanExecuteChanged();
-        StatusMessage = $"明細入金No. {detailReceiptNumber} を読み込みました（読み取り専用。訂正・取消はTODO.md 7-5で対応予定）。";
+        IsEditLocked = lockResult.IsLocked;
+        StatusMessage = lockResult.IsLocked
+            ? $"明細入金No. {detailReceiptNumber} を読み込みました（編集不可: {lockResult.Reason}）"
+            : $"明細入金No. {detailReceiptNumber} を読み込みました。";
     }
 
     private void ClearForm()
@@ -533,6 +631,8 @@ public partial class DetailReceiptEntryViewModel(
         CustomerName = string.Empty;
         SlipRemarks = string.Empty;
         _customer = null;
+        _loadedDetailReceiptNumber = null;
+        _loadedLineNumbers = [];
 
         ClearLines();
         SalesCandidates.Clear();
@@ -547,6 +647,7 @@ public partial class DetailReceiptEntryViewModel(
 
         OnPropertyChanged(nameof(ReceiptTotal));
         IsExistingLoaded = false;
+        IsEditLocked = false;
         SaveCommand.NotifyCanExecuteChanged();
     }
 

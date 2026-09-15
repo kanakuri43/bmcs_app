@@ -21,6 +21,13 @@ public partial class ReceiptLineViewModel : ObservableObject
     [ObservableProperty]
     public partial short LineNumber { get; set; }
 
+    /// <summary>
+    /// 訂正（TODO.md 7-5）で、読込時に存在した実際の行番号を保持する。<c>null</c>＝新規追加行
+    /// （<see cref="Common.SlipLineViewModel.PersistedLineNumber"/>と同じ理由。主キーの一部である
+    /// 実際の行番号とは独立に保持し、行の並べ替え・削除で誤って詰め直さないようにする）。
+    /// </summary>
+    public short? PersistedLineNumber { get; set; }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBankAccountVisible))]
     [NotifyPropertyChangedFor(nameof(IsBillDueDateVisible))]

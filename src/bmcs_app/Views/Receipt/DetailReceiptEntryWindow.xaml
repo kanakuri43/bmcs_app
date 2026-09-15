@@ -9,17 +9,20 @@
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 7-4。都度得意先（内税明細単位）専用。画面レイアウトは旧デモ bmcs_app.LineReceipt を
+        TODO.md 7-4・7-5。都度得意先（内税明細単位）専用。画面レイアウトは旧デモ bmcs_app.LineReceipt を
         踏襲（左＝入金登録の明細行、右＝上段タブ〈売上伝票／明細請求書〉＋下段の選択伝票明細）。
         充当の粒度はスキーマに合わせ、売上伝票タブ＝売上明細行単位、明細請求書タブ＝請求書まるごと
         1行とした（デモは請求書タブでも行単位だったが不採用。docs/design_document.md 18章）。
         金額は常に対象の全額（または残額）で固定・読み取り専用。
-        振込手数料差額の入力（7-3）・既存伝票の訂正／取消（7-5）は範囲外のため、取消(F8)は
-        枠のみ用意し無効化する。
+        既存伝票の訂正・取消（7-5）は伝票No.欄で読み込んだ後、入金方法・入金先口座・行摘要・行の削除・
+        伝票摘要・入金日付の変更のみ保存(F10)＝訂正として扱う。充当先の追加はできないため、読込後は
+        右ペインの候補一覧が空になる（AddLineCommandは新規登録時のみ実行可）。取消(F8)＝取消。
+        振込手数料差額の入力（7-3）は範囲外。
     -->
     <mah:MetroWindow.InputBindings>
         <KeyBinding Key="F2"  Command="{Binding AddLineCommand}" CommandParameter="{Binding SelectedPayableCandidate}" />
         <KeyBinding Key="F3"  Command="{Binding NewCommand}" />
+        <KeyBinding Key="F8"  Command="{Binding DeleteSlipCommand}" />
         <KeyBinding Key="F10" Command="{Binding SaveCommand}" />
     </mah:MetroWindow.InputBindings>
 
@@ -39,8 +42,7 @@
             <Separator />
             <Button Command="{Binding DeleteSlipCommand}"
                     Content="取消 (F8)"
-                    IsEnabled="False"
-                    ToolTip="明細入金の取消・訂正（TODO.md 7-5、未実装）" />
+                    ToolTip="読み込んだ明細入金を取消します (F8)。TODO.md 7-5" />
         </ToolBar>
 
         <!-- ===== ヘッダー ===== -->
@@ -72,7 +74,7 @@
                              MaxLength="20"
                              HorizontalAlignment="Left"
                              Width="240"
-                             ToolTip="既存の明細入金No.を入力してEnterで読み込む（読み取り専用表示）。Spaceで検索モーダルを開く">
+                             ToolTip="既存の明細入金No.を入力してEnterで読み込む（訂正・取消モード）。Spaceで検索モーダルを開く">
                         <TextBox.InputBindings>
                             <KeyBinding Key="Space"  Command="{Binding OpenDetailReceiptSearchCommand}" />
                             <KeyBinding Key="Return" Command="{Binding LookupCommand}" />
@@ -82,7 +84,7 @@
                     <TextBlock Grid.Column="3" Text="入金日付" VerticalAlignment="Center" />
                     <TextBox Grid.Column="4"
                              Style="{StaticResource DateTextBoxStyle}"
-                             IsReadOnly="{Binding IsExistingLoaded}"
+                             IsReadOnly="{Binding IsHeaderLocked}"
                              beh:FocusBehavior.FocusKey="ReceiptDate"
                              Text="{Binding ReceiptDateText, UpdateSourceTrigger=LostFocus}" />
                 </Grid>
@@ -123,7 +125,7 @@
 
                     <TextBlock Grid.Column="0" Text="摘要" VerticalAlignment="Center" />
                     <TextBox Grid.Column="1"
-                             IsReadOnly="{Binding IsExistingLoaded}"
+                             IsReadOnly="{Binding IsHeaderLocked}"
                              Text="{Binding SlipRemarks, UpdateSourceTrigger=PropertyChanged}"
                              mah:TextBoxHelper.Watermark="（任意）"
                              MaxLength="200" />

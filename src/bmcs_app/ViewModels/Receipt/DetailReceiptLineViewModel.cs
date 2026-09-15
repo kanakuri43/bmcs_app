@@ -22,6 +22,14 @@ public partial class DetailReceiptLineViewModel : ObservableObject
     [ObservableProperty]
     public partial short LineNumber { get; set; }
 
+    /// <summary>
+    /// 訂正（TODO.md 7-5）で、読込時に存在した実際の行番号を保持する。<c>null</c>＝新規登録モードで
+    /// 追加した行（<see cref="Common.SlipLineViewModel.PersistedLineNumber"/>と同じ理由）。
+    /// 訂正モードでは充当先の追加ができないため、この画面では常に読込時の値がそのまま保たれる
+    /// （<see cref="LineNumber"/>は削除のたびに1から詰め直されるため、訂正の保存には使えない）。
+    /// </summary>
+    public short? PersistedLineNumber { get; set; }
+
     /// <summary>充当先の種別。</summary>
     public required DetailReceiptTargetType TargetType { get; set; }
 
