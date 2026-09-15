@@ -5,12 +5,23 @@
 
     <ResourceDictionary.MergedDictionaries>
         <!--
-            BasedOn="{StaticResource {x:Type TextBox}}" の解決には、MahApps の
-            既定 TextBox スタイルがこの辞書自身のマージスコープ内に存在する必要がある。
+            BasedOn="{StaticResource MahApps.Styles.XxxYyy}" の解決には、MahApps の
+            既定スタイルがこの辞書自身のマージスコープ内に存在する必要がある。
             App.xaml で既に Controls.xaml をマージしていても、StaticResource は
             参照元ファイル自身のスコープでしか解決されないため、ここでも再マージする。
             Metrics.xaml も同じ理由でここに再マージする（App.xaml へ足すだけでは
             このファイル内の StaticResource InputControlHeight 等は解決できない）。
+
+            重要: MahApps.Metro は TextBox/ComboBox/Button 等に対して暗黙スタイル
+            （x:Key 無し・TargetType のみ）を提供しない。キー付きスタイル
+            （x:Key="MahApps.Styles.TextBox" 等）のみが定義されている（2026-09-15、
+            SPACE検索欄のWatermarkが表示されない不具合の調査で判明）。
+            このため BasedOn には必ず明示的なキー名（"MahApps.Styles.TextBox" 等）を
+            指定すること。`{StaticResource {x:Type TextBox}}` は MahApps の既定スタイルには
+            解決されず、このファイル自身が下で定義する暗黙 `<Style TargetType="TextBox">`
+            （高さ調整のみを持つ、ControlTemplateを持たないもの）を指してしまい、
+            Watermark 等 MahApps 固有のテンプレート機能が丸ごと欠落する
+            （高さ調整自体は MinHeight 等の汎用プロパティなので効いて見え、気付きにくい）。
         -->
         <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.xaml" />
         <ResourceDictionary Source="Colors.xaml" />
@@ -29,7 +40,7 @@
         キー付きスタイルとして基底に置き、Amount/Quantity 等の派生スタイルが高さを
         確実に継承していることを BasedOn の連鎖で目視確認できるようにする。
     -->
-    <Style x:Key="InputTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <Style x:Key="InputTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource MahApps.Styles.TextBox}">
         <Setter Property="MinHeight" Value="{StaticResource InputControlHeight}" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -54,7 +65,7 @@
     </Style>
 
     <!-- ComboBox にも TextBox と同じ高さ3点セットを適用し、同一行に並べたときに高さを揃える。 -->
-    <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+    <Style TargetType="ComboBox" BasedOn="{StaticResource MahApps.Styles.ComboBox}">
         <Setter Property="MinHeight" Value="{StaticResource InputControlHeight}" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -81,7 +92,7 @@
         Style="{DynamicResource MahApps.Styles.Button.Flat}" 等を明示指定している要素には
         暗黙スタイルは継承されない（明示 Style が暗黙 Style を置換するため）。
     -->
-    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+    <Style TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button}">
         <Setter Property="MinHeight" Value="{StaticResource InputControlHeight}" />
     </Style>
 
