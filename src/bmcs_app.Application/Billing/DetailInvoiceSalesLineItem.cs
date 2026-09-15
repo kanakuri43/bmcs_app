@@ -17,6 +17,8 @@ public sealed record DetailInvoiceSalesLineItem(
     SlipType SlipType,
     string ProductCode,
     string ProductName,
+    string? Specification,
+    string? UnitName,
     decimal Quantity,
     decimal UnitPrice,
     decimal Amount,

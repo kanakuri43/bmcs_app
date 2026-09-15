@@ -425,10 +425,17 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
   行選択を持たない（一括処理の方針上不要であり、既存画面にチェックボックス一覧のパターンが
   無いため新パターンを増やさない）。
 - **締め確定後のリセット**（`docs/product-spec.md` UI/UX節の「登録後のリセット」を本画面に
-  適用したもの。2026-09-11確定）: 「締め確定」成功後は対象年月・締め日区分・請求日の入力
-  条件と結果一覧（一覧は締め結果を確認できる唯一の画面上の証跡だが、確定後は再検索する
-  運用のため）を両方クリアし、画面表示直後の状態（既定条件の再取得待ち）に戻す。完了メッセージ
-  （確定件数）はクリア後も画面上に残す。
+  適用したもの。2026-09-11確定、**2026-09-16改訂**）: 当初は「締め確定」成功後に対象年月・
+  締め日区分・請求日の入力条件と結果一覧を両方クリアし、画面表示直後の状態へ即座に戻していた。
+  **TODO.md 10-5（請求書印刷）の実装で、この仕様が「確定した請求書をその場の一覧から選択して
+  印刷したい」という要求と直接矛盾することが判明**（確定した瞬間に印刷対象の請求番号が一覧から
+  消えてしまう）。ユーザー確認のうえ、**確定後は結果一覧（請求番号入り）をクリアしない**方式に
+  変更した。入力条件（対象年月・締め日区分・請求日）もそのまま残す。一覧の`ListView`に選択行
+  ＋印刷コマンド（`SelectedResult`／`PrintCommand`、`BillingClosingViewModel`）を追加し、
+  `docs/report-spec.md` 2-2節の`InvoiceService.GetByNumberAsync`でヘッダーの確定値から
+  請求書データを組み立てて印刷する。次のバッチ（別の締め日区分・請求日）に進みたい場合は、
+  入力条件を変更すれば既存の自動再取得（`OnSelectedClosingDayChanged`／`OnClosingDateChanged`）
+  が一覧を新しいプレビュー結果で置き換える。完了メッセージ（確定件数）は従来どおり画面上に残す。
 
 ### 検証方法
 
@@ -1787,5 +1794,116 @@ TODO.md 10-2（納品書一括発行）に着手しようとしたところ、�
   合わない可能性が高い。着手時に基底クラスの拡張を検討する。
 - 得意先元帳用のプリンタ設定（`ReportKind`・`PrinterSettingsConfig`）は未整備。
   10-6着手時に追加する。
+
+---
+
+## 23. 請求書・明細請求書の実装（Phase 10-5、2026-09-16実装）
+
+### 23-1. スコープ
+
+締め得意先向け「請求書」・都度得意先向け「明細請求書」の印刷を実装した。前提の10-3
+（帳票基盤）・10-4（納品書）は実装済み。`ReportKind.Invoice`／`ReportKind.DetailInvoice`は
+10-3の時点で既に用意済みだった（`PrinterSettings`の3項目に合わせてあったため）。
+
+適格請求書の記載事項（発行者の名称・登録番号／取引年月日／取引内容と軽減税率の付記／
+税率ごとに区分した対価の額と適用税率／税率ごとの消費税額／交付を受ける者の名称）は
+すべて満たす。レイアウト詳細・帳票基盤の共通化内容は`docs/report-spec.md` 2-2節を参照
+（重複させないためここには書かない）。本節は業務ロジック上の設計判断と、既存仕様との
+矛盾の解決経緯を記録する。
+
+### 23-2. 設計判断: 税率別内訳の「適用税率」表示
+
+`billing`／`detail_invoice`は税種別区分ごとの確定金額（標準税率・軽減税率・非課税の
+固定5カラム）のみを保持し、税率(%)そのものは持たない（`docs/database-schema.md` 2.12・
+2.13節）。適格請求書は税率ごとの対価の額に加えて「適用税率」自体も法定記載事項であるため、
+このままでは印字できない。
+
+一方、明細を構成する`sales`行は税単位によらず必ず`tax_rate`をスナップショットとして持つ
+（2.9節）。そこで`ConsumptionTaxCalculator.ResolveConfirmedBuckets`（Domain、新規、
+単体テスト4件）を追加し、**金額はヘッダーの確定値をそのまま使い、税率(%)ラベルだけを
+該当する税種別区分を持つ明細行から拝借する**方式で内訳（`TaxRateBucket`）を組み立て直す。
+
+この方式を選んだ理由: 伝票単位（`tax_unit=2`）は伝票ごとに端数処理する構造（C-4b暫定、
+`CalculateExternalTaxPerSlip`）であり、請求期間全体の明細行を単純に再グループ化して
+税率ごとに1回だけ丸め直すと、保存済みのヘッダー確定値と金額が食い違う（二重丸め）
+おそれがある。金額を常に確定値に固定し、税率ラベルの解決だけを明細行から行うことで、
+どの税単位でも金額の不一致を起こさずに適用税率を表示できる。
+
+対価額・税額がともに0の区分は表示しない（`CalculateExternalTaxBuckets`と同じ「0円の
+区分は載せない」扱い）。明細行に該当区分が無い場合（下記23-3の締め解除済み・取消済み）は
+税率0でフォールバックする（結合テストで確認済み）。
+
+### 23-3. 締め解除済み・取消済みを指定した場合の挙動
+
+締め解除（`BillingReleaseService`）は`sales.billing_number`を`NULL`に戻し、明細請求書の
+取消（`DetailInvoiceService.CancelAsync`）は`detail_invoice_sales_line`を物理削除する
+（12-1節）。どちらも既存の非破壊ヘッダー方式のため、解除済み・取消済みの番号を指定して
+印刷すると**明細0件・ヘッダーの確定金額のみ**が返る。これは12章で明細請求書の取消について
+既に文書化・許容されている挙動と同じであり、請求書側も新たな対応はせず同様に扱う
+（結合テスト`InvoiceServiceTests.解除済みの請求書は明細0件でヘッダーの確定金額のみ返る`／
+`DetailInvoicePrintDataTests.取消済みの明細請求書は明細0件でヘッダーの確定金額のみ返り税率は0でフォールバックする`
+で確認済み）。印刷自体は禁止しない（過去の参照用の印刷を禁止する理由がないため）。
+
+明細請求書のみ、取消済み（`InvoiceStatus = Cancelled`）は画面の印刷ボタンを無効化する
+（F8の`CanCancel`が発行済みのみ許可するのと対称。取消済みは明細0件になり印刷の実用性が
+低いため）。締め得意先の請求書は確定・解除済みのどちらでも印刷ボタンが有効。
+
+### 23-4. 既存仕様との矛盾と解決: 請求締め処理画面のリセット挙動
+
+請求書の印刷導線は、専用の発行画面を新設せず、請求締め処理画面（`BillingClosingWindow`）の
+結果一覧から選択行を印刷する方式にした（2026-09-16ユーザー確認）。
+
+これは**2026-09-11確定の「締め確定後は結果一覧を含めて画面を起動直後の状態へ即座に
+リセットする」仕様と直接矛盾する**（確定した瞬間に印刷対象の請求番号が一覧から消える）。
+`CLAUDE.md`の作業ルール（過去の確定済み決定と矛盾する指示は必ず確認する）に従い、
+矛盾点を具体的に示してユーザーに確認したところ、**リセット仕様を変更する**方針が
+選択された。
+
+`BillingClosingViewModel.ConfirmAsync`から`Results.Clear()`／`ResetConditionsToDefault()`／
+`RefreshPreviewAsync()`の呼び出しを削除し、確定後も入力条件・結果一覧をそのまま残すように
+変更した。一覧に`SelectedResult`（選択行）と`PrintCommand`（`InvoiceService.GetByNumberAsync`
+→`ReportPreviewDialog`）を追加し、行のダブルクリック／Enter（`RowActivationBehavior`）と
+「選択行を印刷 (F11)」ボタンの両方から印刷できるようにした。次のバッチ（別の締め日区分・
+請求日）に進みたい場合は入力条件を変更すればよく、既存の自動再取得
+（`OnSelectedClosingDayChanged`／`OnClosingDateChanged`）がその時点で一覧を置き換える。
+詳細は9-7節に改訂履歴として追記済み。
+
+### 23-5. 実装構成
+
+- **Domain**: `ConsumptionTaxCalculator.ResolveConfirmedBuckets`（新規、純粋関数）。
+- **Application** (`Billing/`): `InvoiceData`／`InvoiceLine`（新規DTO）、`InvoiceService`
+  （新規、`GetByNumberAsync`）、`DetailInvoiceData`／`DetailInvoiceLine`（新規DTO）、
+  `DetailInvoiceService.GetPrintDataAsync`（追加）。`DetailInvoiceSalesLineItem`に
+  `Specification`／`UnitName`を追加（印刷に必要なため。既存の画面バインディングには影響しない）。
+- **Presentation** (`Reports/`): `InvoiceDocumentBuilder`／`DetailInvoiceDocumentBuilder`
+  （新規）。`ReportDocumentBuilder`（基底）に`BuildCustomerBlock`／`BuildCompanyInfoBox`
+  （代表者印字対応）／`BuildBankAccountsBlock`／`BuildBreakdownRow`／`BuildLabelValue`／
+  `BuildTotalRow`を引き上げ、`DeliveryNoteDocumentBuilder`もこれらを使うよう移行
+  （表示内容は変えていない）。
+- **配線**: `DetailInvoiceIssueViewModel.PrintCommand`（発行済み読込時のみ有効）＋発行直後の
+  確認ダイアログ。`BillingClosingViewModel.PrintCommand`（`SelectedResult`が確定済みの
+  行のみ有効）。
+
+### 23-6. 検証方法
+
+- 単体テスト: `ConsumptionTaxCalculatorConfirmedBucketsTests`（4件。標準・軽減税率混在、
+  0円区分の除外、非課税、明細行が無い場合の税率0フォールバック）。
+- 結合テスト: `InvoiceServiceTests`（4件）・`DetailInvoicePrintDataTests`（3件）。
+  読み取り専用（保存しない）のため専用テスト得意先を新設せず、既存のseedデータ
+  （`BIL_INV001`＝請求単位・`BIL_SLP001`＝伝票単位・`BIL_INV002`＝解除済み、
+  `DIV001`＝発行済み・`DIV002`＝取消済み）に対する回帰検知テストとして実装した
+  （`CustomerLedgerQueryServiceTests`と同じ方針）。
+- 全体テスト: Domain 266件／Application 165件、すべてgreen。
+- 実機: `dotnet run`でのアプリ起動を確認済み（新しいDI登録＝`InvoiceService`・
+  `BillingClosingViewModel`への追加依存を含めて起動時例外が無いことを確認）。GUI自動操作の
+  手段が実行環境に無いため、画面上での実際の印刷・プレビュー表示・代表者印字の目視確認は
+  Phase 7-2以降と同様に未実施（次回、実機での操作確認が可能になった時点で行う）。
+
+### 23-7. 申し送り
+
+- 10-6（得意先元帳）着手時、`ReportDocumentBuilder`の「最終ページのみフッター」という形は
+  得意先元帳の「毎ページ繰越フッター」要件と合わない可能性が高い（22-5節から持ち越し）。
+- 得意先元帳用のプリンタ設定（`ReportKind`・`PrinterSettingsConfig`）は未整備。10-6着手時に
+  追加する（22-5節から持ち越し）。
 - 納品書を適格請求書として扱うかは税理士確認待ちのまま（`docs/design_document.md` 2章の
   【要確認】は閉じていない）。

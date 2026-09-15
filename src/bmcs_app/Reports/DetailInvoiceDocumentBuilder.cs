@@ -1,46 +1,38 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using bmcs_app.Application.Sales;
+using bmcs_app.Application.Billing;
 using bmcs_app.Domain.Enums;
 
 namespace bmcs_app.Reports;
 
 /// <summary>
-/// 納品書のレイアウト（TODO.md 10-4）。参考実装（別リポジトリ
-/// <c>bmcs_app.Sales/Services/SalesPrintHelper.cs</c>）のレイアウトを踏襲するが、
-/// 適格請求書としては扱わない（design_document.md の【要確認】が未解決のため注記を出さない）。
-/// 担当者は <c>sales</c> に列が無いため印字しない。
+/// 明細請求書のレイアウト（TODO.md 10-5）。都度得意先（内税明細単位）向け。複数の売上伝票にまたがる
+/// 明細を1枚にまとめるため、納品書には無い「伝票No.」列を持つ。適格請求書の記載事項
+/// （登録番号・取引年月日・軽減税率対象品目の付記・税率ごとの対価額と適用税率・税率ごとの消費税額・
+/// 交付を受ける者の名称）をすべて満たす。宛名は<c>AddresseeName</c>（都度入力のスナップショット、
+/// C-9）を印字し、得意先マスタの登録名称は使わない。
 /// </summary>
-public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportDocumentBuilder
+public sealed class DetailInvoiceDocumentBuilder(DetailInvoiceData data) : ReportDocumentBuilder
 {
     private static readonly IReadOnlyList<ReportColumn> ColumnDefinitions =
     [
-        new("行", 28, ReportColumnAlign.Center),
-        new("商品コード", 82, ReportColumnAlign.Left),
+        new("伝票No.", 78, ReportColumnAlign.Left),
+        new("商品コード", 78, ReportColumnAlign.Left),
         new("商品名", 0, ReportColumnAlign.Left),
-        new("数量", 52, ReportColumnAlign.Right),
-        new("単価", 72, ReportColumnAlign.Right),
-        new("金額", 76, ReportColumnAlign.Right),
-        new("税率", 42, ReportColumnAlign.Right),
-        new("摘要", 76, ReportColumnAlign.Left),
+        new("数量", 48, ReportColumnAlign.Right),
+        new("単価(税込)", 68, ReportColumnAlign.Right),
+        new("金額(税込)", 74, ReportColumnAlign.Right),
+        new("税率", 38, ReportColumnAlign.Right),
+        new("摘要", 70, ReportColumnAlign.Left),
     ];
 
-    private readonly IReadOnlyList<ReportColumn> _columns = data.TaxUnit == TaxUnit.Line
-        ? ColumnDefinitions.Select((c, i) => i switch
-            {
-                4 => c with { Header = "単価(税込)" },
-                5 => c with { Header = "金額(税込)" },
-                _ => c,
-            }).ToList()
-        : ColumnDefinitions;
-
-    protected override double FullHeaderHeight => 240.0;
+    protected override double FullHeaderHeight => 260.0;
     protected override double CompactHeaderHeight => 34.0;
-    protected override double FooterHeight => 160.0;
+    protected override double FooterHeight => 220.0;
     protected override int LineCount => data.Lines.Count;
 
-    protected override IReadOnlyList<ReportColumn> Columns => _columns;
+    protected override IReadOnlyList<ReportColumn> Columns => ColumnDefinitions;
 
     protected override string?[] BuildLineCells(int lineIndex)
     {
@@ -56,7 +48,7 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
 
         return
         [
-            line.LineNumber.ToString(),
+            line.SalesSlipNumber,
             line.ProductCode,
             productName,
             line.Quantity.ToString("N3"),
@@ -82,9 +74,9 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
     protected override FrameworkElement BuildCompactHeader(int pageNumber, int totalPages)
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 4) };
-        row.Children.Add(Tb("納品書（続き）", 10, FontWeights.Bold));
+        row.Children.Add(Tb("明細請求書（続き）", 10, FontWeights.Bold));
         row.Children.Add(new System.Windows.Shapes.Rectangle { Width = 20, Fill = Brushes.Transparent });
-        row.Children.Add(Tb($"伝票No. {data.SalesSlipNumber}　{data.CustomerName}　御中", 9));
+        row.Children.Add(Tb($"請求書No. {data.DetailInvoiceNumber}　{data.AddresseeName}　御中", 9));
         row.Children.Add(new System.Windows.Shapes.Rectangle
         {
             Width = 1, Fill = Brushes.Transparent, HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -100,12 +92,12 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        var dateText = Tb(data.SlipDate.ToString("yyyy/MM/dd"), 9);
+        var dateText = Tb(data.IssueDate.ToString("yyyy/MM/dd"), 9);
         dateText.VerticalAlignment = VerticalAlignment.Bottom;
         Grid.SetColumn(dateText, 0);
         grid.Children.Add(dateText);
 
-        var title = Tb(data.IssueCount > 0 ? "納  品  書　（再発行）" : "納  品  書", 20, FontWeights.Bold, TextAlignment.Center);
+        var title = Tb("明 細 請 求 書", 20, FontWeights.Bold, TextAlignment.Center);
         title.Margin = new Thickness(0, 0, 0, 4);
         Grid.SetColumn(title, 1);
         grid.Children.Add(title);
@@ -119,12 +111,11 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
 
-        var leftPanel = BuildCustomerBlock(data.CustomerName, data.CustomerPostalCode, data.CustomerAddress1, data.CustomerAddress2);
+        var leftPanel = BuildCustomerBlock(data.AddresseeName, data.CustomerPostalCode, data.CustomerAddress1, data.CustomerAddress2);
         Grid.SetColumn(leftPanel, 0);
         grid.Children.Add(leftPanel);
 
-        // 納品書は適格請求書として扱わない方針のため代表者印字は常に行わない（docs/report-spec.md 2-1節）。
-        var box = BuildCompanyInfoBox(data.Company, printRepresentative: false);
+        var box = BuildCompanyInfoBox(data.Company, data.PrintRepresentative);
         Grid.SetColumn(box, 1);
         grid.Children.Add(box);
 
@@ -136,17 +127,9 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
         var panel = new StackPanel { Margin = new Thickness(0, 4, 0, 6) };
 
         var row = new StackPanel { Orientation = Orientation.Horizontal };
-        row.Children.Add(Tb("伝票No.:　", 9, FontWeights.Bold));
-        row.Children.Add(Tb(data.SalesSlipNumber, 9));
+        row.Children.Add(Tb("請求書No.:　", 9, FontWeights.Bold));
+        row.Children.Add(Tb(data.DetailInvoiceNumber, 9));
         panel.Children.Add(row);
-
-        if (!string.IsNullOrWhiteSpace(data.SlipRemarks))
-        {
-            var remarksRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 0) };
-            remarksRow.Children.Add(Tb("摘要:　", 9));
-            remarksRow.Children.Add(Tb(data.SlipRemarks, 9));
-            panel.Children.Add(remarksRow);
-        }
 
         return panel;
     }
@@ -154,21 +137,6 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
     protected override FrameworkElement BuildFooter()
     {
         var panel = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
-
-        if (data.TaxUnit == TaxUnit.Invoice)
-        {
-            var totals = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right };
-            totals.Children.Add(HLine(1.5));
-            totals.Children.Add(BuildTotalRow("税抜合計", data.TaxExcludedTotal, large: true));
-            panel.Children.Add(totals);
-
-            var note = Tb("※ 消費税は月次請求書にてご確認ください", 7);
-            note.Margin = new Thickness(0, 8, 0, 0);
-            note.Foreground = Brushes.Gray;
-            panel.Children.Add(note);
-
-            return panel;
-        }
 
         if (data.TaxBreakdowns.Count > 0)
         {
@@ -196,6 +164,8 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
             reducedNote.Foreground = Brushes.Gray;
             panel.Children.Add(reducedNote);
         }
+
+        panel.Children.Add(BuildBankAccountsBlock(data.PrintBankAccounts));
 
         return panel;
     }

@@ -12,12 +12,14 @@
         明細請求書を発行する。レイアウトはデモ（bmcs_app.LineInvoice）の2ペイン構成を踏襲。
         一覧を持たず、明細請求書No.を直接入力して既存分を読み込む方式（得意先／商品マスタ・
         締め解除処理と同じコード直接入力方式）。既存分は読み取り専用表示（訂正の概念が無いため）。
-        取消（F8、6-4）は発行済みを読み込んだときのみ有効。印刷は10-3／10-5の範囲のため枠のみ用意し無効化する。
+        取消（F8、6-4）は発行済みを読み込んだときのみ有効。印刷（F11、10-5）は発行済みを
+        読み込んだときのみ有効（取消済みは明細0件になるため対象外）。
     -->
     <mah:MetroWindow.InputBindings>
         <KeyBinding Key="F3"  Command="{Binding NewCommand}" />
         <KeyBinding Key="F8"  Command="{Binding CancelCommand}" />
         <KeyBinding Key="F10" Command="{Binding IssueCommand}" />
+        <KeyBinding Key="F11" Command="{Binding PrintCommand}" />
     </mah:MetroWindow.InputBindings>
 
     <Grid beh:EnterKeyNavigationBehavior.IsEnabled="True">
@@ -36,7 +38,7 @@
                     ToolTip="新規明細請求書を作成します (F3)" />
             <Separator />
             <Button Command="{Binding CancelCommand}" Content="削除 (F8)" ToolTip="明細請求書を取消します (F8)" />
-            <Button Content="印刷 (F11)" IsEnabled="False" ToolTip="帳票基盤・請求書実装（TODO.md 10-3／10-5、未実装）" />
+            <Button Command="{Binding PrintCommand}" Content="印刷 (F11)" ToolTip="明細請求書を印刷します (F11)" />
         </ToolBar>
 
         <!-- ===== ヘッダー ===== -->

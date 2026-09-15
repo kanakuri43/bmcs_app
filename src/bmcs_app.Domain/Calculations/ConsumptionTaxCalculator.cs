@@ -97,6 +97,50 @@ public static class ConsumptionTaxCalculator
     public static TaxSummary CalculateInternalTaxPerLine(IEnumerable<TaxLine> lines, RoundingType roundingType)
         => ToSummary(lines.Select(l => CalculateInternalTaxBucket(l, roundingType)));
 
+    // ---- 帳票印字用（TODO.md 10-5） ----
+
+    /// <summary>
+    /// 確定済みの固定5カラム（<see cref="TaxSummary"/>）に、明細行から拝借した適用税率(%)を
+    /// 付与して印字用の内訳（<see cref="TaxRateBucket"/>）へ組み立て直す。
+    /// <c>billing</c>／<c>detail_invoice</c>は税種別区分ごとの確定金額のみを保持し、
+    /// 税率(%)そのものは持たない。一方、明細を構成する<c>sales</c>行は税単位によらず必ず
+    /// <c>tax_rate</c>をスナップショットとして持つため、金額は確定値をそのまま使い、
+    /// 税率ラベルだけを該当する税種別区分を持つ明細行から拝借する。こうすることで、
+    /// 伝票単位（伝票ごとに端数処理）と請求全体の再集計との二重丸めによる金額不一致を避けつつ、
+    /// 適格請求書の法定記載事項である税率(%)を表示できる（TODO.md 10-5設計判断）。
+    /// 対価額・税額がともに0の区分（非課税は対価額のみ）は出力しない
+    /// （<see cref="CalculateExternalTaxBuckets"/>と同じ「0円の区分は載せない」扱い）。
+    /// </summary>
+    public static IReadOnlyList<TaxRateBucket> ResolveConfirmedBuckets(TaxSummary summary, IEnumerable<TaxLine> lines)
+    {
+        var rateByCategory = lines
+            .GroupBy(l => l.TaxCategory)
+            .ToDictionary(g => g.Key, g => g.First().TaxRate);
+
+        var buckets = new List<TaxRateBucket>();
+
+        if (summary.StandardRateTaxableAmount != 0m || summary.StandardRateTaxAmount != 0m)
+        {
+            rateByCategory.TryGetValue(TaxCategory.Standard, out var rate);
+            buckets.Add(new TaxRateBucket(
+                TaxCategory.Standard, rate, summary.StandardRateTaxableAmount, summary.StandardRateTaxAmount));
+        }
+
+        if (summary.ReducedRateTaxableAmount != 0m || summary.ReducedRateTaxAmount != 0m)
+        {
+            rateByCategory.TryGetValue(TaxCategory.Reduced, out var rate);
+            buckets.Add(new TaxRateBucket(
+                TaxCategory.Reduced, rate, summary.ReducedRateTaxableAmount, summary.ReducedRateTaxAmount));
+        }
+
+        if (summary.TaxExemptAmount != 0m)
+        {
+            buckets.Add(new TaxRateBucket(TaxCategory.TaxExempt, 0m, summary.TaxExemptAmount, 0m));
+        }
+
+        return buckets;
+    }
+
     // ---- 共通 ----
 
     /// <summary>

@@ -14,9 +14,13 @@
         行選択（チェックボックス）は持たない（docs/design_document.md 9章。一括処理の方針上不要）。
         プレビューはボタンを持たず、画面表示時（既定条件）と条件変更時に自動で再取得する
         （2026-09-11ユーザー確認）。保存を伴う確定のみ明示操作（ボタン／F10）にする。
+        確定後は結果一覧（請求番号入り）を残したまま選択行を印刷できる（TODO.md 10-5、
+        2026-09-16改訂。docs/design_document.md 9章参照。条件を変更すると次のバッチとして
+        一覧が置き換わる）。
     -->
     <mah:MetroWindow.InputBindings>
         <KeyBinding Key="F10" Command="{Binding ConfirmCommand}" />
+        <KeyBinding Key="F11" Command="{Binding PrintCommand}" />
     </mah:MetroWindow.InputBindings>
 
     <Grid Margin="16">
@@ -46,7 +50,10 @@
         </StackPanel>
 
         <!-- ===== 一覧 ===== -->
-        <ListView Grid.Row="1" ItemsSource="{Binding Results}">
+        <ListView Grid.Row="1"
+                  ItemsSource="{Binding Results}"
+                  SelectedItem="{Binding SelectedResult}"
+                  beh:RowActivationBehavior.Command="{Binding PrintCommand}">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="得意先コード" Width="90" DisplayMemberBinding="{Binding CustomerCode}" />
@@ -69,13 +76,27 @@
             </ListView.View>
         </ListView>
 
-        <!-- ===== 合計 ===== -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
-            <TextBlock Text="確定対象の今回請求額 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <TextBlock Text="{Binding TotalCurrentBillingAmount, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" />
-            <TextBlock Text="処理中..." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="OrangeRed"
-                       Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
-        </StackPanel>
+        <!-- ===== 合計・操作 ===== -->
+        <Grid Grid.Row="2" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <TextBlock Text="確定対象の今回請求額 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Text="{Binding TotalCurrentBillingAmount, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" />
+                <TextBlock Text="処理中..." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="OrangeRed"
+                           Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </StackPanel>
+
+            <Button Grid.Column="1"
+                    Content="選択行を印刷 (F11)"
+                    Command="{Binding PrintCommand}"
+                    CommandParameter="{Binding SelectedResult}"
+                    ToolTip="選択した請求書を印刷します（確定済みの行のみ。F11）"
+                    Padding="12,6" />
+        </Grid>
 
         <!-- ===== StatusBar ===== -->
         <StatusBar Grid.Row="3">

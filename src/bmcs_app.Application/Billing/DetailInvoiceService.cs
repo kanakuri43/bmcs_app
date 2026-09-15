@@ -70,6 +70,65 @@ public class DetailInvoiceService(
     }
 
     /// <summary>
+    /// 明細請求書の印刷データを組み立てる（TODO.md 10-5、画面表示・印刷用、保存しない）。
+    /// <see cref="GetByNumberAsync"/>と同じヘッダー・連携行・売上行を取得したうえで、
+    /// 印刷に必要な得意先の住所・代表者印字フラグ・自社情報・振込先口座を追加で取得する。
+    /// 取消済み（連携行が物理削除済み）を指定した場合は明細0件・ヘッダーの確定金額のみが返る
+    /// （`docs/design_document.md` 12-1節の非破壊ヘッダー方式と同じ）。
+    /// </summary>
+    /// <exception cref="DetailInvoiceException">
+    /// 明細請求書が見つからない、または自社情報が未登録の場合。
+    /// </exception>
+    public async Task<DetailInvoiceData> GetPrintDataAsync(
+        string detailInvoiceNumber, CancellationToken cancellationToken = default)
+    {
+        var view = await GetByNumberAsync(detailInvoiceNumber, cancellationToken)
+            ?? throw new DetailInvoiceException($"明細請求書が見つかりません。DetailInvoiceNumber={detailInvoiceNumber}");
+        var header = view.Header;
+
+        // 過去伝票の再発行に対応するため、論理削除された得意先も取得できるようにする
+        // （DeliveryNoteService.GetAsync と同じ方針。IsDeleted で絞らない）。
+        var customer = await dbContext.Customers
+            .AsNoTracking()
+            .SingleOrDefaultAsync(c => c.CustomerCode == header.CustomerCode, cancellationToken);
+
+        var company = await dbContext.CompanyInfos
+            .AsNoTracking()
+            .SingleOrDefaultAsync(cancellationToken)
+            ?? throw new DetailInvoiceException("自社情報が登録されていません。マスタ管理＞自社情報から登録してください。");
+
+        var bankAccounts = await dbContext.BankAccounts
+            .AsNoTracking()
+            .Where(b => b.IsPrintOnInvoice && !b.IsDeleted)
+            .OrderBy(b => b.DisplayOrder)
+            .ToListAsync(cancellationToken);
+
+        var summary = new TaxSummary(
+            header.StandardRateTaxableAmount, header.StandardRateTaxAmount,
+            header.ReducedRateTaxableAmount, header.ReducedRateTaxAmount,
+            header.TaxExemptAmount);
+        var taxLines = view.Lines.Select(l => new TaxLine(l.TaxCategory, l.TaxRate, l.Amount));
+        var taxBreakdowns = ConsumptionTaxCalculator.ResolveConfirmedBuckets(summary, taxLines);
+
+        return new DetailInvoiceData(
+            DetailInvoiceNumber: header.DetailInvoiceNumber,
+            IssueDate: header.IssueDate,
+            CustomerName: header.CustomerName,
+            AddresseeName: header.AddresseeName,
+            CustomerPostalCode: customer?.PostalCode,
+            CustomerAddress1: customer?.Address1,
+            CustomerAddress2: customer?.Address2,
+            Company: company,
+            PrintRepresentative: customer?.PrintRepresentativeFlag ?? false,
+            PrintBankAccounts: bankAccounts,
+            Lines: view.Lines.Select(ToDetailInvoiceLine).ToList(),
+            TaxBreakdowns: taxBreakdowns,
+            TaxExcludedTotal: header.SalesAmount,
+            TaxTotal: header.TaxAmount,
+            GrandTotal: header.TotalAmount);
+    }
+
+    /// <summary>
     /// 明細請求書を発行する。<paramref name="lines"/>は画面で選択された売上明細行のキー。
     /// </summary>
     /// <exception cref="DetailInvoiceException">
@@ -336,6 +395,8 @@ public class DetailInvoiceService(
         s.SlipType,
         s.ProductCode,
         s.ProductName,
+        s.Specification,
+        s.UnitName,
         s.Quantity,
         s.UnitPrice,
         s.Amount,
@@ -343,6 +404,22 @@ public class DetailInvoiceService(
         s.TaxCategory,
         s.TaxRate,
         s.LineRemarks);
+
+    private static DetailInvoiceLine ToDetailInvoiceLine(DetailInvoiceSalesLineItem item) => new(
+        SalesSlipNumber: item.SalesSlipNumber,
+        LineNumber: item.SalesLineNumber,
+        SlipDate: item.SlipDate,
+        SlipType: item.SlipType,
+        ProductCode: item.ProductCode,
+        ProductName: item.ProductName,
+        Specification: item.Specification,
+        UnitName: item.UnitName,
+        Quantity: item.Quantity,
+        UnitPrice: item.UnitPrice,
+        Amount: item.Amount,
+        TaxCategory: item.TaxCategory,
+        TaxRate: item.TaxRate,
+        LineRemarks: item.LineRemarks);
 }
 
 /// <summary>明細請求書発行処理の業務ルール違反。</summary>

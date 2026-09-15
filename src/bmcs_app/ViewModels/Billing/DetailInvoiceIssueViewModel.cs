@@ -4,6 +4,7 @@ using bmcs_app.Application.Billing;
 using bmcs_app.Application.Master;
 using bmcs_app.Domain.Entities;
 using bmcs_app.Domain.Enums;
+using bmcs_app.Reports;
 using bmcs_app.Services;
 using bmcs_app.ViewModels.Common;
 using bmcs_app.Views.Common;
@@ -34,11 +35,13 @@ public partial class DetailInvoiceIssueViewModel(
     [NotifyCanExecuteChangedFor(nameof(RemoveLineCommand))]
     [NotifyCanExecuteChangedFor(nameof(IssueCommand))]
     [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PrintCommand))]
     public partial bool IsExistingLoaded { get; set; }
 
-    /// <summary>読み込んだ既存明細請求書の状態（未読込時はnull）。取消(F8)の有効判定に使う。</summary>
+    /// <summary>読み込んだ既存明細請求書の状態（未読込時はnull）。取消(F8)・印刷(F11)の有効判定に使う。</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PrintCommand))]
     public partial DetailInvoiceStatus? LoadedInvoiceStatus { get; set; }
 
     [ObservableProperty]
@@ -276,9 +279,13 @@ public partial class DetailInvoiceIssueViewModel(
             var issued = await detailInvoiceService.IssueAsync(
                 _customer.CustomerCode, AddresseeName.Trim(), issueDate, lineKeys);
 
+            var printMessage = await PromptAndPrintAsync(issued.DetailInvoiceNumber);
+
             // 発行成功後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
             ClearForm();
-            StatusMessage = $"明細請求書 {issued.DetailInvoiceNumber} を発行しました。";
+            StatusMessage = printMessage is null
+                ? $"明細請求書 {issued.DetailInvoiceNumber} を発行しました。"
+                : $"明細請求書 {issued.DetailInvoiceNumber} を発行しました。　{printMessage}";
             NotifyResetToInitialState();
         }
         catch (DetailInvoiceException ex)
@@ -328,6 +335,61 @@ public partial class DetailInvoiceIssueViewModel(
             StatusMessage = $"取消エラー: {ex.Message}";
         }
     });
+
+    /// <summary>
+    /// 印刷（F11、TODO.md 10-5）。発行済みを読み込んでいる場合のみ有効（取消済みは連携行が
+    /// 物理削除され明細0件になるため対象外。<c>docs/design_document.md</c> 12-1節）。
+    /// 印刷履歴は記録しない（納品書と異なり「（再発行）」表示も行わない）。
+    /// </summary>
+    private bool CanPrint => IsExistingLoaded && LoadedInvoiceStatus == DetailInvoiceStatus.Issued;
+
+    [RelayCommand(CanExecute = nameof(CanPrint))]
+    private async Task PrintAsync()
+    {
+        if (_loadedInvoiceNumber is null)
+        {
+            return;
+        }
+
+        var message = await PrintDetailInvoiceAsync(_loadedInvoiceNumber);
+        if (message is not null)
+        {
+            StatusMessage = message;
+        }
+    }
+
+    /// <summary>発行直後に「印刷しますか？」を確認し、Yesならプレビュー・印刷まで行う。</summary>
+    private async Task<string?> PromptAndPrintAsync(string detailInvoiceNumber)
+    {
+        var confirm = MessageBox.Show(
+            $"明細請求書 {detailInvoiceNumber} を印刷しますか？",
+            "bmcs_app", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return null;
+        }
+
+        return await PrintDetailInvoiceAsync(detailInvoiceNumber);
+    }
+
+    private async Task<string?> PrintDetailInvoiceAsync(string detailInvoiceNumber)
+    {
+        DetailInvoiceData data;
+        try
+        {
+            data = await detailInvoiceService.GetPrintDataAsync(detailInvoiceNumber);
+        }
+        catch (DetailInvoiceException ex)
+        {
+            return $"印刷エラー: {ex.Message}";
+        }
+
+        windowService.ShowDialog<ReportPreviewDialog, ReportPreviewDialogViewModel, bool>(
+            vm => vm.Initialize(ReportKind.DetailInvoice, $"明細請求書 {detailInvoiceNumber}",
+                () => new DetailInvoiceDocumentBuilder(data).Build()));
+
+        return null;
+    }
 
     private void ApplyView(DetailInvoiceView view)
     {

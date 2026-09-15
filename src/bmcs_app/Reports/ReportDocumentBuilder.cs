@@ -5,6 +5,8 @@ using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using bmcs_app.Domain.Calculations;
+using bmcs_app.Domain.Entities;
+using bmcs_app.Domain.Enums;
 
 namespace bmcs_app.Reports;
 
@@ -226,4 +228,178 @@ public abstract class ReportDocumentBuilder
             Fill = Brushes.Black,
             Margin = new Thickness(0, 2, 0, 2),
         };
+
+    // ── 帳票2枚目（TODO.md 10-5、請求書・明細請求書）を書いた時点で共通部分の不足が判明した
+    // ため基底へ引き上げた処理（10-3のコメントどおり）。DeliveryNoteDocumentBuilder もこれらを使う。
+
+    /// <summary>宛先ブロック（郵便番号・住所・宛名＋敬称）。</summary>
+    protected static FrameworkElement BuildCustomerBlock(
+        string customerName, string? postalCode, string? address1, string? address2, string suffix = "御中")
+    {
+        var panel = new StackPanel();
+
+        if (!string.IsNullOrWhiteSpace(postalCode))
+        {
+            panel.Children.Add(Tb($"〒 {postalCode}", 9));
+        }
+
+        if (!string.IsNullOrWhiteSpace(address1))
+        {
+            panel.Children.Add(Tb(address1, 9));
+        }
+
+        if (!string.IsNullOrWhiteSpace(address2))
+        {
+            panel.Children.Add(Tb(address2, 9));
+        }
+
+        panel.Children.Add(Tb($"{customerName}　{suffix}", 16, FontWeights.Bold));
+
+        return panel;
+    }
+
+    /// <summary>
+    /// 発行者情報ボックス（社名・住所・TEL/FAX・登録番号）。<paramref name="printRepresentative"/>が
+    /// 真のときは「代表者　○○○○」＋押印用の空欄枠を追加する（得意先マスタ
+    /// <c>print_representative_flag</c>、TODO.md 10-5）。納品書は適格請求書として扱わない方針
+    /// のため常に偽で呼ぶ。
+    /// </summary>
+    protected static FrameworkElement BuildCompanyInfoBox(CompanyInfo company, bool printRepresentative)
+    {
+        var panel = new StackPanel();
+        panel.Children.Add(Tb(company.CompanyName, 11, FontWeights.Bold, TextAlignment.Right));
+
+        var address = string.Concat(company.Address1, company.Address2);
+        if (!string.IsNullOrWhiteSpace(address))
+        {
+            panel.Children.Add(Tb(address, 8, align: TextAlignment.Right));
+        }
+
+        if (!string.IsNullOrWhiteSpace(company.PhoneNumber))
+        {
+            panel.Children.Add(Tb($"TEL: {company.PhoneNumber}", 8, align: TextAlignment.Right));
+        }
+
+        if (!string.IsNullOrWhiteSpace(company.FaxNumber))
+        {
+            panel.Children.Add(Tb($"FAX: {company.FaxNumber}", 8, align: TextAlignment.Right));
+        }
+
+        panel.Children.Add(new Rectangle { Height = 4, Fill = Brushes.Transparent });
+        panel.Children.Add(Tb($"登録番号: {company.InvoiceRegistrationNumber}", 8, FontWeights.Bold, TextAlignment.Right));
+
+        if (printRepresentative && !string.IsNullOrWhiteSpace(company.RepresentativeName))
+        {
+            panel.Children.Add(new Rectangle { Height = 6, Fill = Brushes.Transparent });
+
+            var representativeRow = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+            };
+            representativeRow.Children.Add(Tb($"代表者　{company.RepresentativeName}", 9, align: TextAlignment.Right));
+            representativeRow.Children.Add(new Rectangle { Width = 8, Fill = Brushes.Transparent });
+            representativeRow.Children.Add(new Border
+            {
+                Width = 28,
+                Height = 28,
+                BorderBrush = Brushes.Black,
+                BorderThickness = new Thickness(1),
+            });
+            panel.Children.Add(representativeRow);
+        }
+
+        return new Border
+        {
+            BorderBrush = Brushes.Black,
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(6, 4, 6, 4),
+            Child = panel,
+        };
+    }
+
+    /// <summary>
+    /// 振込先口座ブロック（請求書・明細請求書用。<c>bank_account.is_print_on_invoice</c>が
+    /// 真の口座を<c>display_order</c>順に表示する。TODO.md 10-5）。
+    /// </summary>
+    protected static FrameworkElement BuildBankAccountsBlock(IReadOnlyList<BankAccount> accounts)
+    {
+        var panel = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
+        if (accounts.Count == 0)
+        {
+            return panel;
+        }
+
+        panel.Children.Add(Tb("お振込先", 9, FontWeights.Bold));
+        foreach (var account in accounts)
+        {
+            var typeLabel = account.AccountType == BankAccountType.Checking ? "当座" : "普通";
+            panel.Children.Add(Tb(
+                $"{account.BankName}　{account.BranchName}支店　{typeLabel}　{account.AccountNumber}　{account.AccountHolderName}",
+                9));
+        }
+
+        return panel;
+    }
+
+    protected static FrameworkElement BuildBreakdownRow(TaxRateBucket bucket)
+    {
+        var label = bucket.TaxCategory switch
+        {
+            TaxCategory.Reduced => $"{bucket.TaxRate:N0}%対象（軽減税率）",
+            TaxCategory.TaxExempt => "非課税",
+            _ => $"{bucket.TaxRate:N0}%対象",
+        };
+
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+
+        var labelText = Tb($"※ {label}", 9);
+        Grid.SetColumn(labelText, 0);
+        row.Children.Add(labelText);
+
+        var taxable = BuildLabelValue("税抜金額", bucket.TaxableAmount);
+        Grid.SetColumn(taxable, 1);
+        row.Children.Add(taxable);
+
+        var tax = BuildLabelValue("消費税", bucket.TaxAmount);
+        Grid.SetColumn(tax, 3);
+        row.Children.Add(tax);
+
+        return row;
+    }
+
+    protected static FrameworkElement BuildLabelValue(string label, decimal value)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal };
+        panel.Children.Add(Tb($"{label}:", 9));
+        panel.Children.Add(new Rectangle { Width = 4, Fill = Brushes.Transparent });
+        var valueText = Tb(value.ToString("N0"), 9, FontWeights.Bold, TextAlignment.Right);
+        valueText.MinWidth = 80;
+        panel.Children.Add(valueText);
+        return panel;
+    }
+
+    protected static FrameworkElement BuildTotalRow(string label, decimal value, bool large)
+    {
+        var grid = new Grid { Margin = new Thickness(0, 2, 0, 2) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+
+        var labelText = Tb(label, large ? 10.0 : 9.0, large ? FontWeights.Bold : FontWeights.Normal);
+        labelText.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(labelText, 0);
+        grid.Children.Add(labelText);
+
+        var valueText = Tb(
+            value.ToString("N0"), large ? 14.0 : 10.0, large ? FontWeights.Bold : FontWeights.Normal, TextAlignment.Right);
+        valueText.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(valueText, 1);
+        grid.Children.Add(valueText);
+
+        return grid;
+    }
 }

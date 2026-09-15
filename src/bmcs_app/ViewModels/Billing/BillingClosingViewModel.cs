@@ -1,6 +1,10 @@
 using System.Collections.ObjectModel;
 using bmcs_app.Application.Billing;
 using bmcs_app.Domain.Calculations;
+using bmcs_app.Reports;
+using bmcs_app.Services;
+using bmcs_app.ViewModels.Common;
+using bmcs_app.Views.Common;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -16,8 +20,16 @@ namespace bmcs_app.ViewModels.Billing;
 /// **プレビューはボタン操作を挟まず、画面表示時（既定条件）と条件変更時に自動で
 /// 再取得する（2026-09-11ユーザー確認）。** 保存を伴う確定（<see cref="ConfirmCommand"/>）
 /// のみ明示操作にする。
+/// **確定後は結果一覧を含めてリセットしない（TODO.md 10-5、2026-09-16改訂）。** 確定直後の
+/// 結果一覧（請求番号入り）から選択行を印刷できるようにするため。締め日区分・請求日を
+/// 変更すれば次のバッチとして一覧が置き換わる（<see cref="OnSelectedClosingDayChanged"/>／
+/// <see cref="OnClosingDateChanged"/>が従来どおり自動再取得する）。詳細は
+/// <c>docs/design_document.md</c> 9章参照。
 /// </summary>
-public partial class BillingClosingViewModel(BillingClosingService billingClosingService) : ViewModelBase
+public partial class BillingClosingViewModel(
+    BillingClosingService billingClosingService,
+    InvoiceService invoiceService,
+    WindowService windowService) : ViewModelBase
 {
     public ObservableCollection<ClosingDayOption> ClosingDayOptions { get; } = [];
 
@@ -32,6 +44,11 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
     public partial DateTime? ClosingDate { get; set; } = DateTime.Today;
 
     public ObservableCollection<BillingClosingTarget> Results { get; } = [];
+
+    /// <summary>選択中の結果行。印刷(F11)の対象。確定済み（<c>BillingNumber</c>が非null）の行のみ印刷できる。</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PrintCommand))]
+    public partial BillingClosingTarget? SelectedResult { get; set; }
 
     [ObservableProperty]
     public partial decimal TotalCurrentBillingAmount { get; set; }
@@ -161,16 +178,14 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
             var confirmedCount = results.Count(r => r.SkipReason is null);
             var skippedCount = results.Count(r => r.SkipReason is not null);
 
-            // 確定後は結果一覧も含めて画面表示直後の状態に戻す（docs/product-spec.md UI/UX節
-            // 「登録後のリセット」。結果一覧は締め結果を確認できる唯一の証跡だが、確定後は
-            // 再検索する運用のためクリアする。2026-09-11ユーザー確認）。
-            Results.Clear();
-            TotalCurrentBillingAmount = 0m;
-            ResetConditionsToDefault();
-            await RefreshPreviewAsync();
+            // 確定後も結果一覧（請求番号入り）はそのまま残す（TODO.md 10-5、2026-09-16改訂。
+            // 従来は画面表示直後の状態へ即座にリセットしていたが、確定した請求書をその場で
+            // 印刷できるようにするため一覧のクリアをやめた。次のバッチに進む場合は締め日区分・
+            // 請求日を変更すればよく、その時点で一覧は自動的に置き換わる）。
+            ApplyResults(results);
 
-            StatusMessage = $"請求締めを確定しました（確定 {confirmedCount}件／スキップ {skippedCount}件）。";
-            NotifyResetToInitialState();
+            StatusMessage = $"請求締めを確定しました（確定 {confirmedCount}件／スキップ {skippedCount}件）。" +
+                (confirmedCount > 0 ? "印刷したい行を選択し「選択行を印刷」してください。" : "");
         }
         catch (BillingClosingException ex)
         {
@@ -182,11 +197,39 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
         }
     });
 
-    /// <summary>画面表示直後（<see cref="LoadAsync"/>）と同じ既定条件に戻す。</summary>
-    private void ResetConditionsToDefault()
+    /// <summary>
+    /// 印刷（F11、TODO.md 10-5）。確定済み（<c>BillingNumber</c>が非null）の行のみ有効。
+    /// 印刷履歴は記録しない。
+    /// </summary>
+    private bool CanPrint(BillingClosingTarget? target) => target?.BillingNumber is not null;
+
+    [RelayCommand(CanExecute = nameof(CanPrint))]
+    private async Task PrintAsync(BillingClosingTarget? target)
     {
-        SelectedClosingDay = ClosingDayOptions.FirstOrDefault();
-        ClosingDate = DateTime.Today;
+        if (target?.BillingNumber is not string billingNumber)
+        {
+            return;
+        }
+
+        InvoiceData? data;
+        try
+        {
+            data = await invoiceService.GetByNumberAsync(billingNumber);
+        }
+        catch (InvoiceException ex)
+        {
+            StatusMessage = $"印刷エラー: {ex.Message}";
+            return;
+        }
+
+        if (data is null)
+        {
+            StatusMessage = $"請求番号「{billingNumber}」が見つかりません。";
+            return;
+        }
+
+        windowService.ShowDialog<ReportPreviewDialog, ReportPreviewDialogViewModel, bool>(
+            vm => vm.Initialize(ReportKind.Invoice, $"請求書 {billingNumber}", () => new InvoiceDocumentBuilder(data).Build()));
     }
 
     private bool TryGetConditions(out byte closingDay, out DateOnly closingDate)
