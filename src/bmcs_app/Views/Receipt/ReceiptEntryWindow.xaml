@@ -69,7 +69,7 @@
                              beh:FocusBehavior.IsInitialFocus="True"
                              IsReadOnly="{Binding IsPreviewMode}"
                              Text="{Binding ReceiptSlipNumberQuery, UpdateSourceTrigger=PropertyChanged}"
-                             mah:TextBoxHelper.Watermark="自動採番（Space検索、既存分はEnterで読込）"
+                             mah:TextBoxHelper.Watermark="自動採番（SPACEで検索、既存分はEnterで読込）"
                              mah:TextBoxHelper.ClearTextButton="True"
                              MaxLength="20"
                              HorizontalAlignment="Left"
@@ -103,7 +103,7 @@
                              Grid.Column="1"
                              IsReadOnly="{Binding IsExistingLoaded}"
                              Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
-                             mah:TextBoxHelper.Watermark="コード（Space検索）">
+                             mah:TextBoxHelper.Watermark="コード（SPACEで検索）">
                         <TextBox.InputBindings>
                             <KeyBinding Key="Space"  Command="{Binding OpenCustomerSearchCommand}" />
                             <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />

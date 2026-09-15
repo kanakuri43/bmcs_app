@@ -35,7 +35,7 @@
                          Width="120" Margin="0,0,4,0"
                          beh:FocusBehavior.IsInitialFocus="True"
                          Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
-                         mah:TextBoxHelper.Watermark="コード（Space検索）">
+                         mah:TextBoxHelper.Watermark="コード（SPACEで検索）">
                     <TextBox.InputBindings>
                         <KeyBinding Key="Space" Command="{Binding OpenCustomerSearchCommand}" />
                         <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />

@@ -13,7 +13,7 @@ namespace bmcs_app.ViewModels.Master;
 /// <summary>
 /// 銀行マスタ画面。一覧は持たず、銀行口座コードを直接入力するか、
 /// コード欄で Space を押して検索モーダル（<see cref="BankAccountMasterSearchDialog"/>）を呼び出して対象を選ぶ
-/// （得意先マスタ・商品マスタ・社員マスタ画面と同じ Space検索／Enter読込のパターンに揃える）。
+/// （得意先マスタ・商品マスタ・社員マスタ画面と同じ SPACEで検索／Enter読込のパターンに揃える）。
 /// </summary>
 public partial class BankAccountMasterViewModel(BankAccountService bankAccountService, WindowService windowService) : ViewModelBase
 {

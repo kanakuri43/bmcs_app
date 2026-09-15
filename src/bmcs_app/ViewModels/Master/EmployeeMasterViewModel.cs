@@ -12,7 +12,7 @@ namespace bmcs_app.ViewModels.Master;
 /// <summary>
 /// 社員マスタ画面。一覧は持たず、社員コードを直接入力するか、
 /// コード欄で Space を押して検索モーダル（<see cref="EmployeeMasterSearchDialog"/>）を呼び出して対象を選ぶ
-/// （得意先マスタ・商品マスタ画面と同じ Space検索／Enter読込のパターンに揃える）。
+/// （得意先マスタ・商品マスタ画面と同じ SPACEで検索／Enter読込のパターンに揃える）。
 /// </summary>
 public partial class EmployeeMasterViewModel(EmployeeService employeeService, WindowService windowService) : ViewModelBase
 {

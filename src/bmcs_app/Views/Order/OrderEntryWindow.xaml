@@ -101,7 +101,7 @@
                         <TextBox Grid.Column="1"
                                  beh:FocusBehavior.IsInitialFocus="True"
                                  Text="{Binding OrderSlipNumberDisplay, UpdateSourceTrigger=PropertyChanged}"
-                                 mah:TextBoxHelper.Watermark="自動採番（Space検索）"
+                                 mah:TextBoxHelper.Watermark="自動採番（SPACEで検索）"
                                  ToolTip="既存の受注No.を入力してEnterで読み込む（表示専用。TODO.md 5-3）。Spaceで検索モーダルを開く">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Space"  Command="{Binding OpenOrderSlipSearchCommand}" />
@@ -129,7 +129,7 @@
                         <TextBox x:Name="CustomerCodeBox"
                                  Grid.Column="1"
                                  Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
-                                 mah:TextBoxHelper.Watermark="コード（Space検索）">
+                                 mah:TextBoxHelper.Watermark="コード（SPACEで検索）">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Space"  Command="{Binding OpenCustomerSearchCommand}" />
                                 <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />

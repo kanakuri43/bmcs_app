@@ -29,7 +29,7 @@
                     <TextBox Grid.Row="0" Grid.Column="1"
                              beh:FocusBehavior.IsInitialFocus="True"
                              Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
-                             mah:TextBoxHelper.Watermark="コード（Space検索）"
+                             mah:TextBoxHelper.Watermark="コード（SPACEで検索）"
                              ToolTip="得意先コードを直接入力してEnterで読み込む。未登録のコードは新規登録として扱う。Spaceで検索モーダルを開く"
                              HorizontalAlignment="Left" Width="160" Margin="0,0,0,8">
                         <TextBox.InputBindings>

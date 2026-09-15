@@ -34,7 +34,7 @@
             <TextBox x:Name="ProductCodeBox"
                      Grid.Column="1"
                      Text="{Binding ProductCode, UpdateSourceTrigger=PropertyChanged}"
-                     mah:TextBoxHelper.Watermark="コード（Space検索）"
+                     mah:TextBoxHelper.Watermark="コード（SPACEで検索）"
                      Margin="{StaticResource SlipLineCellMargin}">
                 <TextBox.InputBindings>
                     <KeyBinding Key="Space"  Command="{Binding OpenProductLookupCommand}" />

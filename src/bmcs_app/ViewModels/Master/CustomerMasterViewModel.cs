@@ -13,7 +13,7 @@ namespace bmcs_app.ViewModels.Master;
 /// <summary>
 /// 得意先マスタ画面。一覧は持たず、得意先コードを直接入力するか、
 /// コード欄で Space を押して検索モーダル（<see cref="CustomerSearchDialog"/>）を呼び出して対象を選ぶ
-/// （受注入力・売上入力画面と同じ Space検索／Enter読込のパターンに揃える）。
+/// （受注入力・売上入力画面と同じ SPACEで検索／Enter読込のパターンに揃える）。
 /// </summary>
 public partial class CustomerMasterViewModel(CustomerService customerService, WindowService windowService) : ViewModelBase
 {
