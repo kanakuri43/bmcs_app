@@ -36,12 +36,11 @@
                       SelectedItem="{Binding SelectedClosingDay}"
                       DisplayMemberPath="Display" />
 
-            <!-- 請求日＝締め切り日。条件変更時に自動再取得するため、1文字入力するごとに
-                 DB照会が走らないよう UpdateSourceTrigger=LostFocus にする
-                 （DateTextBoxStyleの整形ビヘイビアもLostFocusで働く）。 -->
+            <!-- 請求日＝締め切り日。SelectedDate は DatePicker が確定した瞬間にしか変化しないため、
+                 条件変更時の自動再取得（OnClosingDateChanged）が1文字入力するごとに走ることはない。 -->
             <TextBlock Text="請求日（締め切り日）" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <TextBox Style="{StaticResource DateTextBoxStyle}" Width="100" Margin="0,0,16,0"
-                     Text="{Binding ClosingDateText, UpdateSourceTrigger=LostFocus}" />
+            <DatePicker Width="120" Margin="0,0,16,0"
+                        SelectedDate="{Binding ClosingDate}" />
 
             <Button Content="締め確定 (F10)" Command="{Binding ConfirmCommand}" Padding="16,6" />
         </StackPanel>

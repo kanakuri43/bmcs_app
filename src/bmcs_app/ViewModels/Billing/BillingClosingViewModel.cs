@@ -29,7 +29,7 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
     /// <c>billing</c>の請求日としてもそのまま使う（<see cref="BillingClosingService.ConfirmAsync"/>参照）。
     /// </summary>
     [ObservableProperty]
-    public partial string ClosingDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+    public partial DateTime? ClosingDate { get; set; } = DateTime.Today;
 
     public ObservableCollection<BillingClosingTarget> Results { get; } = [];
 
@@ -69,7 +69,7 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
 
     /// <summary>
     /// プレビュー（保存しない）。対象取得ボタンは持たず、<see cref="LoadAsync"/>（画面表示時）と
-    /// 条件変更時（<see cref="OnSelectedClosingDayChanged"/>／<see cref="OnClosingDateTextChanged"/>）
+    /// 条件変更時（<see cref="OnSelectedClosingDayChanged"/>／<see cref="OnClosingDateChanged"/>）
     /// から自動的に呼ばれる。<see cref="ViewModelBase.RunBusyAsync"/>は多重実行を単純に無視するため、
     /// 画面表示直後の初回読込がまだ進行中のうちに条件を変更されると、その変更が何の再取得も
     /// されないまま握りつぶされてしまう（2026-09-15、締め解除処理〈<c>BillingReleaseViewModel</c>〉
@@ -103,7 +103,7 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
     /// </summary>
     private async Task RefreshPreviewAsync()
     {
-        if (!TryParseConditions(out var closingDay, out var closingDate))
+        if (!TryGetConditions(out var closingDay, out var closingDate))
         {
             return;
         }
@@ -132,10 +132,8 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
     {
         if (value is not null)
         {
-            var reference = DateOnly.TryParseExact(ClosingDateText, "yyyy/MM/dd", out var parsed)
-                ? parsed
-                : DateOnly.FromDateTime(DateTime.Today);
-            ClosingDateText = ClosingDateResolver.Resolve(reference.Year, reference.Month, value.Value).ToString("yyyy/MM/dd");
+            var reference = ClosingDate is { } current ? DateOnly.FromDateTime(current) : DateOnly.FromDateTime(DateTime.Today);
+            ClosingDate = ClosingDateResolver.Resolve(reference.Year, reference.Month, value.Value).ToDateTime(TimeOnly.MinValue);
         }
 
         _ = PreviewAsync();
@@ -143,16 +141,16 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
 
     /// <summary>
     /// 請求日を変えたら自動的にその条件で再取得する（2026-09-11ユーザー確認）。
-    /// XAML側のバインディングは<c>UpdateSourceTrigger=LostFocus</c>にしており、
-    /// 入力中の1文字ごとにDB照会が走らないようにしている。
+    /// <c>DatePicker.SelectedDate</c>は確定した瞬間（Enter／フォーカス離脱／カレンダー選択）にしか
+    /// 変化しないため、入力中の1文字ごとにDB照会が走ることはない。
     /// </summary>
-    partial void OnClosingDateTextChanged(string value) => _ = PreviewAsync();
+    partial void OnClosingDateChanged(DateTime? value) => _ = PreviewAsync();
 
     /// <summary>締め確定。同条件で再集計してから確定する（<see cref="PreviewAsync"/>の結果は使わない）。</summary>
     [RelayCommand]
     private Task ConfirmAsync() => RunBusyAsync(async () =>
     {
-        if (!TryParseConditions(out var closingDay, out var closingDate))
+        if (!TryGetConditions(out var closingDay, out var closingDate))
         {
             return;
         }
@@ -188,10 +186,10 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
     private void ResetConditionsToDefault()
     {
         SelectedClosingDay = ClosingDayOptions.FirstOrDefault();
-        ClosingDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+        ClosingDate = DateTime.Today;
     }
 
-    private bool TryParseConditions(out byte closingDay, out DateOnly closingDate)
+    private bool TryGetConditions(out byte closingDay, out DateOnly closingDate)
     {
         closingDay = 0;
         closingDate = default;
@@ -202,12 +200,13 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
             return false;
         }
 
-        if (!DateOnly.TryParseExact(ClosingDateText, "yyyy/MM/dd", out closingDate))
+        if (ClosingDate is not { } value)
         {
-            StatusMessage = "請求日の形式が不正です（yyyy/MM/dd）。";
+            StatusMessage = "請求日を入力してください。";
             return false;
         }
 
+        closingDate = DateOnly.FromDateTime(value);
         closingDay = SelectedClosingDay.Value;
         return true;
     }
