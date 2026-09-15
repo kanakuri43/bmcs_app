@@ -18,36 +18,37 @@
 bmcs_app.sln
 Directory.Build.props
 src/
- ├─ bmcs_app/                  … Presentation (WPF, exe)。ViewModels/Views を Order/Sales/Menu/Master/Common で分割
- ├─ bmcs_app.Application/      … 業務処理層（ユースケース、トランザクション境界）。Order/Sales/Master/Common
+ ├─ bmcs_app/                  … Presentation (WPF, exe)。ViewModels/Views を Order/Sales/Receipt/Billing/Menu/Master/Common で分割
+ ├─ bmcs_app.Application/      … 業務処理層（ユースケース、トランザクション境界）。Order/Sales/Receipt/Billing/Master/Common
  ├─ bmcs_app.Infrastructure/   … データアクセス層（EF Core DbContext, Configurations/）
  └─ bmcs_app.Domain/           … ドメイン層（エンティティ, enum, Calculations/, Numbering/）
 tests/
- ├─ bmcs_app.Domain.Tests/     … DB不要の単体テスト（xUnit v2）。消費税計算・単価決定・税額分岐ロジック
- └─ bmcs_app.Application.Tests/… 開発用ライブDBへの結合テスト（DevDatabaseFixtureで実接続）。採番・売上登録
+ ├─ bmcs_app.Domain.Tests/     … DB不要の単体テスト（xUnit v2）。消費税計算・単価決定・税額分岐・編集ロック判定等
+ └─ bmcs_app.Application.Tests/… 開発用ライブDBへの結合テスト（DevDatabaseFixtureで実接続）。採番・各画面の登録/訂正/取消・消込・フェーズレビュー
 scripts/                       … DDL（001, 002, ... 連番。適用済みは改変しない）、seed_dev_data.sql
 docs/                          … 設計文書（下記）
 ```
 
-**進捗（2026-09-10時点）**: Phase 0〜5は完了（5-1〜5-7すべて実装済み）。受注入力（`OrderEntryWindow`/`OrderService`/`OrderStatusService`/`OrderQueryService`）・売上入力（`SalesEntryWindow`/`SalesService`/`SalesQueryService`/`SalesEditLockService`）が実装済み。両画面は`SlipLineViewModel`/`SlipLineControl`（Common）を共用。単価決定は`IUnitPriceCalculator`インターフェース（現時点の実装は`StandardUnitPriceCalculator`。将来の掛け率マスタ実装に備えた例外的な抽象化、M-3）。売上保存時の税額確定（`slip_tax_amount`/`tax_amount`のtax_unit別分岐）は`SalesTaxAmountAssigner`に一本化。
+**進捗（2026-09-15時点）**: Phase 0〜7-2/7-4/7-5/7-6が完了。7-3（振込手数料差額の入力）のみユーザー指示で保留中。Phase 8（得意先元帳）・9（月次締め）・10（帳票）・11（FlaUI）は未着手。詳細な残タスクは`TODO.md`を参照（各Phaseの完了行に実装の要点が詳しく記録されている）。
 
-Phase 5-3〜5-7（2026-09-10実装）で追加した主な要素:
-- **受注からの売上確定**: `SalesService.CreateAsync`が明細行の`OrderSlipNumber`/`OrderLineNumber`から受注デルタを導出し、`OrderStatusService.ApplySalesQuantityDeltasAsync`を同一トランザクションで呼ぶ。
-- **返品・値引**: `sales.slip_type`を明細行ごとに選択可能にし、`SalesSlipTypeRules`（Domain）で数量符号・原価（値引は常に0）を正規化。
-- **過去伝票の複写・伝票検索**: 受注/売上共用の伝票検索モーダル`SlipSearchDialog`（`ViewModels/Common`）を新設。
-- **売上の訂正・取消**: `SalesService.UpdateAsync`/`CancelSlipAsync`。編集ロック判定はDomain純粋関数`SalesEditLockEvaluator`＋DB照会する`SalesEditLockService`。伝票単位の楽観的排他制御の共通処理`SlipConcurrencyGuard`（`Application/Common`）を新設（`docs/architecture.md` 9章が予告していたもの）。
-- 4-4の潜在バグ（中止済み受注に紐づく売上を後から取消できない）を修正。
+主なユースケースサービス（`src/bmcs_app.Application/`）:
+- `Order/`: `OrderService`・`OrderStatusService`・`OrderQueryService`
+- `Sales/`: `SalesService`（新規/訂正/取消）・`SalesQueryService`・`SalesEditLockService`
+- `Billing/`: `BillingClosingService`（請求締め）・`BillingReleaseService`（締め解除）・`DetailInvoiceService`（明細請求書発行/取消）・`DetailInvoiceQueryService`
+- `Receipt/`: `SettlementService`（消込キャッシュ列の得意先単位全件再計算、`RecalculateForCustomerAsync`が唯一の書き手）・`ReceiptEntryService`（締め入金、新規/訂正/取消/編集ロック）・`ReceiptQueryService`・`DetailReceiptEntryService`（明細入金、新規/訂正/取消/編集ロック）・`DetailReceiptQueryService`
 
-詳細な残タスク（Phase 6以降）は`TODO.md`を参照。
+編集ロック（訂正・取消の可否判定）は`sales`/`receipt`/`detail_receipt`で条件が異なる（C-6、`docs/database-schema.md` 1章参照）。`receipt`は月次締めに加え「請求締めスナップショット」（`BillingClosingService`が締め時に`receipt`合計を`billing.CurrentBillingAmount`へ焼き込み再計算しないため）が独自のロック条件。`sales`は4条件（請求締め・明細請求書発行済み・月次締め・入金済み）、`detail_receipt`は月次締めのみ。
+
+受注入力・売上入力は`SlipLineViewModel`/`SlipLineControl`（Common）を共用。単価決定は`IUnitPriceCalculator`インターフェース（現時点の実装は`StandardUnitPriceCalculator`。将来の掛け率マスタ実装に備えた例外的な抽象化、M-3）。
 
 依存方向: `Presentation → Application → Infrastructure → Domain`（古典的レイヤード、インターフェースでの逆転なし）。リポジトリ抽象化なし（Applicationが`DbContext`を直接使う）。
 
 ## ドキュメント地図（実装前に必ず確認）
 
 - `CLAUDE.md` — 作業ルール（指示が矛盾したら必ずユーザーに確認する）、Purpose、Tech stack、業務フロー概要
-- `docs/architecture.md` — 層構成、DB接続情報、命名規則、DDL運用ルール
+- `docs/architecture.md` — 層構成、DB接続情報、命名規則、DDL運用ルール、トランザクション境界の許容パターン
 - `docs/product-spec.md` — 用語、業務フロー、共通業務ルール、伝票の状態遷移
-- `docs/design_document.md` — 画面ごとの要点、未解決の不明点（DB以外）
+- `docs/design_document.md` — 画面ごとの要点（章番号順）、未解決の不明点（DB以外）。フェーズレビュー章（6-5, 7-6等）も含む
 - `docs/database-schema.md` — テーブル設計方針・定義・未確定事項（DB専用。DB関連の詳細はここに書く）
 - `TODO.md` — 開発タスク一覧、モデル選択基準（Opus/Sonnet）、保留項目の扱い方針
 - `REVIEW.md` — 設計上の残課題（暫定設定 or 要決定）
