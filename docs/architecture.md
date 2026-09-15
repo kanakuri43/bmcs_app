@@ -100,6 +100,8 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 
 `Show<TWindow, TViewModel>(Action<TViewModel>? configure = null)` は `ShowDialog` と同じ位置づけの `configure` コールバックを持つ（TODO.md 8-3で追加）。呼び出し元の文脈（プレビュー対象の伝票No.等）を ViewModel へ渡すために使うが、**`configure` は値を設定するだけに留め、非同期の初期化処理は行わない**。`Show` は `window.Show()` の前に `configure` を呼ぶが、View の `Loaded`（→ ViewModel の `LoadCommand`）はその後に非同期で発火するため、`configure` 側で非同期処理をすると実行順が保証されない。
 
+**帳票プレビュー（TODO.md 10-3）はこの「複数画面の並行利用」の例外として `ShowDialog`（モーダル）を使う**（2026-09-15ユーザー確認）。プレビューを開いている間は他画面を操作できなくなるが、①プレビューは印刷前の確認作業であり長時間開けたままにする文書ではない、②印刷成功→発行記録（`DeliveryNoteService.MarkIssuedAsync`等）の順序をコールバックなしで保証できる、という理由から許容する。
+
 ### モーダルダイアログ（選択結果を返す画面、Phase 3 で追加）
 
 共通検索モーダルのように「呼び出し元へ選択結果を返して閉じる」画面は、上記 `Show` とは別に `WindowService.ShowDialog<TWindow, TViewModel, TResult>(Action<TViewModel>? configure = null)` を使う。
@@ -115,15 +117,16 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 | 層 | 置くもの | 置かないもの |
 |---|---|---|
 | **Domain** | エンティティ（EF Core の POCO を兼ねる）、enum、消費税・端数処理の計算、状態判定のロジック | DB アクセス、UI、DI、ファイル I/O。**副作用を持つコードを置かない** |
-| **Infrastructure** | `DbContext`、Fluent API のマッピング設定、接続文字列の解決、ストアドプロシージャ呼び出し、端末ローカル設定ファイルの読み書き、帳票出力の実装 | 業務ルール（どの売上が請求対象か等） |
-| **Application** | ユースケース（伝票登録、請求締め、入金消込…）、**トランザクション境界**、複数テーブルにまたがる整合更新、業務操作の権限チェック | 画面の状態、`Window` や `Visibility` などの UI 概念 |
-| **Presentation** | View（XAML）、ViewModel（画面状態・入力書式・コマンド）、DI 構成、ウィンドウ管理 | 業務ルール、SQL、`DbContext` の直接操作 |
+| **Infrastructure** | `DbContext`、Fluent API のマッピング設定、接続文字列の解決、ストアドプロシージャ呼び出し、端末ローカル設定ファイルの読み書き | 業務ルール（どの売上が請求対象か等）、WPF 依存のコード |
+| **Application** | ユースケース（伝票登録、請求締め、入金消込…）、**トランザクション境界**、複数テーブルにまたがる整合更新、業務操作の権限チェック、**帳票のデータ取得**（WPF 型を含まないプレーンな DTO を返す） | 画面の状態、`Window` や `Visibility` などの UI 概念 |
+| **Presentation** | View（XAML）、ViewModel（画面状態・入力書式・コマンド）、DI 構成、ウィンドウ管理、**帳票のレンダリング・印刷・PDF出力・プレビュー**（`src/bmcs_app/Reports/`） | 業務ルール、SQL、`DbContext` の直接操作 |
 
 補足:
 
 - **Domain のエンティティを EF Core の POCO として兼用する。** 別途 DTO を作って詰め替えることはしない（差し替えを見据えた抽象化を行わない方針に沿う）。
 - **業務操作の権限チェックは Application 層に置く。** メニューの出し分け（Presentation）だけに頼ると、画面を直接開かれた場合に守られないため。`TODO.md` の C-8 暫定設定「各画面に直接書く」は「権限マトリクスのテーブルを作らずレベル比較を直接書く」という意味であり、比較を書く場所は Application 層のユースケース内とする。
 - **ViewModel は業務ルールを判断しない。** 「この売上は訂正できるか」の判定は Application 層に問い合わせ、ViewModel はその結果でボタンの有効・無効を切り替えるだけにする。
+- **帳票出力（TODO.md 10-3・2026-09-15訂正）**: 当初は「帳票出力の実装」を Infrastructure 層に置く想定だったが、M-10確定方式（`docs/report-spec.md`）が WPF の `FixedDocument`/`FixedPage`/`PrintQueue` に依存するため、`Infrastructure`（`net10.0`、WPF なし）には置けないことが実装着手時に判明した。`Infrastructure` を `net10.0-windows`＋`UseWPF` にすると、これを参照する `Application` 層とテスト2プロジェクト（`Domain.Tests`／`Application.Tests`）まで推移的に WPF 依存になってしまうため採らない。**帳票のデータ取得（DB読込・税額の組み立て等）は各業務領域フォルダ（10章の規約）の Application サービスが担い、WPF 型を含まないプレーンな DTO（例: `DeliveryNoteData`）を返す。レンダリング（`FixedDocument` の組み立て）・印刷・PDF出力・プレビューは Presentation 層の `src/bmcs_app/Reports/` にまとめて置く**（`Views/`・`ViewModels/`とは別の技術的フォルダ。`Services/`・`Behaviors/`・`Converters/`と同じ位置づけ）。
 
 ## 6. トランザクション境界
 

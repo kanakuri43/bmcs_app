@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Windows;
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
 using bmcs_app.Application.Order;
@@ -8,6 +9,7 @@ using bmcs_app.Application.Sales;
 using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Entities;
 using bmcs_app.Domain.Enums;
+using bmcs_app.Reports;
 using bmcs_app.Services;
 using bmcs_app.ViewModels.Common;
 using bmcs_app.Views.Common;
@@ -31,6 +33,7 @@ public partial class SalesEntryViewModel(
     SalesQueryService salesQueryService,
     SalesEditLockService salesEditLockService,
     OrderQueryService orderQueryService,
+    DeliveryNoteService deliveryNoteService,
     WindowService windowService,
     IUnitPriceCalculator unitPriceCalculator) : ViewModelBase
 {
@@ -481,6 +484,7 @@ public partial class SalesEntryViewModel(
         _customer = null;
         _loadedSalesSlipNumber = null;
         _loadedLineNumbers = [];
+        PrintCommand.NotifyCanExecuteChanged();
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
         CustomerTaxUnitDisplay = string.Empty;
@@ -567,9 +571,15 @@ public partial class SalesEntryViewModel(
 
         var salesSlipNumber = await salesService.CreateAsync(entities, _customer!.RoundingType);
 
+        var printNote = await PromptAndPrintDeliveryNoteAsync(salesSlipNumber);
+
         // 登録後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
+        // 納品書の発行有無に関わらずリセットする（TODO.md 10-4。保存直後の発行確認は
+        // New() の前に完結させ、リセット自体の方針は変えない）。
         New();
-        StatusMessage = $"登録しました。売上No. {salesSlipNumber}";
+        StatusMessage = printNote is null
+            ? $"登録しました。売上No. {salesSlipNumber}"
+            : $"登録しました。売上No. {salesSlipNumber}　{printNote}";
         NotifyResetToInitialState();
     }
 
@@ -589,10 +599,14 @@ public partial class SalesEntryViewModel(
         var correctedSalesSlipNumber = _loadedSalesSlipNumber!;
         await salesService.UpdateAsync(correctedSalesSlipNumber, entities, _customer!.RoundingType, _loadedLineNumbers);
 
+        var printNote = await PromptAndPrintDeliveryNoteAsync(correctedSalesSlipNumber);
+
         // 登録後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
         // 新規登録と挙動を揃え、訂正保存だけ伝票を表示し続ける例外を作らない。
         New();
-        StatusMessage = $"訂正しました。売上No. {correctedSalesSlipNumber}";
+        StatusMessage = printNote is null
+            ? $"訂正しました。売上No. {correctedSalesSlipNumber}"
+            : $"訂正しました。売上No. {correctedSalesSlipNumber}　{printNote}";
         NotifyResetToInitialState();
     }
 
@@ -853,6 +867,7 @@ public partial class SalesEntryViewModel(
         _customer = customer;
         _loadedSalesSlipNumber = salesSlipNumber;
         _loadedLineNumbers = sourceLines.Select(l => l.LineNumber).ToList();
+        PrintCommand.NotifyCanExecuteChanged();
 
         CustomerCode = customer.CustomerCode;
         CustomerName = sourceLines[0].CustomerName;
@@ -945,10 +960,83 @@ public partial class SalesEntryViewModel(
     // ── 枠のみ・使用不可（理由は docs/design_document.md 参照） ──────
     private bool CanUseUnimplementedFeature => false;
 
-    /// <summary>印刷（納品書）。帳票エンジンは M-10（2026-09-10確定: WPF FixedDocument方式）で TODO.md Phase 10 が実装する。</summary>
-    [RelayCommand(CanExecute = nameof(CanUseUnimplementedFeature))]
-    private void Print()
+    /// <summary>
+    /// 印刷（納品書、TODO.md 10-4）。既存伝票を読み込んでいる場合のみ有効
+    /// （プレビューモードでも可＝再発行。docs/design_document.md「プレビューは書き込まない」方針の
+    /// 明示的な例外。発行日時・発行回数は伝票内容の編集ではなく帳簿外の記録列のため）。
+    /// 新規未保存の伝票はここでは印刷できず、保存直後の発行確認（<see cref="PromptAndPrintDeliveryNoteAsync"/>）
+    /// で扱う。
+    /// </summary>
+    private bool CanPrint => _loadedSalesSlipNumber is not null;
+
+    [RelayCommand(CanExecute = nameof(CanPrint))]
+    private async Task PrintAsync()
     {
+        if (_loadedSalesSlipNumber is null)
+        {
+            return;
+        }
+
+        var note = await PrintDeliveryNoteAsync(_loadedSalesSlipNumber);
+        if (note is not null)
+        {
+            StatusMessage = note;
+        }
+    }
+
+    /// <summary>保存直後に「納品書を発行しますか？」を確認し、Yesならプレビュー・印刷・発行記録まで行う。</summary>
+    private async Task<string?> PromptAndPrintDeliveryNoteAsync(string salesSlipNumber)
+    {
+        var confirm = MessageBox.Show(
+            $"売上No. {salesSlipNumber} の納品書を発行しますか？",
+            "bmcs_app", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return null;
+        }
+
+        return await PrintDeliveryNoteAsync(salesSlipNumber);
+    }
+
+    /// <summary>
+    /// 納品書データを取得してプレビューを開き、印刷が成功した場合のみ発行記録
+    /// （<see cref="DeliveryNoteService.MarkIssuedAsync"/>）を行う。プレビューはモーダル
+    /// （TODO.md 10-3ユーザー確認済み。開いている間は他画面を操作できない）。
+    /// </summary>
+    private async Task<string?> PrintDeliveryNoteAsync(string salesSlipNumber)
+    {
+        DeliveryNoteData? data;
+        try
+        {
+            data = await deliveryNoteService.GetAsync(salesSlipNumber);
+        }
+        catch (DeliveryNoteException ex)
+        {
+            return $"印刷エラー: {ex.Message}";
+        }
+
+        if (data is null)
+        {
+            return $"売上No. {salesSlipNumber} が見つかりません。";
+        }
+
+        var printed = windowService.ShowDialog<ReportPreviewDialog, ReportPreviewDialogViewModel, bool>(
+            vm => vm.Initialize(ReportKind.DeliveryNote, $"納品書 {salesSlipNumber}", () => new DeliveryNoteDocumentBuilder(data).Build()));
+
+        if (!printed)
+        {
+            return null;
+        }
+
+        try
+        {
+            await deliveryNoteService.MarkIssuedAsync(salesSlipNumber);
+            return $"納品書を発行しました（売上No. {salesSlipNumber}）。";
+        }
+        catch (DeliveryNoteException ex)
+        {
+            return $"発行記録エラー: {ex.Message}";
+        }
     }
 
     /// <summary>既存売上の一覧・検索機能は伝票検索モーダルに統合済みのため、前後移動は当面実装しない。</summary>

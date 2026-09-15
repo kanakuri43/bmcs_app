@@ -402,7 +402,7 @@
                             Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" />
                     <Button Command="{Binding PrintCommand}"
                             Content="印刷 (F11)"
-                            ToolTip="未実装（帳票エンジンはTODO.md Phase 10で実装予定。M-10確定）"
+                            ToolTip="納品書を発行します（既存伝票を読み込んでいる場合のみ。新規登録直後は保存時に確認します）"
                             Margin="0,0,0,4" />
                     <Button Command="{Binding DeleteSlipCommand}"
                             Content="削除 (F8)"

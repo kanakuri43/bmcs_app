@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Markup;
 using System.Windows.Threading;
 using bmcs_app.Application;
+using bmcs_app.Reports;
 using bmcs_app.Services;
 using bmcs_app.ViewModels.Billing;
 using bmcs_app.ViewModels.Common;
@@ -131,6 +132,10 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddSingleton<WindowService>();
 
+        // 帳票の印刷・PDF出力。PrinterSettingsService（Application）と同様、
+        // DbContext に依存しないため Singleton（TODO.md 10-3）。
+        builder.Services.AddSingleton<ReportPrintService>();
+
         // ウィンドウと ViewModel は Scoped。WindowService がウィンドウごとに
         // スコープを作るため、同じウィンドウ内では同じ DbContext を共有し、
         // ウィンドウ間では共有されない。
@@ -172,6 +177,9 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<SlipSearchDialog>();
         builder.Services.AddScoped<SlipSearchDialogViewModel>();
+
+        builder.Services.AddScoped<ReportPreviewDialog>();
+        builder.Services.AddScoped<ReportPreviewDialogViewModel>();
 
         builder.Services.AddScoped<OrderEntryWindow>();
         builder.Services.AddScoped<OrderEntryViewModel>();

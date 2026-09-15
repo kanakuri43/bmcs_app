@@ -1691,3 +1691,101 @@ WPFの`KeyBinding`はコントロールが`IsEnabled=false`でも生き続ける
   全てgreenのままであることを確認した。
 - 実機: `dotnet run`でのアプリ起動まで確認済み（GUI自動操作の手段が実行環境に無いため、
   画面上のクリック操作はPhase 7-2/7-4/7-5/8-1/8-2と同様に未確認）。
+
+---
+
+## 22. 帳票基盤・納品書の実装（Phase 10-3・10-4、2026-09-15実装）
+
+### 22-1. スコープと経緯
+
+TODO.md 10-2（納品書一括発行）に着手しようとしたところ、前提の10-3（帳票エンジンの選定と
+基盤実装）が未完了だった。10-3の完了条件「全帳票が同じ仕組みで出力できる」は実帳票が1つも
+無い状態では実証できないため、ユーザー確認のうえ**10-3（基盤）＋10-4（納品書）を1タスクとして
+実施**した（Phase 8-1で「サービス層のみ」の指示に画面まで含めたのと同じ進め方）。
+
+帳票エンジンの選定自体はM-10（2026-09-10確定）で完了済みであり、本タスクはこれをコードに
+落とす作業。詳細な実装構成・レイアウト決定は`docs/report-spec.md` 2章、層配置の変更は
+`docs/architecture.md` 5章補足・4章補足を参照。
+
+### 22-2. 設計レビューで発見・修正した問題
+
+実装前にPlanエージェントによる設計検証を行い、以下を発見・修正した（コード実装前に
+反映済みのため、実装物には現れない）。
+
+1. **保存直後に印刷できない**: `SalesEntryViewModel`は保存成功後に必ず`New()`で画面を
+   初期化し伝票No.が消えるため、素朴に「既存伝票読込時のみ印刷可」とすると保存直後の
+   印刷導線が無くなる。→ 保存成功後、`New()`の前に「納品書を発行しますか？」の確認
+   ダイアログを挟む導線を追加（2026-09-15ユーザー確認、`report-spec.md` 2-1節）。
+2. **RowVersion陳腐化によるSalesEditLockService誤検知**（最重要）: 売上入力画面が
+   `SalesQueryService.GetSlipAsync`（追跡あり）で伝票を読み込んだ後、同一DbContextスコープで
+   `DeliveryNoteService.MarkIssuedAsync`が`ExecuteUpdateAsync`（ChangeTracker非経由）で
+   発行記録を更新すると、追跡中エンティティの`RowVersion`がDBの新しい値と食い違ったままに
+   なる。SQL Serverの`rowversion`は列の値に関わらずどのUPDATEでも進むため、放置すると
+   後続の訂正保存が偽の「他のユーザーが更新しました」エラーになる。→
+   `MarkIssuedAsync`が更新後に同一スコープの追跡エンティティを`ReloadAsync`で最新化するよう
+   実装（結合テストで検証。下記22-4参照）。
+3. **フォルダ規約違反**: `docs/architecture.md` 10章はApplication層の機能フォルダを
+   `Order`/`Sales`/`Billing`/`Receipt`/`Ledger`/`Closing`/`Master`/`Search`/`Common`に
+   限定している。当初`Application/Reports/`に置く案だったが、納品書データの取得は
+   `sales`テーブルを読む売上の責務のため`Application/Sales/`へ配置した
+   （`DeliveryNoteData`／`DeliveryNoteService`）。モーダルの命名規約
+   （`Views/Common/{名前}Dialog.xaml`）に合わせ、プレビュー画面も
+   `ReportPreviewDialog`／`ReportPreviewDialogViewModel`（`Views/Common/`・
+   `ViewModels/Common/`）とした。
+4. **DocumentViewerの組込印刷ボタン**: 既定の`DocumentViewer`ツールバーには
+   `ApplicationCommands.Print`（標準の印刷ダイアログを開く）ボタンがあり、
+   「ダイアログを出さず設定済みプリンタへ直接送信する」方針と矛盾する。→
+   `ControlTemplate`を`PART_ContentHost`のみの`ScrollViewer`に絞り、印刷・PDF保存は
+   自前ボタンに一本化した（`report-spec.md` 2-0節）。
+5. **A4寸法・PrintTicket**: 参考実装の`793.92/1122.24`は正確なA4（210mm/297mm）と
+   僅かにずれるため、正確な変換値（793.7008/1122.5197）に修正。また`PrintTicket`に
+   A4・縦向きを明示しないと、既定用紙がLetterの端末で縮小・欠けが起きるため、
+   `ReportPrintService`が印刷・PDF出力の両方で明示的に設定する。
+6. **MahApps.Metroのテーマ前景色の継承**: `TextBlock`に`Foreground`を明示しないと
+   ウィンドウのテーマ色（濃灰）が継承され、印字が薄いグレーになる（画面プレビューだけでなく
+   実際の印刷・PDFにも影響する）。→ `ReportDocumentBuilder`の`Tb()`・明細テーブルの
+   `TextBlock`生成箇所で`Foreground = Brushes.Black`を明示。
+
+### 22-3. 実装構成
+
+- **Domain**: `ReportPagination.Split`（純粋関数、改ページの行数分割）。
+- **Application** (`Sales/`): `DeliveryNoteData`／`DeliveryNoteLine`（WPF型を含まないDTO）、
+  `DeliveryNoteService`（`GetAsync`／`MarkIssuedAsync`）。
+- **Presentation** (`Reports/`): `ReportColumn`、`ReportDocumentBuilder`（abstract）、
+  `ReportPrintService`（`ReportKind`／`ReportPrintResult`）、`DeliveryNoteDocumentBuilder`。
+- **Presentation** (`Views/Common/`・`ViewModels/Common/`): `ReportPreviewDialog`、
+  `ReportPreviewDialogViewModel`。
+- **配線**: `SalesEntryViewModel.PrintCommand`（既存伝票読込時のみ有効。プレビューモードでも
+  可）と、保存成功後の確認ダイアログ経由の自動印刷導線。
+
+税単位別の税額計算・フッター表示・適格請求書として扱わない判断・M-15の扱いは
+`docs/report-spec.md` 2-1節に記載（重複させないためここには書かない）。
+
+### 22-4. 検証方法
+
+- 単体テスト: `ReportPaginationTests`（9件、改ページ境界＝明細0件・ちょうど1ページ・
+  1行溢れ・複数ページ・引数異常）。
+- 結合テスト: `DeliveryNoteServiceTests`（7件、専用テスト得意先`__TSTDN*`で検証、
+  開発用ライブDB）。税単位3種（請求単位＝内訳空・伝票単位＝内訳合計が保存済み
+  `SlipTaxAmount`と一致・内税明細単位＝保存済み`TaxAmount`の合算と返品行のマイナス反映）、
+  存在しない伝票番号、発行記録の1回目/2回目のカウント加算、存在しない伝票への発行記録の
+  例外、および**追跡中エンティティのRowVersionが発行記録後も陳腐化せず後続の保存が
+  競合エラーにならないこと**（22-2の2番目の問題の回帰テスト）を直接検証。
+- 全体テスト: Domain 262件／Application 158件、すべてgreen。
+- 実機: `dotnet run`でのアプリ起動を確認済み（新しいDI登録＝`ReportPrintService`・
+  `ReportPreviewDialog`／`ViewModel`・`DeliveryNoteService`・`SalesEntryViewModel`への
+  追加依存を含めて起動時例外が無いことを確認）。GUI自動操作の手段が実行環境に無いため、
+  画面上での実際の印刷・プレビュー表示・改ページの目視確認はPhase 7-2以降と同様に
+  未実施（次回、実機での操作確認が可能になった時点で行う）。
+
+### 22-5. 申し送り
+
+- 10-2（一括発行）は`DeliveryNoteService.MarkIssuedAsync`をそのまま再利用できる。
+  `IX_sales_delivery_note_issued_at`索引も既存。
+- 10-5（請求書・明細請求書）・10-6（得意先元帳）着手時、`ReportDocumentBuilder`の
+  「最終ページのみフッター」という形は得意先元帳の「毎ページ繰越フッター」要件と
+  合わない可能性が高い。着手時に基底クラスの拡張を検討する。
+- 得意先元帳用のプリンタ設定（`ReportKind`・`PrinterSettingsConfig`）は未整備。
+  10-6着手時に追加する。
+- 納品書を適格請求書として扱うかは税理士確認待ちのまま（`docs/design_document.md` 2章の
+  【要確認】は閉じていない）。
