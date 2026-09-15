@@ -42,7 +42,7 @@ public partial class DetailInvoiceIssueViewModel(
     public partial DetailInvoiceStatus? LoadedInvoiceStatus { get; set; }
 
     [ObservableProperty]
-    public partial string IssueDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+    public partial DateTime? IssueDate { get; set; } = DateTime.Today;
 
     [ObservableProperty]
     public partial string CustomerCode { get; set; } = string.Empty;
@@ -261,11 +261,13 @@ public partial class DetailInvoiceIssueViewModel(
             return;
         }
 
-        if (!DateOnly.TryParseExact(IssueDateText, "yyyy/MM/dd", out var issueDate))
+        if (IssueDate is not { } issueDateValue)
         {
-            StatusMessage = "請求日付の形式が不正です（yyyy/MM/dd）。";
+            StatusMessage = "請求日付を入力してください。";
             return;
         }
+
+        var issueDate = DateOnly.FromDateTime(issueDateValue);
 
         var lineKeys = Lines.Select(l => (l.SalesSlipNumber, l.SalesLineNumber)).ToList();
 
@@ -332,7 +334,7 @@ public partial class DetailInvoiceIssueViewModel(
         var header = view.Header;
 
         DetailInvoiceNumberQuery = header.DetailInvoiceNumber;
-        IssueDateText = header.IssueDate.ToString("yyyy/MM/dd");
+        IssueDate = header.IssueDate.ToDateTime(TimeOnly.MinValue);
         CustomerCode = header.CustomerCode;
         CustomerName = header.CustomerName;
         AddresseeName = header.AddresseeName;
@@ -358,7 +360,7 @@ public partial class DetailInvoiceIssueViewModel(
     private void ClearForm()
     {
         DetailInvoiceNumberQuery = string.Empty;
-        IssueDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+        IssueDate = DateTime.Today;
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
         AddresseeName = string.Empty;
