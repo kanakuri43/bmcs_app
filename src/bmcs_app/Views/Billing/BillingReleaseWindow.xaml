@@ -29,9 +29,9 @@
         <!-- ===== 条件 ===== -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
             <TextBlock Text="請求日" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <TextBox Style="{StaticResource DateTextBoxStyle}" Width="100" Margin="0,0,16,0"
-                     beh:FocusBehavior.IsInitialFocus="True"
-                     Text="{Binding BillingDateText, UpdateSourceTrigger=LostFocus}" />
+            <DatePicker Width="120" Margin="0,0,16,0"
+                        beh:FocusBehavior.IsInitialFocus="True"
+                        SelectedDate="{Binding BillingDate}" />
 
             <Button Content="解除実行 (F8)" Command="{Binding ReleaseCommand}" Padding="16,6" />
         </StackPanel>

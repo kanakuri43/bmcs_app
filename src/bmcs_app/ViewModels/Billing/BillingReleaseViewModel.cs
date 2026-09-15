@@ -19,7 +19,7 @@ public partial class BillingReleaseViewModel(BillingReleaseService billingReleas
 {
     /// <summary>請求日。<see cref="BillingClosingService.ConfirmAsync"/>が確定する<c>billing_date</c>と同じ値。</summary>
     [ObservableProperty]
-    public partial string BillingDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+    public partial DateTime? BillingDate { get; set; } = DateTime.Today;
 
     public ObservableCollection<BillingReleaseTarget> Results { get; } = [];
 
@@ -68,7 +68,7 @@ public partial class BillingReleaseViewModel(BillingReleaseService billingReleas
 
     private async Task RefreshPreviewAsync()
     {
-        if (!TryParseBillingDate(out var billingDate))
+        if (!TryGetBillingDate(out var billingDate))
         {
             return;
         }
@@ -93,15 +93,15 @@ public partial class BillingReleaseViewModel(BillingReleaseService billingReleas
 
     /// <summary>
     /// 請求日を変えたら自動的にその条件で再取得する（<see cref="BillingClosingViewModel"/>と同様）。
-    /// XAML側のバインディングは<c>UpdateSourceTrigger=LostFocus</c>にしており、
-    /// 入力中の1文字ごとにDB照会が走らないようにしている。
+    /// <c>DatePicker.SelectedDate</c>は確定した瞬間（Enter／フォーカス離脱／カレンダー選択）にしか
+    /// 変化しないため、入力中の1文字ごとにDB照会が走ることはない。
     /// </summary>
-    partial void OnBillingDateTextChanged(string value) => _ = PreviewAsync();
+    partial void OnBillingDateChanged(DateTime? value) => _ = PreviewAsync();
 
     [RelayCommand(CanExecute = nameof(IsReleasable))]
     private Task ReleaseAsync() => RunBusyAsync(async () =>
     {
-        if (!TryParseBillingDate(out var billingDate))
+        if (!TryGetBillingDate(out var billingDate))
         {
             return;
         }
@@ -137,17 +137,19 @@ public partial class BillingReleaseViewModel(BillingReleaseService billingReleas
 
     private void ResetConditionToDefault()
     {
-        BillingDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+        BillingDate = DateTime.Today;
     }
 
-    private bool TryParseBillingDate(out DateOnly billingDate)
+    private bool TryGetBillingDate(out DateOnly billingDate)
     {
-        if (!DateOnly.TryParseExact(BillingDateText, "yyyy/MM/dd", out billingDate))
+        if (BillingDate is not { } value)
         {
-            StatusMessage = "請求日の形式が不正です（yyyy/MM/dd）。";
+            StatusMessage = "請求日を入力してください。";
+            billingDate = default;
             return false;
         }
 
+        billingDate = DateOnly.FromDateTime(value);
         return true;
     }
 
