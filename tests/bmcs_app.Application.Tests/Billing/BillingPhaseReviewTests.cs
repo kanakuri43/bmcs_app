@@ -92,7 +92,7 @@ public class BillingPhaseReviewTests(DevDatabaseFixture fixture) : IClassFixture
             var first = Assert.Single(firstResults, r => r.CustomerCode == customerCode);
             Assert.Equal(5000m, first.SalesAmount);
 
-            await releaseService.ReleaseAsync(first.BillingNumber!);
+            await releaseService.ReleaseByBillingDateAsync(new DateOnly(2025, 7, 15));
 
             var currentLine = await dbContext.Sales.SingleAsync(s => s.SalesSlipNumber == slip);
             var incoming = NewInvoiceOrSlipLine(
@@ -274,7 +274,7 @@ public class BillingPhaseReviewTests(DevDatabaseFixture fixture) : IClassFixture
             var first = Assert.Single(
                 await closingService.ConfirmAsync(TestClosingDay, new DateOnly(2025, 7, 15)),
                 r => r.CustomerCode == customerCode);
-            await releaseService.ReleaseAsync(first.BillingNumber!);
+            await releaseService.ReleaseByBillingDateAsync(new DateOnly(2025, 7, 15));
             var second = Assert.Single(
                 await closingService.ConfirmAsync(TestClosingDay, new DateOnly(2025, 7, 15)),
                 r => r.CustomerCode == customerCode);

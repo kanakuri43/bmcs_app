@@ -4,13 +4,15 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="bmcs_app - 締め解除処理"
-                 Height="480" Width="600"
+                 Height="640" Width="980"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 6-2。確定済みbillingを解除済にし、紐付く売上を未請求へ戻す。
-        請求締め処理（BillingClosingWindow）とは別画面とする（C-8・2026-09-10確定）。
-        一覧は持たず、請求番号を直接入力して読み込む（得意先／商品マスタと同じコード直接入力方式）。
+        TODO.md 6-2（2026-09-15改訂）。指定した請求日の確定済みbillingをまとめて解除済にし、
+        紐付く売上を未請求へ戻す。請求締め処理（BillingClosingWindow）とは別画面とする
+        （C-8・2026-09-10確定）。入力は請求日のみで、対象を一覧表示してから一括で解除する
+        （BillingClosingWindowと同様、プレビューはボタンを持たず条件変更時に自動再取得する）。
+        対象の中に解除できないものが1件でもあれば解除実行を無効化する（All-or-nothing）。
     -->
     <mah:MetroWindow.InputBindings>
         <KeyBinding Key="F8" Command="{Binding ReleaseCommand}" />
@@ -18,100 +20,52 @@
 
     <Grid Margin="16">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" /> <!-- 請求番号入力 -->
-            <RowDefinition Height="*" />    <!-- 詳細 -->
-            <RowDefinition Height="Auto" /> <!-- 操作 -->
+            <RowDefinition Height="Auto" /> <!-- 条件 -->
+            <RowDefinition Height="*" />    <!-- 一覧 -->
+            <RowDefinition Height="Auto" /> <!-- 合計・操作 -->
             <RowDefinition Height="Auto" /> <!-- StatusBar -->
         </Grid.RowDefinitions>
 
-        <!-- ===== 請求番号入力 ===== -->
+        <!-- ===== 条件 ===== -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
-            <TextBlock Text="請求番号" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <TextBox Width="160"
+            <TextBlock Text="請求日" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBox Style="{StaticResource DateTextBoxStyle}" Width="100" Margin="0,0,16,0"
                      beh:FocusBehavior.IsInitialFocus="True"
-                     Text="{Binding BillingNumberQuery, UpdateSourceTrigger=PropertyChanged}"
-                     mah:TextBoxHelper.Watermark="請求番号"
-                     ToolTip="請求番号を直接入力してEnterで読み込む">
-                <TextBox.InputBindings>
-                    <KeyBinding Key="Return" Command="{Binding LookupCommand}" />
-                </TextBox.InputBindings>
-            </TextBox>
+                     Text="{Binding BillingDateText, UpdateSourceTrigger=LostFocus}" />
+
+            <Button Content="解除実行 (F8)" Command="{Binding ReleaseCommand}" Padding="16,6" />
         </StackPanel>
 
-        <!-- ===== 詳細 ===== -->
-        <Grid Grid.Row="1" Visibility="{Binding IsLoaded, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+        <!-- ===== 一覧 ===== -->
+        <ListView Grid.Row="1" ItemsSource="{Binding Results}">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="請求番号" Width="100" DisplayMemberBinding="{Binding BillingNumber}" />
+                    <GridViewColumn Header="得意先コード" Width="90" DisplayMemberBinding="{Binding CustomerCode}" />
+                    <GridViewColumn Header="得意先名" Width="160" DisplayMemberBinding="{Binding CustomerName}" />
+                    <GridViewColumn Header="税区分" Width="80">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding TaxUnit, Converter={StaticResource EnumDisplayConverter}}" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="締め年月" Width="80" DisplayMemberBinding="{Binding ClosingYearMonth}" />
+                    <GridViewColumn Header="前回残高" Width="100" DisplayMemberBinding="{Binding PreviousBalance, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="入金額" Width="100" DisplayMemberBinding="{Binding ReceiptAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="売上額" Width="100" DisplayMemberBinding="{Binding SalesAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="消費税" Width="90" DisplayMemberBinding="{Binding TaxAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="今回請求額" Width="110" DisplayMemberBinding="{Binding CurrentBillingAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="確定日時" Width="130" DisplayMemberBinding="{Binding ConfirmedAt, StringFormat={}{0:yyyy/MM/dd HH:mm}}" />
+                    <GridViewColumn Header="備考" Width="220" DisplayMemberBinding="{Binding BlockReason}" />
+                </GridView>
+            </ListView.View>
+        </ListView>
 
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="得意先" Margin="0,0,12,6" />
-            <TextBlock Grid.Row="0" Grid.Column="1" Margin="0,0,0,6">
-                <TextBlock.Text>
-                    <MultiBinding StringFormat="{}{0} {1}">
-                        <Binding Path="CustomerCode" />
-                        <Binding Path="CustomerName" />
-                    </MultiBinding>
-                </TextBlock.Text>
-            </TextBlock>
-
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="税区分" Margin="0,0,12,6" />
-            <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,0,0,6"
-                       Text="{Binding TaxUnit, Converter={StaticResource EnumDisplayConverter}}" />
-
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="締め年月" Margin="0,0,12,6" />
-            <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,0,0,6" Text="{Binding ClosingYearMonth}" />
-
-            <TextBlock Grid.Row="3" Grid.Column="0" Text="請求日" Margin="0,0,12,6" />
-            <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,0,0,6" Text="{Binding BillingDateText}" />
-
-            <TextBlock Grid.Row="4" Grid.Column="0" Text="前回残高" Margin="0,0,12,6" />
-            <TextBlock Grid.Row="4" Grid.Column="1" Margin="0,0,0,6" Text="{Binding PreviousBalance, StringFormat={}{0:N0}}" />
-
-            <TextBlock Grid.Row="5" Grid.Column="0" Text="入金額" Margin="0,0,12,6" />
-            <TextBlock Grid.Row="5" Grid.Column="1" Margin="0,0,0,6" Text="{Binding ReceiptAmount, StringFormat={}{0:N0}}" />
-
-            <TextBlock Grid.Row="6" Grid.Column="0" Text="売上額" Margin="0,0,12,6" />
-            <TextBlock Grid.Row="6" Grid.Column="1" Margin="0,0,0,6" Text="{Binding SalesAmount, StringFormat={}{0:N0}}" />
-
-            <TextBlock Grid.Row="7" Grid.Column="0" Text="消費税" Margin="0,0,12,6" />
-            <TextBlock Grid.Row="7" Grid.Column="1" Margin="0,0,0,6" Text="{Binding TaxAmount, StringFormat={}{0:N0}}" />
-
-            <TextBlock Grid.Row="8" Grid.Column="0" Text="今回請求額" Margin="0,0,12,6" FontWeight="Bold" />
-            <TextBlock Grid.Row="8" Grid.Column="1" Margin="0,0,0,6" FontWeight="Bold" Text="{Binding CurrentBillingAmount, StringFormat={}{0:N0}}" />
-
-            <TextBlock Grid.Row="9" Grid.Column="0" Text="状態" Margin="0,0,12,6" />
-            <TextBlock Grid.Row="9" Grid.Column="1" Margin="0,0,0,6" Text="{Binding BillingStatus, Converter={StaticResource EnumDisplayConverter}}" />
-
-            <TextBlock Grid.Row="10" Grid.Column="0" Text="確定 / 解除" Margin="0,0,12,6" />
-            <TextBlock Grid.Row="10" Grid.Column="1" Margin="0,0,0,6">
-                <TextBlock.Text>
-                    <MultiBinding StringFormat="{}確定: {0}（{1}） / 解除: {2}（{3}）">
-                        <Binding Path="ConfirmedAtText" />
-                        <Binding Path="ConfirmedBy" />
-                        <Binding Path="ReleasedAtText" />
-                        <Binding Path="ReleasedBy" />
-                    </MultiBinding>
-                </TextBlock.Text>
-            </TextBlock>
-        </Grid>
-
-        <!-- ===== 操作 ===== -->
+        <!-- ===== 合計 ===== -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
-            <Button Content="解除実行 (F8)" Command="{Binding ReleaseCommand}" Padding="16,6" />
+            <TextBlock Text="対象の今回請求額 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBlock Text="{Binding TotalCurrentBillingAmount, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" />
             <TextBlock Text="処理中..." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="OrangeRed"
                        Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
         </StackPanel>

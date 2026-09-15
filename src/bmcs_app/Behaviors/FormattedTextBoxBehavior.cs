@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace bmcs_app.Behaviors;
 
@@ -49,13 +50,35 @@ public static class FormattedTextBoxBehavior
         textBox.Loaded -= OnLoaded;
         textBox.GotFocus -= OnGotFocus;
         textBox.LostFocus -= OnLostFocus;
+        textBox.PreviewKeyDown -= OnPreviewKeyDown;
 
         if (e.NewValue is FormattedTextBoxKind)
         {
             textBox.Loaded += OnLoaded;
             textBox.GotFocus += OnGotFocus;
             textBox.LostFocus += OnLostFocus;
+            textBox.PreviewKeyDown += OnPreviewKeyDown;
         }
+    }
+
+    /// <summary>
+    /// Enter キーで、フォーカスを外さなくても入力値をすぐに確定する。
+    /// <c>UpdateSourceTrigger=LostFocus</c>のバインディングはフォーカスが外れるまで
+    /// ViewModel 側の値が更新されないため、値を入力した直後に Enter を押すだけでは
+    /// 何も反映されない（画面によっては自動再取得の起点にもならない）。これは
+    /// 「値を入力したら Enter で確定する」という、本アプリの他の入力欄（請求番号等の
+    /// コード直接入力）と同じ操作感をユーザーが期待するため、直感に反する
+    /// （2026-09-15、締め解除処理〈請求日入力〉で実機確認した不具合）。
+    /// </summary>
+    private static void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+        {
+            return;
+        }
+
+        var textBox = (TextBox)sender;
+        textBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
     }
 
     private static void OnLoaded(object sender, RoutedEventArgs e) => Reformat((TextBox)sender);

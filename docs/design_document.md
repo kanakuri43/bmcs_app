@@ -442,11 +442,16 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 
 ---
 
-## 10. 締め解除処理（Phase 6-2、2026-09-14実装）
+## 10. 締め解除処理（Phase 6-2、2026-09-14実装／2026-09-15改訂: 請求日単位の一括解除に変更）
 
 確定済み`billing`を解除済（`billing_status = 2`）にし、紐付く`sales`行の`billing_number`を
 `NULL`、`billing_status`（`BillingLinkStatus`）を未請求へ戻す。管理者権限のみの操作のため、
 請求締め処理（9章）とは別画面（別ウィンドウ）として提供する（C-8・2026-09-10確定）。
+
+**解除の指定単位は請求番号1件ではなく、請求日（`billing_date`）。** 請求締め処理（9章）が
+「締め日を指定して一括」確定するのと粒度を揃え、指定した請求日に確定済みの`billing`を
+すべてまとめて解除する（2026-09-15ユーザー指示）。`billing_date`は締める側が締め切り日を
+そのまま書いた値（9章）であり、締め1回を一意に指すキーとして使える。
 
 ### 10-1. 解除できる対象の制約 ― 締め順序の逆転防止と対になる制約
 
@@ -459,37 +464,49 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 解除後は、その1つ前の確定済み`billing`が再び「最新の確定済み」になるため、連鎖的に古い方から
 順に解除していくことができる。
 
+**指定した請求日の対象が複数件（複数得意先）ある場合、1件でもこの制約に違反すれば
+解除処理全体を中止し、何も更新しない（All-or-nothing。2026-09-15ユーザー確認）。**
+一部だけ解除してスキップするという扱いはしない。
+
 その他の拒否条件:
 
-- 指定した請求番号の`billing`が存在しない（`is_deleted`を除く）。
-- 既に解除済み（`billing_status = 2`）。
+- 指定した請求日に確定済みの`billing`が1件も存在しない。
 
 ### 10-2. 実装
 
-- `src/bmcs_app.Application/Billing/BillingReleaseService.cs`が本体。`GetByNumberAsync`
-  （画面表示用の読み取り専用取得）と`ReleaseAsync`（解除の確定）を持つ。`ReleaseAsync`は
-  9章の`ConfirmAsync`と同じく明示トランザクションで包み、`billing`本体と紐付く`sales`行を
-  同一トランザクション内で更新する。
-- Phase 7（入金・消込）が未実装のため、`receipt.billing_number`（充当先）がこの請求番号を
-  指しているケースは現時点では発生しない。Phase 7実装時は、充当済みの`billing`を解除して
-  よいかどうかを別途検討する必要がある（本タスクのスコープ外）。
+- `src/bmcs_app.Application/Billing/BillingReleaseService.cs`が本体。`PreviewAsync`
+  （画面表示用の読み取り専用取得。指定した請求日の確定済み`billing`一覧と、各件の
+  `BlockReason`＝解除できない理由を返す）と`ReleaseByBillingDateAsync`（解除の確定）を持つ。
+  `ReleaseByBillingDateAsync`は9章の`ConfirmAsync`と同じく明示トランザクションで包み、
+  対象全件の`BlockReason`を先に判定してから（1件でも非nullなら`SaveChangesAsync`前に
+  例外を投げてロールバックする）、`billing`本体と紐付く`sales`行をまとめて同一トランザクション
+  内で更新する。締め順序の逆転判定は対象得意先分をまとめて1クエリで行う（得意先ごとに
+  都度問い合わせるN+1を避ける）。
+- Phase 7（入金・消込）が未実装だった2026-09-14時点では`receipt.billing_number`（充当先）が
+  解除対象を指しているケースは考慮していなかったが、Phase 7実装後も**充当済みの入金
+  （`receipt_allocation`）は解除時に付け替えない**方針を採用済み（16章「既知の限界」）。
+  解除で外れた売上行の消込キャッシュ列は`SettlementService.RecalculateForCustomerAsync`で
+  未消込へ戻す。
 - 画面（`Views/Billing/BillingReleaseWindow.xaml`／`ViewModels/Billing/BillingReleaseViewModel.cs`）
-  は一覧を持たず、得意先・商品マスタと同じ「請求番号を直接入力してEnterで読み込む」方式。
-  読み込んだ内容（得意先・税区分・締め年月・前回残高・入金額・売上額・消費税・今回請求額・
-  状態・確定/解除の日時と実施者）を読み取り専用で表示し、「解除実行」（F8）で確定する。
-  取消系の操作のため、実行前に得意先マスタの無効化と同様の確認ダイアログ（Yes/No）を挟む。
-  解除成功後は画面を起動直後の状態へ戻す（`docs/product-spec.md` UI/UX節「登録後のリセット」）。
+  は9章の`BillingClosingWindow`と同型で、請求日入力欄を持ち、条件変更時に自動でプレビュー
+  （一覧表示）を再取得する。一覧（得意先・税区分・締め年月・前回残高・入金額・売上額・
+  消費税・今回請求額・確定日時・備考）は読み取り専用で、対象の中に`BlockReason`を持つ行が
+  1件でもあれば「解除実行」（F8）を無効化する。取消系の操作のため、実行前に得意先マスタの
+  無効化と同様の確認ダイアログ（Yes/No）を挟む。解除成功後は画面を起動直後の状態へ戻す
+  （`docs/product-spec.md` UI/UX節「登録後のリセット」）。
 - 権限判定（管理者権限のみ）は、C-8の方針どおりメニュー単位（Phase 2-7、`scripts/014_seed_menu_structure.sql`で本画面を権限レベル9に設定）で行う。画面内アクション単位の権限チェックは持たない。
 
 ### 検証方法
 
 - 結合テスト: `tests/bmcs_app.Application.Tests/Billing/BillingReleaseServiceTests.cs`。
   解除後の状態遷移（`billing`／`sales`両方）、二重解除の拒否、締め順序が逆転するケースの拒否、
-  存在しない請求番号の拒否に加え、**完了条件「解除→再締めで金額が一致する」を、解除後に
-  同条件で`BillingClosingService.ConfirmAsync`を再実行し金額が一致することで直接検証**している。
+  対象0件の請求日を指定した場合の拒否、**All-or-nothing（対象の一部が締め順序逆転で
+  拒否される場合に他の対象も一切更新されないこと）**に加え、**完了条件「解除→再締めで
+  金額が一致する」を、解除後に同条件で`BillingClosingService.ConfirmAsync`を再実行し
+  金額が一致することで直接検証**している。
 - 実機確認: メインメニューの「締め解除処理」ボタンから画面を開き、UI Automation経由で
-  請求番号入力→Enter読込→得意先名・税区分・金額・状態が正しく表示されることを確認済み
-  （既存のseedデータ`BIL_INV001`で確認。解除操作自体は結合テストで検証済みのため、
+  seedデータの確定済み`billing`（`BIL_INV001`／`BIL_SLP001`）の請求日を入力して一覧に
+  正しく表示されることを確認済み（解除操作自体は結合テストで検証済みのため、
   共有のseedデータを実機操作で変更することは避けた）。
 
 ---

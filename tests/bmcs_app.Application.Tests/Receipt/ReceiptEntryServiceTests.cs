@@ -476,17 +476,20 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         var releaseService = scope.ServiceProvider.GetRequiredService<BillingReleaseService>();
         var customerCode = "__TSTRCL03";
         const string billingNumber = "__TSTBIL_RCL03";
+        // 締め解除はbilling_date単位で走査するため、seedデータのBIL_INV001（billing_date=2026-07-20）
+        // と衝突しない専用の日付を使う（2026-09-15、ReleaseAsync→ReleaseByBillingDateAsyncへの変更に伴う対応）。
+        var billingDate = new DateOnly(2026, 7, 22);
         try
         {
             await InsertCustomerAsync(dbContext, customerCode);
-            await InsertBillingAsync(dbContext, billingNumber, customerCode, 10000m, billingDate: new DateOnly(2026, 7, 20));
+            await InsertBillingAsync(dbContext, billingNumber, customerCode, 10000m, billingDate: billingDate);
 
             var receiptSlipNumber = await service.SaveNewAsync(
                 customerCode, new DateOnly(2026, 7, 15), slipRemarks: null, lines: [CashLine(1000m)]);
 
             await Assert.ThrowsAsync<ReceiptEntryException>(() => service.CancelSlipAsync(receiptSlipNumber));
 
-            await releaseService.ReleaseAsync(billingNumber);
+            await releaseService.ReleaseByBillingDateAsync(billingDate);
             dbContext.ChangeTracker.Clear();
 
             await service.CancelSlipAsync(receiptSlipNumber);

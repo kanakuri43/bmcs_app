@@ -65,12 +65,36 @@ public partial class BillingClosingViewModel(BillingClosingService billingClosin
         await PreviewAsync();
     }
 
+    private bool _refreshRequested;
+
     /// <summary>
     /// プレビュー（保存しない）。対象取得ボタンは持たず、<see cref="LoadAsync"/>（画面表示時）と
     /// 条件変更時（<see cref="OnSelectedClosingDayChanged"/>／<see cref="OnClosingDateTextChanged"/>）
-    /// から自動的に呼ばれる。
+    /// から自動的に呼ばれる。<see cref="ViewModelBase.RunBusyAsync"/>は多重実行を単純に無視するため、
+    /// 画面表示直後の初回読込がまだ進行中のうちに条件を変更されると、その変更が何の再取得も
+    /// されないまま握りつぶされてしまう（2026-09-15、締め解除処理〈<c>BillingReleaseViewModel</c>〉
+    /// で実機確認した不具合と同型。同じ「画面表示時に自動プレビュー」方式のため本画面にも同じ
+    /// 潜在バグがある）。ここで「実行中に来た要求」を覚えておき、実行中の処理が終わった後に
+    /// もう一度（その時点の最新の条件で）再取得することで取りこぼしを防ぐ。
     /// </summary>
-    private Task PreviewAsync() => RunBusyAsync(RefreshPreviewAsync);
+    private async Task PreviewAsync()
+    {
+        if (IsBusy)
+        {
+            _refreshRequested = true;
+            return;
+        }
+
+        await RunBusyAsync(async () =>
+        {
+            do
+            {
+                _refreshRequested = false;
+                await RefreshPreviewAsync();
+            }
+            while (_refreshRequested);
+        });
+    }
 
     /// <summary>
     /// <see cref="PreviewAsync"/> の本体。<see cref="ConfirmAsync"/> の中からは
