@@ -1,6 +1,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Markup;
 using System.Windows.Threading;
 using bmcs_app.Application;
 using bmcs_app.Services;
@@ -48,6 +49,15 @@ public partial class App : System.Windows.Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // DatePicker（全画面デザイン統一・2026-09-15）は FrameworkElement.Language 由来の
+        // カルチャで表示書式（ShortDatePattern）を決める。既定は en-US のため、設定しないと
+        // 「9/15/2026」表記になり docs/product-spec.md UI/UX「日付は yyyy/MM/dd 表記で統一」が
+        // 崩れる。実行端末の OS 言語に依存させず ja-JP に固定する。どのウィンドウも
+        // 生成される前（最初の1回だけ）に設定する必要がある。
+        FrameworkElement.LanguageProperty.OverrideMetadata(
+            typeof(FrameworkElement),
+            new FrameworkPropertyMetadata(XmlLanguage.GetLanguage("ja-JP")));
 
         try
         {

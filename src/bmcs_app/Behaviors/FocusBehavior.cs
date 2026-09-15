@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using bmcs_app.ViewModels;
@@ -114,6 +115,17 @@ public static class FocusBehavior
     {
         // 読み込み・レイアウト直後、あるいはダイアログを閉じた直後は既定のフォーカス処理が
         // まだ残っていることがあるため、それらが一巡した後（Input優先度）でフォーカスを当てる。
-        element.Dispatcher.BeginInvoke(() => Keyboard.Focus(element), DispatcherPriority.Input);
+        element.Dispatcher.BeginInvoke(() => Keyboard.Focus(ResolveFocusTarget(element)), DispatcherPriority.Input);
     }
+
+    /// <summary>
+    /// DatePicker は Keyboard.Focus(datePicker) を呼んでも本体にフォーカスが当たるだけで、
+    /// 内部の PART_TextBox にキャレットが入らない（全画面デザイン統一・2026-09-15）。
+    /// Dispatcher で遅延済み（DispatcherPriority.Input）のためテンプレート適用は完了している
+    /// 前提で PART_TextBox を解決する。見つからない場合は DatePicker 自身にフォーカスする。
+    /// </summary>
+    private static FrameworkElement ResolveFocusTarget(FrameworkElement element) =>
+        element is DatePicker datePicker && datePicker.Template?.FindName("PART_TextBox", datePicker) is TextBox textBox
+            ? textBox
+            : element;
 }

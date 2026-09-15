@@ -67,12 +67,15 @@
     <!--
         DatePicker。MahApps.Styles.DatePicker は暗黙スタイルとして定義されていない
         （x:Key 指定必須）ため、この暗黙スタイルが「MahApps の見た目にする」役も兼ねる。
-        beh:DatePickerInputBehavior.IsEnabled の Setter は全画面デザイン統一フェーズ4で追加する。
+        DatePickerInputBehavior は日付専用コントロールである DatePicker に対する暗黙適用のため、
+        13章の「暗黙スタイルでキー操作を全画面自動適用しない」方針の対象外とする
+        （XAML側に書き忘れる余地をなくすため、全 DatePicker に一律適用する）。
     -->
     <Style TargetType="DatePicker" BasedOn="{StaticResource MahApps.Styles.DatePicker}">
         <Setter Property="MinHeight" Value="{StaticResource InputControlHeight}" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="beh:DatePickerInputBehavior.IsEnabled" Value="True" />
     </Style>
 
     <!--
