@@ -3,12 +3,14 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
-/// 入金伝票の充当状態（<see cref="AllocationStatus"/>）を、伝票単位の入金額
-/// （<c>receipt_amount</c>）と同一伝票の行の充当額合計から判定する（TODO.md 7-1）。
+/// 入金伝票の充当状態（<see cref="AllocationStatus"/>）を、伝票単位の入金額合計と
+/// 充当額合計から判定する（TODO.md 7-1）。<c>receipt</c>では伝票単位の入金額合計は
+/// 同一伝票の<c>amount</c>のSUM、充当額は<c>receipt_allocation</c>の<c>allocated_amount</c>
+/// 合計から得る。<c>detail_receipt</c>では前者は<c>receipt_amount</c>列そのもの（伝票単位の値）。
 /// </summary>
 public static class AllocationStatusCalculator
 {
-    /// <param name="receiptAmount">伝票単位の入金額（<c>receipt_amount</c>。SUMしてはいけない値）。</param>
+    /// <param name="receiptAmount">伝票単位の入金額合計。</param>
     /// <param name="allocatedTotal">
     /// 同一伝票の全行の <c>allocated_amount</c> 合計。振込手数料差額（<c>fee_adjustment_amount</c>）
     /// は実際に受け取った金額ではないため含めない。

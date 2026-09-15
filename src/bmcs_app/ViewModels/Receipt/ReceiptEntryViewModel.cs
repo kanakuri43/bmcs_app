@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using bmcs_app.Application.Master;
 using bmcs_app.Application.Receipt;
 using bmcs_app.Domain.Entities;
@@ -16,11 +18,10 @@ namespace bmcs_app.ViewModels.Receipt;
 /// 入金入力画面（TODO.md 7-2）。締め得意先（請求単位／伝票単位）専用。都度得意先（内税明細単位）の
 /// 入金は明細入金画面（TODO.md 7-4）が担う。
 ///
-/// 得意先・入金額を入力すると、確定済み請求へ古い順に自動配分した明細行を自動表示する
-/// （<see cref="ReceiptEntryService.PreviewAllocationAsync"/>。docs/product-spec.md 共通業務ルール4。
-/// <see cref="Billing.BillingClosingViewModel"/>の「条件変更時に自動でプレビュー再取得」と同じ方式）。
-/// 明細行は自動配分の結果を表示するだけで、行の手動追加・編集・削除は行わない（古い順の自動配分が
-/// 業務ルールそのものであり、画面での上書きを許すとその前提が崩れるため）。
+/// 明細行は支払手段の内訳（入金方法＋金額＋行摘要）であり、利用者が直接追加・編集・削除する
+/// （売上入力と同じ明細行パターン。docs/design_document.md 17章、2026-09-15改訂）。請求への充当は
+/// 保存時に<see cref="ReceiptEntryService.SaveNewAsync"/>が内部で自動計算するため、この画面には
+/// 表示しない。利用者に必要なのは充当先ではなく残高であるため、得意先確定時に請求残高を表示する。
 ///
 /// 振込手数料差額の入力（TODO.md 7-3）・既存伝票の訂正／取消（TODO.md 7-5）はこの画面のスコープ外
 /// （別タスク）。伝票No.欄で既存の入金を読み込んだ場合は読み取り専用表示にする（明細請求書発行画面と
@@ -33,6 +34,7 @@ public partial class ReceiptEntryViewModel(
     WindowService windowService) : ViewModelBase
 {
     private Customer? _customer;
+    private decimal _outstandingTotal;
 
     public ObservableCollection<BankAccount> BankAccounts { get; } = [];
 
@@ -44,7 +46,7 @@ public partial class ReceiptEntryViewModel(
         new(ReceiptMethod.Offset, "相殺"),
     ];
 
-    public ObservableCollection<ReceiptAllocationLine> Lines { get; } = [];
+    public ObservableCollection<ReceiptLineViewModel> Lines { get; } = [];
 
     [ObservableProperty]
     public partial string ReceiptSlipNumberQuery { get; set; } = string.Empty;
@@ -52,10 +54,11 @@ public partial class ReceiptEntryViewModel(
     /// <summary>既存の入金を読み込んだ状態かどうか。真のときは読み取り専用（訂正・取消はTODO.md 7-5）。</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(AddLineCommand))]
     [NotifyPropertyChangedFor(nameof(IsEditable))]
     public partial bool IsExistingLoaded { get; set; }
 
-    /// <summary>入金方法・入金先口座欄の編集可否（<see cref="IsExistingLoaded"/>の否定）。</summary>
+    /// <summary>ヘッダー・明細の編集可否（<see cref="IsExistingLoaded"/>の否定）。</summary>
     public bool IsEditable => !IsExistingLoaded;
 
     [ObservableProperty]
@@ -68,36 +71,23 @@ public partial class ReceiptEntryViewModel(
     public partial string CustomerName { get; set; } = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsBankTransferSelected))]
-    public partial ReceiptMethod ReceiptMethod { get; set; } = ReceiptMethod.BankTransfer;
-
-    /// <summary>入金先口座欄の表示可否（振込のときだけ表示する）。</summary>
-    public bool IsBankTransferSelected => ReceiptMethod == ReceiptMethod.BankTransfer;
-
-    [ObservableProperty]
-    public partial string? BankAccountCode { get; set; }
-
-    /// <summary>
-    /// 入金額。変更すると自動的にその金額での配分をプレビュー取得する
-    /// （<see cref="OnReceiptAmountTextChanged"/>。XAML側は<c>UpdateSourceTrigger=LostFocus</c>のため
-    /// 1文字入力するごとにDB照会は走らない。<see cref="Billing.BillingClosingViewModel"/>と同じ方式）。
-    /// </summary>
-    [ObservableProperty]
-    public partial string ReceiptAmountText { get; set; } = string.Empty;
-
-    [ObservableProperty]
     public partial string SlipRemarks { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
 
-    /// <summary>請求に充当された額の合計（前受・過入金の行を除く）。</summary>
-    public decimal AllocatedToBillingTotal => Lines.Where(l => l.BillingNumber is not null).Sum(l => l.AllocatedAmount);
+    /// <summary>今回の入金額（明細行の合計）。</summary>
+    public decimal ReceiptTotal => Lines.Sum(l => l.Amount);
 
-    /// <summary>前受・過入金（充当先未定）の額。</summary>
-    public decimal UnallocatedTotal => Lines.Where(l => l.BillingNumber is null).Sum(l => l.AllocatedAmount);
+    /// <summary>得意先確定時に取得した請求残高（今回の入金額を含まない、入金前の残高）。</summary>
+    public decimal OutstandingTotal => _outstandingTotal;
 
-    private bool CanSave => !IsExistingLoaded && _customer is not null && Lines.Count > 0;
+    /// <summary>今回の入金後に見込まれる請求残高。</summary>
+    public decimal OutstandingAfterReceiptTotal => _outstandingTotal - ReceiptTotal;
+
+    private bool CanSave => !IsExistingLoaded && _customer is not null && Lines.Any(l => !l.IsBlank);
+
+    private bool CanAddLine => IsEditable;
 
     private bool CanUseUnimplementedFeature => false;
 
@@ -109,6 +99,13 @@ public partial class ReceiptEntryViewModel(
         foreach (var account in accounts)
         {
             BankAccounts.Add(account);
+        }
+
+        Lines.CollectionChanged += OnLinesCollectionChanged;
+
+        if (Lines.Count == 0)
+        {
+            Lines.Add(CreateLine());
         }
     });
 
@@ -160,46 +157,68 @@ public partial class ReceiptEntryViewModel(
         _customer = customer;
         CustomerCode = customer.CustomerCode;
         CustomerName = customer.CustomerName;
-        StatusMessage = $"得意先: {customer.CustomerName}";
 
-        await RefreshAllocationPreviewAsync();
+        var summary = await receiptEntryService.GetReceivableSummaryAsync(customer.CustomerCode);
+        _outstandingTotal = summary.OutstandingTotal;
+        RaiseTotalsChanged();
+
+        StatusMessage = $"得意先: {customer.CustomerName}";
         SaveCommand.NotifyCanExecuteChanged();
     }
 
-    partial void OnReceiptAmountTextChanged(string value) => _ = RefreshAllocationPreviewAsync();
+    /// <summary>行追加（F2）。</summary>
+    [RelayCommand(CanExecute = nameof(CanAddLine))]
+    private void AddLine() => Lines.Add(CreateLine());
 
-    /// <summary>
-    /// 得意先・入金額の両方が確定していれば、確定済み請求への古い順の自動配分をプレビュー取得する
-    /// （保存しない。<see cref="ReceiptEntryService.PreviewAllocationAsync"/>）。
-    /// </summary>
-    private Task RefreshAllocationPreviewAsync() => RunBusyAsync(async () =>
+    private ReceiptLineViewModel CreateLine() => new(onDelete: OnDeleteLine);
+
+    private void OnDeleteLine(ReceiptLineViewModel line)
     {
-        if (IsExistingLoaded || _customer is null || !TryParseReceiptAmount(out var amount) || amount <= 0m)
+        if (Lines.Count <= 1)
         {
-            Lines.Clear();
-            RaiseTotalsChanged();
-            SaveCommand.NotifyCanExecuteChanged();
             return;
         }
 
-        try
+        Lines.Remove(line);
+        EnsureTrailingBlankLine();
+    }
+
+    private void EnsureTrailingBlankLine()
+    {
+        if (Lines.Count == 0 || !Lines[^1].IsBlank)
         {
-            var allocations = await receiptEntryService.PreviewAllocationAsync(_customer.CustomerCode, amount);
-            Lines.Clear();
-            foreach (var line in allocations)
+            Lines.Add(CreateLine());
+        }
+    }
+
+    private void OnLinesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems is not null)
+        {
+            foreach (ReceiptLineViewModel line in e.NewItems)
             {
-                Lines.Add(line);
+                line.PropertyChanged += OnLinePropertyChanged;
             }
         }
-        catch (ReceiptEntryException ex)
+
+        if (e.OldItems is not null)
         {
-            Lines.Clear();
-            StatusMessage = $"配分エラー: {ex.Message}";
+            foreach (ReceiptLineViewModel line in e.OldItems)
+            {
+                line.PropertyChanged -= OnLinePropertyChanged;
+            }
         }
 
         RaiseTotalsChanged();
-        SaveCommand.NotifyCanExecuteChanged();
-    });
+    }
+
+    private void OnLinePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ReceiptLineViewModel.Amount))
+        {
+            RaiseTotalsChanged();
+        }
+    }
 
     /// <summary>
     /// 入金No.欄で Return を押したときの挙動（docs/product-spec.md UI/UX節「ジャーナル系画面の
@@ -220,7 +239,7 @@ public partial class ReceiptEntryViewModel(
         if (lines.Count == 0)
         {
             // 該当が無ければエラー表示のみに留め、新規登録モードへは進まない
-            // （入力済みの得意先・入金額等を破棄しない。docs/product-spec.md UI/UX節）。
+            // （入力済みの得意先・明細行等を破棄しない。docs/product-spec.md UI/UX節）。
             StatusMessage = $"入金No.「{number}」は見つかりません。";
             return;
         }
@@ -257,9 +276,9 @@ public partial class ReceiptEntryViewModel(
             return;
         }
 
-        if (!TryParseReceiptAmount(out var amount))
+        if (!TryBuildLineInputs(out var lineInputs, out var error))
         {
-            StatusMessage = "入金額の形式が不正です。";
+            StatusMessage = error;
             return;
         }
 
@@ -268,10 +287,8 @@ public partial class ReceiptEntryViewModel(
             var receiptSlipNumber = await receiptEntryService.SaveNewAsync(
                 _customer.CustomerCode,
                 receiptDate,
-                ReceiptMethod,
-                ReceiptMethod == ReceiptMethod.BankTransfer ? BankAccountCode : null,
-                amount,
-                string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks);
+                string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks,
+                lineInputs);
 
             // 登録成功後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
             ClearForm();
@@ -294,8 +311,41 @@ public partial class ReceiptEntryViewModel(
     {
     }
 
-    private bool TryParseReceiptAmount(out decimal amount) =>
-        decimal.TryParse(ReceiptAmountText.Replace(",", string.Empty), out amount);
+    private bool TryBuildLineInputs(out List<ReceiptLineInput> lineInputs, out string error)
+    {
+        lineInputs = [];
+        error = string.Empty;
+
+        foreach (var line in Lines.Where(l => !l.IsBlank))
+        {
+            DateOnly? billDueDate = null;
+            if (line.ReceiptMethod == ReceiptMethod.PromissoryNote)
+            {
+                if (!DateOnly.TryParseExact(line.BillDueDateText, "yyyy/MM/dd", out var parsed))
+                {
+                    error = "手形期日の形式が不正です（yyyy/MM/dd）。";
+                    return false;
+                }
+
+                billDueDate = parsed;
+            }
+
+            lineInputs.Add(new ReceiptLineInput(
+                line.ReceiptMethod,
+                line.BankAccountCode,
+                billDueDate,
+                line.Amount,
+                string.IsNullOrWhiteSpace(line.LineRemarks) ? null : line.LineRemarks));
+        }
+
+        if (lineInputs.Count == 0)
+        {
+            error = "明細行を1件以上入力してください。";
+            return false;
+        }
+
+        return true;
+    }
 
     private void ApplyExisting(string receiptSlipNumber, List<ReceiptEntity> lines)
     {
@@ -305,19 +355,23 @@ public partial class ReceiptEntryViewModel(
         ReceiptDateText = header.ReceiptDate.ToString("yyyy/MM/dd");
         CustomerCode = header.CustomerCode;
         CustomerName = header.CustomerName;
-        ReceiptMethod = header.ReceiptMethod;
-        BankAccountCode = header.BankAccountCode;
-        ReceiptAmountText = header.ReceiptAmount.ToString("N0");
         SlipRemarks = header.SlipRemarks ?? string.Empty;
         _customer = null;
+        _outstandingTotal = 0m;
 
-        Lines.Clear();
+        ClearLines();
         foreach (var line in lines)
         {
-            Lines.Add(new ReceiptAllocationLine(line.BillingNumber, null, null, line.AllocatedAmount));
+            var lineVm = CreateLine();
+            lineVm.LineNumber = line.LineNumber;
+            lineVm.ReceiptMethod = line.ReceiptMethod;
+            lineVm.BankAccountCode = line.BankAccountCode;
+            lineVm.BillDueDateText = line.BillDueDate?.ToString("yyyy/MM/dd") ?? string.Empty;
+            lineVm.Amount = line.Amount;
+            lineVm.LineRemarks = line.LineRemarks ?? string.Empty;
+            Lines.Add(lineVm);
         }
 
-        RaiseTotalsChanged();
         IsExistingLoaded = true;
         SaveCommand.NotifyCanExecuteChanged();
         StatusMessage = $"入金No. {receiptSlipNumber} を読み込みました（読み取り専用。訂正・取消はTODO.md 7-5で対応予定）。";
@@ -329,22 +383,33 @@ public partial class ReceiptEntryViewModel(
         ReceiptDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
-        ReceiptMethod = ReceiptMethod.BankTransfer;
-        BankAccountCode = null;
-        ReceiptAmountText = string.Empty;
         SlipRemarks = string.Empty;
         _customer = null;
+        _outstandingTotal = 0m;
 
-        Lines.Clear();
+        ClearLines();
+        Lines.Add(CreateLine());
         RaiseTotalsChanged();
         IsExistingLoaded = false;
         SaveCommand.NotifyCanExecuteChanged();
     }
 
+    private void ClearLines()
+    {
+        foreach (var line in Lines)
+        {
+            line.PropertyChanged -= OnLinePropertyChanged;
+        }
+
+        Lines.Clear();
+    }
+
     private void RaiseTotalsChanged()
     {
-        OnPropertyChanged(nameof(AllocatedToBillingTotal));
-        OnPropertyChanged(nameof(UnallocatedTotal));
+        OnPropertyChanged(nameof(ReceiptTotal));
+        OnPropertyChanged(nameof(OutstandingTotal));
+        OnPropertyChanged(nameof(OutstandingAfterReceiptTotal));
+        SaveCommand.NotifyCanExecuteChanged();
     }
 }
 

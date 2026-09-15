@@ -99,8 +99,8 @@ public class BillingReleaseService(
 
         // 解除で billing_number が外れた売上行は充当先を失うため、消込キャッシュ列を未消込へ
         // 戻す（TODO.md 7-1。解除前は消込完了/一部消込のまま取り残されていた既存の不整合の修正）。
-        // 解除した請求に充当されていた入金（receipt.allocated_amount）自体は本処理では
-        // 付け替えない（再消込は7-2の責務。docs/design_document.md 16章「既知の限界」）。
+        // 解除した請求に充当されていた入金（receipt_allocation.allocated_amount）自体は
+        // 本処理では付け替えない（再消込は7-2の責務。docs/design_document.md 16章「既知の限界」）。
         await settlementService.RecalculateForCustomerAsync(billing.CustomerCode, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);

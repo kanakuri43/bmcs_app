@@ -8,6 +8,7 @@ using CustomerEntity = bmcs_app.Domain.Entities.Customer;
 using DetailInvoiceEntity = bmcs_app.Domain.Entities.DetailInvoice;
 using DetailInvoiceSalesLineEntity = bmcs_app.Domain.Entities.DetailInvoiceSalesLine;
 using DetailReceiptEntity = bmcs_app.Domain.Entities.DetailReceipt;
+using ReceiptAllocationEntity = bmcs_app.Domain.Entities.ReceiptAllocation;
 using ReceiptEntity = bmcs_app.Domain.Entities.Receipt;
 using SalesEntity = bmcs_app.Domain.Entities.Sales;
 
@@ -16,7 +17,8 @@ namespace bmcs_app.Application.Tests.Receipt;
 /// <summary>
 /// 入金消込（TODO.md 7-1）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
 /// （docs/architecture.md 16章）。完了条件「登録・取消・訂正のいずれでもキャッシュ列が
-/// 実態と一致する」の実証。
+/// 実態と一致する」の実証。<c>receipt</c>は支払手段の内訳、充当は<c>receipt_allocation</c>が
+/// 別に持つ（docs/design_document.md 17章、2026-09-15改訂）。
 /// </summary>
 /// <remarks>
 /// <see cref="SettlementService.RecalculateForCustomerAsync"/> は自前で<c>BeginTransactionAsync</c>
@@ -48,7 +50,9 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
                 NewClosingSalesLine(CustomerInvoice, TaxUnit.Invoice, slip, 2, 4000m, "__TSTBIL_STL01"));
 
             await InsertReceiptAsync(dbContext,
-                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL01", 1, 11000m, "__TSTBIL_STL01", 11000m));
+                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL01", 1, 11000m));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL01", 1, "__TSTBIL_STL01", 11000m));
 
             var result = await service.RecalculateForCustomerAsync(CustomerInvoice);
 
@@ -81,7 +85,9 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
                 NewClosingSalesLine(CustomerInvoice, TaxUnit.Invoice, slip, 2, 4000m, "__TSTBIL_STL02", slipDate: new DateOnly(2026, 7, 2)));
 
             await InsertReceiptAsync(dbContext,
-                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL02", 1, 5500m, "__TSTBIL_STL02", 5500m));
+                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL02", 1, 5500m));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL02", 1, "__TSTBIL_STL02", 5500m));
 
             await service.RecalculateForCustomerAsync(CustomerInvoice);
 
@@ -119,9 +125,12 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
                 NewClosingSalesLine(CustomerInvoice, TaxUnit.Invoice, slipA, 1, 10000m, "__TSTBIL_STLA"),
                 NewClosingSalesLine(CustomerInvoice, TaxUnit.Invoice, slipB, 1, 5000m, "__TSTBIL_STLB"));
 
+            // 入金1件（16,500）を古い順にA(11,000・全額)→B(5,500・一部)へ充当する。
             await InsertReceiptAsync(dbContext,
-                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STLAB", 1, 16500m, "__TSTBIL_STLA", 11000m),
-                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STLAB", 2, 16500m, "__TSTBIL_STLB", 5500m));
+                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STLAB", 1, 16500m));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STLAB", 1, "__TSTBIL_STLA", 11000m),
+                NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STLAB", 2, "__TSTBIL_STLB", 5500m));
 
             await service.RecalculateForCustomerAsync(CustomerInvoice);
 
@@ -153,9 +162,10 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertSalesAsync(dbContext,
                 NewClosingSalesLine(CustomerInvoice, TaxUnit.Invoice, slip, 1, 10000m, "__TSTBIL_STL03"));
 
-            var receipt = NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL03", 1, 9780m, "__TSTBIL_STL03", 9780m);
-            receipt.FeeAdjustmentAmount = 220m;
-            await InsertReceiptAsync(dbContext, receipt);
+            await InsertReceiptAsync(dbContext,
+                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL03", 1, 9780m));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL03", 1, "__TSTBIL_STL03", 9780m, feeAdjustmentAmount: 220m));
 
             await service.RecalculateForCustomerAsync(CustomerInvoice);
 
@@ -191,7 +201,9 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
                 NewClosingSalesLine(CustomerInvoice, TaxUnit.Invoice, slip, 2, -2000m, "__TSTBIL_STL04", SlipType.Return));
 
             await InsertReceiptAsync(dbContext,
-                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL04", 1, 8000m, "__TSTBIL_STL04", 8000m));
+                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL04", 1, 8000m));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL04", 1, "__TSTBIL_STL04", 8000m));
 
             await service.RecalculateForCustomerAsync(CustomerInvoice);
 
@@ -223,7 +235,9 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
                 NewClosingSalesLine(CustomerInvoice, TaxUnit.Invoice, slip, 2, -2000m, "__TSTBIL_STL05", SlipType.Return, slipDate: new DateOnly(2026, 7, 2)));
 
             await InsertReceiptAsync(dbContext,
-                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL05", 1, 5000m, "__TSTBIL_STL05", 5000m));
+                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL05", 1, 5000m));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL05", 1, "__TSTBIL_STL05", 5000m));
 
             await service.RecalculateForCustomerAsync(CustomerInvoice);
 
@@ -256,8 +270,9 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertSalesAsync(dbContext,
                 NewClosingSalesLine(CustomerInvoice, TaxUnit.Invoice, slip, 1, 5000m, "__TSTBIL_STL06"));
 
+            // 充当先の無い前受（receipt_allocationの行を作らない＝充当額合計は常に0）。
             await InsertReceiptAsync(dbContext,
-                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL06", 1, 3000m, billingNumber: null, allocatedAmount: 0m));
+                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL06", 1, 3000m));
 
             await service.RecalculateForCustomerAsync(CustomerInvoice);
 
@@ -290,7 +305,9 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
                 NewClosingSalesLine(CustomerInvoice, TaxUnit.Invoice, slip, 1, 10000m, "__TSTBIL_STL07"));
 
             await InsertReceiptAsync(dbContext,
-                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL07", 1, 15000m, "__TSTBIL_STL07", 15000m));
+                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL07", 1, 15000m));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL07", 1, "__TSTBIL_STL07", 15000m));
 
             await service.RecalculateForCustomerAsync(CustomerInvoice);
 
@@ -415,9 +432,13 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertSalesAsync(dbContext,
                 NewClosingSalesLine(CustomerInvoice, TaxUnit.Invoice, slip, 1, 10000m, "__TSTBIL_STL11"));
 
-            var receipt = NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL11", 1, 10000m, "__TSTBIL_STL11", 10000m);
+            var receipt = NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL11", 1, 10000m);
             receipt.IsDeleted = true;
             await InsertReceiptAsync(dbContext, receipt);
+
+            var allocation = NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL11", 1, "__TSTBIL_STL11", 10000m);
+            allocation.IsDeleted = true;
+            await InsertReceiptAllocationAsync(dbContext, allocation);
 
             await service.RecalculateForCustomerAsync(CustomerInvoice);
 
@@ -448,7 +469,9 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
 
             // 登録: 全額入金 → 消込完了。
             await InsertReceiptAsync(dbContext,
-                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, receiptSlip, 1, 10000m, "__TSTBIL_STL12", 10000m));
+                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, receiptSlip, 1, 10000m));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, receiptSlip, 1, "__TSTBIL_STL12", 10000m));
             await service.RecalculateForCustomerAsync(CustomerInvoice);
             var afterCreate = await ReloadSalesAsync(dbContext, slip);
             Assert.Equal(SettlementStatus.FullySettled, afterCreate.Single().SettlementStatus);
@@ -456,8 +479,9 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
 
             // 訂正: 入金額を6,000に減らす → 一部消込。
             var receiptLine = await dbContext.Receipts.SingleAsync(r => r.ReceiptSlipNumber == receiptSlip && r.LineNumber == 1);
-            receiptLine.ReceiptAmount = 6000m;
-            receiptLine.AllocatedAmount = 6000m;
+            receiptLine.Amount = 6000m;
+            var allocationLine = await dbContext.ReceiptAllocations.SingleAsync(a => a.ReceiptSlipNumber == receiptSlip && a.LineNumber == 1);
+            allocationLine.AllocatedAmount = 6000m;
             await dbContext.SaveChangesAsync();
             await service.RecalculateForCustomerAsync(CustomerInvoice);
             var afterUpdate = await ReloadSalesAsync(dbContext, slip);
@@ -466,6 +490,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
 
             // 取消: 入金行を論理削除 → 未消込に戻る。
             receiptLine.IsDeleted = true;
+            allocationLine.IsDeleted = true;
             await dbContext.SaveChangesAsync();
             await service.RecalculateForCustomerAsync(CustomerInvoice);
             var afterCancel = await ReloadSalesAsync(dbContext, slip);
@@ -493,7 +518,9 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertSalesAsync(dbContext,
                 NewClosingSalesLine(CustomerInvoice, TaxUnit.Invoice, slip, 1, 10000m, "__TSTBIL_STL13"));
             await InsertReceiptAsync(dbContext,
-                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL13", 1, 10000m, "__TSTBIL_STL13", 10000m));
+                NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL13", 1, 10000m));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL13", 1, "__TSTBIL_STL13", 10000m));
 
             var first = await service.RecalculateForCustomerAsync(CustomerInvoice);
             var second = await service.RecalculateForCustomerAsync(CustomerInvoice);
@@ -601,6 +628,12 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
     private static Task InsertReceiptAsync(BmcsDbContext dbContext, params ReceiptEntity[] lines)
     {
         dbContext.Receipts.AddRange(lines);
+        return dbContext.SaveChangesAsync();
+    }
+
+    private static Task InsertReceiptAllocationAsync(BmcsDbContext dbContext, params ReceiptAllocationEntity[] lines)
+    {
+        dbContext.ReceiptAllocations.AddRange(lines);
         return dbContext.SaveChangesAsync();
     }
 
@@ -733,9 +766,9 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
         };
     }
 
+    /// <summary>締め入金の明細行（支払手段の内訳）。充当は別途<see cref="NewReceiptAllocationLine"/>で作る。</summary>
     private static ReceiptEntity NewReceiptLine(
-        string customerCode, TaxUnit taxUnit, string receiptSlipNumber, short lineNumber, decimal receiptAmount,
-        string? billingNumber, decimal allocatedAmount)
+        string customerCode, TaxUnit taxUnit, string receiptSlipNumber, short lineNumber, decimal amount)
     {
         var now = DateTime.Now;
         return new ReceiptEntity
@@ -747,11 +780,31 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             TaxUnit = taxUnit,
             CustomerName = "テスト用得意先",
             ReceiptMethod = ReceiptMethod.BankTransfer,
-            ReceiptAmount = receiptAmount,
+            BankAccountCode = "BNK001",
+            Amount = amount,
+            AllocationStatus = AllocationStatus.Unallocated,
+            CreatedBy = "TEST",
+            CreatedAt = now,
+            UpdatedBy = "TEST",
+            UpdatedAt = now,
+        };
+    }
+
+    /// <summary>締め入金の請求への充当（内部データ）。</summary>
+    private static ReceiptAllocationEntity NewReceiptAllocationLine(
+        string customerCode, TaxUnit taxUnit, string receiptSlipNumber, short lineNumber,
+        string? billingNumber, decimal allocatedAmount, decimal feeAdjustmentAmount = 0m)
+    {
+        var now = DateTime.Now;
+        return new ReceiptAllocationEntity
+        {
+            ReceiptSlipNumber = receiptSlipNumber,
+            LineNumber = lineNumber,
+            CustomerCode = customerCode,
+            TaxUnit = taxUnit,
             BillingNumber = billingNumber,
             AllocatedAmount = allocatedAmount,
-            FeeAdjustmentAmount = 0m,
-            AllocationStatus = AllocationStatus.Unallocated,
+            FeeAdjustmentAmount = feeAdjustmentAmount,
             CreatedBy = "TEST",
             CreatedAt = now,
             UpdatedBy = "TEST",

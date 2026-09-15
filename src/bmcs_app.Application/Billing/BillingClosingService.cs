@@ -218,11 +218,9 @@ public class BillingClosingService(
 
         var receiptLines = await receiptQuery.ToListAsync(cancellationToken);
 
-        // receipt_amount は伝票単位の値のため、伝票番号ごとに1件へ畳んでから合計する
-        // （docs/database-schema.md 2.8節「これらのカラムをSUMしてはいけない」）。
-        var receiptAmount = receiptLines
-            .GroupBy(r => r.ReceiptSlipNumber)
-            .Sum(g => g.First().ReceiptAmount);
+        // receipt の明細行は支払手段の内訳（行単位の値）のため、単純に SUM してよい
+        // （docs/design_document.md 17章、2026-09-15改訂）。
+        var receiptAmount = receiptLines.Sum(r => r.Amount);
 
         var taxSummary = CalculateTaxSummary(customer, salesLines);
 

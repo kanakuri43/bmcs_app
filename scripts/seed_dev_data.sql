@@ -40,6 +40,7 @@ GO
 DELETE FROM dbo.detail_invoice_sales_line WHERE detail_invoice_number IN (N'DIV001', N'DIV002');
 DELETE FROM dbo.detail_receipt WHERE detail_receipt_number IN (N'DRC001', N'DRC002');
 DELETE FROM dbo.detail_invoice WHERE detail_invoice_number IN (N'DIV001', N'DIV002');
+DELETE FROM dbo.receipt_allocation WHERE receipt_slip_number IN (N'RCP_INV001', N'RCP_INV002', N'RCP_SLP001');
 DELETE FROM dbo.receipt WHERE receipt_slip_number IN (N'RCP_INV001', N'RCP_INV002', N'RCP_SLP001');
 DELETE FROM dbo.sales WHERE sales_slip_number IN (N'SALINV001', N'SALINV002', N'SALSLP001', N'SALSLP002',
                                                    N'SALLIN001', N'SALLIN002', N'SALLIN003', N'SALLIN004');
@@ -252,34 +253,47 @@ VALUES
 GO
 
 -- -----------------------------------------------------------------------------
--- 6. 締め入金（統合版。充当状態3種を網羅）
+-- 6. 締め入金（明細行＝支払手段の内訳。充当は receipt_allocation が別に持つ。
+--    docs/design_document.md 17章、2026-09-15改訂。充当状態3種を網羅）
 -- -----------------------------------------------------------------------------
 INSERT INTO dbo.receipt
     (receipt_slip_number, line_number, receipt_date, customer_code, tax_unit, customer_name, receipt_method,
-     bank_account_code, receipt_amount, billing_number, allocated_amount, fee_adjustment_amount,
-     allocation_status, created_by, created_at, updated_by, updated_at)
+     bank_account_code, bill_due_date, amount, allocation_status, created_by, created_at, updated_by, updated_at)
 VALUES
-    -- CUS001・請求単位: 充当完了
-    -- receipt_amount/allocated_amountは4000.00（2026-09-14修正: TODO.md 7-1決定3により
-    -- billingへの充当額はその請求に紐づくsales行へ配分される。全額11000.00を充当すると
-    -- SALINV002（amount=10000）が消込完了になり、既存のSALINV002の消込状態（一部消込・
-    -- settled_amount=4000.00）という境界値が再現できなくなる。一部入金に変更し、
-    -- SALINV002の既存値と整合させた）。
+    -- CUS001・請求単位: 充当完了（振込1行）
+    -- amountは4000.00（2026-09-14修正: TODO.md 7-1決定3によりbillingへの充当額はその請求に
+    -- 紐づくsales行へ配分される。全額11000.00を充当するとSALINV002（amount=10000）が消込
+    -- 完了になり、既存のSALINV002の消込状態（一部消込・settled_amount=4000.00）という境界値が
+    -- 再現できなくなる。一部入金に変更し、SALINV002の既存値と整合させた）。
     (N'RCP_INV001', 1, '2026-07-25', N'CUS001', 1, N'株式会社山田商事', 2,
-     N'BNK001', 4000.00, N'BIL_INV001', 4000.00, 0.00,
+     N'BNK001', NULL, 4000.00,
      3, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    -- CUS001・請求単位: 未充当（前受・過入金）
+    -- CUS001・請求単位: 未充当（前受・過入金。充当先が無いため receipt_allocation の行を作らない）
     (N'RCP_INV002', 1, '2026-08-05', N'CUS001', 1, N'株式会社山田商事', 1,
-     NULL, 3000.00, NULL, 0.00, 0.00,
+     NULL, NULL, 3000.00,
      1, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    -- CUS002・伝票単位: 一部充当
-    -- receipt_amount=10000.00／allocated_amount=8800.00（2026-09-14修正: 旧値は両方
+    -- CUS002・伝票単位: 一部充当（振込8,000＋現金2,000の2行で合計10,000。複数の支払手段が
+    -- 混在するケースを網羅する。2026-09-15改訂）
+    (N'RCP_SLP001', 1, '2026-08-01', N'CUS002', 2, N'鈴木工業株式会社', 2,
+     N'BNK001', NULL, 8000.00,
+     2, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    (N'RCP_SLP001', 2, '2026-08-01', N'CUS002', 2, N'鈴木工業株式会社', 1,
+     NULL, NULL, 2000.00,
+     2, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
+GO
+
+INSERT INTO dbo.receipt_allocation
+    (receipt_slip_number, line_number, customer_code, tax_unit, billing_number, allocated_amount,
+     fee_adjustment_amount, created_by, created_at, updated_by, updated_at)
+VALUES
+    (N'RCP_INV001', 1, N'CUS001', 1, N'BIL_INV001', 4000.00, 0.00,
+     N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    -- CUS002・伝票単位: 一部充当。allocated_amount=8800.00（2026-09-14修正: 旧値は両方
     -- 4000.00で、TODO.md 7-1決定1（対象額=amount=税抜8000.00）だと充当完了になり
     -- 一部充当の境界値が消える。請求額8800.00（税込）を超える過入金にすることで、
     -- 一部充当（8800.00 < 10000.00）の境界値を維持しつつ、過入金ケースも網羅する）。
-    (N'RCP_SLP001', 1, '2026-08-01', N'CUS002', 2, N'鈴木工業株式会社', 2,
-     N'BNK001', 10000.00, N'BIL_SLP001', 8800.00, 0.00,
-     2, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
+    (N'RCP_SLP001', 1, N'CUS002', 2, N'BIL_SLP001', 8800.00, 0.00,
+     N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
 -- -----------------------------------------------------------------------------

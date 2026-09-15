@@ -13,7 +13,7 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 - 月次締め処理の粗利計算に必要な原価カラム（`cost_price`）は、受注明細・売上明細の両テーブルに設ける。
 - 受注明細行には `sub_customer_id`（学校のクラス・先生等の子得意先／請求・納品先指定）カラムを設けるが、**参照先の子得意先マスタは作らず、現時点では未使用（値を持つだけで参照・更新する処理はない）。** 学校・官公庁向けの宛名柔軟性は、子得意先マスタではなく**都度書き換え方式**で実現することが確定した（C-9・2026-09-10確定）。ジャーナル系の画面（受注・売上・入金・明細請求書等）は、得意先コードで検索した後、`customer_name`（画面上の名称欄）を手入力で上書き修正できるようにする。学校－学年－クラスのような階層を持つ得意先も、マスタ上は常に一つの得意先として扱い、学年・クラスの違いは伝票入力時の名称上書きだけで表現する。`sub_customer_id` は将来の別要件に備えて列は残すが、削除しない以外の対応方針はない（実装予定なし）。
 - **売上・入金・請求残高は、消費税計算単位（請求単位／伝票単位／明細単位）で物理テーブルを分割しない。** `sales` / `receipt` / `billing` の各1テーブルに統合し、`tax_unit` カラム（1=請求単位／2=伝票単位／3=内税明細単位）で税単位を表す（2026-09-08決定。経緯は本章末尾「税単位別テーブル分割の統合」を参照）。得意先マスタの税区分設定に応じて対象の得意先データがどのテーブル群に属するかが決まる、という考え方自体は変わらないが、それを物理テーブルの選択ではなく `tax_unit` カラムの値で表す。1得意先は常にいずれか1つの単位に属する想定（この前提は変わらない）。**明細単位の入金・請求（`detail_receipt` / `detail_invoice`）は構造が本当に異なるため統合対象外**（繰越残高の概念がない、`target_type` 分岐がある等）。
-- **`sales` / `receipt` / `billing` は、得意先マスタとの複合FKで税単位の整合をDBが強制する。** `customer` に `UNIQUE (customer_code, tax_unit)` を持たせ、各テーブルから `(customer_code, tax_unit)` の複合FKで参照する。「伝票の税単位は得意先マスタの税区分と必ず一致する」がDB制約になるため、誤った税単位でINSERTすることはできない。同様に `billing` にも `UNIQUE (billing_number, tax_unit)` を持たせ、`sales` / `receipt` から `(billing_number, tax_unit)` の複合FKで参照することで、税単位をまたいで請求データを参照できないことも強制する（`billing_number IS NULL` の未請求・前受金行はSQL Serverの MATCH SIMPLE によりFK検査対象外になり、そのまま表現できる）。
+- **`sales` / `receipt` / `billing` は、得意先マスタとの複合FKで税単位の整合をDBが強制する。** `customer` に `UNIQUE (customer_code, tax_unit)` を持たせ、各テーブルから `(customer_code, tax_unit)` の複合FKで参照する。「伝票の税単位は得意先マスタの税区分と必ず一致する」がDB制約になるため、誤った税単位でINSERTすることはできない。同様に `billing` にも `UNIQUE (billing_number, tax_unit)` を持たせ、`sales` / `receipt_allocation` から `(billing_number, tax_unit)` の複合FKで参照することで、税単位をまたいで請求データを参照できないことも強制する（`receipt`自体はbillingへのFKを持たない。2.10節参照）（`billing_number IS NULL` の未請求・前受金行はSQL Serverの MATCH SIMPLE によりFK検査対象外になり、そのまま表現できる）。
 - **明細入金は、税区分が「明細単位」の得意先専用の入金テーブルとして実装する。** 明細入金を使う得意先は税単位が明細単位の得意先のみの予定であるため、専用テーブルを新設するか `receipt` に一本化するかという判断は不要（明細単位バケット＝明細入金テーブルそのもの）。**`receipt`（締め入金）と `detail_receipt`（明細入金）が別テーブルという非対称は意図的なもの。** 明細入金は「売上伝票または明細請求書を指定したピンポイント消込」であり、締め入金（請求単位で古い順に自動消込）とは保持すべきカラムが異なるため統合しない（税単位が同じだけで構造まで同じとは限らない、というのが `sales`/`receipt`/`billing` 統合との違い）。
 - **明細請求書と売上の紐付けは、売上明細（行）単位の連携テーブルで管理する。** 1つの売上の各明細行が、それぞれ別の明細請求書に分散して紐づくことがあるため、売上ヘッダー単位の直接FK（1対多）では表現できない。売上ヘッダー単位ではなく、売上明細行単位での多対多の紐付けが必要。
 - **消込ステータスはキャッシュ列方式で管理する。** 売上明細行に消込ステータスのカラムを持ち、入金の登録・取消・訂正時に関連する売上明細のステータスを同一トランザクション内で更新する。都度SUM計算方式（入金明細を都度集計）は、元帳表示・明細請求書候補抽出・月次締めの整合性チェックなど絞り込み表示が頻出するため採用しない。
@@ -263,7 +263,8 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | 業務概念 | テーブル | 構成 |
 |---|---|---|
 | 売上（全税単位共通） | `sales` | 明細行1テーブル |
-| 入金（締め入金。請求単位／伝票単位共通） | `receipt` | 明細行1テーブル |
+| 入金（締め入金。請求単位／伝票単位共通） | `receipt` | 明細行1テーブル（支払手段の内訳） |
+| 締め入金の請求への充当（内部データ・画面には非表示） | `receipt_allocation` | 明細行1テーブル |
 | 明細入金（明細単位） | `detail_receipt` | 明細行1テーブル |
 | 請求データ（請求単位／伝票単位共通） | `billing` | ヘッダーのみ |
 | 明細請求書 | `detail_invoice` | ヘッダーのみ |
@@ -279,7 +280,7 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | 伝票単位 | `sales`（`tax_unit=2`） | `receipt`（`tax_unit=2`） | `billing`（`tax_unit=2`） |
 | 内税明細単位（＝都度得意先） | `sales`（`tax_unit=3`） | `detail_receipt` | `detail_invoice`（繰越残高の概念がないため請求データではない） |
 
-**この対応はDBの複合FKで強制される。** `customer` の `UNIQUE (customer_code, tax_unit)` を `sales`/`receipt`/`billing` から `(customer_code, tax_unit)` の複合FKで参照するため、得意先マスタの税区分と異なる `tax_unit` でINSERTすることはできない。同様に `billing` の `UNIQUE (billing_number, tax_unit)` を `sales`/`receipt` から複合FKで参照するため、税単位をまたいで請求データを参照することもできない（`billing_number IS NULL` の行はFK検査対象外）。
+**この対応はDBの複合FKで強制される。** `customer` の `UNIQUE (customer_code, tax_unit)` を `sales`/`receipt`/`billing` から `(customer_code, tax_unit)` の複合FKで参照するため、得意先マスタの税区分と異なる `tax_unit` でINSERTすることはできない。同様に `billing` の `UNIQUE (billing_number, tax_unit)` を `sales`/`receipt_allocation` から複合FKで参照するため、税単位をまたいで請求データを参照することもできない（`billing_number IS NULL` の行はFK検査対象外）。
 
 #### 非正規化構成の帰結（重要な運用ルール）
 
@@ -322,7 +323,7 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `settlement_status` | `tinyint` | × | `1`＝未消込／`2`＝一部消込／`3`＝消込完了 |
 | `settled_amount` | `decimal(15,2)` | × | 消込済金額 |
 
-**`settlement_status`／`settled_amount` はキャッシュ列。** `SettlementService.RecalculateForCustomerAsync`（`src/bmcs_app.Application/Receipt/`、TODO.md 7-1）が入金データから得意先単位で再計算する。対象額は本テーブルの `amount`（税抜・税込いずれも `amount` がそのまま対象額になり、消費税分は行レベルの消込に載せない）。`tax_unit`=1/2 は `receipt`（`billing_number` 経由）、`tax_unit`=3 は `detail_receipt`（直接指定・明細請求書経由の合算）が充当元になる。詳細は `docs/design_document.md` 16章。
+**`settlement_status`／`settled_amount` はキャッシュ列。** `SettlementService.RecalculateForCustomerAsync`（`src/bmcs_app.Application/Receipt/`、TODO.md 7-1）が入金データから得意先単位で再計算する。対象額は本テーブルの `amount`（税抜・税込いずれも `amount` がそのまま対象額になり、消費税分は行レベルの消込に載せない）。`tax_unit`=1/2 は `receipt_allocation`（`billing_number` 経由）、`tax_unit`=3 は `detail_receipt`（直接指定・明細請求書経由の合算）が充当元になる。詳細は `docs/design_document.md` 16章。
 | `order_slip_number` | `varchar(20)` | ○ | 受注からの売上化の場合の受注伝票番号 |
 | `order_line_number` | `smallint` | ○ | 同、行番号 |
 | `billing_number` | `varchar(20)` | ○ | 請求データへの参照。**`NULL`＝未請求**、または `tax_unit=3`（明細請求書との紐付けは連携テーブル2.14で行うため常にNULL） |
@@ -350,7 +351,11 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 
 ### 2.10. 締め入金（`receipt`）
 
-**主キーは (`receipt_slip_number`, `line_number`)。各明細行が1件の充当を表す。** 旧 `receipt_tax_unit_invoice`/`_slip` の2テーブルを統合したもの（2.8節）。
+**主キーは (`receipt_slip_number`, `line_number`)。各明細行は支払手段の内訳（入金方法＋金額）を表す**
+（2026-09-15改訂。旧仕様では明細行＝請求への充当1件だったが、業務実態の確認により変更した。
+理由は`docs/design_document.md` 17章を参照）。請求への充当は`2.10-1節`の`receipt_allocation`が
+別途持ち、画面には表示しない内部データとする。旧 `receipt_tax_unit_invoice`/`_slip` の2テーブルを
+統合したもの（2.8節）。
 
 | カラム | 型 | NULL | 内容 |
 |---|---|---|---|
@@ -360,15 +365,37 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `customer_code` | `varchar(10)` | × | （**伝票単位の値**） |
 | `tax_unit` | `tinyint` | × | `1`＝請求単位／`2`＝伝票単位（内税明細単位の入金は `detail_receipt` が担うため対象外） |
 | `customer_name` | `nvarchar(60)` | × | スナップショット |
-| `receipt_method` | `tinyint` | × | `1`＝現金／`2`＝振込／`3`＝手形／`4`＝相殺 |
-| `bank_account_code` | `varchar(10)` | ○ | 入金先口座（FK → `bank_account`）。振込のとき使用 |
-| `receipt_amount` | `decimal(15,2)` | × | 入金額（**伝票単位の値。`SUM` してはいけない**） |
-| `billing_number` | `varchar(20)` | ○ | 充当先の請求データ。**`NULL`＝前受・過入金（充当先未定）** |
-| `allocated_amount` | `decimal(15,2)` | × | この行の充当額。**入力データ**（再計算の対象外） |
-| `fee_adjustment_amount` | `decimal(15,2)` | × | 振込手数料差額の調整額。**入力データ**。売上明細行への消込済金額には `allocated_amount + fee_adjustment_amount` として反映するが、`allocation_status` の判定には含めない |
-| `allocation_status` | `tinyint` | × | `1`＝未充当／`2`＝一部充当／`3`＝充当完了。**キャッシュ列**。同一伝票の `allocated_amount` 合計と `receipt_amount` の比較から `SettlementService` が導出する（TODO.md 7-1） |
+| `receipt_method` | `tinyint` | × | `1`＝現金／`2`＝振込／`3`＝手形／`4`＝相殺（**行単位の値**） |
+| `bank_account_code` | `varchar(10)` | ○ | 入金先口座（FK → `bank_account`）。`receipt_method=2`（振込）の行のみ必須（**行単位の値**） |
+| `bill_due_date` | `date` | ○ | 手形期日。`receipt_method=3`（手形）の行のみ必須（**行単位の値**） |
+| `amount` | `decimal(15,2)` | × | この行の入金額（**行単位の値。伝票合計は`SUM`して求める**） |
+| `allocation_status` | `tinyint` | × | `1`＝未充当／`2`＝一部充当／`3`＝充当完了。**キャッシュ列**。同一伝票の`amount`合計と、`receipt_allocation`の`allocated_amount`合計の比較から`SettlementService`が導出する（TODO.md 7-1） |
 | `slip_remarks` | `nvarchar(200)` | ○ | 伝票摘要（**伝票単位の値**。同一伝票の全行に複写。1章参照） |
 | `line_remarks` | `nvarchar(100)` | ○ | 行摘要 |
+
+**CHECK制約 `CK_receipt_method_columns`** … `receipt_method`と`bank_account_code`／`bill_due_date`
+の対応をDBで強制する（振込は口座必須・期日NULL、手形は期日必須・口座NULL、現金・相殺は両方NULL）。
+
+利用者にとって重要なのは「請求残高がいくら減ったか」であり、どの請求に充当されたかではないため
+（2026-09-15ユーザー確認）、画面（入金入力）は本テーブルの明細行のみを直接編集し、充当は保存時に
+自動計算して`receipt_allocation`へ書き込む。
+
+#### 2.10-1. 締め入金の充当（`receipt_allocation`）
+
+`receipt`から分離した内部データ（`016_split_receipt_allocation.sql`）。主キーは
+(`receipt_slip_number`, `line_number`)。`receipt`とは独立した行番号体系を持つ（支払手段の内訳の
+行数と、充当先の請求の件数は一致しない）。`receipt`への外部キーは張らない（`receipt`のPKが複合
+[`receipt_slip_number`, `line_number`]で、`receipt_slip_number`単独の一意キーが無いため）。
+
+| カラム | 型 | NULL | 内容 |
+|---|---|---|---|
+| `receipt_slip_number` | `varchar(20)` | PK | 入金伝票番号 |
+| `line_number` | `smallint` | PK | 充当行番号 |
+| `customer_code` | `varchar(10)` | × | 非正規化。`SettlementService`が得意先単位で充当行を引くために持つ |
+| `tax_unit` | `tinyint` | × | `1`／`2`。`customer`・`billing`への複合FKに必要 |
+| `billing_number` | `varchar(20)` | ○ | 充当先の請求データ。**`NULL`＝前受・過入金（充当先未定）** |
+| `allocated_amount` | `decimal(15,2)` | × | この行の充当額。**入力データ**（再計算の対象外） |
+| `fee_adjustment_amount` | `decimal(15,2)` | × | 振込手数料差額の調整額。**入力データ**。売上明細行への消込済金額には`allocated_amount + fee_adjustment_amount`として反映するが、充当ステータスの判定には含めない |
 
 締め得意先は請求単位で古い順に自動消込するため、1回の入金が複数の請求にまたがる場合は複数行になる。`billing_number` へ充当された額は、`SettlementService` がその billing に紐づく売上明細行へ伝票日付→伝票番号→行番号の古い順に配分する（TODO.md 7-1・`docs/design_document.md` 16章）。
 
@@ -444,7 +471,7 @@ OR
 | `confirmed_at` / `confirmed_by` | `datetime2(3)` / `varchar(10)` | × | 確定日時・確定者 |
 | `released_at` / `released_by` | `datetime2(3)` / `varchar(10)` | ○ | 解除日時・解除者 |
 
-**`UNIQUE (billing_number, tax_unit)`（`UQ_billing_number_tax_unit`）を持つ。** `sales`/`receipt` から複合FKで参照させるための一意制約。`billing_number` 単独で既に一意なので論理的には冗長だが、SQL Serverが要求するため必要（2.8節）。
+**`UNIQUE (billing_number, tax_unit)`（`UQ_billing_number_tax_unit`）を持つ。** `sales`/`receipt_allocation` から複合FKで参照させるための一意制約（`receipt`自体はbillingへのFKを持たない。2.10節参照）。`billing_number` 単独で既に一意なので論理的には冗長だが、SQL Serverが要求するため必要（2.8節）。
 
 **税率別内訳を子テーブルではなく固定カラムで持つ。** 日本の税率は少数の閉じた集合であり、「請求データはヘッダー1テーブル」という方針を崩さずに済むため。請求書の**明細部分**は売上ジャーナルから都度組み立てるが、**税額は本テーブルの確定値を印字**して再発行時に金額が変わらないようにする。
 

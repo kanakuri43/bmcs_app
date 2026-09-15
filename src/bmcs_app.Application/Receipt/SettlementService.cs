@@ -98,10 +98,14 @@ public class SettlementService(
             .Where(r => r.CustomerCode == customerCode && !r.IsDeleted)
             .ToListAsync(cancellationToken);
 
-        var poolByBilling = receiptLines
-            .Where(r => r.BillingNumber is not null)
-            .GroupBy(r => r.BillingNumber!)
-            .ToDictionary(g => g.Key, g => g.Sum(r => r.AllocatedAmount + r.FeeAdjustmentAmount));
+        var allocationLines = await dbContext.ReceiptAllocations
+            .Where(a => a.CustomerCode == customerCode && !a.IsDeleted)
+            .ToListAsync(cancellationToken);
+
+        var poolByBilling = allocationLines
+            .Where(a => a.BillingNumber is not null)
+            .GroupBy(a => a.BillingNumber!)
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedAmount + a.FeeAdjustmentAmount));
 
         var updatedSalesCount = 0;
 
@@ -119,12 +123,16 @@ public class SettlementService(
             }
         }
 
+        var allocatedTotalBySlip = allocationLines
+            .GroupBy(a => a.ReceiptSlipNumber)
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedAmount));
+
         var updatedReceiptCount = 0;
         foreach (var group in receiptLines.GroupBy(r => r.ReceiptSlipNumber))
         {
             var slipLines = group.ToList();
             var status = AllocationStatusCalculator.Determine(
-                slipLines[0].ReceiptAmount, slipLines.Sum(r => r.AllocatedAmount));
+                slipLines.Sum(r => r.Amount), allocatedTotalBySlip.GetValueOrDefault(group.Key));
             foreach (var line in slipLines)
             {
                 updatedReceiptCount += ApplyReceiptAllocationStatus(line, status, employeeCode, now);

@@ -294,7 +294,7 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
     }
 
     [Fact]
-    public async Task 入金伝票の複数明細行があってもreceipt_amountは1回だけ計上される()
+    public async Task 入金伝票の複数明細行は支払手段ごとの内訳でありreceipt_amountは合計で計上される()
     {
         await using var scope = fixture.Services.CreateAsyncScope();
         var (dbContext, service) = Resolve(scope);
@@ -303,7 +303,8 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
 
         var receiptSlip = "__TSTBIL_RCP_MULTI";
         var now = DateTime.Now;
-        // 1件の入金伝票を2つの請求へ充当する想定の2明細行（receipt_amountは伝票単位の値で同一）。
+        // 1件の入金伝票が現金3,000＋振込2,000の2明細行（支払手段の内訳）に分かれるケース。
+        // receiptの明細行はもう「伝票単位の値の複写」ではなく行ごとの実額のため、単純にSUMする。
         dbContext.Receipts.AddRange(
             new ReceiptEntity
             {
@@ -313,11 +314,8 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
                 CustomerCode = CustomerInvoice,
                 TaxUnit = TaxUnit.Invoice,
                 CustomerName = "テスト用得意先",
-                ReceiptMethod = ReceiptMethod.BankTransfer,
-                ReceiptAmount = 5000m,
-                BillingNumber = null,
-                AllocatedAmount = 3000m,
-                FeeAdjustmentAmount = 0m,
+                ReceiptMethod = ReceiptMethod.Cash,
+                Amount = 3000m,
                 AllocationStatus = AllocationStatus.PartiallyAllocated,
                 CreatedBy = "TEST", CreatedAt = now, UpdatedBy = "TEST", UpdatedAt = now,
             },
@@ -330,10 +328,8 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
                 TaxUnit = TaxUnit.Invoice,
                 CustomerName = "テスト用得意先",
                 ReceiptMethod = ReceiptMethod.BankTransfer,
-                ReceiptAmount = 5000m,
-                BillingNumber = null,
-                AllocatedAmount = 2000m,
-                FeeAdjustmentAmount = 0m,
+                BankAccountCode = "BNK001",
+                Amount = 2000m,
                 AllocationStatus = AllocationStatus.PartiallyAllocated,
                 CreatedBy = "TEST", CreatedAt = now, UpdatedBy = "TEST", UpdatedAt = now,
             });
@@ -344,7 +340,7 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
             var results = await service.ConfirmAsync(TestClosingDay, new DateOnly(2025, 7, 15));
             var target = Assert.Single(results, r => r.CustomerCode == CustomerInvoice);
 
-            Assert.Equal(5000m, target.ReceiptAmount); // 10000（誤って2倍）ではない
+            Assert.Equal(5000m, target.ReceiptAmount); // 3000+2000の単純合計
             Assert.Equal(-5000m, target.CurrentBillingAmount); // 前受金として残高がマイナスになる
         }
         finally
@@ -438,7 +434,7 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
 
     private static ReceiptEntity NewReceiptLine(
         string customerCode, TaxUnit taxUnit, string receiptSlipNumber, short lineNumber,
-        DateOnly receiptDate, decimal receiptAmount)
+        DateOnly receiptDate, decimal amount)
     {
         var now = DateTime.Now;
         return new ReceiptEntity
@@ -450,10 +446,8 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
             TaxUnit = taxUnit,
             CustomerName = "テスト用得意先",
             ReceiptMethod = ReceiptMethod.BankTransfer,
-            ReceiptAmount = receiptAmount,
-            BillingNumber = null,
-            AllocatedAmount = 0m,
-            FeeAdjustmentAmount = 0m,
+            BankAccountCode = "BNK001",
+            Amount = amount,
             AllocationStatus = AllocationStatus.Unallocated,
             CreatedBy = "TEST",
             CreatedAt = now,

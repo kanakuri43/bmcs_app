@@ -39,6 +39,8 @@ public class BmcsDbContext(DbContextOptions<BmcsDbContext> options) : DbContext(
 
     public DbSet<Receipt> Receipts => Set<Receipt>();
 
+    public DbSet<ReceiptAllocation> ReceiptAllocations => Set<ReceiptAllocation>();
+
     public DbSet<DetailInvoice> DetailInvoices => Set<DetailInvoice>();
 
     public DbSet<DetailReceipt> DetailReceipts => Set<DetailReceipt>();

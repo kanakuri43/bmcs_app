@@ -5,13 +5,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using BillingEntity = bmcs_app.Domain.Entities.Billing;
 using CustomerEntity = bmcs_app.Domain.Entities.Customer;
+using ReceiptAllocationEntity = bmcs_app.Domain.Entities.ReceiptAllocation;
 using SalesEntity = bmcs_app.Domain.Entities.Sales;
 
 namespace bmcs_app.Application.Tests.Receipt;
 
 /// <summary>
 /// 入金入力画面（TODO.md 7-2）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
-/// （docs/architecture.md 16章）。完了条件「複数請求にまたがる入金が古い順に充当される」の実証。
+/// （docs/architecture.md 16章）。明細行は支払手段の内訳（入金方法＋金額）であり、請求への充当
+/// （<see cref="ReceiptAllocationEntity"/>）は保存時に内部で自動計算される
+/// （docs/design_document.md 17章、2026-09-15改訂）。
 /// </summary>
 /// <remarks>
 /// <see cref="ReceiptEntryService.SaveNewAsync"/> は自前で<c>BeginTransactionAsync</c>する
@@ -21,6 +24,17 @@ namespace bmcs_app.Application.Tests.Receipt;
 /// </remarks>
 public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixture<DevDatabaseFixture>
 {
+    private const string BankAccountCode = "BNK001";
+
+    private static ReceiptLineInput CashLine(decimal amount, string? lineRemarks = null) =>
+        new(ReceiptMethod.Cash, null, null, amount, lineRemarks);
+
+    private static ReceiptLineInput BankTransferLine(decimal amount, string? bankAccountCode = BankAccountCode) =>
+        new(ReceiptMethod.BankTransfer, bankAccountCode, null, amount, null);
+
+    private static ReceiptLineInput PromissoryNoteLine(decimal amount, DateOnly? billDueDate) =>
+        new(ReceiptMethod.PromissoryNote, null, billDueDate, amount, null);
+
     [Fact]
     public async Task 単一の確定済み請求へ全額入金すると前受行なしで全額充当される()
     {
@@ -33,13 +47,16 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             await InsertBillingAsync(dbContext, "__TSTBIL_RCE01", customerCode, 10000m);
 
             var receiptSlipNumber = await service.SaveNewAsync(
-                customerCode, new DateOnly(2026, 8, 25), ReceiptMethod.Cash,
-                bankAccountCode: null, receiptAmount: 10000m, slipRemarks: null);
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(10000m)]);
 
             var lines = await ReloadReceiptAsync(dbContext, receiptSlipNumber);
             Assert.Single(lines);
-            Assert.Equal("__TSTBIL_RCE01", lines[0].BillingNumber);
-            Assert.Equal(10000m, lines[0].AllocatedAmount);
+            Assert.Equal(10000m, lines[0].Amount);
+
+            var allocations = await ReloadAllocationAsync(dbContext, receiptSlipNumber);
+            Assert.Single(allocations);
+            Assert.Equal("__TSTBIL_RCE01", allocations[0].BillingNumber);
+            Assert.Equal(10000m, allocations[0].AllocatedAmount);
         }
         finally
         {
@@ -61,13 +78,12 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             await InsertBillingAsync(dbContext, "__TSTBIL_RCE02A", customerCode, 10000m, new DateOnly(2026, 7, 20), "202607");
 
             var receiptSlipNumber = await service.SaveNewAsync(
-                customerCode, new DateOnly(2026, 8, 25), ReceiptMethod.Cash,
-                bankAccountCode: null, receiptAmount: 12000m, slipRemarks: null);
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(12000m)]);
 
-            var lines = await ReloadReceiptAsync(dbContext, receiptSlipNumber);
-            Assert.Equal(2, lines.Count);
-            var lineA = lines.Single(l => l.BillingNumber == "__TSTBIL_RCE02A");
-            var lineB = lines.Single(l => l.BillingNumber == "__TSTBIL_RCE02B");
+            var allocations = await ReloadAllocationAsync(dbContext, receiptSlipNumber);
+            Assert.Equal(2, allocations.Count);
+            var lineA = allocations.Single(a => a.BillingNumber == "__TSTBIL_RCE02A");
+            var lineB = allocations.Single(a => a.BillingNumber == "__TSTBIL_RCE02B");
             Assert.Equal(10000m, lineA.AllocatedAmount);
             Assert.Equal(2000m, lineB.AllocatedAmount);
         }
@@ -89,13 +105,12 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             await InsertBillingAsync(dbContext, "__TSTBIL_RCE03", customerCode, 10000m);
 
             var receiptSlipNumber = await service.SaveNewAsync(
-                customerCode, new DateOnly(2026, 8, 25), ReceiptMethod.Cash,
-                bankAccountCode: null, receiptAmount: 13000m, slipRemarks: null);
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(13000m)]);
 
-            var lines = await ReloadReceiptAsync(dbContext, receiptSlipNumber);
-            Assert.Equal(2, lines.Count);
-            Assert.Equal(10000m, lines.Single(l => l.BillingNumber == "__TSTBIL_RCE03").AllocatedAmount);
-            var unallocated = lines.Single(l => l.BillingNumber is null);
+            var allocations = await ReloadAllocationAsync(dbContext, receiptSlipNumber);
+            Assert.Equal(2, allocations.Count);
+            Assert.Equal(10000m, allocations.Single(a => a.BillingNumber == "__TSTBIL_RCE03").AllocatedAmount);
+            var unallocated = allocations.Single(a => a.BillingNumber is null);
             Assert.Equal(3000m, unallocated.AllocatedAmount);
         }
         finally
@@ -115,13 +130,47 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             await InsertCustomerAsync(dbContext, customerCode);
 
             var receiptSlipNumber = await service.SaveNewAsync(
-                customerCode, new DateOnly(2026, 8, 25), ReceiptMethod.Cash,
-                bankAccountCode: null, receiptAmount: 5000m, slipRemarks: null);
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(5000m)]);
+
+            var allocations = await ReloadAllocationAsync(dbContext, receiptSlipNumber);
+            Assert.Single(allocations);
+            Assert.Null(allocations[0].BillingNumber);
+            Assert.Equal(5000m, allocations[0].AllocatedAmount);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    [Fact]
+    public async Task 複数の入金方法を混在させた伝票が行どおりに保存され合計が古い順に充当される()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRCE10";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            await InsertBillingAsync(dbContext, "__TSTBIL_RCE10", customerCode, 10000m);
+
+            var receiptSlipNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null,
+                lines: [CashLine(2000m), BankTransferLine(8000m)]);
 
             var lines = await ReloadReceiptAsync(dbContext, receiptSlipNumber);
-            Assert.Single(lines);
-            Assert.Null(lines[0].BillingNumber);
-            Assert.Equal(5000m, lines[0].AllocatedAmount);
+            Assert.Equal(2, lines.Count);
+            var cashLine = lines.Single(l => l.ReceiptMethod == ReceiptMethod.Cash);
+            var transferLine = lines.Single(l => l.ReceiptMethod == ReceiptMethod.BankTransfer);
+            Assert.Equal(2000m, cashLine.Amount);
+            Assert.Null(cashLine.BankAccountCode);
+            Assert.Equal(8000m, transferLine.Amount);
+            Assert.Equal(BankAccountCode, transferLine.BankAccountCode);
+
+            var allocations = await ReloadAllocationAsync(dbContext, receiptSlipNumber);
+            Assert.Single(allocations);
+            Assert.Equal("__TSTBIL_RCE10", allocations[0].BillingNumber);
+            Assert.Equal(10000m, allocations[0].AllocatedAmount);
         }
         finally
         {
@@ -143,8 +192,7 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             await InsertSalesLineAsync(dbContext, salesSlipNumber, customerCode, "__TSTBIL_RCE05", 10000m);
 
             await service.SaveNewAsync(
-                customerCode, new DateOnly(2026, 8, 25), ReceiptMethod.Cash,
-                bankAccountCode: null, receiptAmount: 10000m, slipRemarks: null);
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(10000m)]);
 
             var salesLine = await dbContext.Sales.AsNoTracking()
                 .SingleAsync(s => s.SalesSlipNumber == salesSlipNumber);
@@ -168,8 +216,7 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             await InsertCustomerAsync(dbContext, customerCode, TaxUnit.Line);
 
             await Assert.ThrowsAsync<ReceiptEntryException>(() => service.SaveNewAsync(
-                customerCode, new DateOnly(2026, 8, 25), ReceiptMethod.Cash,
-                bankAccountCode: null, receiptAmount: 1000m, slipRemarks: null));
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(1000m)]));
         }
         finally
         {
@@ -184,8 +231,7 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         var (_, service) = Resolve(scope);
 
         await Assert.ThrowsAsync<ReceiptEntryException>(() => service.SaveNewAsync(
-            "__TSTRCE_NOEXIST", new DateOnly(2026, 8, 25), ReceiptMethod.Cash,
-            bankAccountCode: null, receiptAmount: 1000m, slipRemarks: null));
+            "__TSTRCE_NOEXIST", new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(1000m)]));
     }
 
     [Fact]
@@ -199,8 +245,8 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             await InsertCustomerAsync(dbContext, customerCode);
 
             await Assert.ThrowsAsync<ReceiptEntryException>(() => service.SaveNewAsync(
-                customerCode, new DateOnly(2026, 8, 25), ReceiptMethod.BankTransfer,
-                bankAccountCode: null, receiptAmount: 1000m, slipRemarks: null));
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null,
+                lines: [BankTransferLine(1000m, bankAccountCode: null)]));
         }
         finally
         {
@@ -209,7 +255,46 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
     }
 
     [Fact]
-    public async Task 入金額が0以下の場合は例外になる()
+    public async Task 手形で手形期日が未指定の場合は例外になる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRCE11";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+
+            await Assert.ThrowsAsync<ReceiptEntryException>(() => service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null,
+                lines: [PromissoryNoteLine(1000m, billDueDate: null)]));
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    [Fact]
+    public async Task 明細行が0件の場合は例外になる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRCE12";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+
+            await Assert.ThrowsAsync<ReceiptEntryException>(() => service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: []));
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    [Fact]
+    public async Task 入金額の合計が0以下の場合は例外になる()
     {
         await using var scope = fixture.Services.CreateAsyncScope();
         var (dbContext, service) = Resolve(scope);
@@ -219,8 +304,7 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             await InsertCustomerAsync(dbContext, customerCode);
 
             await Assert.ThrowsAsync<ReceiptEntryException>(() => service.SaveNewAsync(
-                customerCode, new DateOnly(2026, 8, 25), ReceiptMethod.Cash,
-                bankAccountCode: null, receiptAmount: 0m, slipRemarks: null));
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(0m)]));
         }
         finally
         {
@@ -240,13 +324,14 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             await InsertBillingAsync(dbContext, "__TSTBIL_RCE09", customerCode, 10000m);
 
             var receiptSlipNumber = await service.SaveNewAsync(
-                customerCode, new DateOnly(2026, 8, 25), ReceiptMethod.Cash,
-                bankAccountCode: null, receiptAmount: 10000m, slipRemarks: "テスト摘要");
+                customerCode, new DateOnly(2026, 8, 25), slipRemarks: "テスト摘要", lines: [CashLine(10000m)]);
 
             var lines = await service.GetByNumberAsync(receiptSlipNumber);
             Assert.Single(lines);
             Assert.Equal(customerCode, lines[0].CustomerCode);
             Assert.Equal("テスト摘要", lines[0].SlipRemarks);
+            Assert.Equal(ReceiptMethod.Cash, lines[0].ReceiptMethod);
+            Assert.Equal(10000m, lines[0].Amount);
         }
         finally
         {
@@ -355,6 +440,13 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             .OrderBy(r => r.LineNumber)
             .ToListAsync();
 
+    private static Task<List<ReceiptAllocationEntity>> ReloadAllocationAsync(
+        BmcsDbContext dbContext, string receiptSlipNumber) =>
+        dbContext.ReceiptAllocations.AsNoTracking()
+            .Where(a => a.ReceiptSlipNumber == receiptSlipNumber)
+            .OrderBy(a => a.LineNumber)
+            .ToListAsync();
+
     /// <summary>
     /// 作成したテストデータを後始末する。<see cref="ReceiptEntryService.SaveNewAsync"/>は自前で
     /// トランザクションをコミットするため、<c>SettlementServiceTests</c>のような外側Rollback方式は
@@ -363,6 +455,8 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
     private static async Task CleanupAsync(
         BmcsDbContext dbContext, string customerCode, string? salesSlipNumber = null)
     {
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"DELETE FROM dbo.receipt_allocation WHERE customer_code = {customerCode}");
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM dbo.receipt WHERE customer_code = {customerCode}");
 

@@ -49,7 +49,7 @@ public class ReceiptQueryService(BmcsDbContext dbContext)
                     first.ReceiptDate,
                     first.CustomerCode,
                     first.CustomerName,
-                    first.ReceiptAmount,
+                    g.Sum(r => r.Amount),
                     first.AllocationStatus);
             })
             .ToList();
