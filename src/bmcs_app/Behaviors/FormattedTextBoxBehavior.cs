@@ -6,16 +6,16 @@ using System.Windows.Input;
 namespace bmcs_app.Behaviors;
 
 /// <summary>
-/// 日付・金額・数量の表示書式（docs/product-spec.md UI/UX節）を
+/// 金額・数量の表示書式（docs/product-spec.md UI/UX節）を
 /// TextBox に対して共通に適用する添付ビヘイビア。
-/// フォーカス時はカンマなしの生数値、blur 時はカンマ区切り・yyyy/MM/dd 等に整形する。
+/// フォーカス時はカンマなしの生数値、blur 時はカンマ区切りに整形する。
 /// 値の妥当性検証は行わない（形式チェックは ViewModel の責務。docs/architecture.md 11章）。
+/// 日付は<see cref="DatePickerInputBehavior"/>（DatePicker専用）へ移行済み（全画面デザイン統一・2026-09-15）。
 /// </summary>
 public static class FormattedTextBoxBehavior
 {
     public enum FormattedTextBoxKind
     {
-        Date,
         Amount,
         Quantity,
     }
@@ -69,6 +69,8 @@ public static class FormattedTextBoxBehavior
     /// 「値を入力したら Enter で確定する」という、本アプリの他の入力欄（請求番号等の
     /// コード直接入力）と同じ操作感をユーザーが期待するため、直感に反する
     /// （2026-09-15、締め解除処理〈請求日入力〉で実機確認した不具合）。
+    /// ※当該の日付欄はその後 DatePicker 化した（<see cref="DatePickerInputBehavior"/>）ため、
+    /// 現在この処理の適用対象は金額・数量欄のみ。
     /// </summary>
     private static void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -97,13 +99,6 @@ public static class FormattedTextBoxBehavior
     private static void OnGotFocus(object sender, RoutedEventArgs e)
     {
         var textBox = (TextBox)sender;
-        var kind = GetKind(textBox);
-
-        // 日付はフォーカス時もカンマ整形の対象外なので書式を変えない。
-        if (kind != FormattedTextBoxKind.Amount && kind != FormattedTextBoxKind.Quantity)
-        {
-            return;
-        }
 
         // マウスクリックでフォーカスした場合、WPF はこの GotFocus 処理の後に
         // クリック位置へキャレットを移動する処理を行うため、ここで同期的に
@@ -122,24 +117,12 @@ public static class FormattedTextBoxBehavior
         }, System.Windows.Threading.DispatcherPriority.Input);
     }
 
-    // 表示書式（yyyy/MM/dd）に加えて、区切りなしの入力（例: 20260101）も許容する。
-    private static readonly string[] DateInputFormats = ["yyyy/MM/dd", "yyyy/M/d", "yyyy-MM-dd", "yyyyMMdd"];
-
     private static void Reformat(TextBox textBox)
     {
         var kind = GetKind(textBox);
 
         switch (kind)
         {
-            case FormattedTextBoxKind.Date:
-                if (DateOnly.TryParseExact(textBox.Text, DateInputFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
-                    || DateOnly.TryParse(textBox.Text, CultureInfo.CurrentCulture, DateTimeStyles.None, out date))
-                {
-                    textBox.Text = date.ToString("yyyy/MM/dd", CultureInfo.InvariantCulture);
-                }
-
-                break;
-
             case FormattedTextBoxKind.Amount:
             case FormattedTextBoxKind.Quantity:
                 if (decimal.TryParse(textBox.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out var value))

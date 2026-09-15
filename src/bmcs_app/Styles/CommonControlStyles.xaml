@@ -43,10 +43,6 @@
     <!-- 全画面共通: XAML で Style を明示しない TextBox にも上記の高さ・背景色を適用する。 -->
     <Style TargetType="TextBox" BasedOn="{StaticResource InputTextBoxStyle}" />
 
-    <Style x:Key="DateTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource InputTextBoxStyle}">
-        <Setter Property="beh:FormattedTextBoxBehavior.Kind" Value="Date" />
-    </Style>
-
     <Style x:Key="AmountTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource InputTextBoxStyle}">
         <Setter Property="HorizontalContentAlignment" Value="Right" />
         <Setter Property="beh:FormattedTextBoxBehavior.Kind" Value="Amount" />
