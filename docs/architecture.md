@@ -258,7 +258,8 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 ## 12. 共通UIスタイル（Phase 0-5、暫定設定）
 
 MahApps.Metro を導入し、共通スタイルは `src/bmcs_app/Styles/`、書式整形は
-`src/bmcs_app/Behaviors/FormattedTextBoxBehavior.cs` に集約する（画面ごとに実装しない。11章参照）。
+`src/bmcs_app/Behaviors/FormattedTextBoxBehavior.cs`（金額・数量）・`DatePickerInputBehavior.cs`（日付）
+に集約する（画面ごとに実装しない。11章参照）。
 配色・書式の具体値は `docs/product-spec.md` に指定がないため、以下は**暫定**（実機確認後に変更可）。
 
 - **テーマ**: `Light.Blue`（MahApps 標準）。`App.xaml` で `Controls.xaml` / `Fonts.xaml` /
@@ -273,17 +274,42 @@ MahApps.Metro を導入し、共通スタイルは `src/bmcs_app/Styles/`、書�
   ローカル値（XAML 属性での直接指定）は WPF のプロパティ値優先順位で最上位のため、
   スタイル解決の仕組みに依存せず確実に効く。画面を追加する際は、各ウィンドウのルート
   `mah:MetroWindow` 要素に `WindowTransitionsEnabled="False"` を必ず付ける。
-- **日付書式**: `yyyy/MM/dd` 固定。`DateTextBoxStyle` を付けた `TextBox` に対し `FormattedTextBoxBehavior`
-  が blur 時に整形する（`yyyyMMdd` 等の区切りなし入力も許容してから整形する）。**カレンダーピッカーは導入しない**
-  （必要とする画面が具体化した時点で追加を検討する）。**日付を保持する ViewModel プロパティは `DateOnly` ではなく
-  `string` で持つ。** `DateOnly` には既定の `TypeConverter` がなく `TextBox.Text` との双方向バインディングが
-  そのままでは失敗するため（入力の形式チェックは ViewModel の責務、という11章の方針とも整合する）。
+- **日付入力（2026-09-15改訂）**: 標準 `DatePicker`（`MahApps.Styles.DatePicker` を暗黙適用。全画面デザイン
+  統一）を使う。**当初は「カレンダーピッカーは導入しない」「日付を保持する ViewModel プロパティは
+  `DateOnly` ではなく `string` で持つ」としていたが、これを覆した。** 旧方針は「必要とする画面が具体化
+  した時点で追加を検討する」という条件付きの記述であり、今回の「全画面デザイン統一」（TextBox・
+  ComboBox・DatePicker の高さを揃える）がその契機になった。`string` 保持を選んでいた理由（`DateOnly` に
+  既定の `TypeConverter` がなく `TextBox.Text` との双方向バインディングが失敗する）は、`DatePicker.SelectedDate`
+  （`DateTime?`）への直接バインドには当てはまらないため、**日付を保持する ViewModel プロパティは
+  `DateTime?` で持つ**（`DateOnly?` ではなく `DateTime?` なのは `DatePicker.SelectedDate` の型に合わせるため。
+  時刻成分は必ず `00:00:00` に揃える）。
+  - 8桁ベタ打ち（`20260101` 等）の入力速度を維持するため、`beh:DatePickerInputBehavior.IsEnabled` を
+    暗黙 `DatePicker` スタイルに一律設定する（`src/bmcs_app/Behaviors/DatePickerInputBehavior.cs`）。
+    内部 `PART_TextBox` の入力を Enter確定／フォーカス離脱時に `yyyy/MM/dd` へ正規化し、
+    解釈できない入力は直前の `SelectedDate` の表示へ巻き戻す（値の妥当性検証はしない。11章）。
+    `FormattedTextBoxBehavior` と異なりオプトインにしない（13章の「暗黙スタイルで全画面自動適用しない」
+    方針の例外。DatePicker は日付専用コントロールで誤爆しないため）。
+  - `FrameworkElement.Language` を `App.xaml.cs` の `OnStartup` で `ja-JP` に固定する。`DatePicker` は
+    `Language` 由来のカルチャで表示書式（`ShortDatePattern`）を決めるため、設定しないと `9/15/2026`
+    表記になり「日付は `yyyy/MM/dd` で統一」が崩れる。
+  - 読み取り専用は `mah:ControlsHelper.IsReadOnly`（`DatePicker` に `IsReadOnly` プロパティは無い）。
+    `IsEnabled` は使わない（グレーアウトしタブ順から外れるため、読み取り専用でもフォーカス・コピー可能
+    という現状の挙動が変わる）。
+  - 旧 `DateTextBoxStyle`／`FormattedTextBoxBehavior.FormattedTextBoxKind.Date` は削除済み。
 - **金額・数量書式**: `AmountTextBoxStyle` / `QuantityTextBoxStyle`。表示はカンマ区切り・右揃え、
   フォーカス中はカンマなしの生数値、blur時に `N{DecimalPlaces}` で再整形する。
   **小数桁数の既定値0は暫定。** 単価等で小数が必要な画面は `FormattedTextBoxBehavior.DecimalPlaces`
   を個別指定して上書きする。
-- 数値・日付として解釈できない入力はそのまま残す（このビヘイビアは書式のみを担当し、値の妥当性検証は
+- 数値として解釈できない入力はそのまま残す（このビヘイビアは書式のみを担当し、値の妥当性検証は
   ViewModel の責務とする。11章）。
+- **入力欄の高さ統一（2026-09-15、全画面デザイン統一）**: `TextBox`/`ComboBox`/`DatePicker` の暗黙スタイルに
+  共通の `MinHeight`（`Styles/Metrics.xaml` の `InputControlHeight`、実測で確定）と
+  `VerticalAlignment="Center"`・`VerticalContentAlignment="Center"` を設定する。MahApps 既定では
+  `ComboBox` の自然高が `TextBox` より大きく、`RowDefinition` 未指定の `Grid`（子が `Stretch`）に混在させると
+  行高が `ComboBox` に引っ張られて画面ごとに高さがバラつく。`VerticalAlignment=Center` で各コントロールを
+  行高から独立させ、`MinHeight` を3種の自然高の最大値以上に取ることで高さを一致させる。`Button` にも
+  `MinHeight` のみ適用する（`ComboBox`/`DatePicker`/`Button` が横一列に並ぶ画面向け。`VerticalAlignment=Center`
+  は付けない）。
 
 ## 13. 共通キーボード操作ビヘイビア（Phase 0-6）
 
@@ -301,6 +327,10 @@ MahApps.Metro を導入し、共通スタイルは `src/bmcs_app/Styles/`、書�
 - **両ビヘイビアともオプトイン。** `FormattedTextBoxBehavior` と同様、暗黙スタイルによる全画面自動適用は
   行わない（ダイアログ等への意図しない波及を避けるため）。使う画面のルート要素・対象コントロールに
   明示的に設定する。
+  - **例外: `DatePickerInputBehavior`（2026-09-15追加）は暗黙 `DatePicker` スタイルで全画面一律適用する。**
+    `DatePicker` は日付専用コントロールであり、キー操作の意味を変える上記2ビヘイビアと異なり書式整形
+    （`FormattedTextBoxBehavior` と同種）のため、12章と同じ扱いにする。誤爆の心配がなく、XAML側に
+    書き忘れる余地をなくす利点を優先した。
 
 ## 14. 現在操作中の社員コードの解決（ICurrentEmployeeContext、Phase 0-7 で確定）
 

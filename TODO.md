@@ -236,6 +236,7 @@ DBへの書き込みを伴う点は `tests/bmcs_app.Application.Tests`（16章�
 | [ ] | X-2 | 排他制御の動作確認（rowversionによる楽観的排他、競合時のUI挙動） | **Opus** | 0-3 | 2端末同時更新で後勝ちにならない |
 | [ ] | X-3 | `REVIEW.md` 残課題の解消（回答が得られ次第、該当箇所を直接修正する。抽象化していないため修正範囲の洗い出しから行う）。**2026-09-10、C-6/C-8/C-9/M-3/M-4/M-8/M-9/M-14/P-4を`docs/database-schema.md`・`docs/product-spec.md`・`docs/design_document.md`へ反映済み。** 残るのはM-2本体・M-15・M-16・C-10・P-1・P-3・P-5・P-7・C-4b（顧問税理士確認待ち） | **Opus** | 各課題の回答 | `docs/` から「暫定」の記述が消えている |
 | [ ] | X-4 | 設計資料の同期（実装で確定した内容を `docs/` に反映。重複記載のSSOTへの集約＝D-1〜D-6、画面名称の統一＝C-10）。**2026-09-10、D-1〜D-6を`CLAUDE.md`／`docs/design_document.md`／`docs/product-spec.md`へ反映済み。** 残るのはC-10（画面名称の統一） | Sonnet | 各フェーズ完了時 | 資料と実装が乖離していない |
+| [x] | X-5 | 全画面デザイン統一。**2026-09-15完了。** ①TextBox/ComboBox/DatePicker/Buttonの高さを共通スタイル（`Styles/Metrics.xaml`・`CommonControlStyles.xaml`）で統一、②日付入力欄を`DateTextBoxStyle`（TextBox+マスク入力）から標準`DatePicker`へ全10箇所移行（8桁ベタ打ち入力は`DatePickerInputBehavior`で維持。`docs/architecture.md`12章・13章改訂）、③SPACE検索欄のWatermark表記を「SPACEで検索」に統一 | Sonnet | 0-5, 0-6 | 全画面で入力欄の高さが揃い、日付欄がDatePickerで統一され、Watermark表記が統一されている |
 
 ---
 
