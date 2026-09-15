@@ -24,8 +24,8 @@ namespace bmcs_app.ViewModels.Ledger;
 /// 締め・都度の両区分を同じ画面で扱う（デモは内税明細単位専用だったが、本プロジェクトは
 /// 全税単位を対象にする）。残高キャッシュ列は持たず都度集計する（M-11）。
 ///
-/// <see cref="CurrentBalance"/>（TODO.md 8-2、本日時点の残高）は、検索期間（<see cref="PeriodFromText"/>／
-/// <see cref="PeriodToText"/>）とは独立に、得意先確定時と表示(F5)実行時に毎回
+/// <see cref="CurrentBalance"/>（TODO.md 8-2、本日時点の残高）は、検索期間（<see cref="PeriodFrom"/>／
+/// <see cref="PeriodTo"/>）とは独立に、得意先確定時と表示(F5)実行時に毎回
 /// <see cref="CustomerLedgerQueryService.GetBalanceAsOfAsync"/> を呼んで都度計算する
 /// （M-11「残高キャッシュ列を持たない」。ウィンドウを開いたまま他画面の更新を自動検知する
 /// 仕組みは持たない。再検索・再オープンのたびに必ず最新値になることが「常時表示」の意味。
@@ -60,11 +60,10 @@ public partial class CustomerLedgerViewModel(
     public partial decimal CurrentBalance { get; set; }
 
     [ObservableProperty]
-    public partial string PeriodFromText { get; set; } =
-        new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1).ToString("yyyy/MM/dd");
+    public partial DateTime? PeriodFrom { get; set; } = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
 
     [ObservableProperty]
-    public partial string PeriodToText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+    public partial DateTime? PeriodTo { get; set; } = DateTime.Today;
 
     [ObservableProperty]
     public partial decimal OpeningBalance { get; set; }
@@ -138,12 +137,14 @@ public partial class CustomerLedgerViewModel(
             return;
         }
 
-        if (!DateOnly.TryParseExact(PeriodFromText, "yyyy/MM/dd", out var periodFrom)
-            || !DateOnly.TryParseExact(PeriodToText, "yyyy/MM/dd", out var periodTo))
+        if (PeriodFrom is not { } periodFromValue || PeriodTo is not { } periodToValue)
         {
-            StatusMessage = "期間の日付を確認してください。";
+            StatusMessage = "期間を入力してください。";
             return;
         }
+
+        var periodFrom = DateOnly.FromDateTime(periodFromValue);
+        var periodTo = DateOnly.FromDateTime(periodToValue);
 
         if (periodFrom > periodTo)
         {
