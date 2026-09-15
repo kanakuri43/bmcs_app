@@ -6,6 +6,9 @@
     <Border BorderBrush="{DynamicResource MahApps.Brushes.Gray9}"
             BorderThickness="0,0,0,1">
         <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="36"  />  <!-- 行番号 -->
                 <ColumnDefinition Width="130" />  <!-- 入金方法 -->
@@ -29,7 +32,7 @@
                       SelectedValue="{Binding ReceiptMethod}"
                       SelectedValuePath="Value"
                       DisplayMemberPath="Display"
-                      Margin="1,1,0,1" />
+                      Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 入金先口座（振込のときだけ表示） -->
             <ComboBox x:Name="BankAccountBox"
@@ -39,7 +42,7 @@
                       SelectedValue="{Binding BankAccountCode}"
                       SelectedValuePath="BankAccountCode"
                       DisplayMemberPath="BankName"
-                      Margin="2,1,0,1" />
+                      Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 手形期日（手形のときだけ表示） -->
             <TextBox x:Name="BillDueDateBox"
@@ -48,20 +51,20 @@
                      Visibility="{Binding IsBillDueDateVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
                      Text="{Binding BillDueDateText, UpdateSourceTrigger=LostFocus}"
                      mah:TextBoxHelper.Watermark="yyyy/MM/dd"
-                     Margin="2,1,0,1" />
+                     Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 金額 -->
             <TextBox x:Name="AmountBox"
                      Grid.Column="4"
                      Style="{StaticResource AmountTextBoxStyle}"
                      Text="{Binding Amount}"
-                     Margin="2,1,0,1" />
+                     Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 行摘要 -->
             <TextBox Grid.Column="5"
                      Text="{Binding LineRemarks, UpdateSourceTrigger=PropertyChanged}"
                      mah:TextBoxHelper.Watermark="行摘要"
-                     Margin="2,1,0,1" />
+                     Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 行削除ボタン -->
             <Button Grid.Column="6"
@@ -70,7 +73,7 @@
                     IsTabStop="False"
                     FontSize="10"
                     Padding="0"
-                    Margin="2,1,1,1"
+                    Margin="{StaticResource SlipLineLastCellMargin}"
                     ToolTip="この行を削除"
                     Style="{DynamicResource MahApps.Styles.Button.Flat}" />
         </Grid>

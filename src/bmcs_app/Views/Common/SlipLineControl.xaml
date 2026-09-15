@@ -6,6 +6,9 @@
     <Border BorderBrush="{DynamicResource MahApps.Brushes.Gray9}"
             BorderThickness="0,0,0,1">
         <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="36"  />  <!-- 行番号 -->
                 <ColumnDefinition Width="110" />  <!-- 商品コード -->
@@ -32,7 +35,7 @@
                      Grid.Column="1"
                      Text="{Binding ProductCode, UpdateSourceTrigger=PropertyChanged}"
                      mah:TextBoxHelper.Watermark="コード（Space検索）"
-                     Margin="1,1,0,1">
+                     Margin="{StaticResource SlipLineCellMargin}">
                 <TextBox.InputBindings>
                     <KeyBinding Key="Space"  Command="{Binding OpenProductLookupCommand}" />
                     <KeyBinding Key="Return" Command="{Binding LookupProductByCodeCommand}" />
@@ -44,7 +47,7 @@
                      Text="{Binding ProductName, UpdateSourceTrigger=PropertyChanged}"
                      IsReadOnly="{Binding IsProductNameReadOnly}"
                      IsTabStop="False"
-                     Margin="1,1,0,1">
+                     Margin="{StaticResource SlipLineCellMargin}">
                 <TextBox.Style>
                     <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                         <Style.Triggers>
@@ -64,7 +67,7 @@
                       ItemsSource="{Binding SlipTypeOptions}"
                       SelectedItem="{Binding SlipType}"
                       IsTabStop="False"
-                      Margin="2,1,0,1">
+                      Margin="{StaticResource SlipLineCellMargin}">
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding Converter={StaticResource EnumDisplayConverter}}" />
@@ -77,13 +80,13 @@
                      Grid.Column="4"
                      Style="{StaticResource QuantityTextBoxStyle}"
                      Text="{Binding Quantity}"
-                     Margin="2,1,0,1" />
+                     Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 単価（商品マスタから初期値が転記される。手入力で上書き可＝TODO.md 4-2） -->
             <TextBox Grid.Column="5"
                      Style="{StaticResource AmountTextBoxStyle}"
                      Text="{Binding UnitPrice}"
-                     Margin="2,1,0,1" />
+                     Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 原価（表示のみ） -->
             <TextBlock Grid.Column="6"
@@ -112,7 +115,7 @@
             <TextBox Grid.Column="9"
                      Text="{Binding LineRemarks, UpdateSourceTrigger=PropertyChanged}"
                      mah:TextBoxHelper.Watermark="行摘要"
-                     Margin="2,1,0,1" />
+                     Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 行削除ボタン -->
             <Button Grid.Column="10"
@@ -121,7 +124,7 @@
                     IsTabStop="False"
                     FontSize="10"
                     Padding="0"
-                    Margin="2,1,1,1"
+                    Margin="{StaticResource SlipLineLastCellMargin}"
                     ToolTip="この行を削除"
                     Style="{DynamicResource MahApps.Styles.Button.Flat}" />
         </Grid>

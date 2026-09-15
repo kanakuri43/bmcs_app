@@ -6,6 +6,9 @@
     <Border BorderBrush="{DynamicResource MahApps.Brushes.Gray9}"
             BorderThickness="0,0,0,1">
         <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="30"  />  <!-- 行番号 -->
                 <ColumnDefinition Width="150" />  <!-- 充当先（読取） -->
@@ -37,7 +40,7 @@
                       SelectedValue="{Binding ReceiptMethod}"
                       SelectedValuePath="Value"
                       DisplayMemberPath="Display"
-                      Margin="1,1,0,1" />
+                      Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 入金先口座（振込のときだけ表示） -->
             <ComboBox x:Name="BankAccountBox"
@@ -47,7 +50,7 @@
                       SelectedValue="{Binding BankAccountCode}"
                       SelectedValuePath="BankAccountCode"
                       DisplayMemberPath="BankName"
-                      Margin="2,1,0,1" />
+                      Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 金額（読取専用。対象の全額または残額で固定） -->
             <TextBlock Grid.Column="4"
@@ -61,7 +64,7 @@
             <TextBox Grid.Column="5"
                      Text="{Binding LineRemarks, UpdateSourceTrigger=PropertyChanged}"
                      mah:TextBoxHelper.Watermark="行摘要"
-                     Margin="2,1,0,1" />
+                     Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 行削除ボタン -->
             <Button Grid.Column="6"
@@ -70,7 +73,7 @@
                     IsTabStop="False"
                     FontSize="10"
                     Padding="0"
-                    Margin="2,1,1,1"
+                    Margin="{StaticResource SlipLineLastCellMargin}"
                     ToolTip="この行を削除"
                     Style="{DynamicResource MahApps.Styles.Button.Flat}" />
         </Grid>
