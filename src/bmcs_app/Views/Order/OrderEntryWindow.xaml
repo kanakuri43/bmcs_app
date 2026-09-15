@@ -86,25 +86,19 @@
                 </Border>
 
                 <StackPanel Grid.Column="0">
-                    <!-- 行1: 受注日付 / 受注No. -->
+                    <!-- 行1: 受注No. / 受注日付 -->
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="58"  />
-                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="130" />
                             <ColumnDefinition Width="16"  />
                             <ColumnDefinition Width="58"  />
-                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="140" />
                             <ColumnDefinition Width="*"   />
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Column="0" Text="受注日付" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="0" Text="受注No." VerticalAlignment="Center" />
                         <TextBox Grid.Column="1"
-                                 Style="{StaticResource DateTextBoxStyle}"
-                                 beh:FocusBehavior.FocusKey="OrderDate"
-                                 Text="{Binding OrderDateText}" />
-
-                        <TextBlock Grid.Column="3" Text="受注No." VerticalAlignment="Center" />
-                        <TextBox Grid.Column="4"
                                  beh:FocusBehavior.IsInitialFocus="True"
                                  Text="{Binding OrderSlipNumberDisplay, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="自動採番（Space検索）"
@@ -114,6 +108,12 @@
                                 <KeyBinding Key="Return" Command="{Binding LookupOrderSlipByNumberCommand}" />
                             </TextBox.InputBindings>
                         </TextBox>
+
+                        <TextBlock Grid.Column="3" Text="受注日付" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="4"
+                                 Style="{StaticResource DateTextBoxStyle}"
+                                 beh:FocusBehavior.FocusKey="OrderDate"
+                                 Text="{Binding OrderDateText}" />
                     </Grid>
 
                     <!-- 行2: 得意先 -->

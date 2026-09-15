@@ -47,26 +47,20 @@
                 Background="{DynamicResource MahApps.Brushes.Gray10}">
             <StackPanel>
 
-                <!-- 行1: 請求日付 / 明細請求書No. -->
+                <!-- 行1: 明細請求書No. / 請求日付 -->
                 <Grid>
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="90" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="24" />
                         <ColumnDefinition Width="70" />
                         <ColumnDefinition Width="100" />
-                        <ColumnDefinition Width="24" />
-                        <ColumnDefinition Width="90" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="請求日付" VerticalAlignment="Center" />
-                    <TextBox Grid.Column="1"
-                             Style="{StaticResource DateTextBoxStyle}"
-                             IsReadOnly="{Binding IsExistingLoaded}"
-                             beh:FocusBehavior.FocusKey="IssueDate"
-                             Text="{Binding IssueDateText, UpdateSourceTrigger=LostFocus}" />
-
-                    <TextBlock Grid.Column="3" Text="請求書No." VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="0" Text="請求書No." VerticalAlignment="Center" />
                     <TextBox x:Name="DetailInvoiceNumberBox"
-                             Grid.Column="4"
+                             Grid.Column="1"
                              beh:FocusBehavior.IsInitialFocus="True"
                              Text="{Binding DetailInvoiceNumberQuery, UpdateSourceTrigger=PropertyChanged}"
                              mah:TextBoxHelper.Watermark="自動採番（Space検索、既存分はEnterで読込）"
@@ -80,6 +74,13 @@
                             <KeyBinding Key="Return" Command="{Binding LookupCommand}" />
                         </TextBox.InputBindings>
                     </TextBox>
+
+                    <TextBlock Grid.Column="3" Text="請求日付" VerticalAlignment="Center" />
+                    <TextBox Grid.Column="4"
+                             Style="{StaticResource DateTextBoxStyle}"
+                             IsReadOnly="{Binding IsExistingLoaded}"
+                             beh:FocusBehavior.FocusKey="IssueDate"
+                             Text="{Binding IssueDateText, UpdateSourceTrigger=LostFocus}" />
                 </Grid>
 
                 <!-- 行2: 得意先 -->

@@ -109,25 +109,19 @@
                 </Border>
 
                 <StackPanel Grid.Column="0">
-                    <!-- 行1: 売上日付 / 売上No. -->
+                    <!-- 行1: 売上No. / 売上日付 -->
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="58"  />
-                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="130" />
                             <ColumnDefinition Width="16"  />
                             <ColumnDefinition Width="58"  />
-                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="140" />
                             <ColumnDefinition Width="*"   />
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Column="0" Text="売上日付" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="0" Text="売上No." VerticalAlignment="Center" />
                         <TextBox Grid.Column="1"
-                                 Style="{StaticResource DateTextBoxStyle}"
-                                 beh:FocusBehavior.FocusKey="SlipDate"
-                                 Text="{Binding SlipDateText}" />
-
-                        <TextBlock Grid.Column="3" Text="売上No." VerticalAlignment="Center" />
-                        <TextBox Grid.Column="4"
                                  beh:FocusBehavior.IsInitialFocus="True"
                                  Text="{Binding SalesSlipNumberDisplay, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="自動採番（Space検索）"
@@ -137,6 +131,12 @@
                                 <KeyBinding Key="Return" Command="{Binding LookupSalesSlipByNumberCommand}" />
                             </TextBox.InputBindings>
                         </TextBox>
+
+                        <TextBlock Grid.Column="3" Text="売上日付" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="4"
+                                 Style="{StaticResource DateTextBoxStyle}"
+                                 beh:FocusBehavior.FocusKey="SlipDate"
+                                 Text="{Binding SlipDateText}" />
                     </Grid>
 
                     <!-- 行2: 受注No.（TODO.md 5-3。受注からの売上確定） -->
