@@ -105,7 +105,7 @@ public partial class DetailReceiptEntryViewModel(
     private bool CanEdit => !IsPreviewMode;
 
     [ObservableProperty]
-    public partial string ReceiptDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+    public partial DateTime? ReceiptDate { get; set; } = DateTime.Today;
 
     [ObservableProperty]
     public partial string CustomerCode { get; set; } = string.Empty;
@@ -512,11 +512,13 @@ public partial class DetailReceiptEntryViewModel(
             return;
         }
 
-        if (!DateOnly.TryParseExact(ReceiptDateText, "yyyy/MM/dd", out var receiptDate))
+        if (ReceiptDate is not { } receiptDateValue)
         {
-            StatusMessage = "入金日付の形式が不正です（yyyy/MM/dd）。";
+            StatusMessage = "入金日付を入力してください。";
             return;
         }
+
+        var receiptDate = DateOnly.FromDateTime(receiptDateValue);
 
         try
         {
@@ -620,7 +622,7 @@ public partial class DetailReceiptEntryViewModel(
         var lockResult = await detailReceiptEntryService.EvaluateEditLockAsync(lines);
 
         DetailReceiptNumberQuery = detailReceiptNumber;
-        ReceiptDateText = header.ReceiptDate.ToString("yyyy/MM/dd");
+        ReceiptDate = header.ReceiptDate.ToDateTime(TimeOnly.MinValue);
         CustomerCode = header.CustomerCode;
         CustomerName = header.CustomerName;
         SlipRemarks = header.SlipRemarks ?? string.Empty;
@@ -669,7 +671,7 @@ public partial class DetailReceiptEntryViewModel(
     private void ClearForm()
     {
         DetailReceiptNumberQuery = string.Empty;
-        ReceiptDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+        ReceiptDate = DateTime.Today;
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
         SlipRemarks = string.Empty;

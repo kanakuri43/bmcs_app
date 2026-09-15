@@ -60,7 +60,7 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="24" />
                         <ColumnDefinition Width="70" />
-                        <ColumnDefinition Width="100" />
+                        <ColumnDefinition Width="120" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
@@ -83,11 +83,10 @@
                     </TextBox>
 
                     <TextBlock Grid.Column="3" Text="入金日付" VerticalAlignment="Center" />
-                    <TextBox Grid.Column="4"
-                             Style="{StaticResource DateTextBoxStyle}"
-                             IsReadOnly="{Binding IsHeaderLocked}"
-                             beh:FocusBehavior.FocusKey="ReceiptDate"
-                             Text="{Binding ReceiptDateText, UpdateSourceTrigger=LostFocus}" />
+                    <DatePicker Grid.Column="4"
+                                mah:ControlsHelper.IsReadOnly="{Binding IsHeaderLocked}"
+                                beh:FocusBehavior.FocusKey="ReceiptDate"
+                                SelectedDate="{Binding ReceiptDate}" />
                 </Grid>
 
                 <!-- 行2: 得意先 -->
