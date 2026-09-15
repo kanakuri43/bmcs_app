@@ -68,7 +68,7 @@ public partial class SalesEntryViewModel(
     public partial string CustomerTaxUnitDisplay { get; set; } = string.Empty;
 
     [ObservableProperty]
-    public partial string SlipDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+    public partial DateTime? SlipDate { get; set; } = DateTime.Today;
 
     /// <summary>
     /// 売上No.欄。新規時は空欄（Watermarkで「自動採番」を案内）。既存伝票の訂正・取消（TODO.md 5-6）では
@@ -258,9 +258,7 @@ public partial class SalesEntryViewModel(
         StatusMessage = $"得意先: {customer.CustomerName}";
     }
 
-    private DateOnly ParseSlipDate() => DateOnly.TryParseExact(SlipDateText, "yyyy/MM/dd", out var parsed)
-        ? parsed
-        : DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly ParseSlipDate() => SlipDate is { } value ? DateOnly.FromDateTime(value) : DateOnly.FromDateTime(DateTime.Today);
 
     // ── 明細行 ────────────────────────────────────────────────
     [RelayCommand(CanExecute = nameof(CanEdit))]
@@ -486,7 +484,7 @@ public partial class SalesEntryViewModel(
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
         CustomerTaxUnitDisplay = string.Empty;
-        SlipDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+        SlipDate = DateTime.Today;
         SalesSlipNumberDisplay = string.Empty;
         OrderSlipNumberQuery = string.Empty;
         BillingStatusDisplay = "未請求";
@@ -520,6 +518,12 @@ public partial class SalesEntryViewModel(
         if (nonBlankLines.Count == 0)
         {
             StatusMessage = "明細行を1件以上入力してください。";
+            return;
+        }
+
+        if (SlipDate is null)
+        {
+            StatusMessage = "売上日付を入力してください。";
             return;
         }
 
@@ -859,7 +863,7 @@ public partial class SalesEntryViewModel(
             TaxUnit.Line => "内税明細単位",
             _ => customer.TaxUnit.ToString(),
         };
-        SlipDateText = sourceLines[0].SlipDate.ToString("yyyy/MM/dd");
+        SlipDate = sourceLines[0].SlipDate.ToDateTime(TimeOnly.MinValue);
         SalesSlipNumberDisplay = salesSlipNumber;
         SlipRemarks = sourceLines[0].SlipRemarks ?? string.Empty;
         BillingStatusDisplay = sourceLines.Any(l => l.BillingStatus == BillingLinkStatus.Billed) ? "請求済" : "未請求";
