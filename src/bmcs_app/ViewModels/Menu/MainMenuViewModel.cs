@@ -5,11 +5,13 @@ using bmcs_app.Application.Master;
 using bmcs_app.Domain.Calculations;
 using bmcs_app.Services;
 using bmcs_app.ViewModels.Billing;
+using bmcs_app.ViewModels.Ledger;
 using bmcs_app.ViewModels.Master;
 using bmcs_app.ViewModels.Order;
 using bmcs_app.ViewModels.Receipt;
 using bmcs_app.ViewModels.Sales;
 using bmcs_app.Views.Billing;
+using bmcs_app.Views.Ledger;
 using bmcs_app.Views.Master;
 using bmcs_app.Views.Order;
 using bmcs_app.Views.Receipt;
@@ -104,6 +106,9 @@ public partial class MainMenuViewModel(
                 break;
             case "detail_receipt_entry":
                 windowService.Show<DetailReceiptEntryWindow, DetailReceiptEntryViewModel>();
+                break;
+            case "customer_ledger":
+                windowService.Show<CustomerLedgerWindow, CustomerLedgerViewModel>();
                 break;
             case "customer_master":
                 windowService.Show<CustomerMasterWindow, CustomerMasterViewModel>();

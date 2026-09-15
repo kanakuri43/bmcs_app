@@ -183,8 +183,8 @@ M-2（採番規則）・M-3（単価決定）・C-6（訂正・取消方式）�
 
 | 完了 | # | タスク | 推奨モデル | 前提 | 完了条件 |
 |---|---|---|---|---|---|
-| [ ] | 8-1 | 元帳データのマージ実装（該当税単位の売上テーブルと入金テーブルをアプリ側LINQで結合、時系列化、残高推移の算出） | Sonnet | 7-1 | 残高推移が手計算と一致する |
-| [ ] | 8-2 | リアルタイム残高の常時表示 | Sonnet | 8-1, M-11 | 伝票登録直後に残高が正しく変わる |
+| [x] | 8-1 | 元帳データのマージ実装（該当税単位の売上テーブルと入金テーブルをアプリ側LINQで結合、時系列化、残高推移の算出） | Sonnet | 7-1 | **2026-09-15実装。** ユーザー指示により画面（ViewModel/View）まで含めて実装した。残高は税込で扱い、`tax_unit=1`（伝票時点で税額を持てない）の穴を埋めるため消費税を独立した明細行として時系列に挿入する（請求締め済み区間は`billing.tax_amount`確定値、未締め区間は`ConsumptionTaxCalculator`による仮計算）。入金の残高影響は常に入金日付の独立行でのみ発生させ、都度得意先の売上行には消込の証跡（入金日付・入金No、金額なし）のみ同居させる（売上と入金が月をまたいでも月末残高が日付どおり正確になり、9-1の暦月末残高と整合する設計。2026-09-15ユーザー確認）。マージ・残高推移・仮計算税はDomainの純粋関数（`CustomerLedgerBuilder`／`LedgerReceiptPairing`、`src/bmcs_app.Domain/Calculations/`）に集約し、Application層は`CustomerLedgerQueryService`（`src/bmcs_app.Application/Ledger/`）がクエリして渡すだけにした。画面は`Views/Ledger/CustomerLedgerWindow`（デモ`bmcs_app.CustomerLedger`のレイアウトを踏襲しつつ入金額・残高列を追加）。メインメニューに新カテゴリ「元帳」を追加（`scripts/014_seed_menu_structure.sql`、`screen_key=customer_ledger`）。単体テスト`CustomerLedgerBuilderTests`（10件）・`LedgerReceiptPairingTests`（4件）でseedデータ相当のCUS001/CUS002/CUS003の残高推移が手計算と一致することを直接検証（完了条件）。結合テスト`CustomerLedgerQueryServiceTests`（8件、開発用ライブDB）は実際のseedデータ（CUS001→9,500／CUS002→2,100／CUS003→9,900）を読んで同じ数値を確認する回帰検知テストを含む。全体テスト（Domain 253件／Application 149件）すべてgreen。実機確認は`dotnet run`でのアプリ起動・メニュー表示まで（Phase 7-2/7-4/7-5と同じ扱い）。詳細は`docs/design_document.md` 21章 |
+| [x] | 8-2 | リアルタイム残高の常時表示 | Sonnet | 8-1, M-11 | **2026-09-15実装。** 「常時表示」とは、ウィンドウを開いたまま他画面の更新を自動検知して書き換える仕組み（プッシュ通知等）ではなく、**残高キャッシュ列を持たず（M-11）都度計算するため、検索期間とは独立に必ず最新値が出る**という意味であることをユーザーに確認済み。得意先元帳画面（`CustomerLedgerViewModel`）に「現在残高」（本日時点の残高。検索期間のFrom/Toを変えても連動しない）を追加し、得意先確定時と表示(F5)実行時の両方で`CustomerLedgerQueryService.GetBalanceAsOfAsync`（8-1で用意済みの入口）を呼んで再計算する。結合テスト`現在残高は伝票登録直後に反映される`（`CustomerLedgerQueryServiceTests`に追加）で、同一トランザクション内での売上登録直後に`GetBalanceAsOfAsync`が新しい値を返すことを直接検証。全体テスト（Domain 253件／Application 150件）すべてgreen。詳細は`docs/design_document.md` 21章 |
 | [ ] | 8-3 | 伝票プレビュー（`readOnly` モードの売上／入金画面を再利用。専用画面は作らない） | Sonnet | 5-2, 7-2 | プレビューから編集できない |
 
 ---

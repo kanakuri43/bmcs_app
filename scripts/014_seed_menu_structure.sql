@@ -7,7 +7,7 @@
 -- 既存の menu 行を全件削除してから再投入する（再実行安全）。画面からの編集機能は持たないため、
 -- 新しい画面を追加する・権限レベルを見直す場合は本スクリプトを直接書き換えて再適用する。
 --
--- 実装済みの画面のみを対象とする。未実装フェーズ（入金・元帳・月次締め・データ検索等）の
+-- 実装済みの画面のみを対象とする。未実装フェーズ（月次締め・データ検索等）の
 -- 項目は、該当フェーズの実装時に本スクリプトへ追記する。
 --
 -- 権限レベルは "menu.required_permission_level ≦ employee.permission_level" で比較する
@@ -48,8 +48,12 @@ VALUES
     (N'MNU_RECEIPT_ENTRY', N'MNU_RECEIPT', N'入金入力', 1, 1, N'receipt_entry', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'MNU_DETAIL_RECEIPT', N'MNU_RECEIPT', N'明細入金', 2, 1, N'detail_receipt_entry', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
 
+    -- 元帳
+    (N'MNU_LEDGER', NULL, N'元帳', 4, NULL, NULL, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    (N'MNU_CUSTOMER_LEDGER', N'MNU_LEDGER', N'得意先元帳', 1, 1, N'customer_ledger', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+
     -- マスタ管理
-    (N'MNU_MASTER', NULL, N'マスタ管理', 4, NULL, NULL, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    (N'MNU_MASTER', NULL, N'マスタ管理', 5, NULL, NULL, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'MNU_CUSTOMER_MASTER', N'MNU_MASTER', N'得意先マスタ', 1, 1, N'customer_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'MNU_PRODUCT_MASTER', N'MNU_MASTER', N'商品マスタ', 2, 1, N'product_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'MNU_EMPLOYEE_MASTER', N'MNU_MASTER', N'社員マスタ', 3, 9, N'employee_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),

@@ -1491,3 +1491,119 @@ SELECT COUNT(*) FROM dbo.sales WHERE is_deleted = 0 AND settlement_status <> (
 - 結合テスト: `tests/bmcs_app.Application.Tests/Receipt/SettlementPhaseReviewTests.cs`（新規、1件）。
   全体テスト（Domain 239件／Application 141件）すべてgreen。
 - DB確認: 20-4のSQLをすべて`sqlcmd`で実行し、5項目すべて該当0件を確認済み。
+
+---
+
+## 21. 得意先元帳・現在残高（Phase 8-1／8-2、2026-09-15実装）
+
+### 21-1. スコープ
+
+TODO.md 8-1の文面は「元帳データのマージ実装」（サービス層）のみだが、ユーザー指示が画面
+レイアウトに言及したため、**サービス層＋ViewModel＋View（画面）まで**を本タスクの範囲とした。
+画面レイアウト・操作方法は旧デモ（`bmcs_app.CustomerLedger`）を可能な限り再現しつつ、項目に
+過不足がある場合は本プロジェクトを優先した。8-2（リアルタイム残高の常時表示）も同日中に
+続けて実装した（21-6参照）。
+
+スコープ外として残したもの: 8-3（伝票プレビュー＝`RowActivationBehavior`の配線）、
+印刷・プレビュー（Phase 10。ボタンは枠のみ用意し`IsEnabled="False"`）。
+
+### 21-2. 中心的な設計課題と決定事項
+
+`tax_unit=1`（請求単位）の売上明細行は伝票時点で消費税額を持てない（CHECK制約
+`CK_sales_tax_amount_by_tax_unit`）。一方入金額は税込である。そのため「売上`amount`の累計 −
+入金の累計」では締め得意先の残高が税額分だけマイナスにずれる。この問題と、都度得意先の
+消込証跡の表示要件を解決するため、以下をユーザー確認のうえ決定した（2026-09-15）。
+
+| # | 決定 |
+|---|---|
+| D-1 | **残高は税込。消費税を独立した明細行として時系列に挿入する。** `tax_unit=1`は請求締め済み区間は`billing.tax_amount`（確定値）を`billing_date`の行、未締め区間は`ConsumptionTaxCalculator.CalculateExternalTaxBuckets`で仮計算した額を期末日付の行として挿入。`tax_unit=2`は伝票ごとの`slip_tax_amount`をその伝票の直下に1回だけ挿入。`tax_unit=3`は`amount`が既に税込なので消費税行を作らない |
+| D-2 | **入金の残高影響は常に入金日付の独立行で発生させる。** 都度得意先の売上行の右側には「入金日付・入金No」を消込の**証跡**として表示するが金額は載せない（`ReceiptAmount`をnullのままにする）。売上と入金が月をまたいでも各月末の売掛残高が日付どおり正確になり、Phase 9-1（月次締め）の暦月末残高の定義と矛盾しない |
+| D-3 | 1つの売上明細行に複数の入金が証跡として紐づく場合、2件目以降は売上側の列を空欄にした行として直下に続ける |
+| D-4 | 繰越は**全期間積み上げ**で算出する。`monthly_closing`／`billing.previous_balance`を起点に使わない（M-11「都度集計する・残高キャッシュ列は持たない」と整合させ、`billing`のスナップショットとの二重計上を避けるため） |
+| D-5 | 解除済みデータ（`billing.billing_status=2`）は残高計算の対象外（product-spec.md「解除済＝集計対象外」） |
+
+### 21-3. アーキテクチャ
+
+マージ・時系列化・残高推移・仮計算税・消込証跡はすべて Domain の純粋関数に置き、Application層は
+クエリして渡すだけにした（`SalesEditLockEvaluator`と同じ方針）。完了条件「残高推移が手計算と
+一致する」をDB不要の単体テストで直接検証でき、かつ将来9-1が同じ関数を再利用できるようにする狙い。
+
+- `src/bmcs_app.Domain/Calculations/CustomerLedgerBuilder.cs`: マージ本体。`Build(CustomerLedgerInput)`
+  が`CustomerLedgerResult`（先頭が繰越行のエントリ一覧＋各種合計）を返す。仮計算消費税は
+  `ProvisionalTaxAsOf(customer, salesLines, asOf)`という**日付の関数**として定義し、期間境界
+  （`PeriodFrom`の前日／`PeriodTo`）で差分を取ることで、D-1とD-4（全期間積み上げ）を両立させた
+  （固定の「期末に1行」にすると、期間Fromより前の未請求売上の税が繰越に入らずD-4と矛盾する）。
+- `src/bmcs_app.Domain/Calculations/LedgerReceiptPairing.cs`: 都度得意先の消込証跡（D-2/D-3）を
+  作るための紐づけ。**表示専用であり残高計算には使わない。** 残高は`DetailReceipt.AllocatedAmount`
+  を明細入金行ごとに独立行として計上する別ロジックが担うため、本クラスは金額の按分を一切行わない
+  （`SettlementService`の消込配分アルゴリズムとは別物）。直接指定（`target_type=1`）はエンティティが
+  対象を直接持つため単純な参照、明細請求書指定（`target_type=2`）は連携する**すべて**の売上明細行に
+  証跡として結びつける（どの明細行にいくら充当されたかの厳密な按分は行わない）。
+  - 設計変更の経緯: 当初案は`SettlementAllocator`を使った金額按分つきの2段構えペアリング
+    （`settled_amount`との一致をテストで担保する方式）だったが、D-2の決定（入金の残高影響は
+    独立行でのみ発生させる）により証跡が金額を持たなくなったため、按分ロジックが不要になった。
+    残高が証跡の正確さに依存しない設計になったことで、証跡ロジックを大幅に単純化できた
+    （Simplicity First。証跡に万一漏れがあっても残高は狂わない）。
+- `src/bmcs_app.Application/Ledger/CustomerLedgerQueryService.cs`: `GetAsync(customerCode, from, to)`が
+  得意先の全期間・未削除の売上・入金・（締め得意先のみ）確定済み請求を読み、`CustomerLedgerBuilder`に
+  渡す。**`receipt_allocation`は一切参照しない**（21-4のR1参照）。
+
+### 21-4. 申し送り事項
+
+| # | 内容 |
+|---|---|
+| R1 | `BillingReleaseService`は締め解除時に`sales.billing_number`をNULLに戻すが`receipt_allocation`は触らないため、解除済み`billing`を指す充当行が残留しうる。元帳は`receipt_allocation`を参照しない設計のため影響なし（観測事実として記録） |
+| R2 | 元帳の残高と`billing.current_billing_amount`の一致は「遡及入力が無い」前提でのみ成立する。締め後に過去日付の**新規**売上・入金を登録することはC-6の編集ロック（既存行の編集のみ対象）では防げない。元帳は常に実データからの都度集計なので**元帳が正、`billing`は締め時点のスナップショット**であり、この不一致を検出して例外を投げてはならない（正常な業務オペレーションで起こりうる）。9-1実装時に考慮すること |
+| R3 | Phase 7-3（振込手数料差額の入力）実装時、`fee_adjustment_amount`が非ゼロになると元帳の残高に残渣が残りうる。`billing.receipt_amount`も`Σ receipt.Amount`（手数料を含まない）なので両者は一致し元帳固有の問題ではないが、「手数料差額を残高からどう落とすか」の業務判断が7-3で必要になる |
+| R4 | 1伝票の明細行が請求済・未請求に分かれると`tax_unit=2`の`slip_tax_amount`（伝票単位の値）が実態とずれうるが、締め時に`BillingClosingService.CalculateTaxSummary`が検出して例外を投げるため、元帳側に独自の整合チェックは入れていない（元帳は照会画面であり業務ルール違反の検出責務は6-1側） |
+| R5 | `scripts/seed_dev_data.sql`の`monthly_closing`（2026-01/02分）は売上・入金の実データ（2026-07/08分）と月が重ならないため、Phase 9-1実装時にはseedデータの作り直しが必要になる見込み |
+| R6 | Phase 9-1は`CustomerLedgerQueryService.GetAsync(code, 月初, 月末)`の結果を`monthly_closing`の各列にそのまま詰めるだけで済む（`OpeningBalance`/`SalesTotal`/`TaxTotal`/`ReceiptTotal`/`ClosingBalance`が`previous_balance`/`sales_amount`/`tax_amount`/`receipt_amount`/`closing_balance`と1:1対応）。ただし税率別内訳5カラムは`CustomerLedgerResult`に含めていないため、9-1で追加が必要 |
+| R7 | 性能の逃げ道（本タスクでは未実装）: `GetAsync`に`historyFrom`のような引数を足し、それ以前を`monthly_closing`の確定残高で置き換える拡張が考えられる。M-11「性能問題が出た場合に残高キャッシュ列を追加する」に沿う |
+
+### 21-5. seedデータでの手計算検証（完了条件の直接証跡）
+
+期間 2026/07/01〜2026/08/31 で、`scripts/seed_dev_data.sql`の3得意先すべての残高推移を手計算し、
+Domain単体テスト（`CustomerLedgerBuilderTests`）と、開発用ライブDBに対する結合テスト
+（`CustomerLedgerQueryServiceTests`、読み取り専用）の両方で一致を確認した。
+
+- **CUS001**（締め・請求単位・締日20・切捨）: 繰越0 → 7/15売上10,000 → 7/20消費税1,000
+  （`BIL_INV001`確定値、残高11,000＝`billing.current_billing_amount`と一致）→ 7/25入金4,000 →
+  8/05入金3,000（前受）→ 8/10売上5,000 → 8/31消費税500（未締め分・仮計算）→ **残高9,500**
+- **CUS002**（締め・伝票単位・締日99・四捨五入）: 繰越0 → 7/10売上8,000＋消費税800（残高8,800＝
+  `billing.current_billing_amount`と一致）→ 8/01入金8,000 → 8/01入金2,000（**残高−1,200の過入金を
+  正常系として許容**）→ 8/11売上3,000＋消費税300 → **残高2,100**
+- **CUS003**（都度・内税明細単位・切上）: 繰越0 → 7/20売上8,250（証跡: 7/22 `DRC002`）→
+  7/22入金8,250 → 7/25売上2,750（証跡: 7/25 `DRC001`）＋7/25入金2,750 → 8/12売上11,000 →
+  8/13返品−1,100 → **残高9,900**。消費税行は1行も作らない
+
+いずれも`IsBalanced`（`ClosingBalance == OpeningBalance + SalesTotal + TaxTotal − ReceiptTotal`）が
+成立することを確認済み。
+
+### 21-6. リアルタイム残高の常時表示（Phase 8-2、2026-09-15実装）
+
+**「常時表示」の意味をユーザーに確認したうえで実装した。** 当初「常時表示」という文言から
+「ウィンドウを開いたまま他画面での更新を自動検知して書き換える」（プッシュ通知・ポーリング等の
+リアクティブUI）という解釈もありえたが、`docs/architecture.md`にウィンドウ間でデータ変更を
+通知し合う仕組み（イベント配信・SignalR・ポーリング等）は一切設計されておらず、各ウィンドウは
+独立したDIスコープ・DbContextを持つだけである。ユーザーに確認した結果、8-2の実態は
+**「キャッシュ列に頼らず、表示するたび（画面を開く・再検索する等）に必ず最新の実データから
+残高を計算する」という正確性の保証**（M-11「都度集計する・残高キャッシュ列は持たない」の帰結）
+であり、「画面を開きっぱなしでも自動で動く」というリアクティブUIではないことを確定した
+（2026-09-15）。
+
+実装は、得意先元帳画面（`CustomerLedgerViewModel`）に**検索期間とは独立した**「現在残高」
+（本日時点の残高）を追加した。得意先確定時（`ApplyCustomerAsync`）と表示(F5)実行時
+（`SearchCommand`）の両方で`CustomerLedgerQueryService.GetBalanceAsOfAsync`（8-1で用意済みの
+入口。`GetAsync(code, asOf, asOf).ClosingBalance`と同値）を呼んで都度再計算する。期間From/Toを
+過去の月に変更しても「現在残高」自体は連動しない（デモの「前月繰越／今回」集計とは別の独立表示）。
+
+### 検証方法
+
+- 単体テスト: `tests/bmcs_app.Domain.Tests/Calculations/CustomerLedgerBuilderTests.cs`（10件）・
+  `LedgerReceiptPairingTests.cs`（4件）。全体テスト（Domain 253件）すべてgreen。
+- 結合テスト: `tests/bmcs_app.Application.Tests/Ledger/CustomerLedgerQueryServiceTests.cs`（9件、
+  開発用ライブDB。うち3件はseedデータ`CUS001`/`CUS002`/`CUS003`を直接読む回帰検知テスト、
+  1件は8-2の完了条件「伝票登録直後に残高が正しく変わる」を`GetBalanceAsOfAsync`で直接検証）。
+  全体テスト（Application 150件）すべてgreen。
+- 実機: `dotnet run`でのアプリ起動、メインメニュー「元帳 > 得意先元帳」の表示まで確認済み
+  （GUI自動操作の手段が実行環境に無いため、画面上のクリック操作はPhase 7-2/7-4/7-5と同様に未確認）。

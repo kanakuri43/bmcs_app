@@ -1,0 +1,49 @@
+using bmcs_app.Domain.Entities;
+
+namespace bmcs_app.Domain.Calculations;
+
+/// <summary>
+/// <see cref="CustomerLedgerBuilder.Build"/> の入力。DBアクセスは呼び出し元
+/// （<c>CustomerLedgerQueryService</c>）の責務とし、本レコードは得意先の**全期間・未削除の全行**を
+/// 受け取る（繰越を全期間積み上げで算出するため。TODO.md 8-1 D-4）。
+/// </summary>
+/// <param name="Customer">得意先マスタ。</param>
+/// <param name="PeriodFrom">表示期間の開始日。</param>
+/// <param name="PeriodTo">表示期間の終了日。</param>
+/// <param name="SalesLines">得意先の全期間の売上明細行。</param>
+/// <param name="ConfirmedBillings">
+/// 確定済み（<see cref="Enums.BillingStatus.Confirmed"/>）の請求データ。<see cref="Enums.TaxUnit.Invoice"/>
+/// の得意先でのみ使用する。解除済みは呼び出し元が除外して渡す（product-spec.md「解除済＝集計対象外」）。
+/// </param>
+/// <param name="ReceiptLines">締め得意先（<see cref="Enums.TaxUnit.Invoice"/>／<see cref="Enums.TaxUnit.Slip"/>）の入金明細行。</param>
+/// <param name="DetailReceiptLines">都度得意先（<see cref="Enums.TaxUnit.Line"/>）の明細入金行。</param>
+/// <param name="DetailInvoiceLinks">明細請求書と売上明細行の連携（都度得意先のみ使用）。</param>
+public sealed record CustomerLedgerInput(
+    Customer Customer,
+    DateOnly PeriodFrom,
+    DateOnly PeriodTo,
+    IReadOnlyList<Sales> SalesLines,
+    IReadOnlyList<Billing> ConfirmedBillings,
+    IReadOnlyList<Receipt> ReceiptLines,
+    IReadOnlyList<DetailReceipt> DetailReceiptLines,
+    IReadOnlyList<DetailInvoiceSalesLine> DetailInvoiceLinks);
+
+/// <summary>
+/// <see cref="CustomerLedgerBuilder.Build"/> の出力。<see cref="Entries"/> の先頭は前月繰越行。
+/// </summary>
+/// <param name="SalesTotal">期間内の売上額計（返品・値引を含む純額。消費税は含まない）。</param>
+/// <param name="ReceiptTotal">
+/// 期間内の入金額計。エントリから直接積み上げる（前月繰越との差分から逆算する方式は採用しない）。
+/// </param>
+public sealed record CustomerLedgerResult(
+    IReadOnlyList<CustomerLedgerEntry> Entries,
+    decimal OpeningBalance,
+    decimal SalesTotal,
+    decimal TaxTotal,
+    decimal ReceiptTotal,
+    decimal ClosingBalance)
+{
+    /// <summary>検算用。常に true になること（単体テストで assert する）。</summary>
+    public bool IsBalanced
+        => ClosingBalance == OpeningBalance + SalesTotal + TaxTotal - ReceiptTotal;
+}

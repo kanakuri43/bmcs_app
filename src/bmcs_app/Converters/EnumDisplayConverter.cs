@@ -6,7 +6,7 @@ namespace bmcs_app.Converters;
 
 /// <summary>
 /// TaxUnit/RoundingType/TaxCategory/OrderStatus/BillingLinkStatus/SettlementStatus/SlipType/BillingStatus/
-/// DetailInvoiceStatus/BankAccountType/AllocationStatus/ReceiptMethod
+/// DetailInvoiceStatus/BankAccountType/AllocationStatus/ReceiptMethod/LedgerEntryKind
 /// を画面表示用の日本語に変換する。
 /// </summary>
 public class EnumDisplayConverter : IValueConverter
@@ -47,6 +47,10 @@ public class EnumDisplayConverter : IValueConverter
         ReceiptMethod.BankTransfer => "振込",
         ReceiptMethod.PromissoryNote => "手形",
         ReceiptMethod.Offset => "相殺",
+        LedgerEntryKind.OpeningBalance => "前月繰越",
+        LedgerEntryKind.Sales => "売上",
+        LedgerEntryKind.ConsumptionTax => "消費税",
+        LedgerEntryKind.Receipt => "入金",
         _ => value?.ToString() ?? string.Empty,
     };
 

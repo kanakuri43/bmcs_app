@@ -6,6 +6,7 @@ using bmcs_app.Application;
 using bmcs_app.Services;
 using bmcs_app.ViewModels.Billing;
 using bmcs_app.ViewModels.Common;
+using bmcs_app.ViewModels.Ledger;
 using bmcs_app.ViewModels.Master;
 using bmcs_app.ViewModels.Menu;
 using bmcs_app.ViewModels.Order;
@@ -13,6 +14,7 @@ using bmcs_app.ViewModels.Receipt;
 using bmcs_app.ViewModels.Sales;
 using bmcs_app.Views.Billing;
 using bmcs_app.Views.Common;
+using bmcs_app.Views.Ledger;
 using bmcs_app.Views.Master;
 using bmcs_app.Views.Menu;
 using bmcs_app.Views.Order;
@@ -181,6 +183,9 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<DetailReceiptEntryWindow>();
         builder.Services.AddScoped<DetailReceiptEntryViewModel>();
+
+        builder.Services.AddScoped<CustomerLedgerWindow>();
+        builder.Services.AddScoped<CustomerLedgerViewModel>();
 
         return builder.Build();
     }

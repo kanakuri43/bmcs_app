@@ -1,5 +1,6 @@
 using bmcs_app.Application.Billing;
 using bmcs_app.Application.Common;
+using bmcs_app.Application.Ledger;
 using bmcs_app.Application.Master;
 using bmcs_app.Application.Order;
 using bmcs_app.Application.Receipt;
@@ -62,6 +63,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ReceiptQueryService>();
         services.AddScoped<DetailReceiptEntryService>();
         services.AddScoped<DetailReceiptQueryService>();
+        services.AddScoped<CustomerLedgerQueryService>();
 
         return services;
     }
