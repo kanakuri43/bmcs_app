@@ -13,7 +13,7 @@
                 <ColumnDefinition Width="36"  />  <!-- 行番号 -->
                 <ColumnDefinition Width="130" />  <!-- 入金方法 -->
                 <ColumnDefinition Width="150" />  <!-- 入金先口座（振込のみ） -->
-                <ColumnDefinition Width="110" />  <!-- 手形期日（手形のみ） -->
+                <ColumnDefinition Width="120" />  <!-- 手形期日（手形のみ） -->
                 <ColumnDefinition Width="120" />  <!-- 金額 -->
                 <ColumnDefinition Width="*"   />  <!-- 行摘要 -->
                 <ColumnDefinition Width="28"  />  <!-- 削除 -->
@@ -45,13 +45,11 @@
                       Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 手形期日（手形のときだけ表示） -->
-            <TextBox x:Name="BillDueDateBox"
-                     Grid.Column="3"
-                     Style="{StaticResource DateTextBoxStyle}"
-                     Visibility="{Binding IsBillDueDateVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
-                     Text="{Binding BillDueDateText, UpdateSourceTrigger=LostFocus}"
-                     mah:TextBoxHelper.Watermark="yyyy/MM/dd"
-                     Margin="{StaticResource SlipLineCellMargin}" />
+            <DatePicker Grid.Column="3"
+                        Visibility="{Binding IsBillDueDateVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        mah:TextBoxHelper.Watermark="yyyy/MM/dd"
+                        SelectedDate="{Binding BillDueDate}"
+                        Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 金額 -->
             <TextBox x:Name="AmountBox"

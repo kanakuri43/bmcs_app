@@ -49,16 +49,16 @@ public partial class ReceiptLineViewModel : ObservableObject
 
         if (value != ReceiptMethod.PromissoryNote)
         {
-            BillDueDateText = string.Empty;
+            BillDueDate = null;
         }
     }
 
     [ObservableProperty]
     public partial string? BankAccountCode { get; set; }
 
-    /// <summary>手形期日（文字列入力。ヘッダーの日付欄と同じ書式 yyyy/MM/dd）。</summary>
+    /// <summary>手形期日。手形のときだけ入力を要する（未入力＝null）。</summary>
     [ObservableProperty]
-    public partial string BillDueDateText { get; set; } = string.Empty;
+    public partial DateTime? BillDueDate { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBlank))]

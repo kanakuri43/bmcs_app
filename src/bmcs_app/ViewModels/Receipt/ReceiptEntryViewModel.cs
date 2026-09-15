@@ -106,7 +106,7 @@ public partial class ReceiptEntryViewModel(
     private bool CanEdit => !IsPreviewMode;
 
     [ObservableProperty]
-    public partial string ReceiptDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+    public partial DateTime? ReceiptDate { get; set; } = DateTime.Today;
 
     [ObservableProperty]
     public partial string CustomerCode { get; set; } = string.Empty;
@@ -341,11 +341,13 @@ public partial class ReceiptEntryViewModel(
             return;
         }
 
-        if (!DateOnly.TryParseExact(ReceiptDateText, "yyyy/MM/dd", out var receiptDate))
+        if (ReceiptDate is not { } receiptDateValue)
         {
-            StatusMessage = "入金日付の形式が不正です（yyyy/MM/dd）。";
+            StatusMessage = "入金日付を入力してください。";
             return;
         }
+
+        var receiptDate = DateOnly.FromDateTime(receiptDateValue);
 
         try
         {
@@ -441,13 +443,13 @@ public partial class ReceiptEntryViewModel(
             DateOnly? billDueDate = null;
             if (line.ReceiptMethod == ReceiptMethod.PromissoryNote)
             {
-                if (!DateOnly.TryParseExact(line.BillDueDateText, "yyyy/MM/dd", out var parsed))
+                if (line.BillDueDate is not { } billDueDateValue)
                 {
-                    error = "手形期日の形式が不正です（yyyy/MM/dd）。";
+                    error = "手形期日を入力してください。";
                     return false;
                 }
 
-                billDueDate = parsed;
+                billDueDate = DateOnly.FromDateTime(billDueDateValue);
             }
 
             lineInputs.Add(new ReceiptLineInput(
@@ -480,13 +482,13 @@ public partial class ReceiptEntryViewModel(
             DateOnly? billDueDate = null;
             if (line.ReceiptMethod == ReceiptMethod.PromissoryNote)
             {
-                if (!DateOnly.TryParseExact(line.BillDueDateText, "yyyy/MM/dd", out var parsed))
+                if (line.BillDueDate is not { } billDueDateValue)
                 {
-                    error = "手形期日の形式が不正です（yyyy/MM/dd）。";
+                    error = "手形期日を入力してください。";
                     return false;
                 }
 
-                billDueDate = parsed;
+                billDueDate = DateOnly.FromDateTime(billDueDateValue);
             }
 
             lineCorrections.Add(new ReceiptLineCorrection(
@@ -515,7 +517,7 @@ public partial class ReceiptEntryViewModel(
         var lockResult = await receiptEntryService.EvaluateEditLockAsync(lines);
 
         ReceiptSlipNumberQuery = receiptSlipNumber;
-        ReceiptDateText = header.ReceiptDate.ToString("yyyy/MM/dd");
+        ReceiptDate = header.ReceiptDate.ToDateTime(TimeOnly.MinValue);
         CustomerCode = header.CustomerCode;
         CustomerName = header.CustomerName;
         SlipRemarks = header.SlipRemarks ?? string.Empty;
@@ -536,7 +538,7 @@ public partial class ReceiptEntryViewModel(
             lineVm.PersistedLineNumber = line.LineNumber;
             lineVm.ReceiptMethod = line.ReceiptMethod;
             lineVm.BankAccountCode = line.BankAccountCode;
-            lineVm.BillDueDateText = line.BillDueDate?.ToString("yyyy/MM/dd") ?? string.Empty;
+            lineVm.BillDueDate = line.BillDueDate?.ToDateTime(TimeOnly.MinValue);
             lineVm.Amount = line.Amount;
             lineVm.LineRemarks = line.LineRemarks ?? string.Empty;
             Lines.Add(lineVm);
@@ -561,7 +563,7 @@ public partial class ReceiptEntryViewModel(
     private void ClearForm()
     {
         ReceiptSlipNumberQuery = string.Empty;
-        ReceiptDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+        ReceiptDate = DateTime.Today;
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
         SlipRemarks = string.Empty;
