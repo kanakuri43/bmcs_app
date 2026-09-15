@@ -4,7 +4,7 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  xmlns:local="clr-namespace:bmcs_app.Views.Receipt"
-                 Title="bmcs_app - 入金入力"
+                 Title="{Binding WindowTitle}"
                  Height="680" Width="900"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
@@ -67,6 +67,7 @@
                     <TextBox x:Name="ReceiptSlipNumberBox"
                              Grid.Column="1"
                              beh:FocusBehavior.IsInitialFocus="True"
+                             IsReadOnly="{Binding IsPreviewMode}"
                              Text="{Binding ReceiptSlipNumberQuery, UpdateSourceTrigger=PropertyChanged}"
                              mah:TextBoxHelper.Watermark="自動採番（Space検索、既存分はEnterで読込）"
                              mah:TextBoxHelper.ClearTextButton="True"
@@ -180,10 +181,10 @@
 
             <!-- 明細行リスト -->
             <ScrollViewer Grid.Row="1"
-                          IsEnabled="{Binding IsEditable}"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
-                <ItemsControl ItemsSource="{Binding Lines}">
+                <ItemsControl ItemsSource="{Binding Lines}"
+                              IsEnabled="{Binding IsEditable}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <local:ReceiptLineControl />

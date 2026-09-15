@@ -71,7 +71,10 @@
         </StackPanel>
 
         <!-- ===== 明細 ===== -->
-        <ListView Grid.Row="1" ItemsSource="{Binding Lines}">
+        <!-- 行をEnter／ダブルクリックで活性化すると、対応する伝票を読み取り専用（プレビュー）で開く（TODO.md 8-3） -->
+        <ListView Grid.Row="1" ItemsSource="{Binding Lines}"
+                  ToolTip="行をEnterまたはダブルクリックすると、対応する伝票をプレビュー表示します。"
+                  beh:RowActivationBehavior.Command="{Binding OpenSlipPreviewCommand}">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="区分" Width="60" DisplayMemberBinding="{Binding KindLabel}" />

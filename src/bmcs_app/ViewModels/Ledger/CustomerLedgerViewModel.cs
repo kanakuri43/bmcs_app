@@ -1,11 +1,16 @@
 using System.Collections.ObjectModel;
 using bmcs_app.Application.Ledger;
 using bmcs_app.Application.Master;
+using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Entities;
 using bmcs_app.Domain.Enums;
 using bmcs_app.Services;
 using bmcs_app.ViewModels.Common;
+using bmcs_app.ViewModels.Receipt;
+using bmcs_app.ViewModels.Sales;
 using bmcs_app.Views.Common;
+using bmcs_app.Views.Receipt;
+using bmcs_app.Views.Sales;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -26,8 +31,11 @@ namespace bmcs_app.ViewModels.Ledger;
 /// 仕組みは持たない。再検索・再オープンのたびに必ず最新値になることが「常時表示」の意味。
 /// docs/design_document.md 21章）。
 ///
-/// 伝票プレビュー（TODO.md 8-3）・印刷（Phase 10）は本タスクのスコープ外
-/// （ボタンは枠のみ用意し無効化する）。
+/// 伝票プレビュー（TODO.md 8-3、<see cref="OpenSlipPreview"/>）は行を <c>Enter</c>／ダブルクリック
+/// （<see cref="Behaviors.RowActivationBehavior"/>）で活性化すると、対応する売上入力・入金入力・
+/// 明細入金画面を <see cref="Services.WindowService.Show{TWindow, TViewModel}"/> の <c>configure</c>
+/// 経由で読み取り専用（プレビュー）表示する。印刷（Phase 10、元帳自体の帳票プレビュー）は
+/// 別物で本タスクのスコープ外（ボタンは枠のみ用意し無効化する）。
 /// </summary>
 public partial class CustomerLedgerViewModel(
     CustomerLedgerQueryService ledgerQueryService,
@@ -192,4 +200,68 @@ public partial class CustomerLedgerViewModel(
         0 => "都度",
         _ => $"{closingDay}日締め",
     };
+
+    /// <summary>
+    /// 行の活性化（<c>Enter</c>／ダブルクリック。<see cref="Behaviors.RowActivationBehavior"/>）から
+    /// 伝票プレビュー（TODO.md 8-3）を開く。開く画面は行の種別で決まる:
+    /// <list type="bullet">
+    /// <item><see cref="LedgerEntryKind.Sales"/>で<see cref="CustomerLedgerEntry.SalesSlipNumber"/>が
+    /// あれば売上入力。無ければ消込証跡の継続行（D-3。都度得意先のみ）で、実体は
+    /// <see cref="CustomerLedgerEntry.ReceiptSlipNumber"/>（detail_receiptの番号）なので明細入金。</item>
+    /// <item><see cref="LedgerEntryKind.Receipt"/>は得意先の税区分で分岐（<c>ReceiptSlipNumber</c>は
+    /// <c>receipt</c>／<c>detail_receipt</c>のどちらの番号かを区別する情報を持たないため）。</item>
+    /// <item><see cref="LedgerEntryKind.ConsumptionTax"/>は伝票単位（<c>SalesSlipNumber</c>あり）のみ
+    /// 売上入力。請求単位の確定額・未締め仮計算・<see cref="LedgerEntryKind.OpeningBalance"/>は
+    /// 辿れる伝票が無いため開かない。</item>
+    /// </list>
+    /// </summary>
+    [RelayCommand]
+    private void OpenSlipPreview(CustomerLedgerLineViewModel? line)
+    {
+        if (line is null)
+        {
+            return;
+        }
+
+        var entry = line.Entry;
+        switch (entry.Kind)
+        {
+            case LedgerEntryKind.Sales when entry.SalesSlipNumber is { } salesSlipNumber:
+                OpenSalesPreview(salesSlipNumber);
+                break;
+
+            case LedgerEntryKind.Sales when entry.ReceiptSlipNumber is { } detailReceiptNumber:
+                // 消込証跡の継続行（D-3）。SalesSlipNumberがnullで実体はdetail_receiptへのポインタ。
+                OpenDetailReceiptPreview(detailReceiptNumber);
+                break;
+
+            case LedgerEntryKind.Receipt when entry.ReceiptSlipNumber is { } receiptSlipNumber:
+                if (_customer?.TaxUnit == TaxUnit.Line)
+                {
+                    OpenDetailReceiptPreview(receiptSlipNumber);
+                }
+                else
+                {
+                    OpenReceiptPreview(receiptSlipNumber);
+                }
+                break;
+
+            case LedgerEntryKind.ConsumptionTax when entry.SalesSlipNumber is { } taxSalesSlipNumber:
+                OpenSalesPreview(taxSalesSlipNumber);
+                break;
+
+            default:
+                StatusMessage = "この行に対応する伝票はありません。";
+                break;
+        }
+    }
+
+    private void OpenSalesPreview(string salesSlipNumber)
+        => windowService.Show<SalesEntryWindow, SalesEntryViewModel>(vm => vm.PreviewSlipNumber = salesSlipNumber);
+
+    private void OpenReceiptPreview(string receiptSlipNumber)
+        => windowService.Show<ReceiptEntryWindow, ReceiptEntryViewModel>(vm => vm.PreviewSlipNumber = receiptSlipNumber);
+
+    private void OpenDetailReceiptPreview(string detailReceiptNumber)
+        => windowService.Show<DetailReceiptEntryWindow, DetailReceiptEntryViewModel>(vm => vm.PreviewSlipNumber = detailReceiptNumber);
 }

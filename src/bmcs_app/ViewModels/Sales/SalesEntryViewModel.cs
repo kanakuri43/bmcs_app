@@ -40,6 +40,18 @@ public partial class SalesEntryViewModel(
     /// <summary>編集中の売上伝票番号。<c>null</c> は新規（都度売上・受注確定・複写）を意味する。</summary>
     private string? _loadedSalesSlipNumber;
 
+    /// <summary>
+    /// 伝票プレビュー（TODO.md 8-3）用の入口。得意先元帳からの表示専用で開くとき、
+    /// <see cref="Services.WindowService.Show{TWindow, TViewModel}"/> の <c>configure</c> から
+    /// ウィンドウ表示前に一度だけ設定する。<see cref="LoadAsync"/> の末尾でこの伝票を読み込み、
+    /// 以後値は変化しない（ウィンドウは毎回新規に開くため）ため、<c>[ObservableProperty]</c>や
+    /// <c>NotifyCanExecuteChangedFor</c>は不要。
+    /// </summary>
+    public string? PreviewSlipNumber { get; set; }
+
+    /// <summary>プレビュー表示中かどうか。</summary>
+    public bool IsPreviewMode => PreviewSlipNumber is not null;
+
     /// <summary>読込時点の明細行番号の集合（訂正の排他制御用。docs/architecture.md 9章）。</summary>
     private IReadOnlyList<short> _loadedLineNumbers = [];
 
@@ -108,9 +120,20 @@ public partial class SalesEntryViewModel(
     [NotifyCanExecuteChangedFor(nameof(DeleteSlipCommand))]
     public partial bool IsEditLocked { get; set; }
 
-    private bool CanSave => _loadedSalesSlipNumber is null ? !IsSaved : !IsEditLocked;
+    private bool CanEdit => !IsPreviewMode;
 
-    private bool CanDeleteSlip => _loadedSalesSlipNumber is not null && !IsEditLocked;
+    private bool CanSave => CanEdit && (_loadedSalesSlipNumber is null ? !IsSaved : !IsEditLocked);
+
+    private bool CanDeleteSlip => CanEdit && _loadedSalesSlipNumber is not null && !IsEditLocked;
+
+    /// <summary>ヘッダー入力欄の <c>IsReadOnly</c> バインディング用（TODO.md 8-3）。</summary>
+    public bool IsHeaderLocked => IsPreviewMode;
+
+    /// <summary>明細行グリッドの <c>IsEnabled</c> バインディング用（TODO.md 8-3）。</summary>
+    public bool IsEditable => !IsPreviewMode;
+
+    /// <summary>ウィンドウタイトル（TODO.md 8-3）。</summary>
+    public string WindowTitle => IsPreviewMode ? "bmcs_app - 売上入力（プレビュー・編集不可）" : "bmcs_app - 売上入力";
 
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
@@ -168,9 +191,23 @@ public partial class SalesEntryViewModel(
             Lines.Add(CreateLine());
             RenumberLines();
         }
+
+        if (PreviewSlipNumber is { } previewSlipNumber)
+        {
+            // Loaded → LoadCommand の async void 経路で呼ばれるため、ここで例外を握らないと
+            // アプリがクラッシュする（TODO.md 8-3）。
+            try
+            {
+                await LoadSalesSlipForCorrectionAsync(previewSlipNumber);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"プレビューの読込に失敗しました: {ex.Message}";
+            }
+        }
     });
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private void OpenCustomerSearch()
     {
         var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>();
@@ -180,7 +217,7 @@ public partial class SalesEntryViewModel(
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private async Task LookupCustomerByCodeAsync()
     {
         if (string.IsNullOrWhiteSpace(CustomerCode))
@@ -226,7 +263,7 @@ public partial class SalesEntryViewModel(
         : DateOnly.FromDateTime(DateTime.Today);
 
     // ── 明細行 ────────────────────────────────────────────────
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private void AddLine()
     {
         Lines.Add(CreateLine());
@@ -435,9 +472,14 @@ public partial class SalesEntryViewModel(
     }
 
     // ── 新規 ─────────────────────────────────────────────────
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private void New()
     {
+        if (IsPreviewMode)
+        {
+            return;
+        }
+
         _customer = null;
         _loadedSalesSlipNumber = null;
         _loadedLineNumbers = [];
@@ -463,6 +505,11 @@ public partial class SalesEntryViewModel(
     [RelayCommand(CanExecute = nameof(CanSave))]
     private Task SaveAsync() => RunBusyAsync(async () =>
     {
+        if (IsPreviewMode)
+        {
+            return;
+        }
+
         if (_customer is null)
         {
             StatusMessage = "得意先を指定してください。";
@@ -581,7 +628,7 @@ public partial class SalesEntryViewModel(
     };
 
     // ── 受注からの売上確定（TODO.md 5-3） ──────────────────────
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private void OpenOrderSlipSearch()
     {
         var orderSlipNumber = windowService.ShowDialog<SlipSearchDialog, SlipSearchDialogViewModel, string>(
@@ -597,7 +644,7 @@ public partial class SalesEntryViewModel(
     /// 受注No.欄で Return を押したときの挙動。空欄なら次項目（得意先）へフォーカス移動するのみ。
     /// 入力済みなら受注の残数量を明細行へ転記する（docs/product-spec.md UI/UX節参照）。
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private Task LookupOrderSlipByNumberAsync() => RunBusyAsync(async () =>
     {
         if (string.IsNullOrWhiteSpace(OrderSlipNumberQuery))
@@ -688,7 +735,7 @@ public partial class SalesEntryViewModel(
     }
 
     // ── 過去伝票の複写（TODO.md 5-5） ──────────────────────────
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private Task CopyFromPastSlipAsync() => RunBusyAsync(async () =>
     {
         var sourceSlipNumber = windowService.ShowDialog<SlipSearchDialog, SlipSearchDialogViewModel, string>(
@@ -747,7 +794,7 @@ public partial class SalesEntryViewModel(
     });
 
     // ── 既存伝票の訂正・取消（TODO.md 5-6） ────────────────────
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private void OpenSalesSlipSearch()
     {
         var salesSlipNumber = windowService.ShowDialog<SlipSearchDialog, SlipSearchDialogViewModel, string>(
@@ -764,7 +811,7 @@ public partial class SalesEntryViewModel(
     /// 伝票No入力欄の挙動」）。空欄なら新規登録モードとして次項目（売上日付）へフォーカス移動するのみ。
     /// 入力済みなら既存伝票の訂正・取消として読み込む。
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private Task LookupSalesSlipByNumberAsync() => RunBusyAsync(async () =>
     {
         if (string.IsNullOrWhiteSpace(SalesSlipNumberDisplay))
@@ -847,20 +894,29 @@ public partial class SalesEntryViewModel(
             Lines.Add(line);
         }
 
-        EnsureTrailingBlankLine();
+        if (!IsPreviewMode)
+        {
+            EnsureTrailingBlankLine();
+        }
         RenumberLines();
         RaiseTotalsChanged();
 
-        StatusMessage = lockResult.IsLocked
-            ? $"売上No. {salesSlipNumber} を読み込みました（編集不可: {lockResult.Reason}）"
-            : $"売上No. {salesSlipNumber} を読み込みました。";
-        RequestFocus("SlipDate");
+        StatusMessage = IsPreviewMode
+            ? $"売上No. {salesSlipNumber} をプレビュー表示中（編集できません）。"
+            : lockResult.IsLocked
+                ? $"売上No. {salesSlipNumber} を読み込みました（編集不可: {lockResult.Reason}）"
+                : $"売上No. {salesSlipNumber} を読み込みました。";
+
+        if (!IsPreviewMode)
+        {
+            RequestFocus("SlipDate");
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanDeleteSlip))]
     private Task DeleteSlipAsync() => RunBusyAsync(async () =>
     {
-        if (_loadedSalesSlipNumber is null)
+        if (IsPreviewMode || _loadedSalesSlipNumber is null)
         {
             return;
         }

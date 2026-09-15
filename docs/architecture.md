@@ -98,6 +98,8 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 
 実装は `src/bmcs_app/Services/WindowService.cs` が担う。`IServiceScopeFactory` でウィンドウ1つにつきスコープを1つ作り、`Window.Closed` でスコープを破棄する。**画面を追加する際は必ず `WindowService.Show<TWindow, TViewModel>()` を経由させ、`new` で直接ウィンドウを生成しない。** ウィンドウと ViewModel は `Scoped` で DI 登録する。
 
+`Show<TWindow, TViewModel>(Action<TViewModel>? configure = null)` は `ShowDialog` と同じ位置づけの `configure` コールバックを持つ（TODO.md 8-3で追加）。呼び出し元の文脈（プレビュー対象の伝票No.等）を ViewModel へ渡すために使うが、**`configure` は値を設定するだけに留め、非同期の初期化処理は行わない**。`Show` は `window.Show()` の前に `configure` を呼ぶが、View の `Loaded`（→ ViewModel の `LoadCommand`）はその後に非同期で発火するため、`configure` 側で非同期処理をすると実行順が保証されない。
+
 ### モーダルダイアログ（選択結果を返す画面、Phase 3 で追加）
 
 共通検索モーダルのように「呼び出し元へ選択結果を返して閉じる」画面は、上記 `Show` とは別に `WindowService.ShowDialog<TWindow, TViewModel, TResult>(Action<TViewModel>? configure = null)` を使う。

@@ -20,7 +20,15 @@ public class WindowService(IServiceScopeFactory scopeFactory, ILogger<WindowServ
     /// </summary>
     /// <typeparam name="TWindow">表示するウィンドウ。</typeparam>
     /// <typeparam name="TViewModel">DataContext に設定する ViewModel。</typeparam>
-    public TWindow Show<TWindow, TViewModel>()
+    /// <param name="configure">
+    /// 呼び出し元の文脈（プレビュー対象の伝票No.等）を ViewModel へ渡すためのコールバック
+    /// （<see cref="ShowDialog{TWindow, TViewModel, TResult}"/>と同じ位置づけ）。
+    /// <b>ここで渡すのはプロパティの設定だけにする。</b> ウィンドウの初期化（DB読込）は
+    /// View の <c>Loaded</c> イベント→ViewModel の <c>LoadCommand</c> が担うため
+    /// （<c>Show</c>は<c>window.Show()</c>の前に本コールバックを呼ぶが、<c>Loaded</c>はその後に
+    /// 非同期で発火する。ここで非同期処理を行うと実行順が保証されない。TODO.md 8-3）。
+    /// </param>
+    public TWindow Show<TWindow, TViewModel>(Action<TViewModel>? configure = null)
         where TWindow : Window
         where TViewModel : notnull
     {
@@ -29,7 +37,9 @@ public class WindowService(IServiceScopeFactory scopeFactory, ILogger<WindowServ
         try
         {
             var window = scope.ServiceProvider.GetRequiredService<TWindow>();
-            window.DataContext = scope.ServiceProvider.GetRequiredService<TViewModel>();
+            var viewModel = scope.ServiceProvider.GetRequiredService<TViewModel>();
+            window.DataContext = viewModel;
+            configure?.Invoke(viewModel);
 
             // ウィンドウが閉じられたらスコープを破棄し、DbContext も解放する。
             window.Closed += (_, _) =>

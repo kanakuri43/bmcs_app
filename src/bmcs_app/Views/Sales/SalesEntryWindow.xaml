@@ -4,7 +4,7 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  xmlns:common="clr-namespace:bmcs_app.Views.Common"
-                 Title="bmcs_app - 売上入力"
+                 Title="{Binding WindowTitle}"
                  Height="720" Width="1100"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
@@ -123,6 +123,7 @@
                         <TextBlock Grid.Column="0" Text="売上No." VerticalAlignment="Center" />
                         <TextBox Grid.Column="1"
                                  beh:FocusBehavior.IsInitialFocus="True"
+                                 IsReadOnly="{Binding IsHeaderLocked}"
                                  Text="{Binding SalesSlipNumberDisplay, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="自動採番（Space検索）"
                                  ToolTip="既存の売上No.を入力してEnterで読み込む（訂正・取消。TODO.md 5-6）。Spaceで検索モーダルを開く">
@@ -136,6 +137,7 @@
                         <TextBox Grid.Column="4"
                                  Style="{StaticResource DateTextBoxStyle}"
                                  beh:FocusBehavior.FocusKey="SlipDate"
+                                 IsReadOnly="{Binding IsHeaderLocked}"
                                  Text="{Binding SlipDateText}" />
                     </Grid>
 
@@ -149,6 +151,7 @@
 
                         <TextBlock Grid.Column="0" Text="受注No." VerticalAlignment="Center" />
                         <TextBox Grid.Column="1"
+                                 IsReadOnly="{Binding IsHeaderLocked}"
                                  Text="{Binding OrderSlipNumberQuery, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="任意（Space検索）"
                                  ToolTip="受注No.を入力してEnterで残数量を明細行へ転記する。Spaceで受注検索モーダルを開く">
@@ -172,6 +175,7 @@
                         <TextBox x:Name="CustomerCodeBox"
                                  Grid.Column="1"
                                  beh:FocusBehavior.FocusKey="CustomerCode"
+                                 IsReadOnly="{Binding IsHeaderLocked}"
                                  Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="コード（Space検索）">
                             <TextBox.InputBindings>
@@ -180,6 +184,7 @@
                             </TextBox.InputBindings>
                         </TextBox>
                         <TextBox Grid.Column="3"
+                                 IsReadOnly="{Binding IsHeaderLocked}"
                                  Text="{Binding CustomerName, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="名称（宛名変更時は上書き可）"
                                  ToolTip="得意先コード検索後に自動入力される名称。学校のクラス・先生等の宛名を都度変更する場合は、ここを直接書き換える（子得意先マスタは持たない。C-9・2026-09-10確定）" />
@@ -215,6 +220,7 @@
 
                         <TextBlock Grid.Column="0" Text="摘要" VerticalAlignment="Center" />
                         <TextBox Grid.Column="1"
+                                 IsReadOnly="{Binding IsHeaderLocked}"
                                  Text="{Binding SlipRemarks}" />
                     </Grid>
                 </StackPanel>
@@ -266,7 +272,8 @@
             <ScrollViewer Grid.Row="1"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
-                <ItemsControl ItemsSource="{Binding Lines}">
+                <ItemsControl ItemsSource="{Binding Lines}"
+                              IsEnabled="{Binding IsEditable}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <common:SlipLineControl />

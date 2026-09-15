@@ -41,6 +41,19 @@ public partial class DetailReceiptEntryViewModel(
     private string? _loadedDetailReceiptNumber;
     private IReadOnlyList<short> _loadedLineNumbers = [];
 
+    /// <summary>
+    /// 伝票プレビュー（TODO.md 8-3）用の入口。得意先元帳からの表示専用で開くとき、
+    /// <see cref="Services.WindowService.Show{TWindow, TViewModel}"/> の <c>configure</c> から
+    /// ウィンドウ表示前に一度だけ設定する。値は以後変化しないため<c>[ObservableProperty]</c>は使わない。
+    /// </summary>
+    public string? PreviewSlipNumber { get; set; }
+
+    /// <summary>プレビュー表示中かどうか。</summary>
+    public bool IsPreviewMode => PreviewSlipNumber is not null;
+
+    /// <summary>ウィンドウタイトル（TODO.md 8-3）。</summary>
+    public string WindowTitle => IsPreviewMode ? "bmcs_app - 明細入金（プレビュー・編集不可）" : "bmcs_app - 明細入金";
+
     public ObservableCollection<BankAccount> BankAccounts { get; } = [];
 
     public ObservableCollection<ReceiptMethodOption> ReceiptMethodOptions { get; } =
@@ -84,10 +97,12 @@ public partial class DetailReceiptEntryViewModel(
     /// ヘッダー（入金日付・摘要）・明細行（入金方法・入金先口座・行摘要・削除）の編集可否。
     /// 新規登録時は常に編集可能、既存読込時は編集ロックされていない場合のみ編集可能（＝訂正できる）。
     /// </summary>
-    public bool IsEditable => !IsExistingLoaded || !IsEditLocked;
+    public bool IsEditable => !IsPreviewMode && (!IsExistingLoaded || !IsEditLocked);
 
     /// <summary>入金日付・摘要のIsReadOnlyバインディング用（得意先コードは<see cref="IsExistingLoaded"/>を直接使う）。</summary>
     public bool IsHeaderLocked => !IsEditable;
+
+    private bool CanEdit => !IsPreviewMode;
 
     [ObservableProperty]
     public partial string ReceiptDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
@@ -149,9 +164,9 @@ public partial class DetailReceiptEntryViewModel(
     /// 訂正モードでは編集ロックの有無に関わらず不可（<see cref="DetailReceiptEntryService"/>の
     /// doc comment参照。充当先の追加自体が設計上禁止されているため）。
     /// </summary>
-    private bool CanAddNewTarget => _loadedDetailReceiptNumber is null;
+    private bool CanAddNewTarget => CanEdit && _loadedDetailReceiptNumber is null;
 
-    private bool CanDeleteSlip => _loadedDetailReceiptNumber is not null && !IsEditLocked;
+    private bool CanDeleteSlip => CanEdit && _loadedDetailReceiptNumber is not null && !IsEditLocked;
 
     [RelayCommand]
     private Task LoadAsync() => RunBusyAsync(async () =>
@@ -162,18 +177,37 @@ public partial class DetailReceiptEntryViewModel(
         {
             BankAccounts.Add(account);
         }
+
+        if (PreviewSlipNumber is { } previewSlipNumber)
+        {
+            // Loaded → LoadCommand の async void 経路で呼ばれるため、ここで例外を握らないと
+            // アプリがクラッシュする（TODO.md 8-3）。
+            try
+            {
+                await LookupByNumberAsync(previewSlipNumber);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"プレビューの読込に失敗しました: {ex.Message}";
+            }
+        }
     });
 
     /// <summary>新規（F3）。画面を起動直後の状態に戻す。</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private void New()
     {
+        if (IsPreviewMode)
+        {
+            return;
+        }
+
         ClearForm();
         StatusMessage = "新規明細入金";
         NotifyResetToInitialState();
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private void OpenCustomerSearch()
     {
         var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>();
@@ -183,7 +217,7 @@ public partial class DetailReceiptEntryViewModel(
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private Task LookupCustomerByCodeAsync() => RunBusyAsync(async () =>
     {
         if (string.IsNullOrWhiteSpace(CustomerCode))
@@ -428,10 +462,17 @@ public partial class DetailReceiptEntryViewModel(
     /// 伝票No入力欄の挙動」）。空欄なら新規登録モードとして次項目（入金日付）へフォーカス移動する
     /// のみ。入力済みなら既存の明細入金No.で直接読み込む（訂正・取消モード。TODO.md 7-5）。
     /// </summary>
-    [RelayCommand]
-    private Task LookupAsync() => RunBusyAsync(async () =>
+    [RelayCommand(CanExecute = nameof(CanEdit))]
+    private Task LookupAsync() => RunBusyAsync(() => LookupByNumberAsync(DetailReceiptNumberQuery));
+
+    /// <summary>
+    /// 明細入金No.欄からの読込の本体。<see cref="LookupAsync"/>（対話操作）と<see cref="LoadAsync"/>
+    /// （プレビュー。TODO.md 8-3）の両方から呼ぶため、<see cref="RunBusyAsync"/>には包まない
+    /// （呼び出し側がそれぞれ包む）。
+    /// </summary>
+    private async Task LookupByNumberAsync(string numberQuery)
     {
-        var number = DetailReceiptNumberQuery.Trim();
+        var number = numberQuery.Trim();
         if (string.IsNullOrWhiteSpace(number))
         {
             RequestFocus("ReceiptDate");
@@ -446,10 +487,10 @@ public partial class DetailReceiptEntryViewModel(
         }
 
         await ApplyExisting(number, lines);
-    });
+    }
 
     /// <summary>明細入金検索モーダルを開く（<c>Space</c>）。選択した番号は <see cref="LookupAsync"/> と同じ経路で読み込む。</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private void OpenDetailReceiptSearch()
     {
         var detailReceiptNumber = windowService.ShowDialog<SlipSearchDialog, SlipSearchDialogViewModel, string>(
@@ -466,7 +507,7 @@ public partial class DetailReceiptEntryViewModel(
     [RelayCommand(CanExecute = nameof(CanSave))]
     private Task SaveAsync() => RunBusyAsync(async () =>
     {
-        if (_customer is null)
+        if (IsPreviewMode || _customer is null)
         {
             return;
         }
@@ -544,7 +585,7 @@ public partial class DetailReceiptEntryViewModel(
     [RelayCommand(CanExecute = nameof(CanDeleteSlip))]
     private Task DeleteSlipAsync() => RunBusyAsync(async () =>
     {
-        if (_loadedDetailReceiptNumber is null)
+        if (IsPreviewMode || _loadedDetailReceiptNumber is null)
         {
             return;
         }
@@ -618,9 +659,11 @@ public partial class DetailReceiptEntryViewModel(
         _loadedLineNumbers = lines.Select(l => l.LineNumber).ToList();
         IsExistingLoaded = true;
         IsEditLocked = lockResult.IsLocked;
-        StatusMessage = lockResult.IsLocked
-            ? $"明細入金No. {detailReceiptNumber} を読み込みました（編集不可: {lockResult.Reason}）"
-            : $"明細入金No. {detailReceiptNumber} を読み込みました。";
+        StatusMessage = IsPreviewMode
+            ? $"明細入金No. {detailReceiptNumber} をプレビュー表示中（編集できません）。"
+            : lockResult.IsLocked
+                ? $"明細入金No. {detailReceiptNumber} を読み込みました（編集不可: {lockResult.Reason}）"
+                : $"明細入金No. {detailReceiptNumber} を読み込みました。";
     }
 
     private void ClearForm()

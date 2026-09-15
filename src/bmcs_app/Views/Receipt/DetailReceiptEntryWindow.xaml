@@ -4,7 +4,7 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  xmlns:local="clr-namespace:bmcs_app.Views.Receipt"
-                 Title="bmcs_app - 明細入金"
+                 Title="{Binding WindowTitle}"
                  Height="760" Width="1180"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
@@ -68,6 +68,7 @@
                     <TextBox x:Name="DetailReceiptNumberBox"
                              Grid.Column="1"
                              beh:FocusBehavior.IsInitialFocus="True"
+                             IsReadOnly="{Binding IsPreviewMode}"
                              Text="{Binding DetailReceiptNumberQuery, UpdateSourceTrigger=PropertyChanged}"
                              mah:TextBoxHelper.Watermark="自動採番（Space検索、既存分はEnterで読込）"
                              mah:TextBoxHelper.ClearTextButton="True"
@@ -177,10 +178,10 @@
 
                 <!-- 明細行リスト -->
                 <ScrollViewer Grid.Row="2"
-                              IsEnabled="{Binding IsEditable}"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl ItemsSource="{Binding Lines}">
+                    <ItemsControl ItemsSource="{Binding Lines}"
+                                  IsEnabled="{Binding IsEditable}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <local:DetailReceiptLineControl />
@@ -218,8 +219,8 @@
                           HorizontalAlignment="Stretch"
                           Background="{DynamicResource MahApps.Brushes.Gray8}" />
 
-            <!-- 右: 売上伝票 / 明細請求書候補（上下2ペイン） -->
-            <Grid Grid.Column="2" Margin="4,8,8,8">
+            <!-- 右: 売上伝票 / 明細請求書候補（上下2ペイン）。プレビュー中は充当先の選択に意味が無いため無効化する（TODO.md 8-3） -->
+            <Grid Grid.Column="2" Margin="4,8,8,8" IsEnabled="{Binding IsEditable}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="1.3*" />
                     <RowDefinition Height="5"    />

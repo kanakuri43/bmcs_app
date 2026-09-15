@@ -1504,7 +1504,7 @@ TODO.md 8-1の文面は「元帳データのマージ実装」（サービス層
 過不足がある場合は本プロジェクトを優先した。8-2（リアルタイム残高の常時表示）も同日中に
 続けて実装した（21-6参照）。
 
-スコープ外として残したもの: 8-3（伝票プレビュー＝`RowActivationBehavior`の配線）、
+スコープ外として残したもの（8-3で実装済み。21-7参照）、
 印刷・プレビュー（Phase 10。ボタンは枠のみ用意し`IsEnabled="False"`）。
 
 ### 21-2. 中心的な設計課題と決定事項
@@ -1597,13 +1597,80 @@ Domain単体テスト（`CustomerLedgerBuilderTests`）と、開発用ライブD
 入口。`GetAsync(code, asOf, asOf).ClosingBalance`と同値）を呼んで都度再計算する。期間From/Toを
 過去の月に変更しても「現在残高」自体は連動しない（デモの「前月繰越／今回」集計とは別の独立表示）。
 
+### 21-7. 伝票プレビュー（Phase 8-3、2026-09-15実装）
+
+**方針**: 専用のプレビュー画面は作らず、既存の売上入力（`SalesEntryWindow`）・入金入力
+（`ReceiptEntryWindow`）・明細入金（`DetailReceiptEntryWindow`）を読み取り専用（プレビュー）
+モードで開く（TODO.md方針どおり）。元帳の行を`Enter`／ダブルクリックで活性化する
+（`RowActivationBehavior`、`CustomerLedgerViewModel.OpenSlipPreviewCommand`）と対応する画面が
+非モーダル・毎回新規ウィンドウで開く（既存の`WindowService.Show`と同じ方式。2026-09-15ユーザー確認）。
+
+**行の種別→開く画面の対応**（`OpenSlipPreview`）:
+
+| 行の種別 | 開く画面 | 補足 |
+|---|---|---|
+| `Sales`かつ`SalesSlipNumber`あり | 売上入力 | |
+| `Sales`かつ`SalesSlipNumber`なし（消込証跡の継続行＝D-3。都度得意先のみ） | 明細入金 | 実体は`ReceiptSlipNumber`に入った`detail_receipt`番号 |
+| `Receipt` | 得意先の`TaxUnit`が`Line`なら明細入金、それ以外は入金入力 | `ReceiptSlipNumber`は`receipt`/`detail_receipt`どちらの番号かを区別する情報を持たないため、税区分で分岐する（登録後不変。C-1） |
+| `ConsumptionTax`かつ`SalesSlipNumber`あり（伝票単位） | 売上入力 | |
+| `ConsumptionTax`（請求単位の確定額・未締め仮計算）／`OpeningBalance` | 開かない | 辿れる伝票が無い。ステータスバーに理由を表示するのみ |
+
+**`WindowService.Show`に`configure`パラメータを追加**（`ShowDialog`と同じ位置づけ）。
+非モーダルウィンドウに初期状態を渡す要件はこのタスクが最初だった。`configure`は
+プレビュー対象の伝票No.（`PreviewSlipNumber`）をセットするだけの薄いコールバックとし、
+実際の読込（DBアクセス）は行わない。理由: `Show`は`window.Show()`の**前**に`configure`を呼ぶが、
+ウィンドウの初期化（各ViewModelの`LoadCommand`）はViewの`Loaded`イベントで**その後**に非同期発火する。
+`configure`側で読込まで行うと実行順が保証されない。読込は各`LoadAsync`の末尾で
+`PreviewSlipNumber`を見て行う。
+
+**readOnly化は3画面それぞれに個別実装した**（共通基底クラスは作らない。過剰な抽象化を避ける
+既定方針どおり）。入金入力・明細入金は既存の`IsExistingLoaded`/`IsEditLocked`/`IsEditable`/
+`IsHeaderLocked`の枠組みに`!IsPreviewMode`を混ぜるだけで済んだが、売上入力にはこの枠組みが
+無かったため`IsEditable`/`IsHeaderLocked`を新設した。**編集ロック中（`IsEditLocked`）の既存UXは
+変えていない**（編集ロック中でも入力欄自体は触れて保存だけ不可、という現状の挙動を維持。
+プレビューとは別の既存機能であり本タスクの範囲外）。
+
+WPFの`KeyBinding`はコントロールが`IsEnabled=false`でも生き続けるため（`Space`/`Return`）、
+`IsReadOnly`/`IsEnabled`のXAMLバインドだけでは`New`・検索モーダル・伝票読込・複写・保存・取消の
+各コマンドを塞ぎきれない。**コマンドの`CanExecute`（`private bool CanEdit => !IsPreviewMode`を
+合成）で塞ぐのが唯一の手段**であり、特に取消系コマンド（`DeleteSlipAsync`）は
+`CanExecute`合成漏れがあると未消込・未締めの伝票をプレビュー中に本当に取消してしまうため、
+`CanExecute`とコマンド本体先頭の`if (IsPreviewMode) return;`の二重で防御している。
+
+明細行グリッドは`IsEnabled="{Binding IsEditable}"`で`ItemsControl`ごと無効化する（行単位の
+読み取り専用フラグではなく、区分コンボ・×削除ボタン・商品検索の`InputBindings`をまとめて
+無効化できる唯一の方法）。**トレードオフとして明細行全体が灰色になり、プレビューの主目的である
+「内容を読む」体験としては見やすさを犠牲にしている**が、「編集できない」という完了条件を
+機械的に保証できることを優先した。既存の`ScrollViewer`に付いていた`IsEnabled`バインド
+（入金入力・明細入金）は`ScrollViewer`自体を無効化するとスクロールできなくなるため、
+内側の`ItemsControl`へ付け替えた（プレビューの前提条件。編集ロック中の既存伝票でも
+同様にスクロールできるようになる副次効果があるが、これを主目的の不具合修正としては扱わない）。
+
+**Escで閉じられるようにした**（保存・取消以外に退出手段が無いため。3画面それぞれの
+`.xaml.cs`の`PreviewKeyDown`で`IsPreviewMode`のときだけ`Close()`する。通常の編集セッションは
+未保存の入力をEscで誤って破棄しないよう対象外）。
+
+**申し送り・既知の制約**:
+- プレビューを開いた後に元伝票が削除・取消されていた場合、空欄・無効化・タイトル「プレビュー」の
+  ウィンドウが残る。プレビューは新しいDIスコープ・DbContextで開くため常に最新DBを見に行う設計
+  であり、元帳表示時点のスナップショットと食い違うことは正常な業務オペレーションとして許容する。
+- `WindowService.Show`は`Owner`を設定しない（`ShowDialog`と異なる）ため、同じ行を複数回活性化すると
+  同じ伝票のプレビューが複数枚開く。非モーダル・毎回新規ウィンドウという方針の範囲内として許容する。
+- プレビュー中の伝票No.欄等は`IsReadOnly`のみで`KeyBinding`自体は残るため、`Enter`を押しても
+  次項目へフォーカス移動しない（`EnterKeyNavigationBehavior`は独自の`KeyBinding`を持つ要素を
+  スキップするため）。`Tab`は機能する。
+- `CustomerLedgerBuilder`が生成する`LedgerEntryKind`は`OpeningBalance`/`Sales`/`ConsumptionTax`/
+  `Receipt`の4種のみで受注（`order_slip`）の行は無いため、`OrderEntryWindow`は本タスクで一切
+  変更していない。
+- 消込証跡の継続行（D-3、`SalesSlipNumber`が空欄の行）を明細入金のプレビューに導く分岐は、
+  `scripts/seed_dev_data.sql`のCUS003が1売上行に1入金しか持たないため実機再現できない
+  （`DRC001`／`DRC002`はそれぞれ別の売上行に紐づく）。コードレビューで
+  `entry.SalesSlipNumber is null`を見ていることを担保した。
+
 ### 検証方法
 
-- 単体テスト: `tests/bmcs_app.Domain.Tests/Calculations/CustomerLedgerBuilderTests.cs`（10件）・
-  `LedgerReceiptPairingTests.cs`（4件）。全体テスト（Domain 253件）すべてgreen。
-- 結合テスト: `tests/bmcs_app.Application.Tests/Ledger/CustomerLedgerQueryServiceTests.cs`（9件、
-  開発用ライブDB。うち3件はseedデータ`CUS001`/`CUS002`/`CUS003`を直接読む回帰検知テスト、
-  1件は8-2の完了条件「伝票登録直後に残高が正しく変わる」を`GetBalanceAsOfAsync`で直接検証）。
-  全体テスト（Application 150件）すべてgreen。
-- 実機: `dotnet run`でのアプリ起動、メインメニュー「元帳 > 得意先元帳」の表示まで確認済み
-  （GUI自動操作の手段が実行環境に無いため、画面上のクリック操作はPhase 7-2/7-4/7-5と同様に未確認）。
+- 単体テスト・結合テスト: 本タスクはPresentation層のみの変更（Domain/Application に新しい分岐を
+  入れていない）ため新規テストは追加していない。既存テスト（Domain 253件／Application 150件）が
+  全てgreenのままであることを確認した。
+- 実機: `dotnet run`でのアプリ起動まで確認済み（GUI自動操作の手段が実行環境に無いため、
+  画面上のクリック操作はPhase 7-2/7-4/7-5/8-1/8-2と同様に未確認）。
