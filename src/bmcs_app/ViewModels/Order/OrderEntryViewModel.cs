@@ -53,7 +53,7 @@ public partial class OrderEntryViewModel(
     public partial string CustomerTaxUnitDisplay { get; set; } = string.Empty;
 
     [ObservableProperty]
-    public partial string OrderDateText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+    public partial DateTime? OrderDate { get; set; } = DateTime.Today;
 
     /// <summary>
     /// 受注No.欄。採番は保存時にトランザクション内で行うため、新規時は空欄（Watermarkで案内）。
@@ -318,9 +318,7 @@ public partial class OrderEntryViewModel(
     /// </summary>
     private Task ApplySelectionsAsync(SlipLineViewModel invokingLine, IReadOnlyList<ProductSelection> selections)
     {
-        var orderDate = DateOnly.TryParseExact(OrderDateText, "yyyy/MM/dd", out var parsed)
-            ? parsed
-            : DateOnly.FromDateTime(DateTime.Today);
+        var orderDate = OrderDate is { } orderDateValue ? DateOnly.FromDateTime(orderDateValue) : DateOnly.FromDateTime(DateTime.Today);
         var roundingType = _customer?.RoundingType ?? RoundingType.Floor;
 
         var targetLines = new List<SlipLineViewModel> { invokingLine };
@@ -407,7 +405,7 @@ public partial class OrderEntryViewModel(
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
         CustomerTaxUnitDisplay = string.Empty;
-        OrderDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy/MM/dd");
+        OrderDate = DateTime.Today;
         OrderSlipNumberDisplay = string.Empty;
         OrderStatus = OrderStatus.NotSold;
         IsSaved = false;
@@ -490,7 +488,7 @@ public partial class OrderEntryViewModel(
             TaxUnit.Line => "内税明細単位",
             _ => customer.TaxUnit.ToString(),
         };
-        OrderDateText = sourceLines[0].OrderDate.ToString("yyyy/MM/dd");
+        OrderDate = sourceLines[0].OrderDate.ToDateTime(TimeOnly.MinValue);
         OrderSlipNumberDisplay = orderSlipNumber;
         SlipRemarks = sourceLines[0].SlipRemarks ?? string.Empty;
         OrderStatus = sourceLines.Any(l => l.OrderStatus == OrderStatus.Cancelled)
@@ -549,9 +547,13 @@ public partial class OrderEntryViewModel(
             return;
         }
 
-        var orderDate = DateOnly.TryParseExact(OrderDateText, "yyyy/MM/dd", out var parsed)
-            ? parsed
-            : DateOnly.FromDateTime(DateTime.Today);
+        if (OrderDate is not { } orderDateValue)
+        {
+            StatusMessage = "受注日付を入力してください。";
+            return;
+        }
+
+        var orderDate = DateOnly.FromDateTime(orderDateValue);
 
         var now = DateTime.Now;
         var slipRemarks = string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks;
