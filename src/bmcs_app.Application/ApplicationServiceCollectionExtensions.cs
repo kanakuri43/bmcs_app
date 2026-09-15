@@ -60,6 +60,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SettlementService>();
         services.AddScoped<ReceiptEntryService>();
         services.AddScoped<ReceiptQueryService>();
+        services.AddScoped<DetailReceiptEntryService>();
+        services.AddScoped<DetailReceiptQueryService>();
 
         return services;
     }

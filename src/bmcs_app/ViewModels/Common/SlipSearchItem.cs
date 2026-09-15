@@ -54,6 +54,14 @@ public sealed record SlipSearchItem(
         hit.ReceiptAmount,
         Display(hit.AllocationStatus));
 
+    public static SlipSearchItem FromDetailReceiptHit(DetailReceiptHit hit) => new(
+        hit.DetailReceiptNumber,
+        hit.ReceiptDate.ToString("yyyy/MM/dd"),
+        hit.CustomerCode,
+        hit.CustomerName,
+        hit.ReceiptAmount,
+        Display(hit.AllocationStatus));
+
     private static string Display(object value) =>
         (string)EnumDisplay.Convert(value, typeof(string), null, CultureInfo.CurrentCulture);
 }

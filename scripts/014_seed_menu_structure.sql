@@ -46,6 +46,7 @@ VALUES
     -- 入金
     (N'MNU_RECEIPT', NULL, N'入金', 3, NULL, NULL, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'MNU_RECEIPT_ENTRY', N'MNU_RECEIPT', N'入金入力', 1, 1, N'receipt_entry', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    (N'MNU_DETAIL_RECEIPT', N'MNU_RECEIPT', N'明細入金', 2, 1, N'detail_receipt_entry', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
 
     -- マスタ管理
     (N'MNU_MASTER', NULL, N'マスタ管理', 4, NULL, NULL, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),

@@ -18,7 +18,8 @@ public partial class SlipSearchDialogViewModel(
     SalesQueryService salesQueryService,
     OrderQueryService orderQueryService,
     DetailInvoiceQueryService detailInvoiceQueryService,
-    ReceiptQueryService receiptQueryService)
+    ReceiptQueryService receiptQueryService,
+    DetailReceiptQueryService detailReceiptQueryService)
     : DialogViewModelBase<string>
 {
     private List<SlipSearchItem> _allItems = [];
@@ -50,6 +51,9 @@ public partial class SlipSearchDialogViewModel(
                 .ToList(),
             SlipSearchTarget.Receipt => (await receiptQueryService.SearchAsync(keyword: null))
                 .Select(SlipSearchItem.FromReceiptHit)
+                .ToList(),
+            SlipSearchTarget.DetailReceipt => (await detailReceiptQueryService.SearchAsync(keyword: null))
+                .Select(SlipSearchItem.FromDetailReceiptHit)
                 .ToList(),
             _ => throw new ArgumentOutOfRangeException(nameof(Target), Target, null),
         };

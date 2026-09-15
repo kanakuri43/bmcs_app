@@ -179,6 +179,9 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<ReceiptEntryWindow>();
         builder.Services.AddScoped<ReceiptEntryViewModel>();
 
+        builder.Services.AddScoped<DetailReceiptEntryWindow>();
+        builder.Services.AddScoped<DetailReceiptEntryViewModel>();
+
         return builder.Build();
     }
 

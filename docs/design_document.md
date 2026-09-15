@@ -1116,3 +1116,122 @@ SELECT * FROM dbo.sales WHERE is_deleted = 0 AND (
 - 実機確認: `dotnet run`でアプリを起動し、メインメニューが例外なく開くことを確認
   （ログにエラーなし）。GUI操作を自動で駆動する手段が実行環境に無いため、画面上の
   クリック操作までは確認できていない。FlaUIによる自動化はPhase 11の範囲（11-1未着手）。
+
+## 18. 明細入金画面の実装（Phase 7-4、2026-09-15実装）
+
+都度得意先（内税明細単位、`tax_unit=3`）専用の新規登録画面。締め得意先（請求単位／伝票単位）の
+入金は入金入力画面（Phase 7-2）が担う。消込サービス（`SettlementService`、Phase 7-1）・明細請求書
+発行（Phase 6-3/6-4）・`detail_receipt`テーブル・採番系列はすべて実装済みで、本タスクが
+`detail_receipt`へ書き込む唯一の入口だった（`target_type=2`のデータはseed以外に生成経路が
+無かった）。
+
+画面レイアウト・操作方法は旧デモ`bmcs_app.LineReceipt`を可能な限り再現するようユーザーから
+指示された（項目に過不足がある場合は本プロジェクトのスキーマを優先）。
+
+> **経緯の補記**: 作業開始時の指示は「Phase 7-3」だったが、指示内容（明細請求得意先向けの
+> 入金画面／LineReceipt再現／対象売上への入金・前受金無し）はPhase 7-4「明細入金画面」の
+> 完了条件と一致し、Phase 7-3（振込手数料差額の入力）は2026-09-15にユーザー指示で保留
+> されていたため、ユーザーに確認のうえPhase 7-4として実装した。
+
+### 18-1. 確定した設計判断（ユーザー確認済み・2026-09-15）
+
+| # | 論点 | 決定 |
+|---|---|---|
+| 1 | 充当先の粒度 | 売上伝票タブ＝**売上明細行**単位（`target_type=1`）、明細請求書タブ＝**明細請求書まるごと1行**（`target_type=2`）。デモは請求書タブでも行単位だったが、`docs/database-schema.md` 2.11節のスキーマと、TODO.md 7-4の完了条件「売上伝票**または**明細請求書を指定した」に合わせてスキーマ側を採用した |
+| 2 | 明細行の金額 | **読み取り専用**（常に対象の全額または残額を充当）。手入力での減額はしない |
+| 3 | 手形期日 | **画面に持たない**。`detail_receipt`に`bill_due_date`列が無く（`receipt`は`scripts/016`で追加済みだが`detail_receipt`は対象外）、DDL変更なしで完結させた |
+| 4 | 前受金 | **無し**。充当先がNULLの行は作らない（Phase 7-2の前受・過入金行とは対照的） |
+| 5 | 手数料差額 | 常に`0`（Phase 7-3は保留中） |
+| 6 | 実装範囲 | 新規登録 ＋ 既存伝票番号による**読み取り専用の読込**のみ。訂正・取消はPhase 7-5（「取消(F8)」は枠のみ用意し無効化。Phase 7-2と同じ前例） |
+
+**決定1・2の帰結（既知の制約）**: 金額が読み取り専用かつ請求書がまるごと1行のため、
+「明細請求書の一部の売上だけ入金があった」ケースは、請求書タブではなく**売上伝票タブから
+該当売上明細行を個別に取り込んで対応する**。`SettlementService.RecalculateDetailAsync`が
+「直接指定を先に確定してから残額を明細請求書経由の配分に回す」設計のため、この併用は
+既存ロジックで正しく処理される。
+
+### 18-2. 実装時にPlanエージェントの設計検証で判明した修正点
+
+骨格（候補条件2本＋トランザクション内再確認＋`receipt_amount = Σallocated`＋同一tx内
+`SettlementService.RecalculateForCustomerAsync`呼び出し）は既存実装と整合したが、初期案には
+以下の穴があったため設計を補正した（`DetailReceiptEntryService`に反映済み）。
+
+1. **候補条件は「未消込」だけでなく「未消込または一部消込」にする。** 金額が常に全額（または
+   残額）のみ・編集不可のままだと、一部消込済みの売上明細行が売上タブ（未消込のみ）にも
+   請求書タブ（連携行が全行未消込）にも出せなくなり、残額を永久に入金できない行き止まりが
+   生まれる（Phase 7-3の手数料調整・7-5の部分訂正・データ補正等で一部消込は発生しうる）。
+   売上伝票タブの候補金額は**残額**（`sales.amount − sales.settled_amount`）とする
+2. **`Σallocated_amount`（=`receipt_amount`）が0になる保存は拒否する。** `AllocationStatusCalculator`は
+   合計0を「未充当」と判定するため、合計0の伝票は永久に充当完了にならない
+3. **`Σallocated_amount`は0より大きい値のみ許可する**（Phase 7-2と同じ規則）。行単位のマイナス
+   （返品・値引の売上明細行を直接指定するケース）は許可し、正の行との差引を認める。返品行
+   単独・返品合計が正の行を上回るケースは保存時に拒否される（＝その返品は将来の売上と相殺
+   するまで「未消込」のまま残る。返金処理ではないという業務判断）
+4. **候補条件に金額ゼロ除外を追加する。** 売上明細行の残額が0、明細請求書の`total_amount = 0`は
+   候補から除外する。`SettlementStatusCalculator`はamount=0の行を常に「未消込」と判定するため
+   （消込完了にならない）、直接指定すると`DetailInvoiceService.CancelAsync`の消込済みチェックを
+   すり抜けたまま明細入金だけが残る不整合を作れてしまうため
+5. **明細請求書タブの「この請求書を指す明細入金が存在しない」条件に`!IsDeleted`を付ける。**
+   Phase 6-3の前例と同じ理由。無いと、将来Phase 7-5で取消済みになった明細入金がこの請求書を
+   永久にブロックする
+6. **保存時に`detail_invoice.total_amount == Σ(連携先売上明細行のamount)`を照合し、不一致なら
+   拒否する。** `DetailInvoiceService.IssueAsync`が税額で同じ防御をしている前例に合わせた。
+   理論上は発行時の計算式から常に一致するはずだが、データ補正等でズレた場合に自動で丸めず
+   拒否するほうが安全
+7. **入金方法が振込以外の行は`bank_account_code`を必ず`null`にする**
+8. **入金方法の選択肢から「手形」を除外する。** `detail_receipt`に`bill_due_date`列が無く（決定3）、
+   Phase 7-2は手形選択時に期日入力を必須にしているため、この画面で手形を選べると期日情報が
+   保存できずに欠落する。「現金／振込／相殺」の3択とした
+9. **同時実行制御は既存のrowversion楽観的排他に委ねる（追加のロックは実装しない）。** `Sales`・
+   `DetailReceipt`はいずれも`AuditableEntity`を継承し`RowVersion`を持つ。2人が同じ売上明細行に
+   同時に全額入金しようとした場合、`SettlementService.RecalculateForCustomerAsync`が対象の
+   `Sales`行をtracking付きで読み込み・更新するため、後にコミットする側はrowversion不一致で
+   `DbUpdateConcurrencyException`→`SlipConcurrencyException`で弾かれる。Phase 7-1/7-2と同一の
+   機構であり、`detail_receipt`自体に一意制約は追加しない（追加すると決定1の部分入金・残額
+   充当が壊れるため）
+
+### 18-3. 実装構成
+
+- `DetailReceiptEntryService`（Application/Receipt）: `GetSalesLineCandidatesAsync`／
+  `GetDetailInvoiceCandidatesAsync`（画面表示用の候補取得）、`SaveNewAsync`（新規登録。金額は
+  利用者の入力に頼らずトランザクション内で候補条件を再実行してサーバー側で確定する）、
+  `GetByNumberAsync`（読み取り専用読込）
+- `DetailReceiptQueryService`（Application/Receipt）: 伝票検索モーダル用の検索
+  （`ReceiptQueryService`と対称）。`SlipSearchTarget.DetailReceipt`を追加
+- `DetailReceiptEntryViewModel`／`DetailReceiptLineViewModel`（Presentation/Receipt）:
+  入金入力画面（Phase 7-2）の明細行パターンと、明細請求書発行画面（Phase 6-3）の候補→明細
+  取込パターンを合成
+- `DetailReceiptEntryWindow.xaml`（Presentation/Receipt）: 左＝入金登録の明細行、右＝上段タブ
+  （売上伝票／明細請求書）＋下段の選択伝票明細（デモ`LineReceiptMainView`のレイアウトを
+  踏襲）。売上伝票タブは行単位で取込み、明細請求書タブは請求書単位（上段リストの行から
+  まるごと取込み、下段は参考表示・読み取り専用）
+- メインメニューに「入金 > 明細入金」を追加（`scripts/014_seed_menu_structure.sql`、
+  `screen_key = detail_receipt_entry`、`menu_code = MNU_DETAIL_RECEIPT`。`varchar(20)`制約のため
+  `MNU_DETAIL_RECEIPT_ENTRY`から短縮）
+
+DDLの変更は無し（決定3のとおり）。
+
+### 18-4. 将来フェーズへの申し送り
+
+- **Phase 7-3（振込手数料差額の入力）実装時**: 「金額は常に対象の全額」という本タスクの前提を
+  再検討する必要がある（`allocated = 全額 − fee`に改訂）
+- **Phase 7-5（訂正・取消）実装時**: 伝票の一部行だけを論理削除すると`receipt_amount`
+  （全行同値の不変条件）が崩れるため、7-5の設計時に同不変条件の扱いを再確認する
+- **Phase 8（月次締め）**: 確定済み月の`receipt_date`に入金を登録するケースの整合はPhase 7-2と
+  同様に未対応のまま
+
+### 検証方法
+
+- 結合テスト: `tests/bmcs_app.Application.Tests/Receipt/DetailReceiptEntryServiceTests.cs`
+  （20件）。直接指定・明細請求書まるごと・両方混在の消込、一部消込済み行への残額直接指定、
+  完了条件の直接検証（対象外の売上は未消込のまま残る）、返品行との差引による全額充当、
+  返品単独での入金合計0以下の拒否、明細0件・充当先の重複・二重充当（請求書とその連携行の
+  同時指定）・締め得意先／存在しない得意先／無効化済み得意先・振込での口座未指定・手形指定・
+  消込完了済み行の直接指定・金額ゼロの候補除外・請求書金額と連携売上合計の不一致・
+  振込口座の保存と現金行での口座無視・既存伝票の読込を検証。
+- 全体テスト: Domain 239件／Application 121件、すべてgreen。
+- DB確認: `scripts/014_seed_menu_structure.sql`を再適用し、メインメニューに「入金 > 明細入金」
+  （`MNU_DETAIL_RECEIPT`）が追加されたことを`sqlcmd`で確認済み。
+- 実機確認: `dotnet run`でアプリを起動し、例外なく起動することを確認（ログにエラーなし）。
+  GUI操作を自動で駆動する手段が実行環境に無いため、画面上のクリック操作までは確認できて
+  いない（Phase 7-2と同じ扱い）。FlaUIによる自動化はPhase 11の範囲（11-1未着手）。

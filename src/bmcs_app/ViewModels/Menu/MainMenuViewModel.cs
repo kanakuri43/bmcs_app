@@ -102,6 +102,9 @@ public partial class MainMenuViewModel(
             case "receipt_entry":
                 windowService.Show<ReceiptEntryWindow, ReceiptEntryViewModel>();
                 break;
+            case "detail_receipt_entry":
+                windowService.Show<DetailReceiptEntryWindow, DetailReceiptEntryViewModel>();
+                break;
             case "customer_master":
                 windowService.Show<CustomerMasterWindow, CustomerMasterViewModel>();
                 break;
