@@ -359,6 +359,10 @@ public class SalesService(
     /// 訂正時に上書きしてよい列だけを明示的にコピーする（ホワイトリスト方式）。
     /// 得意先コード・税区分・請求/消込関連の状態カラム・監査列は対象外とする
     /// （得意先の変更や請求紐付けの改変は、行編集の範囲を超えるため）。
+    /// <see cref="Domain.Entities.AuditableEntity.IsDeleted"/> は明示的に <c>false</c> に戻す
+    /// （保存失敗後に同じ画面から再保存すると、ChangeTrackerに残った汚れた値
+    /// （直前の失敗した保存で立てた <c>true</c>）がそのまま上書きされず論理削除される潜在バグの対策。
+    /// TODO.md 5-6レビューで発見）。
     /// </summary>
     private static void ApplyLineValues(SalesEntity current, SalesEntity incoming)
     {
@@ -379,6 +383,7 @@ public class SalesService(
         current.OrderLineNumber = incoming.OrderLineNumber;
         current.SlipRemarks = incoming.SlipRemarks;
         current.LineRemarks = incoming.LineRemarks;
+        current.IsDeleted = false;
     }
 }
 

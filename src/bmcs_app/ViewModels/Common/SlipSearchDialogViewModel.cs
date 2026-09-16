@@ -27,6 +27,14 @@ public partial class SlipSearchDialogViewModel(
     /// <summary>検索対象。<c>ShowDialog</c> の <c>configure</c> コールバックで呼び出し元が設定する。</summary>
     public SlipSearchTarget Target { get; set; } = SlipSearchTarget.Sales;
 
+    /// <summary>
+    /// <see cref="SlipSearchTarget.Order"/> 専用。<c>true</c> のとき、売上完了・中止済みの受注も
+    /// 検索結果に含める（既定は<c>false</c>＝これ以上売上化できない受注を除外する。
+    /// 売上入力画面の受注No.検索が使う既定挙動）。受注入力画面（TODO.md 4-6）は、修正できない
+    /// 受注も閲覧目的で探せるようにするため<c>true</c>を設定する（2026-09-16確定）。
+    /// </summary>
+    public bool IncludeUnavailableOrders { get; set; }
+
     public ObservableCollection<SlipSearchItem> Results { get; } = [];
 
     [ObservableProperty]
@@ -43,7 +51,8 @@ public partial class SlipSearchDialogViewModel(
             SlipSearchTarget.Sales => (await salesQueryService.SearchAsync(keyword: null))
                 .Select(SlipSearchItem.FromSalesHit)
                 .ToList(),
-            SlipSearchTarget.Order => (await orderQueryService.SearchAsync(keyword: null))
+            SlipSearchTarget.Order => (await orderQueryService.SearchAsync(
+                    keyword: null, excludeUnavailableForSales: !IncludeUnavailableOrders))
                 .Select(SlipSearchItem.FromOrderHit)
                 .ToList(),
             SlipSearchTarget.DetailInvoice => (await detailInvoiceQueryService.SearchAsync(keyword: null))

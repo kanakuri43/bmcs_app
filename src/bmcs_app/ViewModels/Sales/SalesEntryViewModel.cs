@@ -132,9 +132,19 @@ public partial class SalesEntryViewModel(
     [NotifyCanExecuteChangedFor(nameof(DeleteSlipCommand))]
     public partial bool IsEditLocked { get; set; }
 
+    /// <summary>
+    /// 保存が例外で失敗した後、再読込まで保存を封じるフラグ。ミューテーション後に例外が発生すると
+    /// ChangeTrackerが汚れたまま残り、同じ画面から再保存すると行が静かに論理削除される
+    /// 潜在バグ（TODO.md 4-6レビューで発見）への対策。自動マージ・後勝ちの上書きは行わない
+    /// （docs/architecture.md 9章）ため、操作面でも再読込を強制する。
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    public partial bool IsReloadRequired { get; set; }
+
     private bool CanEdit => !IsPreviewMode;
 
-    private bool CanSave => CanEdit && (_loadedSalesSlipNumber is null ? !IsSaved : !IsEditLocked);
+    private bool CanSave => CanEdit && (_loadedSalesSlipNumber is null ? !IsSaved : !IsEditLocked && !IsReloadRequired);
 
     private bool CanDeleteSlip => CanEdit && _loadedSalesSlipNumber is not null && !IsEditLocked;
 
@@ -523,6 +533,7 @@ public partial class SalesEntryViewModel(
         SlipRemarks = string.Empty;
         IsSaved = false;
         IsEditLocked = false;
+        IsReloadRequired = false;
 
         ClearLines();
         Lines.Add(CreateLine());
@@ -571,17 +582,31 @@ public partial class SalesEntryViewModel(
         }
         catch (SalesOperationException ex)
         {
-            StatusMessage = $"保存エラー: {ex.Message}";
+            HandleSaveFailure(ex);
         }
         catch (SlipConcurrencyException ex)
         {
-            StatusMessage = $"保存エラー: {ex.Message}";
+            HandleSaveFailure(ex);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"保存エラー: {ex.Message}";
+            HandleSaveFailure(ex);
         }
     });
+
+    /// <summary>
+    /// 保存失敗時の共通処理。訂正モード中の失敗は、ミューテーション後にChangeTrackerが汚れたまま
+    /// 残る可能性があるため、再読込までSaveを封じる（TODO.md 4-6レビューで発見した潜在バグの対策）。
+    /// </summary>
+    private void HandleSaveFailure(Exception ex)
+    {
+        if (_loadedSalesSlipNumber is not null)
+        {
+            IsReloadRequired = true;
+        }
+
+        StatusMessage = $"保存エラー: {ex.Message}";
+    }
 
     private async Task SaveNewAsync(List<SlipLineViewModel> nonBlankLines)
     {
@@ -917,6 +942,7 @@ public partial class SalesEntryViewModel(
                 : "未消込";
         IsSaved = false;
         IsEditLocked = lockResult.IsLocked;
+        IsReloadRequired = false;
 
         ClearLines();
         foreach (var source in sourceLines.OrderBy(l => l.LineNumber))

@@ -52,7 +52,7 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
   3. **月次締め**: 対象行の `customer_code` と伝票日付の年月に一致する `monthly_closing` レコードが存在し、`closing_status`＝確定
   4. **入金済み**（2026-09-10追加）: `sales.settlement_status`＝消込完了
   - 締め・解除のたびに大量の伝票行を更新するのを避けるため、既存のキャッシュ列（`billing_number`／`closing_status`／`settlement_status`／`detail_invoice_sales_line`の存在等）のみで導出する。**この「編集不可」はユーザーによる伝票内容の直接編集を指す。** 締め処理自身が状態カラム（`billing_number`等）を更新することはロック対象外（システム内部の状態遷移であり、ユーザー編集ではないため）。
-  - **`order_slip`（受注）はこの4条件のいずれにも該当しない**（受注は請求・消込の対象外）。したがって受注は状態にかかわらず常に直接修正可能。
+  - **`order_slip`（受注）はこの4条件のいずれにも該当しない**（受注は請求・消込の対象外）が、**未売上（`order_status`＝未売上）の伝票のみ直接修正可能**（2026-09-16確定、TODO.md 4-6）。一部売上・売上完了・中止済みの伝票は読込・表示はできるが修正できない（`OrderEditLockEvaluator`、Domain純粋関数）。中止（伝票単位）は一部売上でも可能なのに対し修正は未売上限定という非対称は意図した仕様。当初のC-6決定「状態にかかわらず常に直接修正可能」（2026-09-10）は本改訂で置き換えられた。
   - **`receipt`（締め入金）・`detail_receipt`（明細入金）はsalesとは別の条件を持つ（2026-09-15 Phase 7-5確定）。** 当初は条件④（入金済み＝`allocation_status`＝充当完了）を`receipt`／`detail_receipt`自身にもそのまま適用する想定だったが、入金は保存直後にほぼ必ず充当完了になるため、これを適用すると訂正・取消できる入金がほぼ存在しなくなり、Phase 7-5（入金の取消・訂正）の目的自体が成立しなくなることが実装時に判明した。条件①（旧`receipt.billing_number`）も、Phase 7-2で `billing_number` を `receipt_allocation` へ分離した現スキーマとは既に乖離していた。改めて整理した結果:
     - **`detail_receipt`**: ③（月次締めのみ）。`detail_invoice`（明細請求書）の金額は`sales`から都度導出され`detail_receipt`からスナップショットを焼き込まれないため、締め請求のような追加ロックは不要。
     - **`receipt`**: ③（月次締め）に加え、**「請求締めスナップショット」**という独自条件を持つ: `receipt_date <= その得意先の確定済み billing のうち最新の billing_date`。`BillingClosingService`が締め処理時に `receipt.Amount` の合計（前回確定`billing.billing_date`〜今回`closing_date`の期間で集計）を `billing.current_billing_amount` へスナップショットとして焼き込み、以後誰も再計算しないため、この期間に属する`receipt`を無条件に取消・訂正できると確定済み請求の残高が二重計上・二重減算のいずれかで永久に狂う。この期間の`receipt`を訂正・取消したい場合は、対象の`billing`を締め解除（6-2）してから行う（解除により対象外の確定済み`billing`が別に存在すれば、それが新たな基準日になる）。
@@ -610,7 +610,7 @@ sales の編集不可 ⇔
   settlement_status = 消込完了（入金済み）
 ```
 
-`order_slip`（受注）はこれらの条件のいずれにも該当しないため常に直接修正可能（受注は請求・消込の対象外。C-6）。
+`order_slip`（受注）はこれらの条件のいずれにも該当しない（受注は請求・消込の対象外。C-6）が、**未売上（`order_status`＝未売上）の伝票のみ直接修正可能**（2026-09-16確定、TODO.md 4-6）。判定は`OrderEditLockEvaluator`（Domain純粋関数）が明細行の`order_status`のみから行い、外部テーブル照会は不要。
 
 **`receipt`（締め入金）・`detail_receipt`（明細入金）は`sales`と条件が異なる**（2026-09-15 Phase 7-5確定。1章末尾「ジャーナル系テーブルの編集ロック・訂正方式」参照）。`receipt`は「月次締め」に加え「請求締めスナップショット」（`receipt_date`が確定済み`billing`の集計期間に含まれるか）、`detail_receipt`は「月次締め」のみを見る。`sales`と同じ4条件をそのまま適用しない理由は、入金は保存直後にほぼ必ず充当完了になるため、`allocation_status`＝充当完了をロック条件にすると訂正・取消できる入金がほぼ存在しなくなるため。
 

@@ -9,8 +9,8 @@
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 4-3・5-3。旧プロトタイプ（bmcs_app.Order の OrderMainView.xaml）のレイアウトを
-        再現する。既存受注の読み込み（表示専用）と中止（F8）に対応する（内容の訂正保存は対象外）。
+        TODO.md 4-3・5-3・4-6。旧プロトタイプ（bmcs_app.Order の OrderMainView.xaml）のレイアウトを
+        再現する。既存受注の読み込み・直接修正（未売上のみ）・中止（F8）に対応する。
         担当者・前後移動は、このプロジェクトのスキーマ／機能にまだ存在しないため、
         枠のみ用意し無効化している（理由は docs/design_document.md）。
     -->
@@ -121,7 +121,7 @@
                                  beh:FocusBehavior.IsInitialFocus="True"
                                  Text="{Binding OrderSlipNumberDisplay, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="自動採番（SPACEで検索）"
-                                 ToolTip="既存の受注No.を入力してEnterで読み込む（表示専用。TODO.md 5-3）。Spaceで検索モーダルを開く">
+                                 ToolTip="既存の受注No.を入力してEnterで読み込む（未売上のみ修正可。TODO.md 4-6）。Spaceで検索モーダルを開く">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Space"  Command="{Binding OpenOrderSlipSearchCommand}" />
                                 <KeyBinding Key="Return" Command="{Binding LookupOrderSlipByNumberCommand}" />
@@ -131,6 +131,7 @@
                         <TextBlock Grid.Column="3" Text="受注日付" VerticalAlignment="Center" />
                         <DatePicker Grid.Column="4"
                                     beh:FocusBehavior.FocusKey="OrderDate"
+                                    IsEnabled="{Binding IsEditable}"
                                     SelectedDate="{Binding OrderDate}" />
                     </Grid>
 
@@ -146,14 +147,17 @@
                         <TextBlock Grid.Column="0" Text="得意先" VerticalAlignment="Center" />
                         <TextBox x:Name="CustomerCodeBox"
                                  Grid.Column="1"
+                                 IsReadOnly="{Binding IsCustomerCodeReadOnly}"
                                  Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
-                                 mah:TextBoxHelper.Watermark="コード（SPACEで検索）">
+                                 mah:TextBoxHelper.Watermark="コード（SPACEで検索）"
+                                 ToolTip="既存受注を読み込んだ後は得意先を変更できません（TODO.md 4-6）">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Space"  Command="{Binding OpenCustomerSearchCommand}" />
                                 <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />
                             </TextBox.InputBindings>
                         </TextBox>
                         <TextBox Grid.Column="3"
+                                 IsEnabled="{Binding IsEditable}"
                                  Text="{Binding CustomerName, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="名称（宛名変更時は上書き可）"
                                  ToolTip="得意先コード検索後に自動入力される名称。学校のクラス・先生等の宛名を都度変更する場合は、ここを直接書き換える（子得意先マスタは持たない。C-9・2026-09-10確定）" />
@@ -190,6 +194,7 @@
                         <TextBlock Grid.Column="0" Text="摘要" VerticalAlignment="Center" />
                         <TextBox Grid.Column="1"
                                  beh:FocusBehavior.FocusKey="SlipRemarks"
+                                 IsEnabled="{Binding IsEditable}"
                                  Text="{Binding SlipRemarks}" />
                     </Grid>
                 </StackPanel>
@@ -243,6 +248,7 @@
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <ItemsControl ItemsSource="{Binding Lines}"
+                              IsEnabled="{Binding IsEditable}"
                               IsTabStop="False">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -255,7 +261,8 @@
             <!-- 行追加ボタン -->
             <StackPanel Grid.Row="2"
                         Orientation="Horizontal"
-                        Margin="4,2,4,4">
+                        Margin="4,2,4,4"
+                        IsEnabled="{Binding IsEditable}">
                 <Button Command="{Binding AddLineCommand}"
                         Content="行追加 (F2)"
                         ToolTip="明細行を追加します (F2)"

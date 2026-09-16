@@ -1907,3 +1907,136 @@ TODO.md 10-2（納品書一括発行）に着手しようとしたところ、�
   追加する（22-5節から持ち越し）。
 - 納品書を適格請求書として扱うかは税理士確認待ちのまま（`docs/design_document.md` 2章の
   【要確認】は閉じていない）。
+
+## 24. 受注の訂正（Phase 4-6、2026-09-16実装）
+
+### 24-1. 経緯
+
+受注入力画面で既存受注を呼び出し、明細行を追加しても保存できない（`OrderEntryViewModel.cs`
+の`IsSaved`が読込時に`true`固定されるため）という報告を機に調査した結果、`OrderService`に
+更新系ユースケースが存在しないこと（Phase 4-3・5-3のスコープ外だった）が判明した。
+
+一方、`docs/database-schema.md` 1章・`docs/product-spec.md`共通業務ルール5には「`order_slip`
+（受注）は編集ロック4条件のいずれにも該当しないため状態にかかわらず常に直接修正可能」と
+確定済みの記載があり（C-6・2026-09-10確定、`REVIEW.md` C-6節）、当時「自然な帰結であり
+追加確認は不要」と判断していた。実装前にユーザーへ確認したところ、この判断は覆り
+**「未売上（`order_status`＝未売上）の伝票のみ直接修正可」**に確定した（2026-09-16）。
+`docs/database-schema.md`・`docs/product-spec.md`・`REVIEW.md`へ反映済み。
+
+### 24-2. 編集可否の判定: `OrderEditLockEvaluator`
+
+`SalesEditLockEvaluator`と同形のDomain純粋関数だが、Application層のラッパー
+（`SalesEditLockService`相当）は作らない。売上がラッパーを持つのは`monthly_closing`・
+`detail_invoice_sales_line`のDB照会をDomainに持ち込まないためで、受注の判定条件は
+明細行自身の`order_status`のみで済み外部照会が不要なため、転送しかしないクラスを
+新設する理由がない（TODO.md「将来の差し替えを見据えた抽象化は行わない」）。
+
+判定順は中止済み→売上完了→一部売上で、状態ごとに異なる文言を返す
+（`OrderStatusService.CancelSlipAsync`の文言分けに合わせた）。`OrderService.UpdateAsync`と
+`OrderEntryViewModel`の両方がこの関数を直接呼ぶ（ViewModelがDomainの純粋関数を直接呼ぶのは
+既存パターン。`ConsumptionTaxCalculator`と同様、判定式の正が1箇所にあれば
+`docs/architecture.md` 5章「ViewModelは業務ルールを判断しない」の趣旨を満たす）。
+
+### 24-3. `OrderService.UpdateAsync` — 売上側との差異
+
+`SalesService.UpdateAsync`と同じ構成（追跡クエリで現行行を再取得→`SlipConcurrencyGuard`で
+排他検出→編集ロック判定→既存行はホワイトリストで上書き・一覧に無い行は論理削除・新規行は
+`Max(line_number)+1`で採番→保存）だが、次の点が異なる。
+
+- **明示トランザクションを開始しない。** 採番せず、他サービス（受注デルタ適用・税額確定・
+  消込再計算に相当するもの）も呼ばず、`SaveChangesAsync`は1回のみのため、
+  `docs/architecture.md` 6章「1ユースケース＝1回のSaveChangesAsync。明示的なトランザクションは
+  不要」の原則どおり暗黙トランザクションで足りる（前例: `OrderStatusService.CancelSlipAsync`）。
+  副次的に、結合テストを`OrderStatusServiceTests`と同じ「外側`BeginTransactionAsync`→
+  `finally`で`RollbackAsync`」方式で書け、seedデータを壊さない。
+- **訂正後の再判定をしない。** 売上が訂正後に編集ロックを再判定するのは伝票日付が月次締め
+  年月を跨ぐ条件があるため。受注のロック条件は`order_status`のみに依存し、`UpdateAsync`は
+  `order_status`を書き換えず（訂正できるのは未売上限定なので常に`NotSold`のまま）、
+  新規行も`NotSold`固定なので、訂正後の状態は定義上ロック対象になり得ない。
+- **税額確定（`SalesTaxAmountAssigner`相当）・消込再計算（`SettlementService`相当）を行わない。**
+  `order_slip`は税額列を持たず、消込の概念もないため。
+- **全行削除を拒否する。** 売上の`UpdateAsync`は全行削除を許容し（結果は`CancelSlipAsync`と
+  同じ状態になる）、受注では成立しない。受注の中止は`is_deleted`ではなく
+  `order_status = Cancelled`で表すため（`OrderStatusService.CancelSlipAsync`）、訂正で全行を
+  `IsDeleted = true`にすると`OrderQueryService`のどの照会（`!IsDeleted`で絞る）からも見えなく
+  なり、`CancelSlipAsync`も0件ヒットで「受注が見つかりません」を投げるため中止すらできない
+  伝票になる。`OrderOperationException("訂正で全行を削除することはできません。
+  中止（F8）をご利用ください。")`で拒否する。
+- **`OrderQuantity >= SalesConfirmedQuantity`の検証を書かない。** 修正可能なのは未売上限定
+  （`SalesConfirmedQuantity`は常に0）のため論理的に到達不能な条件になる。この前提が崩れたら
+  結合テストが赤くなる（未売上でない伝票の保存拒否テストで押さえる）。
+
+**ホワイトリスト14列**: `OrderDate, CustomerName, ProductCode, ProductName, Specification,
+UnitName, OrderQuantity, UnitPrice, Amount, CostPrice, TaxCategory, TaxRate, SlipRemarks,
+LineRemarks`。除外: `CustomerCode`（得意先は変更不可）、`SubCustomerId`（UIが値を持たず常に
+null。将来復活時に静かに消えるのを防ぐ）、`AllocatedQuantity`（在庫連携スコープ外）、
+`OrderStatus`／`SalesConfirmedQuantity`（所有者は`OrderStatusService`のみ）、監査列、
+`RowVersion`。既存行のコピー時に`IsDeleted = false`を明示設定する（下記24-5）。
+
+排他例外は既存の`SlipConcurrencyGuard`が投げる`SlipConcurrencyException`をそのまま使う
+（`OrderConcurrencyException`は`OrderStatusService.CancelSlipAsync`専用として残し、
+今回は統一しない。両者ともDbUpdateConcurrencyExceptionの変換先として並存する）。
+
+### 24-4. 画面側: 得意先コードのReadOnly化（売上側とは対応が異なる）
+
+`OrderService.UpdateAsync`は`CustomerCode`の変更を無視する。売上入力画面は訂正モードでも
+得意先コード欄が編集可能で、変更しても黙って無視される既知の潜在的不整合があるが、
+受注では**訂正モード中は得意先コード欄を`IsReadOnly`にし、得意先検索・コード照会の
+2コマンドも`CanExecute`で無効化する**（欄をReadOnlyにするだけではSpace/Returnキーバインド
+経由で得意先が差し替わってしまうため両方必要）。得意先**名**欄は編集可のまま
+（C-9の宛名都度書き換え。ホワイトリスト対象）。
+
+この対応は受注のみで、売上側は今回揃えない（スコープ外として記録するのみ）。
+
+修正不可（一部売上・売上完了・中止済み）の受注を読み込んだ場合は、ヘッダー入力欄
+（受注日付・得意先名・摘要）と明細`ItemsControl`・行追加ボタンを`IsEnabled="{Binding
+IsEditable}"`（`IsEditable => !IsEditLocked`）で読取専用にする。受注No.欄自体は常に
+編集可のままにし（別の受注を検索・読込できるようにするため）、保存ボタンは
+`CanSave`（`_loadedOrderSlipNumber is null ? !IsSaved : !IsEditLocked && !IsReloadRequired`）
+で無効化する。
+
+### 24-5. 付随修正: 保存失敗後の静かな論理削除バグ（受注・売上共通）
+
+`BmcsDbContext`はウィンドウ単位スコープ（`App.xaml.cs`）で画面を開いている間生き続けるため、
+`UpdateAsync`がミューテーション後に例外を投げると、ChangeTrackerが汚れたまま残る。同じ画面
+から再保存すると、EFのアイデンティティ解決で以前の`IsDeleted = true`のインスタンスが
+返り黙って論理削除される、あるいは前回`Add`した新規行が残っていて同一キーの
+`InvalidOperationException`になる。
+
+対策として、①`ApplyLineValues`（受注の新規実装・`SalesService.ApplyLineValues`の両方）で
+既存行コピー時に`IsDeleted = false`を明示設定、②ViewModel側（`OrderEntryViewModel`・
+`SalesEntryViewModel`の両方）で、訂正モード中の保存が例外で失敗したら`IsReloadRequired`を
+立てて再読込まで保存を封じる、の2点を行った。`docs/architecture.md` 9章「自動マージや
+後勝ちでの上書きは行わない」をメッセージ表示だけでなく操作面でも守る形。
+
+### 24-6. 検証方法
+
+- 単体テスト: `OrderEditLockEvaluatorTests`（全行未売上＝Unlocked、一部売上／売上完了／
+  中止それぞれロックと文言、状態混在時の優先順）。
+- 結合テスト: `OrderServiceCorrectionTests`（数量・単価変更の反映、行追加の`Max+1`採番、
+  行削除の論理削除・既存行番号維持、全行削除の拒否、一部売上・売上完了・中止済み伝票の
+  拒否、存在しない行番号の拒否、他ユーザーの行追加による`SlipConcurrencyException`、
+  `CustomerCode`が上書きされないこと）。
+- 既存テスト（Domain・Application）全green。
+
+### 24-7. スコープ外（記録のみ）
+
+- 売上入力画面の得意先コード欄（訂正モードでも編集可・変更は黙って無視）は今回揃えない。
+- `OrderConcurrencyException`の廃止・`SlipConcurrencyException`への統一。
+
+### 24-8. 追記: 受注入力画面の検索では売上化できない受注も表示する（2026-09-16）
+
+`OrderQueryService.SearchAsync`は既定（`excludeUnavailableForSales = true`）で「全行が中止または
+売上完了」の受注を検索結果から除外する。これは元々、売上入力画面の受注No.検索（これ以上
+売上化できない受注を候補に出す意味がない）のために作られた挙動だが、受注入力画面のSPACE検索
+（`OrderEntryViewModel.OpenOrderSlipSearch`）も同じ`SlipSearchDialogViewModel`を共有するため、
+そのまま同じ除外を引き継いでいた。受注訂正機能（本章）の追加でユーザーから「受注から売上したら
+元の受注が受注検索にも出なくなるのは仕様か」という確認があり、**受注入力画面では閲覧目的で
+売上完了・中止済みの受注も探せるようにする**方針に確定した（直接番号入力では以前から読込
+できていたが、SPACE検索の一覧には出なかった）。
+
+`SlipSearchDialogViewModel`に`IncludeUnavailableOrders`（既定`false`）を追加し、
+`OrderQueryService.SearchAsync`の`excludeUnavailableForSales`引数へ`!IncludeUnavailableOrders`を
+渡すよう変更した。`OrderEntryViewModel.OpenOrderSlipSearch`のみ`true`を設定し、
+`SalesEntryViewModel.OpenOrderSlipSearch`（受注からの売上確定用）は既定の`false`のまま
+（売上化できない受注を候補に出さない、という元の挙動を維持）。

@@ -161,7 +161,7 @@ public class OrderStatusService(
     }
 }
 
-/// <summary>受注の状態遷移に関する業務ルール違反。</summary>
+/// <summary>受注に関する業務ルール違反（状態遷移・編集ロック・対象不存在など）。</summary>
 public sealed class OrderOperationException(string message) : Exception(message);
 
 /// <summary>楽観的排他制御の競合（他のユーザーによる更新）。</summary>

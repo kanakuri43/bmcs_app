@@ -16,12 +16,11 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Order;
 
 /// <summary>
-/// 受注入力画面（TODO.md 4-3・5-3）。旧プロトタイプ（bmcs_app.Order）のレイアウトを再現する。
-/// 新規登録に加え、既存受注の読み込み（表示専用）と中止（F8）を扱う（TODO.md 5-3で追加。
-/// 4-4で先行実装した <see cref="OrderStatusService.CancelSlipAsync"/> の画面配線）。
-/// 既存受注の内容そのものの訂正（数量・単価等の変更保存）は本タスクの範囲外
-/// （<see cref="OrderService"/> に更新系ユースケースがないため）。担当者・前後移動は、
-/// このプロジェクトのスキーマ／機能にまだ存在しないため、枠のみ用意し無効化している
+/// 受注入力画面（TODO.md 4-3・5-3・4-6）。旧プロトタイプ（bmcs_app.Order）のレイアウトを再現する。
+/// 新規登録に加え、既存受注の読み込み・直接修正・中止（F8）を扱う（TODO.md 4-6で訂正保存を追加。
+/// 4-4で先行実装した <see cref="OrderStatusService.CancelSlipAsync"/> の画面配線は5-3で追加済み）。
+/// 直接修正できるのは未売上（<see cref="OrderStatus.NotSold"/>）の伝票のみ（<see cref="OrderEditLockEvaluator"/>）。
+/// 担当者・前後移動は、このプロジェクトのスキーマ／機能にまだ存在しないため、枠のみ用意し無効化している
 /// （詳細は docs/design_document.md）。
 /// </summary>
 public partial class OrderEntryViewModel(
@@ -40,6 +39,9 @@ public partial class OrderEntryViewModel(
 
     /// <summary>読込中の受注伝票番号。<c>null</c> は新規（未保存）を意味する。</summary>
     private string? _loadedOrderSlipNumber;
+
+    /// <summary>読込時点の明細行番号の集合（訂正の排他制御用。docs/architecture.md 9章）。</summary>
+    private IReadOnlyList<short> _loadedLineNumbers = [];
 
     public ObservableCollection<SlipLineViewModel> Lines { get; } = [];
 
@@ -88,14 +90,54 @@ public partial class OrderEntryViewModel(
     public partial string SlipRemarks { get; set; } = string.Empty;
 
     /// <summary>
-    /// 保存済みかどうか。<see cref="OrderService"/> に更新系ユースケースがないため、
-    /// 保存済みの受注を同じ画面から再度保存（＝二重登録）できないようにする。
+    /// 新規登録済みかどうか。新規モードでの二重登録防止にのみ使う
+    /// （訂正モードでは <see cref="_loadedOrderSlipNumber"/> と <see cref="IsEditLocked"/> で判定する）。
     /// </summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     public partial bool IsSaved { get; set; }
 
-    private bool CanSave => !IsSaved;
+    /// <summary>
+    /// 修正不可かどうか（未売上でない受注を読み込んだ場合。TODO.md 4-6・<see cref="OrderEditLockEvaluator"/>）。
+    /// ViewModelは判定せず、Domain純粋関数の結果をそのまま表示・反映するだけにする
+    /// （docs/architecture.md 5章）。
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(AddLineCommand))]
+    [NotifyPropertyChangedFor(nameof(IsEditable))]
+    public partial bool IsEditLocked { get; set; }
+
+    /// <summary>
+    /// 保存が例外で失敗した後、再読込まで保存を封じるフラグ。ミューテーション後に例外が発生すると
+    /// ChangeTrackerが汚れたまま残り、同じ画面から再保存すると行が静かに論理削除される
+    /// 潜在バグ（TODO.md 4-6レビューで発見）への対策。自動マージ・後勝ちの上書きは行わない
+    /// （docs/architecture.md 9章）ため、操作面でも再読込を強制する。
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    public partial bool IsReloadRequired { get; set; }
+
+    /// <summary>
+    /// 訂正モード（既存受注を読み込んだ）かどうか。得意先の変更は <see cref="OrderService.UpdateAsync"/>
+    /// が無視するため、画面側で得意先コードの変更操作自体を封じる（黙って無視される潜在的な不整合を
+    /// UIレベルで防ぐ。TODO.md 4-6レビュー）。
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OpenCustomerSearchCommand))]
+    [NotifyCanExecuteChangedFor(nameof(LookupCustomerByCodeCommand))]
+    [NotifyPropertyChangedFor(nameof(IsCustomerCodeReadOnly))]
+    public partial bool IsCorrectionMode { get; set; }
+
+    /// <summary>得意先コード欄の <c>IsReadOnly</c> バインディング用。得意先名欄は対象外（C-9の宛名都度書き換え）。</summary>
+    public bool IsCustomerCodeReadOnly => IsCorrectionMode;
+
+    /// <summary>ヘッダー入力欄・明細グリッドの <c>IsEnabled</c> バインディング用。修正不可の受注は読取専用にする。</summary>
+    public bool IsEditable => !IsEditLocked;
+
+    private bool CanSave => _loadedOrderSlipNumber is null ? !IsSaved : !IsEditLocked && !IsReloadRequired;
+
+    private bool CanChangeCustomer => !IsCorrectionMode;
 
     private bool CanDeleteSlip => _loadedOrderSlipNumber is not null && OrderStatus != OrderStatus.Cancelled;
 
@@ -154,7 +196,7 @@ public partial class OrderEntryViewModel(
         }
     });
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanChangeCustomer))]
     private async Task OpenCustomerSearchAsync()
     {
         var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>();
@@ -164,7 +206,7 @@ public partial class OrderEntryViewModel(
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanChangeCustomer))]
     private async Task LookupCustomerByCodeAsync()
     {
         if (string.IsNullOrWhiteSpace(CustomerCode))
@@ -223,7 +265,7 @@ public partial class OrderEntryViewModel(
     }
 
     // ── 明細行 ────────────────────────────────────────────────
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsEditable))]
     private void AddLine()
     {
         Lines.Add(CreateLine());
@@ -422,48 +464,65 @@ public partial class OrderEntryViewModel(
         }
     }
 
-    // ── 新規 ─────────────────────────────────────────────────
-    [RelayCommand]
-    private void New()
+    /// <summary>行の購読解除・全消去（New・訂正読込の前処理で共用）。</summary>
+    private void ClearLines()
     {
-        _customer = null;
-        _loadedOrderSlipNumber = null;
-        CustomerCode = string.Empty;
-        CustomerName = string.Empty;
-        CustomerTaxUnitDisplay = string.Empty;
-        SalesRepName = string.Empty;
-        OrderDate = DateTime.Today;
-        OrderSlipNumberDisplay = string.Empty;
-        OrderStatus = OrderStatus.NotSold;
-        IsSaved = false;
-
         foreach (var line in Lines)
         {
             line.PropertyChanged -= OnLinePropertyChanged;
         }
 
         Lines.Clear();
+    }
+
+    // ── 新規 ─────────────────────────────────────────────────
+    [RelayCommand]
+    private void New()
+    {
+        _customer = null;
+        _loadedOrderSlipNumber = null;
+        _loadedLineNumbers = [];
+        CustomerCode = string.Empty;
+        CustomerName = string.Empty;
+        CustomerTaxUnitDisplay = string.Empty;
+        SalesRepName = string.Empty;
+        OrderDate = DateTime.Today;
+        OrderSlipNumberDisplay = string.Empty;
+        SlipRemarks = string.Empty;
+        OrderStatus = OrderStatus.NotSold;
+        IsSaved = false;
+        IsEditLocked = false;
+        IsReloadRequired = false;
+        IsCorrectionMode = false;
+
+        ClearLines();
         Lines.Add(CreateLine());
         RenumberLines();
         StatusMessage = "新規受注";
     }
 
-    // ── 既存受注の読み込み・中止（TODO.md 5-3） ────────────────
+    // ── 既存受注の読み込み・修正・中止（TODO.md 5-3・4-6） ─────
     [RelayCommand]
     private void OpenOrderSlipSearch()
     {
+        // 修正できない受注（売上完了・中止済み）も閲覧目的で探せるようにする（2026-09-16確定）。
+        // 売上入力画面の受注No.検索（売上化できる受注のみ）とは異なる挙動。
         var orderSlipNumber = windowService.ShowDialog<SlipSearchDialog, SlipSearchDialogViewModel, string>(
-            vm => vm.Target = SlipSearchTarget.Order);
+            vm =>
+            {
+                vm.Target = SlipSearchTarget.Order;
+                vm.IncludeUnavailableOrders = true;
+            });
 
         if (!string.IsNullOrWhiteSpace(orderSlipNumber))
         {
-            _ = LoadOrderForViewingAsync(orderSlipNumber);
+            _ = RunBusyAsync(() => LoadOrderForCorrectionAsync(orderSlipNumber));
         }
     }
 
     /// <summary>
     /// 受注No.欄で Return を押したときの挙動。空欄なら新規登録モードとして次項目（受注日付）へ
-    /// フォーカス移動するのみ。入力済みなら既存受注を表示専用で読み込む
+    /// フォーカス移動するのみ。入力済みなら既存受注を読み込む
     /// （docs/product-spec.md UI/UX節「ジャーナル系画面の伝票No入力欄の挙動」）。
     /// </summary>
     [RelayCommand]
@@ -475,87 +534,101 @@ public partial class OrderEntryViewModel(
             return;
         }
 
-        await LoadOrderForViewingAsync(OrderSlipNumberDisplay);
+        await LoadOrderForCorrectionAsync(OrderSlipNumberDisplay);
     });
 
     /// <summary>
-    /// 既存受注を表示専用で読み込む。内容の訂正保存には対応しない（クラス冒頭の注記参照）ため、
-    /// 読込後は <see cref="IsSaved"/> を立てて誤った再保存（＝新規登録）を防ぐ。
+    /// 既存受注を読み込む。未売上の伝票は直接修正・保存できる（TODO.md 4-6）。
+    /// 一部売上・売上完了・中止済みの伝票は読み込めるが修正できない（<see cref="OrderEditLockEvaluator"/>）。
+    /// 例外は呼び出し元がfire-and-forget（<see cref="OpenOrderSlipSearch"/>）でも握れるよう、ここで捕まえる。
     /// </summary>
-    private async Task LoadOrderForViewingAsync(string orderSlipNumber)
+    private async Task LoadOrderForCorrectionAsync(string orderSlipNumber)
     {
         if (string.IsNullOrWhiteSpace(orderSlipNumber))
         {
             return;
         }
 
-        var sourceLines = await orderQueryService.GetSlipAsync(orderSlipNumber);
-        if (sourceLines.Count == 0)
+        try
         {
-            StatusMessage = $"受注No.「{orderSlipNumber}」が見つかりません。";
-            return;
+            var sourceLines = await orderQueryService.GetSlipAsync(orderSlipNumber);
+            if (sourceLines.Count == 0)
+            {
+                StatusMessage = $"受注No.「{orderSlipNumber}」が見つかりません。";
+                return;
+            }
+
+            var customer = await customerService.GetByCodeAsync(sourceLines[0].CustomerCode);
+            if (customer is null)
+            {
+                StatusMessage = "得意先が見つかりません。";
+                return;
+            }
+
+            var lockResult = OrderEditLockEvaluator.Evaluate(sourceLines);
+
+            _customer = customer;
+            _loadedOrderSlipNumber = orderSlipNumber;
+            _loadedLineNumbers = sourceLines.Select(l => l.LineNumber).ToList();
+
+            CustomerCode = customer.CustomerCode;
+            CustomerName = sourceLines[0].CustomerName;
+            CustomerTaxUnitDisplay = customer.TaxUnit switch
+            {
+                TaxUnit.Invoice => "請求単位",
+                TaxUnit.Slip => "伝票単位",
+                TaxUnit.Line => "内税明細単位",
+                _ => customer.TaxUnit.ToString(),
+            };
+            SalesRepName = await ResolveSalesRepNameAsync(customer.SalesEmployeeCode);
+            OrderDate = sourceLines[0].OrderDate.ToDateTime(TimeOnly.MinValue);
+            OrderSlipNumberDisplay = orderSlipNumber;
+            SlipRemarks = sourceLines[0].SlipRemarks ?? string.Empty;
+            OrderStatus = sourceLines.Any(l => l.OrderStatus == OrderStatus.Cancelled)
+                ? OrderStatus.Cancelled
+                : sourceLines.All(l => l.OrderStatus == OrderStatus.FullySold)
+                    ? OrderStatus.FullySold
+                    : sourceLines.Any(l => l.OrderStatus == OrderStatus.PartiallySold)
+                        ? OrderStatus.PartiallySold
+                        : OrderStatus.NotSold;
+            IsSaved = false;
+            IsEditLocked = lockResult.IsLocked;
+            IsReloadRequired = false;
+            IsCorrectionMode = true;
+
+            ClearLines();
+            foreach (var source in sourceLines.OrderBy(l => l.LineNumber))
+            {
+                var line = CreateLine();
+                line.PersistedLineNumber = source.LineNumber;
+                line.ProductCode = source.ProductCode;
+                line.ProductName = source.ProductName;
+                line.Specification = source.Specification;
+                line.UnitName = source.UnitName;
+                line.Quantity = source.OrderQuantity;
+                line.UnitPrice = source.UnitPrice;
+                line.CostPrice = source.CostPrice;
+                line.TaxCategory = source.TaxCategory;
+                line.TaxRate = source.TaxRate;
+                line.RoundingType = customer.RoundingType;
+                line.LineRemarks = source.LineRemarks ?? string.Empty;
+                line.RaiseAmountChanged();
+                Lines.Add(line);
+            }
+
+            EnsureTrailingBlankLine();
+            RenumberLines();
+            RaiseTotalsChanged();
+
+            StatusMessage = lockResult.IsLocked
+                ? $"受注No. {orderSlipNumber} を読み込みました（修正不可: {lockResult.Reason}）"
+                : $"受注No. {orderSlipNumber} を読み込みました。";
+            RequestFocus("OrderDate");
         }
-
-        var customer = await customerService.GetByCodeAsync(sourceLines[0].CustomerCode);
-        if (customer is null)
+        catch (Exception ex)
         {
-            StatusMessage = "得意先が見つかりません。";
-            return;
+            StatusMessage = $"読込エラー: {ex.Message}";
         }
-
-        _customer = customer;
-        _loadedOrderSlipNumber = orderSlipNumber;
-
-        CustomerCode = customer.CustomerCode;
-        CustomerName = sourceLines[0].CustomerName;
-        CustomerTaxUnitDisplay = customer.TaxUnit switch
-        {
-            TaxUnit.Invoice => "請求単位",
-            TaxUnit.Slip => "伝票単位",
-            TaxUnit.Line => "内税明細単位",
-            _ => customer.TaxUnit.ToString(),
-        };
-        SalesRepName = await ResolveSalesRepNameAsync(customer.SalesEmployeeCode);
-        OrderDate = sourceLines[0].OrderDate.ToDateTime(TimeOnly.MinValue);
-        OrderSlipNumberDisplay = orderSlipNumber;
-        SlipRemarks = sourceLines[0].SlipRemarks ?? string.Empty;
-        OrderStatus = sourceLines.Any(l => l.OrderStatus == OrderStatus.Cancelled)
-            ? OrderStatus.Cancelled
-            : sourceLines.All(l => l.OrderStatus == OrderStatus.FullySold)
-                ? OrderStatus.FullySold
-                : sourceLines.Any(l => l.OrderStatus == OrderStatus.PartiallySold)
-                    ? OrderStatus.PartiallySold
-                    : OrderStatus.NotSold;
-        IsSaved = true; // 内容の訂正保存は対象外のため、新規登録用のSaveを封じる
-
-        foreach (var line in Lines)
-        {
-            line.PropertyChanged -= OnLinePropertyChanged;
-        }
-
-        Lines.Clear();
-        foreach (var source in sourceLines.OrderBy(l => l.LineNumber))
-        {
-            var line = CreateLine();
-            line.ProductCode = source.ProductCode;
-            line.ProductName = source.ProductName;
-            line.Specification = source.Specification;
-            line.UnitName = source.UnitName;
-            line.Quantity = source.OrderQuantity;
-            line.UnitPrice = source.UnitPrice;
-            line.CostPrice = source.CostPrice;
-            line.TaxCategory = source.TaxCategory;
-            line.TaxRate = source.TaxRate;
-            line.RoundingType = customer.RoundingType;
-            line.LineRemarks = source.LineRemarks ?? string.Empty;
-            line.RaiseAmountChanged();
-            Lines.Add(line);
-        }
-
-        RenumberLines();
-        RaiseTotalsChanged();
-        StatusMessage = $"受注No. {orderSlipNumber} を読み込みました（表示専用。内容の訂正は未対応）。";
-        RequestFocus("OrderDate");
     }
 
     // ── 保存 ─────────────────────────────────────────────────
@@ -583,50 +656,115 @@ public partial class OrderEntryViewModel(
 
         var orderDate = DateOnly.FromDateTime(orderDateValue);
 
-        var now = DateTime.Now;
-        var slipRemarks = string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks;
-        var entities = nonBlankLines.Select((line, index) => new OrderSlip
-        {
-            OrderSlipNumber = string.Empty, // OrderService.CreateAsync がトランザクション内の採番結果で上書きする
-            LineNumber = (short)(index + 1),
-            OrderDate = orderDate,
-            CustomerCode = _customer.CustomerCode,
-            CustomerName = this.CustomerName, // ViewModelのプロパティ（手入力で上書きされていればその値。C-9・2026-09-10確定）
-            ProductCode = line.ProductCode,
-            ProductName = line.ProductName,
-            Specification = line.Specification,
-            UnitName = line.UnitName,
-            OrderQuantity = line.Quantity,
-            UnitPrice = line.UnitPrice,
-            Amount = line.Amount,
-            CostPrice = line.CostPrice,
-            TaxCategory = line.TaxCategory,
-            TaxRate = line.TaxRate,
-            AllocatedQuantity = 0m,
-            OrderStatus = OrderStatus.NotSold,
-            SalesConfirmedQuantity = 0m,
-            SlipRemarks = slipRemarks, // 伝票摘要は全行に複写する（docs/database-schema.md 1章）
-            LineRemarks = string.IsNullOrWhiteSpace(line.LineRemarks) ? null : line.LineRemarks,
-            CreatedBy = string.Empty, // OrderService.CreateAsync が現在の社員コードで上書きする
-            CreatedAt = now,
-            UpdatedBy = string.Empty,
-            UpdatedAt = now,
-        }).ToList();
-
         try
         {
-            var orderSlipNumber = await orderService.CreateAsync(entities);
-
-            // 登録後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
-            New();
-            StatusMessage = $"登録しました。受注No. {orderSlipNumber}";
-            NotifyResetToInitialState();
+            if (_loadedOrderSlipNumber is null)
+            {
+                await SaveNewAsync(nonBlankLines, orderDate);
+            }
+            else
+            {
+                await SaveCorrectionAsync(nonBlankLines, orderDate);
+            }
+        }
+        catch (OrderOperationException ex)
+        {
+            HandleSaveFailure(ex);
+        }
+        catch (SlipConcurrencyException ex)
+        {
+            HandleSaveFailure(ex);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"保存エラー: {ex.Message}";
+            HandleSaveFailure(ex);
         }
     });
+
+    /// <summary>
+    /// 保存失敗時の共通処理。訂正モード中の失敗は、ミューテーション後にChangeTrackerが汚れたまま
+    /// 残る可能性があるため、再読込までSaveを封じる（TODO.md 4-6レビューで発見した潜在バグの対策）。
+    /// </summary>
+    private void HandleSaveFailure(Exception ex)
+    {
+        if (_loadedOrderSlipNumber is not null)
+        {
+            IsReloadRequired = true;
+        }
+
+        StatusMessage = $"保存エラー: {ex.Message}";
+    }
+
+    private async Task SaveNewAsync(List<SlipLineViewModel> nonBlankLines, DateOnly orderDate)
+    {
+        var now = DateTime.Now;
+        var slipRemarks = string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks;
+        var entities = nonBlankLines.Select((line, index) => BuildEntity(
+            orderSlipNumber: string.Empty, // OrderService.CreateAsync がトランザクション内の採番結果で上書きする
+            lineNumber: (short)(index + 1),
+            orderDate: orderDate,
+            slipRemarks: slipRemarks,
+            line: line,
+            now: now)).ToList();
+
+        var orderSlipNumber = await orderService.CreateAsync(entities);
+
+        // 登録後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
+        New();
+        StatusMessage = $"登録しました。受注No. {orderSlipNumber}";
+        NotifyResetToInitialState();
+    }
+
+    private async Task SaveCorrectionAsync(List<SlipLineViewModel> nonBlankLines, DateOnly orderDate)
+    {
+        var now = DateTime.Now;
+        var slipRemarks = string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks;
+        var entities = nonBlankLines.Select(line => BuildEntity(
+            orderSlipNumber: _loadedOrderSlipNumber!,
+            lineNumber: line.PersistedLineNumber ?? 0,
+            orderDate: orderDate,
+            slipRemarks: slipRemarks,
+            line: line,
+            now: now)).ToList();
+
+        var correctedOrderSlipNumber = _loadedOrderSlipNumber!;
+        await orderService.UpdateAsync(correctedOrderSlipNumber, entities, _loadedLineNumbers);
+
+        // 登録後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
+        // 新規登録と挙動を揃え、訂正保存だけ伝票を表示し続ける例外を作らない。
+        New();
+        StatusMessage = $"訂正しました。受注No. {correctedOrderSlipNumber}";
+        NotifyResetToInitialState();
+    }
+
+    private OrderSlip BuildEntity(
+        string orderSlipNumber, short lineNumber, DateOnly orderDate, string? slipRemarks, SlipLineViewModel line, DateTime now) => new()
+    {
+        OrderSlipNumber = orderSlipNumber,
+        LineNumber = lineNumber,
+        OrderDate = orderDate,
+        CustomerCode = _customer!.CustomerCode,
+        CustomerName = this.CustomerName, // ViewModelのプロパティ（手入力で上書きされていればその値。C-9・2026-09-10確定）
+        ProductCode = line.ProductCode,
+        ProductName = line.ProductName,
+        Specification = line.Specification,
+        UnitName = line.UnitName,
+        OrderQuantity = line.Quantity,
+        UnitPrice = line.UnitPrice,
+        Amount = line.Amount,
+        CostPrice = line.CostPrice,
+        TaxCategory = line.TaxCategory,
+        TaxRate = line.TaxRate,
+        AllocatedQuantity = 0m,
+        OrderStatus = OrderStatus.NotSold,
+        SalesConfirmedQuantity = 0m,
+        SlipRemarks = slipRemarks, // 伝票摘要は全行に複写する（docs/database-schema.md 1章）
+        LineRemarks = string.IsNullOrWhiteSpace(line.LineRemarks) ? null : line.LineRemarks,
+        CreatedBy = string.Empty, // OrderService が現在の社員コードで上書きする（新規のみ）
+        CreatedAt = now,
+        UpdatedBy = string.Empty,
+        UpdatedAt = now,
+    };
 
     // ── 枠のみ・使用不可（TODO.md 4-3。理由は docs/design_document.md 参照） ──────
     private bool CanUseUnimplementedFeature => false;
