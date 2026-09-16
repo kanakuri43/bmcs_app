@@ -299,10 +299,16 @@ MahApps.Metro を導入し、共通スタイルは `src/bmcs_app/Styles/`、書�
     `IsEnabled` は使わない（グレーアウトしタブ順から外れるため、読み取り専用でもフォーカス・コピー可能
     という現状の挙動が変わる）。
   - 旧 `DateTextBoxStyle`／`FormattedTextBoxBehavior.FormattedTextBoxKind.Date` は削除済み。
-- **金額・数量書式**: `AmountTextBoxStyle` / `QuantityTextBoxStyle`。表示はカンマ区切り・右揃え、
-  フォーカス中はカンマなしの生数値、blur時に `N{DecimalPlaces}` で再整形する。
-  **小数桁数の既定値0は暫定。** 単価等で小数が必要な画面は `FormattedTextBoxBehavior.DecimalPlaces`
-  を個別指定して上書きする。
+- **金額・数量書式（2026-09-16確定）**: `AmountTextBoxStyle` / `QuantityTextBoxStyle`。表示はカンマ区切り・
+  右揃え、フォーカス中はカンマなしの生数値、blur時に `N{DecimalPlaces}` で再整形する。
+  **画面上の数量・金額等の数値は小数点以下を表示しない（`DecimalPlaces`既定値0、`N0`書式による
+  四捨五入＝`MidpointRounding.AwayFromZero`）。** 単価等の内部精度（`decimal(15,4)`等）はそのまま
+  保持し、画面表示のみ丸める。旧「既定値0は暫定」の記述は撤回し、上記を正式仕様とする。
+  帳票（納品書・請求書・明細請求書）も数量は同様に0桁（`N0`）に統一する。ただし**単価は帳票側のみ
+  現状の`N4`（小数4桁）を維持する**（画面の単価欄はマスタ入力用の丸め表示、帳票の単価は明細金額の
+  根拠を示す表示という役割の違いによる。2026-09-16、ユーザー判断で単価は据え置きと確定）。
+  対象: `DeliveryNoteDocumentBuilder`／`InvoiceDocumentBuilder`／`DetailInvoiceDocumentBuilder`の
+  `Quantity.ToString("N0")`（変更済み）、`UnitPrice.ToString("N4")`（変更なし）。
 - 数値として解釈できない入力はそのまま残す（このビヘイビアは書式のみを担当し、値の妥当性検証は
   ViewModel の責務とする。11章）。
 - **入力欄の高さ統一（2026-09-15、全画面デザイン統一）**: `TextBox`/`ComboBox`/`DatePicker` の暗黙スタイルに

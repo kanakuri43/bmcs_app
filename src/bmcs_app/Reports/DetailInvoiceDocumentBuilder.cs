@@ -51,7 +51,7 @@ public sealed class DetailInvoiceDocumentBuilder(DetailInvoiceData data) : Repor
             line.SalesSlipNumber,
             line.ProductCode,
             productName,
-            line.Quantity.ToString("N3"),
+            line.Quantity.ToString("N0"),
             line.UnitPrice.ToString("N4"),
             line.Amount.ToString("N0"),
             $"{line.TaxRate:N0}%",
