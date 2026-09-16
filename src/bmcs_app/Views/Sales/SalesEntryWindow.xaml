@@ -6,6 +6,7 @@
                  xmlns:common="clr-namespace:bmcs_app.Views.Common"
                  Title="{Binding WindowTitle}"
                  Height="720" Width="1100"
+                 ResizeMode="CanMinimize"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--

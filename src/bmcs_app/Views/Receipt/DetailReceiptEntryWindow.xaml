@@ -6,6 +6,7 @@
                  xmlns:local="clr-namespace:bmcs_app.Views.Receipt"
                  Title="{Binding WindowTitle}"
                  Height="760" Width="1180"
+                 ResizeMode="CanMinimize"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--

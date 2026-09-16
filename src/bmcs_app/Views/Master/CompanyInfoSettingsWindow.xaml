@@ -4,6 +4,7 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  Title="bmcs_app - 自社情報"
                  Height="520" Width="560"
+                 ResizeMode="CanMinimize"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <Grid Margin="16">

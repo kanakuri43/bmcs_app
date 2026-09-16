@@ -5,6 +5,7 @@
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="bmcs_app - 商品マスタ"
                  Height="600" Width="640"
+                 ResizeMode="CanMinimize"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <Grid Margin="16" beh:EnterKeyNavigationBehavior.IsEnabled="True"
