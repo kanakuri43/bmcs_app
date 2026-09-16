@@ -142,6 +142,7 @@
                     <TextBlock Grid.Column="0" Text="摘要" VerticalAlignment="Center" />
                     <TextBox Grid.Column="1"
                              IsReadOnly="{Binding IsHeaderLocked}"
+                             beh:FocusBehavior.FocusKey="SlipRemarks"
                              Text="{Binding SlipRemarks, UpdateSourceTrigger=PropertyChanged}"
                              mah:TextBoxHelper.Watermark="（任意）"
                              MaxLength="200" />
@@ -181,10 +182,12 @@
 
             <!-- 明細行リスト -->
             <ScrollViewer Grid.Row="1"
+                          IsTabStop="False"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <ItemsControl ItemsSource="{Binding Lines}"
-                              IsEnabled="{Binding IsEditable}">
+                              IsEnabled="{Binding IsEditable}"
+                              IsTabStop="False">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <local:ReceiptLineControl />

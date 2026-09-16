@@ -46,7 +46,9 @@ public static class RowActivationBehavior
     {
         var selector = (Selector)sender;
 
-        if (e.Key != Key.Enter || selector.SelectedItem is null)
+        // Ctrl+Enter 等の修飾キー付き Enter は行確定ではなく画面側のショートカット
+        // （例: ProductSearchDialog の「一括転記」）に委ねる。
+        if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.None || selector.SelectedItem is null)
         {
             return;
         }

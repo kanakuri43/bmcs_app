@@ -73,13 +73,31 @@
                             <ColumnDefinition Width="60" />
                             <ColumnDefinition Width="*"  />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0"
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="4"    />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0"
                                    Text="受注状態："
                                    FontSize="12"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                        <TextBlock Grid.Column="1"
+                        <TextBlock Grid.Row="0" Grid.Column="1"
                                    Text="{Binding OrderStatus, Converter={StaticResource EnumDisplayConverter}}"
+                                   FontSize="12"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center" />
+
+                        <!-- 得意先マスタの営業担当（Customer.SalesEmployeeCode）。伝票自体の担当者列とは別概念 -->
+                        <TextBlock Grid.Row="2" Grid.Column="0"
+                                   Text="担当："
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                        <TextBlock Grid.Row="2" Grid.Column="1"
+                                   Text="{Binding SalesRepName}"
                                    FontSize="12"
                                    FontWeight="Bold"
                                    VerticalAlignment="Center" />
@@ -171,6 +189,7 @@
 
                         <TextBlock Grid.Column="0" Text="摘要" VerticalAlignment="Center" />
                         <TextBox Grid.Column="1"
+                                 beh:FocusBehavior.FocusKey="SlipRemarks"
                                  Text="{Binding SlipRemarks}" />
                     </Grid>
                 </StackPanel>
@@ -220,9 +239,11 @@
 
             <!-- 明細行リスト -->
             <ScrollViewer Grid.Row="1"
+                          IsTabStop="False"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
-                <ItemsControl ItemsSource="{Binding Lines}">
+                <ItemsControl ItemsSource="{Binding Lines}"
+                              IsTabStop="False">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <common:SlipLineControl />

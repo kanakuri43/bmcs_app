@@ -28,6 +28,7 @@ namespace bmcs_app.ViewModels.Sales;
 public partial class SalesEntryViewModel(
     ProductService productService,
     CustomerService customerService,
+    EmployeeService employeeService,
     TaxRateQueryService taxRateQueryService,
     SalesService salesService,
     SalesQueryService salesQueryService,
@@ -69,6 +70,14 @@ public partial class SalesEntryViewModel(
     /// <summary>得意先の税区分の表示（商品検索モーダルへ渡す単価列の判定と一致させるため）。</summary>
     [ObservableProperty]
     public partial string CustomerTaxUnitDisplay { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 得意先マスタに設定された自社の営業担当名（<see cref="Customer.SalesEmployeeCode"/>）。
+    /// 右上ステータス欄に「担当：〇〇〇〇」として表示する。未設定・該当社員なしの場合は空欄。
+    /// 伝票（<see cref="SalesEntity"/>）自体の担当者列とは別概念（下記 <see cref="EmployeeCode"/> 参照）。
+    /// </summary>
+    [ObservableProperty]
+    public partial string SalesRepName { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial DateTime? SlipDate { get; set; } = DateTime.Today;
@@ -211,12 +220,12 @@ public partial class SalesEntryViewModel(
     });
 
     [RelayCommand(CanExecute = nameof(CanEdit))]
-    private void OpenCustomerSearch()
+    private async Task OpenCustomerSearchAsync()
     {
         var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>();
         if (customer is not null)
         {
-            ApplyCustomer(customer);
+            await ApplyCustomerAsync(customer);
         }
     }
 
@@ -235,10 +244,10 @@ public partial class SalesEntryViewModel(
             return;
         }
 
-        ApplyCustomer(customer);
+        await ApplyCustomerAsync(customer);
     }
 
-    private void ApplyCustomer(Customer customer)
+    private async Task ApplyCustomerAsync(Customer customer)
     {
         _customer = customer;
         CustomerCode = customer.CustomerCode;
@@ -250,6 +259,7 @@ public partial class SalesEntryViewModel(
             TaxUnit.Line => "内税明細単位",
             _ => customer.TaxUnit.ToString(),
         };
+        SalesRepName = await ResolveSalesRepNameAsync(customer.SalesEmployeeCode);
 
         foreach (var line in Lines)
         {
@@ -259,6 +269,22 @@ public partial class SalesEntryViewModel(
 
         RaiseTotalsChanged();
         StatusMessage = $"得意先: {customer.CustomerName}";
+        RequestFocus("SlipRemarks");
+    }
+
+    /// <summary>
+    /// 得意先マスタの<see cref="Customer.SalesEmployeeCode"/>から自社の営業担当名を解決する。
+    /// 未設定、または社員マスタに該当なしの場合は空欄（ステータス欄には空文字がそのまま表示される）。
+    /// </summary>
+    private async Task<string> ResolveSalesRepNameAsync(string? salesEmployeeCode)
+    {
+        if (string.IsNullOrWhiteSpace(salesEmployeeCode))
+        {
+            return string.Empty;
+        }
+
+        var employee = await employeeService.GetByCodeAsync(salesEmployeeCode);
+        return employee?.EmployeeName ?? string.Empty;
     }
 
     private DateOnly ParseSlipDate() => SlipDate is { } value ? DateOnly.FromDateTime(value) : DateOnly.FromDateTime(DateTime.Today);
@@ -488,6 +514,7 @@ public partial class SalesEntryViewModel(
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
         CustomerTaxUnitDisplay = string.Empty;
+        SalesRepName = string.Empty;
         SlipDate = DateTime.Today;
         SalesSlipNumberDisplay = string.Empty;
         OrderSlipNumberQuery = string.Empty;
@@ -708,7 +735,7 @@ public partial class SalesEntryViewModel(
 
         if (_customer is null)
         {
-            ApplyCustomer(orderCustomer);
+            await ApplyCustomerAsync(orderCustomer);
         }
         else if (_customer.CustomerCode != orderCustomer.CustomerCode)
         {
@@ -779,7 +806,7 @@ public partial class SalesEntryViewModel(
         }
 
         New();
-        ApplyCustomer(customer);
+        await ApplyCustomerAsync(customer);
         CustomerName = sourceLines[0].CustomerName;
 
         var slipDate = ParseSlipDate();
@@ -878,6 +905,7 @@ public partial class SalesEntryViewModel(
             TaxUnit.Line => "内税明細単位",
             _ => customer.TaxUnit.ToString(),
         };
+        SalesRepName = await ResolveSalesRepNameAsync(customer.SalesEmployeeCode);
         SlipDate = sourceLines[0].SlipDate.ToDateTime(TimeOnly.MinValue);
         SalesSlipNumberDisplay = salesSlipNumber;
         SlipRemarks = sourceLines[0].SlipRemarks ?? string.Empty;

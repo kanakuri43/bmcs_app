@@ -251,6 +251,7 @@ public partial class DetailReceiptEntryViewModel(
 
         StatusMessage = $"得意先: {customer.CustomerName}";
         SaveCommand.NotifyCanExecuteChanged();
+        RequestFocus("SlipRemarks");
     }
 
     private async Task LoadCandidatesAsync()

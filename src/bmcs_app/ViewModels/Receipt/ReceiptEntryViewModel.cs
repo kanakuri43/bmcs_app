@@ -150,6 +150,7 @@ public partial class ReceiptEntryViewModel(
         if (Lines.Count == 0)
         {
             Lines.Add(CreateLine());
+            RenumberLines();
         }
 
         if (PreviewSlipNumber is { } previewSlipNumber)
@@ -227,11 +228,16 @@ public partial class ReceiptEntryViewModel(
 
         StatusMessage = $"得意先: {customer.CustomerName}";
         SaveCommand.NotifyCanExecuteChanged();
+        RequestFocus("SlipRemarks");
     }
 
     /// <summary>行追加（F2）。</summary>
     [RelayCommand(CanExecute = nameof(CanAddLine))]
-    private void AddLine() => Lines.Add(CreateLine());
+    private void AddLine()
+    {
+        Lines.Add(CreateLine());
+        RenumberLines();
+    }
 
     private ReceiptLineViewModel CreateLine() => new(onDelete: OnDeleteLine);
 
@@ -244,6 +250,7 @@ public partial class ReceiptEntryViewModel(
 
         Lines.Remove(line);
         EnsureTrailingBlankLine();
+        RenumberLines();
     }
 
     private void EnsureTrailingBlankLine()
@@ -251,6 +258,14 @@ public partial class ReceiptEntryViewModel(
         if (Lines.Count == 0 || !Lines[^1].IsBlank)
         {
             Lines.Add(CreateLine());
+        }
+    }
+
+    private void RenumberLines()
+    {
+        for (var i = 0; i < Lines.Count; i++)
+        {
+            Lines[i].LineNumber = (short)(i + 1);
         }
     }
 
@@ -546,6 +561,7 @@ public partial class ReceiptEntryViewModel(
         if (!IsPreviewMode)
         {
             EnsureTrailingBlankLine();
+            RenumberLines();
         }
 
         _loadedReceiptSlipNumber = receiptSlipNumber;
@@ -574,6 +590,7 @@ public partial class ReceiptEntryViewModel(
 
         ClearLines();
         Lines.Add(CreateLine());
+        RenumberLines();
         RaiseTotalsChanged();
         IsExistingLoaded = false;
         IsEditLocked = false;
