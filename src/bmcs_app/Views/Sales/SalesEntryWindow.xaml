@@ -153,6 +153,7 @@
                         <DatePicker Grid.Column="4"
                                     beh:FocusBehavior.FocusKey="SlipDate"
                                     mah:ControlsHelper.IsReadOnly="{Binding IsHeaderLocked}"
+                                    DisplayDateStart="{Binding MinimumSlipDate}"
                                     SelectedDate="{Binding SlipDate}" />
                     </Grid>
 

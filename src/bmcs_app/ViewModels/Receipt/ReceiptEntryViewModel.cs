@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using bmcs_app.Application.Billing;
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
 using bmcs_app.Application.Receipt;
@@ -36,6 +37,7 @@ public partial class ReceiptEntryViewModel(
     ReceiptEntryService receiptEntryService,
     CustomerService customerService,
     BankAccountService bankAccountService,
+    BillingClosedDateService billingClosedDateService,
     WindowService windowService) : ViewModelBase
 {
     private Customer? _customer;
@@ -107,6 +109,15 @@ public partial class ReceiptEntryViewModel(
 
     [ObservableProperty]
     public partial DateTime? ReceiptDate { get; set; } = DateTime.Today;
+
+    /// <summary>
+    /// 登録可能な最小日付（請求締め済みの翌日。制限なしなら<c>null</c>）。得意先確定時に
+    /// <see cref="BillingClosedDateService"/>から取得し、<c>DatePicker.DisplayDateStart</c>に
+    /// バインドする（画面上の利便性のみを担い、最終的な検証はApplication層が行う。
+    /// docs/design_document.md 21-4章 申し送り事項R2）。
+    /// </summary>
+    [ObservableProperty]
+    public partial DateTime? MinimumReceiptDate { get; set; }
 
     [ObservableProperty]
     public partial string CustomerCode { get; set; } = string.Empty;
@@ -226,9 +237,33 @@ public partial class ReceiptEntryViewModel(
         _outstandingTotal = summary.OutstandingTotal;
         RaiseTotalsChanged();
 
-        StatusMessage = $"得意先: {customer.CustomerName}";
+        var dateCorrectionNote = await ApplyMinimumReceiptDateAsync(customer.CustomerCode);
+        StatusMessage = dateCorrectionNote is null
+            ? $"得意先: {customer.CustomerName}"
+            : $"得意先: {customer.CustomerName}（{dateCorrectionNote}）";
         SaveCommand.NotifyCanExecuteChanged();
         RequestFocus("SlipRemarks");
+    }
+
+    /// <summary>
+    /// 得意先確定時に登録可能な最小日付を取得して<see cref="MinimumReceiptDate"/>へ反映する。新規登録
+    /// （<see cref="ApplyCustomerAsync"/>経由）では、現在の<see cref="ReceiptDate"/>が最小日付より前なら
+    /// 最小日付へ補正する（2026-09-16ユーザー確認）。訂正モードの読込（<see cref="ApplyExisting"/>、
+    /// 既に保存済みの日付を保つべき経路）ではこのメソッドを呼ばない。戻り値は補正した場合のみ通知文言、
+    /// それ以外は<c>null</c>。
+    /// </summary>
+    private async Task<string?> ApplyMinimumReceiptDateAsync(string customerCode)
+    {
+        var minimumDate = await billingClosedDateService.GetMinimumEntryDateAsync(customerCode);
+        MinimumReceiptDate = minimumDate?.ToDateTime(TimeOnly.MinValue);
+
+        if (MinimumReceiptDate is not { } minimum || ReceiptDate is not { } current || current >= minimum)
+        {
+            return null;
+        }
+
+        ReceiptDate = minimum;
+        return $"請求締め済みのため入金日付を{minimum:yyyy/MM/dd}に変更しました";
     }
 
     /// <summary>行追加（F2）。</summary>
@@ -359,6 +394,12 @@ public partial class ReceiptEntryViewModel(
         if (ReceiptDate is not { } receiptDateValue)
         {
             StatusMessage = "入金日付を入力してください。";
+            return;
+        }
+
+        if (MinimumReceiptDate is { } minimumReceiptDate && receiptDateValue < minimumReceiptDate)
+        {
+            StatusMessage = $"請求締め済みのため、入金日付は{minimumReceiptDate:yyyy/MM/dd}以降を指定してください。";
             return;
         }
 
@@ -533,6 +574,10 @@ public partial class ReceiptEntryViewModel(
 
         ReceiptSlipNumberQuery = receiptSlipNumber;
         ReceiptDate = header.ReceiptDate.ToDateTime(TimeOnly.MinValue);
+        MinimumReceiptDate = customer is null
+            ? null
+            : (await billingClosedDateService.GetMinimumEntryDateAsync(customer.CustomerCode))
+                ?.ToDateTime(TimeOnly.MinValue);
         CustomerCode = header.CustomerCode;
         CustomerName = header.CustomerName;
         SlipRemarks = header.SlipRemarks ?? string.Empty;
@@ -580,6 +625,7 @@ public partial class ReceiptEntryViewModel(
     {
         ReceiptSlipNumberQuery = string.Empty;
         ReceiptDate = DateTime.Today;
+        MinimumReceiptDate = null;
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
         SlipRemarks = string.Empty;

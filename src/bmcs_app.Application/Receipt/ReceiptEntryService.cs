@@ -1,3 +1,4 @@
+using bmcs_app.Application.Billing;
 using bmcs_app.Application.Common;
 using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Enums;
@@ -40,6 +41,7 @@ public class ReceiptEntryService(
     BmcsDbContext dbContext,
     SettlementService settlementService,
     SlipNumberService slipNumberService,
+    BillingClosedDateService billingClosedDateService,
     ICurrentEmployeeContext currentEmployeeContext,
     ILogger<ReceiptEntryService> logger)
 {
@@ -69,7 +71,7 @@ public class ReceiptEntryService(
     /// </summary>
     /// <exception cref="ReceiptEntryException">
     /// 得意先が存在しない、都度得意先、明細行が0件、明細行の合計額が0以下、振込の行で入金先口座が
-    /// 未指定、または手形の行で手形期日が未指定の場合。
+    /// 未指定、手形の行で手形期日が未指定、または入金日付が請求締め済み期間（申し送り事項R2）の場合。
     /// </exception>
     public async Task<string> SaveNewAsync(
         string customerCode,
@@ -79,6 +81,13 @@ public class ReceiptEntryService(
         CancellationToken cancellationToken = default)
     {
         ValidateLines(lines);
+
+        var dateCheck = await billingClosedDateService.CheckAsync(customerCode, receiptDate, "入金日付", cancellationToken);
+        if (!dateCheck.IsAllowed)
+        {
+            throw new ReceiptEntryException(dateCheck.Reason!);
+        }
+
         var receiptAmount = lines.Sum(l => l.Amount);
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
@@ -231,7 +240,8 @@ public class ReceiptEntryService(
     /// 呼び出し元が読込時にキャプチャしておく）。
     /// </param>
     /// <exception cref="ReceiptEntryException">
-    /// 対象の入金が存在しない、編集ロックに該当する、または明細行の内容が不正な場合。
+    /// 対象の入金が存在しない、編集ロックに該当する、明細行の内容が不正、または訂正後の入金日付が
+    /// 請求締め済み期間（申し送り事項R2）の場合。
     /// </exception>
     /// <exception cref="SlipConcurrencyException">他のユーザーが同じ伝票を更新済みの場合。</exception>
     public async Task UpdateAsync(
@@ -339,6 +349,12 @@ public class ReceiptEntryService(
         if (lockResultAfter.IsLocked)
         {
             throw new ReceiptEntryException($"訂正後の内容は編集ロック対象になるため保存できません: {lockResultAfter.Reason}");
+        }
+
+        var dateCheckAfter = await billingClosedDateService.CheckAsync(customerCode, receiptDate, "入金日付", cancellationToken);
+        if (!dateCheckAfter.IsAllowed)
+        {
+            throw new ReceiptEntryException(dateCheckAfter.Reason!);
         }
 
         // 読み込んだ全行（削除された行を含む）を更新対象に含め、rowversion の照合を全行で効かせる

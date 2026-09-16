@@ -1577,7 +1577,7 @@ TODO.md 8-1の文面は「元帳データのマージ実装」（サービス層
 | # | 内容 |
 |---|---|
 | R1 | `BillingReleaseService`は締め解除時に`sales.billing_number`をNULLに戻すが`receipt_allocation`は触らないため、解除済み`billing`を指す充当行が残留しうる。元帳は`receipt_allocation`を参照しない設計のため影響なし（観測事実として記録） |
-| R2 | 元帳の残高と`billing.current_billing_amount`の一致は「遡及入力が無い」前提でのみ成立する。締め後に過去日付の**新規**売上・入金を登録することはC-6の編集ロック（既存行の編集のみ対象）では防げない。元帳は常に実データからの都度集計なので**元帳が正、`billing`は締め時点のスナップショット**であり、この不一致を検出して例外を投げてはならない（正常な業務オペレーションで起こりうる）。9-1実装時に考慮すること |
+| R2 | 元帳の残高と`billing.current_billing_amount`の一致は「遡及入力が無い」前提でのみ成立する。締め後に過去日付の**新規**売上・入金を登録することはC-6の編集ロック（既存行の編集のみ対象）では防げない。元帳は常に実データからの都度集計なので**元帳が正、`billing`は締め時点のスナップショット**であり、この不一致を検出して例外を投げてはならない（正常な業務オペレーションで起こりうる）。**請求締め分は25章「ジャーナル系の日付制限」（2026-09-16実装）で新規登録・日付変更自体を禁止する形で解消済み。月次締め分はPhase 9-1実装時に改めて考慮すること（25-2参照）** |
 | R3 | Phase 7-3（振込手数料差額の入力）実装時、`fee_adjustment_amount`が非ゼロになると元帳の残高に残渣が残りうる。`billing.receipt_amount`も`Σ receipt.Amount`（手数料を含まない）なので両者は一致し元帳固有の問題ではないが、「手数料差額を残高からどう落とすか」の業務判断が7-3で必要になる |
 | R4 | 1伝票の明細行が請求済・未請求に分かれると`tax_unit=2`の`slip_tax_amount`（伝票単位の値）が実態とずれうるが、締め時に`BillingClosingService.CalculateTaxSummary`が検出して例外を投げるため、元帳側に独自の整合チェックは入れていない（元帳は照会画面であり業務ルール違反の検出責務は6-1側） |
 | R5 | `scripts/seed_dev_data.sql`の`monthly_closing`（2026-01/02分）は売上・入金の実データ（2026-07/08分）と月が重ならないため、Phase 9-1実装時にはseedデータの作り直しが必要になる見込み |
@@ -2040,3 +2040,87 @@ IsEditable}"`（`IsEditable => !IsEditLocked`）で読取専用にする。受�
 渡すよう変更した。`OrderEntryViewModel.OpenOrderSlipSearch`のみ`true`を設定し、
 `SalesEntryViewModel.OpenOrderSlipSearch`（受注からの売上確定用）は既定の`false`のまま
 （売上化できない受注を候補に出さない、という元の挙動を維持）。
+
+## 25. ジャーナル系の日付制限（申し送り事項R2の解消、2026-09-16実装）
+
+### 25-1. 経緯
+
+21-4章のR2で「締め後に過去日付の**新規**売上・入金を登録することはC-6の編集ロック（既存行の編集
+のみ対象）では防げない。9-1実装時に考慮すること」と未対応事項として記録していた。ユーザーから
+「請求集計された日を含め、集計前の日付は登録できないようにする（例: 9/30締めなら10/01以降のみ）」
+という要求があり、Phase 9（月次締め）を待たず、請求締め（請求集計）分について本タスクで解消した。
+
+編集ロック（既存行の編集・訂正の禁止）と本機能（新規登録・日付変更の入口の禁止）は境界となる
+日付（対象得意先の確定済み`billing`のうち最新の`billing_date`）が同じだが、対象が異なるため
+判定結果を共有しない別クラスとした。
+
+### 25-2. 対象範囲（ユーザー確認済み、2026-09-16）
+
+- **対象画面は売上入力・入金入力の2画面のみ。** 明細入金（都度得意先専用）・受注入力は対象外。
+- **都度得意先（`tax_unit=3`）は制限しない。** `billing`を1件も持たないため、税単位で分岐せずとも
+  自動的に無制限になる（後述）。
+- **月次締め（`monthly_closing`）は対象外。** Phase 9未実装であることに加え、月次締めは得意先×
+  暦月の任意集合であり許可日が連続にならないため、`DatePicker.DisplayDateStart`（単一の最小日付）
+  という設計と相性が悪い。Phase 9-1実装時に、月次締め分の登録制限をどう表現するか改めて設計する。
+
+### 25-3. 判定ルール: `BillingClosedDateEvaluator`
+
+`src/bmcs_app.Domain/Calculations/BillingClosedDateEvaluator.cs`（Domain純粋関数、
+`SalesEditLockEvaluator`と同形）。
+
+```
+最小日付 = (対象得意先の確定済みbillingのうち最大のbilling_date) + 1日
+確定済みbillingが無ければ制限なし（null）
+```
+
+`billing_status = Confirmed`のみを対象にする（`Released`＝締め解除済みは対象外。締め解除すれば
+その期間に再度登録できる、という既存の締め解除運用とそのまま整合する）。
+
+DBアクセスは`src/bmcs_app.Application/Billing/BillingClosedDateService.cs`が担う。クエリは
+`ReceiptEntryService.EvaluateEditLockAsync`が使うものと同一（対象得意先の確定済み`billing`のうち
+最新の`billing_date`）だが、責務（既存行の編集ロック／新規登録・日付変更の入口）が異なるため
+判定結果は共有せず、あえて別クラスにした（それぞれの文言・利用箇所が独立に変わってよいようにする
+ため。境界を問い合わせるクエリ自体の重複は許容する）。
+
+### 25-4. 強制ポイント
+
+| 対象 | 検証する日付 |
+|---|---|
+| `SalesService.CreateAsync` | 新規登録の伝票日付 |
+| `SalesService.UpdateAsync` | 訂正後の伝票日付（過去へ動かす経路も塞ぐ） |
+| `ReceiptEntryService.SaveNewAsync` | 新規登録の入金日付 |
+| `ReceiptEntryService.UpdateAsync` | 訂正後の入金日付 |
+
+いずれも既存の編集ロック判定（`lockResultBefore`／`lockResultAfter`）の直後に差し込み、
+違反時は各サービスの既存例外型（`SalesOperationException`／`ReceiptEntryException`）をそのまま使う。
+取消（`CancelSlipAsync`）は日付を変えないため対象外（既存の編集ロックが担当）。
+
+### 25-5. 画面側: `DisplayDateStart`は利便性のみ、最終的な検証はApplication層
+
+`SalesEntryViewModel.MinimumSlipDate`／`ReceiptEntryViewModel.MinimumReceiptDate`を追加し、
+`DatePicker.DisplayDateStart`にバインドしてカレンダーから締め済み日以前を選べなくした。ただし
+`DisplayDateStart`はカレンダーのマウス選択のみを制限し、`DatePickerInputBehavior`（全画面デザイン
+統一、X-5）が8桁ベタ打ち等の入力で`SelectedDate`を直接代入する経路を迂回できるため、**画面側の
+制御は利便性のみであり、最終的な検証は25-4のApplication層が担う**（`BlackoutDates`は範囲外日付の
+`SelectedDate`代入で例外を投げるため採用しない。訂正モードの読込・複写がクラッシュしうる）。
+
+得意先確定時（`ApplyCustomerAsync`）に最小日付を取得し、現在の伝票日付がそれより前なら**自動で
+最小日付へ補正し`StatusMessage`で通知する**（2026-09-16ユーザー確認）。既存伝票の読込（訂正モード）
+では最小日付は表示用に設定するのみで、読込んだ日付は書き換えない。保存時にも同じ最小日付との
+比較を行い、二重防御とする。
+
+### 25-6. テスト
+
+- Domain単体テスト: `tests/bmcs_app.Domain.Tests/Calculations/BillingClosedDateEvaluatorTests.cs`。
+  要求の例（9/30締めなら9/30・9/29は不可、10/01は可）を含む。
+- Application結合テスト（開発用ライブDB）: `SalesServiceBillingClosedDateTests`（新規）、
+  `ReceiptEntryServiceTests`に追加。締め済み期間の新規登録・訂正の拒否、翌日は登録可、確定済み
+  請求が無い得意先・都度得意先は無制限、締め解除後は再度登録可、を直接検証する。
+- 既存の`ReceiptEntryServiceTests`3件（編集ロックの検証）は、確定済み`billing`を**先に**挿入して
+  から入金を登録する組み立てだったため、本機能により入金登録自体が拒否されるようになり赤くなった。
+  実際の業務順序（入金登録 → 後から請求締めが実行され集計期間に呑み込まれる）に合わせて、
+  入金登録を先に行いその後で確定済み`billing`を挿入する順序へ修正した（ルール側は緩めていない）。
+
+### 25-7. 申し送り
+
+- 21-4章のR2は請求締め分について本章で解消した。月次締め分は25-2のとおりPhase 9-1へ再申し送り。

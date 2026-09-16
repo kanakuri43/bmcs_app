@@ -1,3 +1,4 @@
+using bmcs_app.Application.Billing;
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Order;
 using bmcs_app.Application.Receipt;
@@ -20,6 +21,7 @@ public class SalesService(
     SlipNumberService slipNumberService,
     OrderStatusService orderStatusService,
     SalesEditLockService salesEditLockService,
+    BillingClosedDateService billingClosedDateService,
     SettlementService settlementService,
     ICurrentEmployeeContext currentEmployeeContext,
     ILogger<SalesService> logger)
@@ -41,12 +43,21 @@ public class SalesService(
     /// <see cref="SlipType.Sales"/> の行のみ（返品・値引行を受注に紐付けることはできない）。
     /// </param>
     /// <param name="roundingType">得意先マスタの端数区分。税額計算に使う。</param>
-    /// <exception cref="SalesOperationException">返品・値引行が受注に紐付けられている場合。</exception>
+    /// <exception cref="SalesOperationException">
+    /// 返品・値引行が受注に紐付けられている場合、または伝票日付が請求締め済み期間（申し送り事項R2）の場合。
+    /// </exception>
     public async Task<string> CreateAsync(
         IReadOnlyList<SalesEntity> lines, RoundingType roundingType, CancellationToken cancellationToken = default)
     {
         ValidateOrderLinkRestrictedToSalesType(lines);
         ValidateQuantityAmountSignConsistency(lines);
+
+        var dateCheck = await billingClosedDateService.CheckAsync(
+            lines[0].CustomerCode, lines[0].SlipDate, "売上日付", cancellationToken);
+        if (!dateCheck.IsAllowed)
+        {
+            throw new SalesOperationException(dateCheck.Reason!);
+        }
 
         var employeeCode = currentEmployeeContext.EmployeeCode;
         var now = DateTime.Now;
@@ -208,6 +219,13 @@ public class SalesService(
             if (lockResultAfter.IsLocked)
             {
                 throw new SalesOperationException($"訂正後の内容は編集ロック対象になるため保存できません: {lockResultAfter.Reason}");
+            }
+
+            var dateCheckAfter = await billingClosedDateService.CheckAsync(
+                activeLines[0].CustomerCode, activeLines[0].SlipDate, "売上日付", cancellationToken);
+            if (!dateCheckAfter.IsAllowed)
+            {
+                throw new SalesOperationException(dateCheckAfter.Reason!);
             }
 
             SalesTaxAmountAssigner.Assign(activeLines, roundingType);

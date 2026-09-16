@@ -87,6 +87,7 @@
                     <DatePicker Grid.Column="4"
                                 mah:ControlsHelper.IsReadOnly="{Binding IsHeaderLocked}"
                                 beh:FocusBehavior.FocusKey="ReceiptDate"
+                                DisplayDateStart="{Binding MinimumReceiptDate}"
                                 SelectedDate="{Binding ReceiptDate}" />
                 </Grid>
 

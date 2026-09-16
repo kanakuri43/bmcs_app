@@ -425,11 +425,14 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         try
         {
             await InsertCustomerAsync(dbContext, customerCode);
-            await InsertBillingAsync(
-                dbContext, "__TSTBIL_RCL01", customerCode, 10000m, billingDate: new DateOnly(2026, 7, 20));
 
+            // 実際の業務順序（入金登録 → その後に請求締めが実行され集計期間に呑み込まれる）を再現するため、
+            // 先に入金を登録してから確定済みbillingを挿入する（日付制限の実装後、逆順だと入金登録自体が
+            // 拒否されるため。docs/design_document.md 21-4章 申し送り事項R2）。
             var receiptSlipNumber = await service.SaveNewAsync(
                 customerCode, new DateOnly(2026, 7, 15), slipRemarks: null, lines: [CashLine(1000m)]);
+            await InsertBillingAsync(
+                dbContext, "__TSTBIL_RCL01", customerCode, 10000m, billingDate: new DateOnly(2026, 7, 20));
 
             var ex = await Assert.ThrowsAsync<ReceiptEntryException>(() => service.CancelSlipAsync(receiptSlipNumber));
             Assert.Contains("請求締め", ex.Message);
@@ -449,11 +452,14 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         try
         {
             await InsertCustomerAsync(dbContext, customerCode);
-            await InsertBillingAsync(
-                dbContext, "__TSTBIL_RCL02", customerCode, 10000m, billingDate: new DateOnly(2026, 7, 20));
 
+            // 実際の業務順序（入金登録 → その後に請求締めが実行され集計期間に呑み込まれる）を再現するため、
+            // 先に入金を登録してから確定済みbillingを挿入する（日付制限の実装後、逆順だと入金登録自体が
+            // 拒否されるため。docs/design_document.md 21-4章 申し送り事項R2）。
             var receiptSlipNumber = await service.SaveNewAsync(
                 customerCode, new DateOnly(2026, 7, 15), slipRemarks: null, lines: [CashLine(1000m)]);
+            await InsertBillingAsync(
+                dbContext, "__TSTBIL_RCL02", customerCode, 10000m, billingDate: new DateOnly(2026, 7, 20));
             var loadedLineNumbers = await LoadLineNumbersAsync(dbContext, receiptSlipNumber);
 
             var ex = await Assert.ThrowsAsync<ReceiptEntryException>(() => service.UpdateAsync(
@@ -482,10 +488,13 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         try
         {
             await InsertCustomerAsync(dbContext, customerCode);
-            await InsertBillingAsync(dbContext, billingNumber, customerCode, 10000m, billingDate: billingDate);
 
+            // 実際の業務順序（入金登録 → その後に請求締めが実行され集計期間に呑み込まれる）を再現するため、
+            // 先に入金を登録してから確定済みbillingを挿入する（日付制限の実装後、逆順だと入金登録自体が
+            // 拒否されるため。docs/design_document.md 21-4章 申し送り事項R2）。
             var receiptSlipNumber = await service.SaveNewAsync(
                 customerCode, new DateOnly(2026, 7, 15), slipRemarks: null, lines: [CashLine(1000m)]);
+            await InsertBillingAsync(dbContext, billingNumber, customerCode, 10000m, billingDate: billingDate);
 
             await Assert.ThrowsAsync<ReceiptEntryException>(() => service.CancelSlipAsync(receiptSlipNumber));
 
@@ -548,6 +557,108 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
 
             var ex = await Assert.ThrowsAsync<ReceiptEntryException>(() => service.CancelSlipAsync(receiptSlipNumber));
             Assert.Contains("月次締め", ex.Message);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    // ── 日付制限（申し送り事項R2の解消。docs/design_document.md 21-4章） ──────────
+
+    [Fact]
+    public async Task 請求締め済み期間の日付では入金を新規登録できない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRDL01";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            await InsertBillingAsync(
+                dbContext, "__TSTBIL_RDL01", customerCode, 10000m, billingDate: new DateOnly(2026, 9, 30));
+
+            var ex = await Assert.ThrowsAsync<ReceiptEntryException>(() => service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 9, 30), slipRemarks: null, lines: [CashLine(1000m)]));
+            Assert.Contains("請求締め済み", ex.Message);
+
+            var exBefore = await Assert.ThrowsAsync<ReceiptEntryException>(() => service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 9, 29), slipRemarks: null, lines: [CashLine(1000m)]));
+            Assert.Contains("請求締め済み", exBefore.Message);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    [Fact]
+    public async Task 請求締切日の翌日の入金は登録できる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRDL02";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            await InsertBillingAsync(
+                dbContext, "__TSTBIL_RDL02", customerCode, 10000m, billingDate: new DateOnly(2026, 9, 30));
+
+            var receiptSlipNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2026, 10, 1), slipRemarks: null, lines: [CashLine(1000m)]);
+
+            Assert.Equal(8, receiptSlipNumber.Length);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    [Fact]
+    public async Task 確定済み請求が無い得意先は過去日付でも入金を登録できる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var customerCode = "__TSTRDL03";
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+
+            var receiptSlipNumber = await service.SaveNewAsync(
+                customerCode, new DateOnly(2020, 1, 1), slipRemarks: null, lines: [CashLine(1000m)]);
+
+            Assert.Equal(8, receiptSlipNumber.Length);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, customerCode);
+        }
+    }
+
+    [Fact]
+    public async Task 締め解除された請求の期間は入金登録の日付制限を受けない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var releaseService = scope.ServiceProvider.GetRequiredService<BillingReleaseService>();
+        var customerCode = "__TSTRDL04";
+        var billingDate = new DateOnly(2026, 9, 30);
+        try
+        {
+            await InsertCustomerAsync(dbContext, customerCode);
+            await InsertBillingAsync(dbContext, "__TSTBIL_RDL04", customerCode, 10000m, billingDate: billingDate);
+
+            await Assert.ThrowsAsync<ReceiptEntryException>(() => service.SaveNewAsync(
+                customerCode, billingDate, slipRemarks: null, lines: [CashLine(1000m)]));
+
+            await releaseService.ReleaseByBillingDateAsync(billingDate);
+            dbContext.ChangeTracker.Clear();
+
+            var receiptSlipNumber = await service.SaveNewAsync(
+                customerCode, billingDate, slipRemarks: null, lines: [CashLine(1000m)]);
+
+            Assert.Equal(8, receiptSlipNumber.Length);
         }
         finally
         {

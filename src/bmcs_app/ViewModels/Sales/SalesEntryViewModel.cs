@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
+using bmcs_app.Application.Billing;
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
 using bmcs_app.Application.Order;
@@ -33,6 +34,7 @@ public partial class SalesEntryViewModel(
     SalesService salesService,
     SalesQueryService salesQueryService,
     SalesEditLockService salesEditLockService,
+    BillingClosedDateService billingClosedDateService,
     OrderQueryService orderQueryService,
     DeliveryNoteService deliveryNoteService,
     WindowService windowService,
@@ -81,6 +83,15 @@ public partial class SalesEntryViewModel(
 
     [ObservableProperty]
     public partial DateTime? SlipDate { get; set; } = DateTime.Today;
+
+    /// <summary>
+    /// 登録可能な最小日付（請求締め済みの翌日。制限なしなら<c>null</c>）。得意先確定時に
+    /// <see cref="BillingClosedDateService"/>から取得し、<c>DatePicker.DisplayDateStart</c>に
+    /// バインドする（画面上の利便性のみを担い、最終的な検証はApplication層が行う。
+    /// docs/design_document.md 21-4章 申し送り事項R2）。
+    /// </summary>
+    [ObservableProperty]
+    public partial DateTime? MinimumSlipDate { get; set; }
 
     /// <summary>
     /// 売上No.欄。新規時は空欄（Watermarkで「自動採番」を案内）。既存伝票の訂正・取消（TODO.md 5-6）では
@@ -278,8 +289,32 @@ public partial class SalesEntryViewModel(
         }
 
         RaiseTotalsChanged();
-        StatusMessage = $"得意先: {customer.CustomerName}";
+
+        var dateCorrectionNote = await ApplyMinimumSlipDateAsync(customer.CustomerCode);
+        StatusMessage = dateCorrectionNote is null
+            ? $"得意先: {customer.CustomerName}"
+            : $"得意先: {customer.CustomerName}（{dateCorrectionNote}）";
         RequestFocus("SlipRemarks");
+    }
+
+    /// <summary>
+    /// 得意先確定時に登録可能な最小日付を取得して<see cref="MinimumSlipDate"/>へ反映する。新規登録
+    /// （<see cref="ApplyCustomerAsync"/>経由）では、現在の<see cref="SlipDate"/>が最小日付より前なら
+    /// 最小日付へ補正する（2026-09-16ユーザー確認）。訂正モードの読込（既に保存済みの日付を保つべき
+    /// 経路）ではこのメソッドを呼ばない。戻り値は補正した場合のみ通知文言、それ以外は<c>null</c>。
+    /// </summary>
+    private async Task<string?> ApplyMinimumSlipDateAsync(string customerCode)
+    {
+        var minimumDate = await billingClosedDateService.GetMinimumEntryDateAsync(customerCode);
+        MinimumSlipDate = minimumDate?.ToDateTime(TimeOnly.MinValue);
+
+        if (MinimumSlipDate is not { } minimum || SlipDate is not { } current || current >= minimum)
+        {
+            return null;
+        }
+
+        SlipDate = minimum;
+        return $"請求締め済みのため売上日付を{minimum:yyyy/MM/dd}に変更しました";
     }
 
     /// <summary>
@@ -528,6 +563,7 @@ public partial class SalesEntryViewModel(
         CustomerTaxUnitDisplay = string.Empty;
         SalesRepName = string.Empty;
         SlipDate = DateTime.Today;
+        MinimumSlipDate = null;
         SalesSlipNumberDisplay = string.Empty;
         OrderSlipNumberQuery = string.Empty;
         BillingStatusDisplay = "未請求";
@@ -568,6 +604,12 @@ public partial class SalesEntryViewModel(
         if (SlipDate is null)
         {
             StatusMessage = "売上日付を入力してください。";
+            return;
+        }
+
+        if (MinimumSlipDate is { } minimumSlipDate && SlipDate < minimumSlipDate)
+        {
+            StatusMessage = $"請求締め済みのため、売上日付は{minimumSlipDate:yyyy/MM/dd}以降を指定してください。";
             return;
         }
 
@@ -936,6 +978,8 @@ public partial class SalesEntryViewModel(
         };
         SalesRepName = await ResolveSalesRepNameAsync(customer.SalesEmployeeCode);
         SlipDate = sourceLines[0].SlipDate.ToDateTime(TimeOnly.MinValue);
+        MinimumSlipDate = (await billingClosedDateService.GetMinimumEntryDateAsync(customer.CustomerCode))
+            ?.ToDateTime(TimeOnly.MinValue);
         SalesSlipNumberDisplay = salesSlipNumber;
         SlipRemarks = sourceLines[0].SlipRemarks ?? string.Empty;
         BillingStatusDisplay = sourceLines.Any(l => l.BillingStatus == BillingLinkStatus.Billed) ? "請求済" : "未請求";
