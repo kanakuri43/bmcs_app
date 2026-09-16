@@ -3,11 +3,12 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
-                 Title="bmcs_app - メインメニュー"
-                 Height="820" Width="440"
+                 Title="販売管理"
+                 Height="1000" Width="400"
                  MinHeight="600" MinWidth="380"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False"
+                 ResizeMode="CanMinimize"
                  Background="#FFF3F5F8">
     <!--
         TODO.md 2-7。デザインモック（旧 MainMenuMockWindow）のC案＝リスト・アコーディオン型を
@@ -20,7 +21,7 @@
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Height" Value="46" />
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontSize" Value="13" />
             <Setter Property="Foreground" Value="#FF2B2F36" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
@@ -64,31 +65,30 @@
                                           Content="{TemplateBinding Header}"
                                           IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                                           Cursor="Hand"
-                                          HorizontalAlignment="Left"
-                                          HorizontalContentAlignment="Left">
+                                          HorizontalAlignment="Stretch"
+                                          HorizontalContentAlignment="Stretch">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
-                                        <StackPanel Margin="0,10,0,10">
+                                        <Border x:Name="HeaderBg"
+                                                Background="{Binding Tag, RelativeSource={RelativeSource AncestorType=Expander}}"
+                                                CornerRadius="8"
+                                                Padding="16,12"
+                                                Margin="0,10,0,0">
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock x:Name="Chevron"
                                                            Text="&#9656;"
                                                            FontSize="14"
-                                                           Foreground="#FF8A93A3"
+                                                           Foreground="White"
                                                            VerticalAlignment="Center"
-                                                           Margin="0,0,8,0"
+                                                           Margin="0,0,10,0"
                                                            RenderTransformOrigin="0.5,0.5">
                                                     <TextBlock.RenderTransform>
                                                         <RotateTransform Angle="0" />
                                                     </TextBlock.RenderTransform>
                                                 </TextBlock>
-                                                <TextBlock Text="{TemplateBinding Content}" FontSize="17" FontWeight="Bold" Foreground="#FF2B2F36" />
+                                                <TextBlock Text="{TemplateBinding Content}" FontSize="15" FontWeight="Bold" Foreground="White" />
                                             </StackPanel>
-                                            <Border Height="3" Width="40"
-                                                    Background="{Binding Tag, RelativeSource={RelativeSource AncestorType=Expander}}"
-                                                    CornerRadius="1.5"
-                                                    HorizontalAlignment="Left"
-                                                    Margin="22,6,0,0" />
-                                        </StackPanel>
+                                        </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsChecked" Value="True">
                                                 <Setter TargetName="Chevron" Property="RenderTransform">
@@ -98,7 +98,7 @@
                                                 </Setter>
                                             </Trigger>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="Chevron" Property="Foreground" Value="{Binding Tag, RelativeSource={RelativeSource AncestorType=Expander}}" />
+                                                <Setter TargetName="HeaderBg" Property="Opacity" Value="0.85" />
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -127,9 +127,10 @@
 
         <!-- ヘッダー -->
         <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <!--
             <TextBlock Text="石山商店" FontSize="12" Foreground="#FF8A93A3" />
             <TextBlock Text="販売管理システム" FontSize="24" FontWeight="Bold" Foreground="#FF1F2430" Margin="0,0,0,12" />
-
+            -->
             <Border Background="White" CornerRadius="18" Padding="14,8" BorderBrush="#FFE3E6EA" BorderThickness="1"
                     HorizontalAlignment="Left">
                 <StackPanel Orientation="Horizontal">
