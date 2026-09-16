@@ -482,6 +482,8 @@ public partial class OrderEntryViewModel(
         _customer = null;
         _loadedOrderSlipNumber = null;
         _loadedLineNumbers = [];
+        SaveCommand.NotifyCanExecuteChanged();
+        DeleteSlipCommand.NotifyCanExecuteChanged();
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
         CustomerTaxUnitDisplay = string.Empty;
@@ -570,6 +572,8 @@ public partial class OrderEntryViewModel(
             _customer = customer;
             _loadedOrderSlipNumber = orderSlipNumber;
             _loadedLineNumbers = sourceLines.Select(l => l.LineNumber).ToList();
+            SaveCommand.NotifyCanExecuteChanged();
+            DeleteSlipCommand.NotifyCanExecuteChanged();
 
             CustomerCode = customer.CustomerCode;
             CustomerName = sourceLines[0].CustomerName;

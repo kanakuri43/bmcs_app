@@ -521,6 +521,8 @@ public partial class SalesEntryViewModel(
         _loadedSalesSlipNumber = null;
         _loadedLineNumbers = [];
         PrintCommand.NotifyCanExecuteChanged();
+        SaveCommand.NotifyCanExecuteChanged();
+        DeleteSlipCommand.NotifyCanExecuteChanged();
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
         CustomerTaxUnitDisplay = string.Empty;
@@ -920,6 +922,8 @@ public partial class SalesEntryViewModel(
         _loadedSalesSlipNumber = salesSlipNumber;
         _loadedLineNumbers = sourceLines.Select(l => l.LineNumber).ToList();
         PrintCommand.NotifyCanExecuteChanged();
+        SaveCommand.NotifyCanExecuteChanged();
+        DeleteSlipCommand.NotifyCanExecuteChanged();
 
         CustomerCode = customer.CustomerCode;
         CustomerName = sourceLines[0].CustomerName;
