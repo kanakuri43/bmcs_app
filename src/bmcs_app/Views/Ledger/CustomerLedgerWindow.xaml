@@ -19,7 +19,7 @@
         <KeyBinding Key="F5" Command="{Binding SearchCommand}" />
     </mah:MetroWindow.InputBindings>
 
-    <Grid Margin="16">
+    <Grid Margin="16" beh:ImeAwareSpaceKeyBindingBehavior.IsEnabled="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" /> <!-- ヘッダー -->
             <RowDefinition Height="*" />    <!-- 明細 -->

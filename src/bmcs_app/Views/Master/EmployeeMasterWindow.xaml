@@ -7,7 +7,8 @@
                  Height="420" Width="560"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
-    <Grid Margin="16" beh:EnterKeyNavigationBehavior.IsEnabled="True">
+    <Grid Margin="16" beh:EnterKeyNavigationBehavior.IsEnabled="True"
+          beh:ImeAwareSpaceKeyBindingBehavior.IsEnabled="True">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
                 <TextBlock Text="基本情報" FontWeight="Bold" Margin="0,0,0,8" />

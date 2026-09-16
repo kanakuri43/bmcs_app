@@ -24,7 +24,8 @@
         <KeyBinding Key="F10" Command="{Binding SaveCommand}" />
     </mah:MetroWindow.InputBindings>
 
-    <Grid beh:EnterKeyNavigationBehavior.IsEnabled="True">
+    <Grid beh:EnterKeyNavigationBehavior.IsEnabled="True"
+          beh:ImeAwareSpaceKeyBindingBehavior.IsEnabled="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" /> <!-- ToolBar -->
             <RowDefinition Height="Auto" /> <!-- ヘッダー -->
