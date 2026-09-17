@@ -52,7 +52,7 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
     private const double CondensedLineHeight = 16.0;
     private const double CondensedFontSize = 9.5;
 
-    /// <summary>1セクションあたりの明細行数（固定。ミシン目位置を合わせるため空行にも罫線を引く）。</summary>
+    /// <summary>1セクションあたりの明細行数（固定。3セクションの高さを揃えるため空行にも罫線を引く）。</summary>
     private const int LinesPerSection = 6;
 
     public FixedDocument Build()
@@ -87,10 +87,8 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
         {
             if (i > 0)
             {
-                // セクション間はミシン目の位置（罫線）を挟む。
-                root.Children.Add(new Rectangle { Height = SectionGap, Fill = Brushes.Transparent });
-                root.Children.Add(HLine(1.5));
-                root.Children.Add(new Rectangle { Height = SectionGap, Fill = Brushes.Transparent });
+                // セクション間の余白（ミシン目の実線は印字しない）。
+                root.Children.Add(new Rectangle { Height = SectionGap * 2, Fill = Brushes.Transparent });
             }
 
             root.Children.Add(BuildSection(SectionTitles[i], lines, isFirst, isLast, pageNumber, totalPages));
