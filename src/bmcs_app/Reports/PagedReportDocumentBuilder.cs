@@ -1,0 +1,128 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Markup;
+using System.Windows.Media;
+using bmcs_app.Domain.Calculations;
+
+namespace bmcs_app.Reports;
+
+/// <summary>
+/// 改ページを伴う単一フロー帳票（請求書・明細請求書）の A4 <see cref="FixedDocument"/> を
+/// 組み立てる基底クラス（TODO.md 10-3、帳票基盤。2026-09-17、納品書3段複写対応で
+/// <see cref="ReportDocumentBuilder"/> から分割）。派生クラスはヘッダー・フッター・列定義・
+/// 行データのみを与える。改ページの分割計算そのものは <see cref="ReportPagination"/>
+/// （Domain、単体テスト済み）に委ねる。
+/// </summary>
+public abstract class PagedReportDocumentBuilder : ReportDocumentBuilder
+{
+    /// <summary>1ページ目のヘッダー（タイトル・得意先・自社情報等）の高さの見積り。</summary>
+    protected abstract double FullHeaderHeight { get; }
+
+    /// <summary>2ページ目以降の続紙ヘッダーの高さの見積り。</summary>
+    protected abstract double CompactHeaderHeight { get; }
+
+    /// <summary>最終ページのフッター（税率別内訳・合計等）の高さの見積り。</summary>
+    protected abstract double FooterHeight { get; }
+
+    /// <summary>明細テーブルの列定義。幅0の列は残余幅になる（最大1列まで）。</summary>
+    protected abstract IReadOnlyList<ReportColumn> Columns { get; }
+
+    /// <summary>明細行の総数。</summary>
+    protected abstract int LineCount { get; }
+
+    /// <summary>1ページ目の先頭に出すフルヘッダー。</summary>
+    protected abstract FrameworkElement BuildFullHeader();
+
+    /// <summary>2ページ目以降の先頭に出す続紙ヘッダー。</summary>
+    protected abstract FrameworkElement BuildCompactHeader(int pageNumber, int totalPages);
+
+    /// <summary>最終ページの明細テーブルの下に出すフッター。</summary>
+    protected abstract FrameworkElement BuildFooter();
+
+    /// <summary><paramref name="lineIndex"/>（0始まり）の行を <see cref="Columns"/> と同じ順序のセル文字列で返す。</summary>
+    protected abstract string?[] BuildLineCells(int lineIndex);
+
+    public FixedDocument Build()
+    {
+        var linesOnFirstPage = Math.Max(1,
+            (int)((ContentHeight - FullHeaderHeight - TableHeaderHeight - FooterHeight) / LineHeight));
+        var linesOnLaterPages = Math.Max(1,
+            (int)((ContentHeight - CompactHeaderHeight - TableHeaderHeight - FooterHeight) / LineHeight));
+
+        var pageSplits = ReportPagination.Split(LineCount, linesOnFirstPage, linesOnLaterPages);
+        var document = new FixedDocument();
+
+        for (var i = 0; i < pageSplits.Count; i++)
+        {
+            var (startIndex, count) = pageSplits[i];
+            AddPage(
+                document, startIndex, count,
+                isFirst: i == 0, isLast: i == pageSplits.Count - 1,
+                pageNumber: i + 1, totalPages: pageSplits.Count);
+        }
+
+        return document;
+    }
+
+    private void AddPage(
+        FixedDocument document, int startIndex, int count,
+        bool isFirst, bool isLast, int pageNumber, int totalPages)
+    {
+        var fixedPage = new FixedPage
+        {
+            Width = A4Width,
+            Height = A4Height,
+            Background = Brushes.White,
+        };
+
+        var content = BuildPageContent(startIndex, count, isFirst, isLast, pageNumber, totalPages);
+        FixedPage.SetLeft(content, MarginX);
+        FixedPage.SetTop(content, MarginY);
+        fixedPage.Children.Add(content);
+
+        // FixedPage は Show/ShowDialog のビジュアルツリーに乗らないため、
+        // レイアウトを自分で確定させる必要がある（参考実装と同じ手順）。
+        fixedPage.Measure(new Size(A4Width, A4Height));
+        fixedPage.Arrange(new Rect(0, 0, A4Width, A4Height));
+        fixedPage.UpdateLayout();
+
+        var pageContent = new PageContent();
+        ((IAddChild)pageContent).AddChild(fixedPage);
+        document.Pages.Add(pageContent);
+    }
+
+    private FrameworkElement BuildPageContent(
+        int startIndex, int count, bool isFirst, bool isLast, int pageNumber, int totalPages)
+    {
+        var root = new StackPanel { Width = ContentWidth, Background = Brushes.White };
+
+        root.Children.Add(isFirst ? BuildFullHeader() : BuildCompactHeader(pageNumber, totalPages));
+        root.Children.Add(HLine(1));
+        root.Children.Add(BuildLinesTable(startIndex, count));
+
+        if (isLast)
+        {
+            root.Children.Add(HLine(1));
+            root.Children.Add(BuildFooter());
+        }
+
+        return root;
+    }
+
+    private FrameworkElement BuildLinesTable(int startIndex, int count)
+    {
+        var container = new StackPanel();
+
+        container.Children.Add(BuildTableHeaderRow(Columns));
+        container.Children.Add(HLine(0.5));
+
+        for (var i = 0; i < count; i++)
+        {
+            var cells = BuildLineCells(startIndex + i);
+            container.Children.Add(BuildTableRow(Columns, isHeader: false, AlternatingRowBackground(i), cells));
+        }
+
+        return container;
+    }
+}

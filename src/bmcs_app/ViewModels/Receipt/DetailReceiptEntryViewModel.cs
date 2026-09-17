@@ -210,7 +210,8 @@ public partial class DetailReceiptEntryViewModel(
     [RelayCommand(CanExecute = nameof(CanEdit))]
     private void OpenCustomerSearch()
     {
-        var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>();
+        var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>(
+            vm => vm.RequiredTaxUnit = TaxUnit.Line);
         if (customer is not null)
         {
             _ = RunBusyAsync(() => ApplyCustomerAsync(customer));

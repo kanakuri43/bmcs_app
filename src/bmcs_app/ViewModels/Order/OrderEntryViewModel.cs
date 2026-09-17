@@ -154,8 +154,11 @@ public partial class OrderEntryViewModel(
 
     public decimal TaxTotal => ComputeTaxSummary().TaxAmount;
 
-    /// <summary>旧プロトタイプと同じく、外税得意先では消費税計と同値を「（外税）」欄に表示する。</summary>
-    public decimal ExternalTaxTotal => TaxTotal;
+    /// <summary>
+    /// 旧プロトタイプと同じく、外税得意先（Invoice/Slip）では消費税計と同値を「（外税）」欄に表示する。
+    /// 内税明細単位（Line）は税額を明細内に含めて計算するため外税欄には表示しない。
+    /// </summary>
+    public decimal ExternalTaxTotal => _customer?.TaxUnit == TaxUnit.Line ? 0m : TaxTotal;
 
     public decimal GrandTotal => ComputeTaxSummary().TotalAmount;
 
@@ -211,6 +214,15 @@ public partial class OrderEntryViewModel(
     {
         if (string.IsNullOrWhiteSpace(CustomerCode))
         {
+            return;
+        }
+
+        if (_customer?.CustomerCode == CustomerCode)
+        {
+            // すでに確定済みの得意先（得意先名を手入力で上書き済みの場合を含む。C-9）と同じコード
+            // なら再取得しない。マスタを読み直すと上書きが失われるため。
+            // ただしEnterでの通常のフォーカス送りは維持する（ApplyCustomerAsyncと同じ送り先）。
+            RequestFocus("SlipRemarks");
             return;
         }
 

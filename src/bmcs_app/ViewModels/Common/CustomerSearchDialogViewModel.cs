@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using bmcs_app.Application.Master;
 using bmcs_app.Domain.Entities;
+using bmcs_app.Domain.Enums;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -10,6 +11,8 @@ namespace bmcs_app.ViewModels.Common;
 /// 得意先検索モーダル（TODO.md 3-1）。得意先名・カナ・住所・担当者名を検索対象にする
 /// （docs/database-schema.md 2.1 が検索対象と明記する列＋タスク要件の担当者名・住所）。
 /// 検索はマスタ全件をロードしたうえでのメモリ絞り込み（得意先マスタ画面と同じ全件ロード方針に揃える）。
+/// <see cref="RequiredTaxUnit"/> を呼び出し元（<c>windowService.ShowDialog</c>の<c>configure</c>）で
+/// 設定すると、その税区分の得意先のみに絞り込む（明細請求書発行・明細入金は内税明細単位専用のため）。
 /// </summary>
 public partial class CustomerSearchDialogViewModel(CustomerService customerService)
     : DialogViewModelBase<Customer>
@@ -17,6 +20,9 @@ public partial class CustomerSearchDialogViewModel(CustomerService customerServi
     private List<Customer> _allCustomers = [];
 
     public ObservableCollection<CustomerSearchItem> Results { get; } = [];
+
+    /// <summary>設定すると、この税区分の得意先のみを検索対象にする（未設定なら全件）。</summary>
+    public TaxUnit? RequiredTaxUnit { get; set; }
 
     [ObservableProperty]
     public partial string SearchKeyword { get; set; } = string.Empty;
@@ -27,7 +33,10 @@ public partial class CustomerSearchDialogViewModel(CustomerService customerServi
     [RelayCommand]
     private Task LoadAsync() => RunBusyAsync(async () =>
     {
-        _allCustomers = await customerService.GetCustomersAsync();
+        var customers = await customerService.GetCustomersAsync();
+        _allCustomers = RequiredTaxUnit is null
+            ? customers
+            : customers.Where(c => c.TaxUnit == RequiredTaxUnit).ToList();
         ApplyFilter();
     });
 

@@ -25,11 +25,13 @@ namespace bmcs_app.ViewModels.Ledger;
 /// 全税単位を対象にする）。残高キャッシュ列は持たず都度集計する（M-11）。
 ///
 /// <see cref="CurrentBalance"/>（TODO.md 8-2、本日時点の残高）は、検索期間（<see cref="PeriodFrom"/>／
-/// <see cref="PeriodTo"/>）とは独立に、得意先確定時と表示(F5)実行時に毎回
+/// <see cref="PeriodTo"/>）とは独立に、得意先確定時と表示（<see cref="SearchAsync"/>）実行時に毎回
 /// <see cref="CustomerLedgerQueryService.GetBalanceAsOfAsync"/> を呼んで都度計算する
 /// （M-11「残高キャッシュ列を持たない」。ウィンドウを開いたまま他画面の更新を自動検知する
 /// 仕組みは持たない。再検索・再オープンのたびに必ず最新値になることが「常時表示」の意味。
-/// docs/design_document.md 21章）。
+/// docs/design_document.md 21章）。得意先・<see cref="PeriodFrom"/>・<see cref="PeriodTo"/>の
+/// いずれかを変更すると<see cref="TriggerAutoRefresh"/>経由で表示が自動実行される
+/// （2026-09-17。専用ボタンは撤去済み。F5キーは手動再表示用に残す）。
 ///
 /// 伝票プレビュー（TODO.md 8-3、<see cref="OpenSlipPreview"/>）は行を <c>Enter</c>／ダブルクリック
 /// （<see cref="Behaviors.RowActivationBehavior"/>）で活性化すると、対応する売上入力・入金入力・
@@ -62,8 +64,12 @@ public partial class CustomerLedgerViewModel(
     [ObservableProperty]
     public partial DateTime? PeriodFrom { get; set; } = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
 
+    partial void OnPeriodFromChanged(DateTime? value) => TriggerAutoRefresh();
+
     [ObservableProperty]
     public partial DateTime? PeriodTo { get; set; } = DateTime.Today;
+
+    partial void OnPeriodToChanged(DateTime? value) => TriggerAutoRefresh();
 
     [ObservableProperty]
     public partial decimal OpeningBalance { get; set; }
@@ -81,7 +87,7 @@ public partial class CustomerLedgerViewModel(
     public partial decimal ClosingBalance { get; set; }
 
     [ObservableProperty]
-    public partial string StatusMessage { get; set; } = "得意先と期間を指定して表示(F5)してください。";
+    public partial string StatusMessage { get; set; } = "得意先を指定してください（条件を変更すると自動的に表示します）。";
 
     [RelayCommand]
     private void OpenCustomerSearch()
@@ -120,16 +126,34 @@ public partial class CustomerLedgerViewModel(
         TaxUnitDisplay = BuildTaxUnitDisplay(customer);
         Lines.Clear();
         ResetTotals();
-        await RefreshCurrentBalanceAsync(customer.CustomerCode);
-        StatusMessage = $"得意先: {customer.CustomerName}（表示(F5)で元帳を表示します）";
+
+        // 得意先確定はすでに呼び出し元の RunBusyAsync 内なので、RefreshLedgerAsync を直接呼ぶ
+        // （SearchCommand 経由だと IsBusy の多重実行抑止に引っかかり無視されてしまう）。
+        await RefreshLedgerAsync();
     }
 
     private async Task RefreshCurrentBalanceAsync(string customerCode)
         => CurrentBalance = await ledgerQueryService.GetBalanceAsOfAsync(customerCode, DateOnly.FromDateTime(DateTime.Today)) ?? 0m;
 
-    /// <summary>表示（F5）。</summary>
+    /// <summary>
+    /// 得意先・開始日付・終了日付のいずれかを変更すると自動的に実行される（TODO.md 8-1、
+    /// 2026-09-17変更）。専用の「表示」ボタンは、自動実行により不要になったため撤去した。
+    /// F5キーバインドは、他画面での更新後に手動で再表示したい場合に備えて残す。
+    /// </summary>
     [RelayCommand]
-    private Task SearchAsync() => RunBusyAsync(async () =>
+    private Task SearchAsync() => RunBusyAsync(RefreshLedgerAsync);
+
+    private void TriggerAutoRefresh()
+    {
+        if (_customer is null)
+        {
+            return;
+        }
+
+        _ = SearchAsync();
+    }
+
+    private async Task RefreshLedgerAsync()
     {
         if (_customer is null)
         {
@@ -171,11 +195,11 @@ public partial class CustomerLedgerViewModel(
         ReceiptTotal = result.ReceiptTotal;
         ClosingBalance = result.ClosingBalance;
 
-        // 表示(F5)のたびに本日時点の残高も再計算する（都度集計。M-11）。
+        // 表示のたびに本日時点の残高も再計算する（都度集計。M-11）。
         await RefreshCurrentBalanceAsync(_customer.CustomerCode);
 
         StatusMessage = $"{Lines.Count}行を表示しました。";
-    });
+    }
 
     private void ResetTotals()
     {

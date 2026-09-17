@@ -14,7 +14,7 @@ namespace bmcs_app.Reports;
 /// もので、前回残高・入金を含む今回ご請求額（<c>CurrentBillingAmount</c>）とは別物であるため
 /// 表示上も分離する。
 /// </summary>
-public sealed class InvoiceDocumentBuilder(InvoiceData data) : ReportDocumentBuilder
+public sealed class InvoiceDocumentBuilder(InvoiceData data) : PagedReportDocumentBuilder
 {
     private static readonly IReadOnlyList<ReportColumn> ColumnDefinitions =
     [

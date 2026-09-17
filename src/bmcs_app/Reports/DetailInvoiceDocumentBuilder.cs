@@ -13,7 +13,7 @@ namespace bmcs_app.Reports;
 /// 交付を受ける者の名称）をすべて満たす。宛名は<c>AddresseeName</c>（都度入力のスナップショット、
 /// C-9）を印字し、得意先マスタの登録名称は使わない。
 /// </summary>
-public sealed class DetailInvoiceDocumentBuilder(DetailInvoiceData data) : ReportDocumentBuilder
+public sealed class DetailInvoiceDocumentBuilder(DetailInvoiceData data) : PagedReportDocumentBuilder
 {
     private static readonly IReadOnlyList<ReportColumn> ColumnDefinitions =
     [
@@ -74,7 +74,7 @@ public sealed class DetailInvoiceDocumentBuilder(DetailInvoiceData data) : Repor
     protected override FrameworkElement BuildCompactHeader(int pageNumber, int totalPages)
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 4) };
-        row.Children.Add(Tb("明細請求書（続き）", 10, FontWeights.Bold));
+        row.Children.Add(Tb("請求書（続き）", 10, FontWeights.Bold));
         row.Children.Add(new System.Windows.Shapes.Rectangle { Width = 20, Fill = Brushes.Transparent });
         row.Children.Add(Tb($"請求書No. {data.DetailInvoiceNumber}　{data.AddresseeName}　御中", 9));
         row.Children.Add(new System.Windows.Shapes.Rectangle
@@ -97,7 +97,7 @@ public sealed class DetailInvoiceDocumentBuilder(DetailInvoiceData data) : Repor
         Grid.SetColumn(dateText, 0);
         grid.Children.Add(dateText);
 
-        var title = Tb("明 細 請 求 書", 20, FontWeights.Bold, TextAlignment.Center);
+        var title = Tb("請  求  書", 20, FontWeights.Bold, TextAlignment.Center);
         title.Margin = new Thickness(0, 0, 0, 4);
         Grid.SetColumn(title, 1);
         grid.Children.Add(title);
