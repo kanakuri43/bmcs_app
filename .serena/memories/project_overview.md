@@ -29,7 +29,10 @@ scripts/                       … DDL（001, 002, ... 連番。適用済みは�
 docs/                          … 設計文書（下記）
 ```
 
-**進捗（2026-09-15時点）**: Phase 0〜7-2/7-4/7-5/7-6が完了。7-3（振込手数料差額の入力）のみユーザー指示で保留中。Phase 8（得意先元帳）・9（月次締め）・10（帳票）・11（FlaUI）は未着手。詳細な残タスクは`TODO.md`を参照（各Phaseの完了行に実装の要点が詳しく記録されている）。
+**進捗（2026-09-17時点）**: Phase 0〜8（得意先元帳）・10（帳票：納品書・請求書・明細請求書）が完了。7-3（振込手数料差額の入力）のみユーザー指示で保留中。Phase 9（月次締め）・11（FlaUI）は未着手。
+- 得意先元帳（Phase 8）: 得意先・期間のいずれかを変更すると自動的に再表示する（`CustomerLedgerViewModel`。2026-09-17、専用の「表示」ボタンは撤去。F5キーは手動再表示用に残す）。
+- 帳票基盤（Phase 10）は`src/bmcs_app/Reports/`配下。`ReportDocumentBuilder`（A4寸法・`Tb`/`HLine`・宛先ブロック・明細1行描画等の描画プリミティブ、抽象メンバー無し）と、改ページを伴う単一フロー帳票（請求書`InvoiceDocumentBuilder`・明細請求書`DetailInvoiceDocumentBuilder`）用のテンプレートメソッドを持つ`PagedReportDocumentBuilder`（`ReportDocumentBuilder`を継承、`Build()`と単一フロー用抽象メンバーを持つ）に分割されている（2026-09-17）。納品書`DeliveryNoteDocumentBuilder`は改ページの考え方が異なる（ミシン目入りA4に「納品書（控）」「請求書」「納品書」を3段複写で印字。1セクション6行固定）ため`ReportDocumentBuilder`を直接継承し、自前で`Build()`を実装する。
+詳細な残タスクは`TODO.md`を参照（各Phaseの完了行に実装の要点が詳しく記録されている）。
 
 主なユースケースサービス（`src/bmcs_app.Application/`）:
 - `Order/`: `OrderService`・`OrderStatusService`・`OrderQueryService`
