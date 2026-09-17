@@ -96,4 +96,76 @@
         <Setter Property="MinHeight" Value="{StaticResource InputControlHeight}" />
     </Style>
 
+    <!--
+        伝票ナビゲーション（前へ/次へ）ボタン。ジャーナル系画面（受注入力・売上入力）の
+        ヘッダーツールバーに置く「|◀」「▶|」の置き換え（2026-09-17）。文字のシェブロン
+        （‹›）は小さく視認性が低いというフィードバックを受け、太いストローク付きの
+        ベクターアイコン（Path）に変更した。フォントに依存しないため機種差の心配もない。
+        通常時は薄いグレーの正方形、ホバー時のみアクセント色にする（2026-09-17、26pxに縮小）。
+    -->
+    <Style x:Key="SlipNavButtonBaseStyle" TargetType="Button">
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.Gray1}" />
+        <Setter Property="Background" Value="{DynamicResource MahApps.Brushes.Gray10}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
+    <Style x:Key="SlipPrevButtonStyle" TargetType="Button" BasedOn="{StaticResource SlipNavButtonBaseStyle}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="4">
+                        <Viewbox Width="10" Height="17" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path Data="M 10,2 L 2,11 L 10,20"
+                                  Stroke="{TemplateBinding Foreground}"
+                                  StrokeThickness="3"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" />
+                        </Viewbox>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource MahApps.Brushes.Accent}" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SlipNextButtonStyle" TargetType="Button" BasedOn="{StaticResource SlipNavButtonBaseStyle}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="4">
+                        <Viewbox Width="10" Height="17" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path Data="M 2,2 L 10,11 L 2,20"
+                                  Stroke="{TemplateBinding Foreground}"
+                                  StrokeThickness="3"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" />
+                        </Viewbox>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource MahApps.Brushes.Accent}" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

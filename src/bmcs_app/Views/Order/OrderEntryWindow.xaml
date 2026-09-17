@@ -39,13 +39,11 @@
                     ToolTip="新規受注を作成します (F3)" />
             <Separator />
             <Button Command="{Binding PrevSlipCommand}"
-                    Content="|◀"
                     ToolTip="前の受注（未実装）"
-                    Style="{DynamicResource MahApps.Styles.Button.Flat}" />
+                    Style="{StaticResource SlipPrevButtonStyle}" />
             <Button Command="{Binding NextSlipCommand}"
-                    Content="▶|"
                     ToolTip="次の受注（未実装）"
-                    Style="{DynamicResource MahApps.Styles.Button.Flat}" />
+                    Style="{StaticResource SlipNextButtonStyle}" />
             <Separator />
         </ToolBar>
 
@@ -93,7 +91,7 @@
 
                         <!-- 得意先マスタの営業担当（Customer.SalesEmployeeCode）。伝票自体の担当者列とは別概念 -->
                         <TextBlock Grid.Row="2" Grid.Column="0"
-                                   Text="担当："
+                                   Text="営業担当："
                                    FontSize="12"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
@@ -140,7 +138,7 @@
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="58"  />
-                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="130" />
                             <ColumnDefinition Width="8"   />
                             <ColumnDefinition Width="*"   />
                         </Grid.ColumnDefinitions>
@@ -168,7 +166,7 @@
                     <Grid Margin="0,6,0,0" IsEnabled="False">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="58"  />
-                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="130" />
                             <ColumnDefinition Width="8"   />
                             <ColumnDefinition Width="240" />
                             <ColumnDefinition Width="*"   />
