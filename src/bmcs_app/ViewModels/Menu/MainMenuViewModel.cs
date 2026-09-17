@@ -30,6 +30,7 @@ public partial class MainMenuViewModel(
     MenuService menuService,
     EmployeeService employeeService,
     ICurrentEmployeeContext currentEmployeeContext,
+    DatabaseConnectionInfo databaseConnectionInfo,
     WindowService windowService) : ViewModelBase
 {
     [ObservableProperty]
@@ -41,6 +42,10 @@ public partial class MainMenuViewModel(
 
     [ObservableProperty]
     public partial byte PermissionLevel { get; set; }
+
+    /// <summary>フッターに常時表示する接続先情報（サーバー名・DB名）。</summary>
+    public string ConnectionInfo { get; } =
+        $"接続先: {databaseConnectionInfo.ServerName} / {databaseConnectionInfo.DatabaseName}";
 
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;

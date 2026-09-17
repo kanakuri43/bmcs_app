@@ -26,6 +26,11 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddInfrastructure(configuration);
 
+        // 接続文字列の解析のみ（DB接続は行わない）。AddInfrastructure が既に接続文字列の存在を検証済みのため、
+        // ここでは null / 空文字にはならない。メインメニューのフッターに常時表示する接続先情報として使う。
+        var connectionString = configuration.GetConnectionString(InfrastructureServiceCollectionExtensions.ConnectionStringName)!;
+        services.AddSingleton(new DatabaseConnectionInfo(connectionString));
+
         // 現在操作している社員の解決。起動時パラメータ（ショートカット引数）の1つ目を社員コードとして扱う
         // （TODO.md 0-7、docs/architecture.md 14章）。
         services.AddSingleton<ICurrentEmployeeContext>(new StartupArgsCurrentEmployeeContext(startupArgs));

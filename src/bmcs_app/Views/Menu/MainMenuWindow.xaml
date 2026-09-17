@@ -4,7 +4,7 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="販売管理"
-                 Height="1000" Width="400"
+                 Height="1000" Width="360"
                  MinHeight="600" MinWidth="380"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False"
@@ -20,8 +20,8 @@
         <Style x:Key="ListRowButtonStyle" TargetType="Button">
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
-            <Setter Property="Height" Value="46" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="Foreground" Value="#FF2B2F36" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
@@ -35,7 +35,7 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <Border x:Name="AccentBar" Grid.Column="0" Background="Transparent" />
-                                <TextBlock Grid.Column="1" Text="&#9656;" FontSize="12" Foreground="#FFB0B6C0" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="&#9656;" FontSize="11" Foreground="#FFB0B6C0" VerticalAlignment="Center" HorizontalAlignment="Center" />
                                 <ContentPresenter Grid.Column="2" VerticalAlignment="Center" Margin="4,0,0,0" />
                             </Grid>
                         </Border>
@@ -72,12 +72,12 @@
                                         <Border x:Name="HeaderBg"
                                                 Background="{Binding Tag, RelativeSource={RelativeSource AncestorType=Expander}}"
                                                 CornerRadius="8"
-                                                Padding="16,12"
+                                                Padding="14,10"
                                                 Margin="0,10,0,0">
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock x:Name="Chevron"
                                                            Text="&#9656;"
-                                                           FontSize="14"
+                                                           FontSize="13"
                                                            Foreground="White"
                                                            VerticalAlignment="Center"
                                                            Margin="0,0,10,0"
@@ -86,7 +86,7 @@
                                                         <RotateTransform Angle="0" />
                                                     </TextBlock.RenderTransform>
                                                 </TextBlock>
-                                                <TextBlock Text="{TemplateBinding Content}" FontSize="15" FontWeight="Bold" Foreground="White" />
+                                                <TextBlock Text="{TemplateBinding Content}" FontSize="14" FontWeight="Bold" Foreground="White" />
                                             </StackPanel>
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -131,7 +131,7 @@
             <TextBlock Text="石山商店" FontSize="12" Foreground="#FF8A93A3" />
             <TextBlock Text="販売管理システム" FontSize="24" FontWeight="Bold" Foreground="#FF1F2430" Margin="0,0,0,12" />
             -->
-            <Border Background="White" CornerRadius="18" Padding="14,8" BorderBrush="#FFE3E6EA" BorderThickness="1"
+            <Border Background="White" CornerRadius="8" Padding="14,8" BorderBrush="#FFE3E6EA" BorderThickness="1"
                     HorizontalAlignment="Left">
                 <StackPanel Orientation="Horizontal">
                     <Border Width="30" Height="30" CornerRadius="15" Background="#FF1E88E5" Margin="0,0,10,0">
@@ -177,6 +177,7 @@
             <TextBlock Text="{Binding StatusMessage}" Foreground="#FFD9822B" TextWrapping="Wrap" />
             <TextBlock Text="処理中..." Foreground="OrangeRed"
                        Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <TextBlock Text="{Binding ConnectionInfo}" FontSize="10" Foreground="#FFB0B6C0" Margin="0,4,0,0" />
         </StackPanel>
     </Grid>
 </mah:MetroWindow>
