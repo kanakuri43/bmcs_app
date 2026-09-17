@@ -348,13 +348,6 @@ public partial class SalesEntryViewModel(
     private DateOnly ParseSlipDate() => SlipDate is { } value ? DateOnly.FromDateTime(value) : DateOnly.FromDateTime(DateTime.Today);
 
     // ── 明細行 ────────────────────────────────────────────────
-    [RelayCommand(CanExecute = nameof(CanEdit))]
-    private void AddLine()
-    {
-        Lines.Add(CreateLine());
-        RenumberLines();
-    }
-
     private SlipLineViewModel CreateLine()
     {
         var line = new SlipLineViewModel(

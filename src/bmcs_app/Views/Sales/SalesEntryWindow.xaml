@@ -17,7 +17,6 @@
         （理由は docs/design_document.md）。
     -->
     <mah:MetroWindow.InputBindings>
-        <KeyBinding Key="F2"  Command="{Binding AddLineCommand}" />
         <KeyBinding Key="F3"  Command="{Binding NewCommand}" />
         <KeyBinding Key="F8"  Command="{Binding DeleteSlipCommand}" />
         <KeyBinding Key="F10" Command="{Binding SaveCommand}" />
@@ -247,7 +246,6 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*"    />
-                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!-- 列ヘッダー（SlipLineControl の列幅と一致させる） -->
@@ -298,16 +296,6 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
-
-            <!-- 行追加ボタン -->
-            <StackPanel Grid.Row="2"
-                        Orientation="Horizontal"
-                        Margin="4,2,4,4">
-                <Button Command="{Binding AddLineCommand}"
-                        Content="行追加 (F2)"
-                        ToolTip="明細行を追加します (F2)"
-                        Padding="8,2" />
-            </StackPanel>
         </Grid>
 
         <!-- ===== フッター: 集計 + 操作ボタン ===== -->

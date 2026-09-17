@@ -142,8 +142,6 @@ public partial class ReceiptEntryViewModel(
 
     private bool CanSave => IsEditable && _customer is not null && Lines.Any(l => !l.IsBlank);
 
-    private bool CanAddLine => IsEditable;
-
     private bool CanDeleteSlip => CanEdit && _loadedReceiptSlipNumber is not null && !IsEditLocked;
 
     [RelayCommand]
@@ -266,14 +264,6 @@ public partial class ReceiptEntryViewModel(
         return $"請求締め済みのため入金日付を{minimum:yyyy/MM/dd}に変更しました";
     }
 
-    /// <summary>行追加（F2）。</summary>
-    [RelayCommand(CanExecute = nameof(CanAddLine))]
-    private void AddLine()
-    {
-        Lines.Add(CreateLine());
-        RenumberLines();
-    }
-
     private ReceiptLineViewModel CreateLine() => new(onDelete: OnDeleteLine);
 
     private void OnDeleteLine(ReceiptLineViewModel line)
@@ -329,6 +319,11 @@ public partial class ReceiptEntryViewModel(
     {
         if (e.PropertyName == nameof(ReceiptLineViewModel.Amount))
         {
+            // 受注入力・売上入力（商品コード確定時にEnsureTrailingBlankLineを呼ぶ）と同じ操作感にする。
+            // 入金明細にはコード欄が無く、IsBlankはAmount==0mで判定するため、金額確定がこの行を
+            // 使う意思表示になる（2026-09-17ユーザー確認）。
+            EnsureTrailingBlankLine();
+            RenumberLines();
             RaiseTotalsChanged();
         }
     }

@@ -104,7 +104,6 @@ public partial class OrderEntryViewModel(
     /// </summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
-    [NotifyCanExecuteChangedFor(nameof(AddLineCommand))]
     [NotifyPropertyChangedFor(nameof(IsEditable))]
     public partial bool IsEditLocked { get; set; }
 
@@ -277,13 +276,6 @@ public partial class OrderEntryViewModel(
     }
 
     // ── 明細行 ────────────────────────────────────────────────
-    [RelayCommand(CanExecute = nameof(IsEditable))]
-    private void AddLine()
-    {
-        Lines.Add(CreateLine());
-        RenumberLines();
-    }
-
     private SlipLineViewModel CreateLine()
     {
         var line = new SlipLineViewModel(
