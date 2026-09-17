@@ -10,7 +10,7 @@ namespace bmcs_app.Application.Common;
 /// </summary>
 public class StartupArgsCurrentEmployeeContext : ICurrentEmployeeContext
 {
-    private const string DefaultEmployeeCode = "101";
+    private const string DefaultEmployeeCode = "0";
 
     public StartupArgsCurrentEmployeeContext(string[] startupArgs)
     {
