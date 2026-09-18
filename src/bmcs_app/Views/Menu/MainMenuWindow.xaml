@@ -4,9 +4,10 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="販売管理"
-                 Height="800" Width="340"
-                 MinHeight="600" MinWidth="340"
-                 WindowStartupLocation="CenterScreen"
+                 Width="320"
+                 MinHeight="600" MinWidth="320"
+                 WindowStartupLocation="Manual"
+                 Left="0" Top="0"
                  WindowTransitionsEnabled="False"
                  Background="#FFF3F5F8">
     <!--
