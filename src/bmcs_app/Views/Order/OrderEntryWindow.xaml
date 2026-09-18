@@ -182,10 +182,12 @@
                                  Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                     </Grid>
 
-                    <!-- 行4: 摘要（伝票摘要。保存時に明細の全行へ複写する） -->
+                    <!-- 行4: 摘要／社内摘要（ともに伝票単位。保存時に明細の全行へ複写する。社内摘要は帳票に印字しない） -->
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="58" />
+                            <ColumnDefinition Width="*"  />
+                            <ColumnDefinition Width="8"  />
                             <ColumnDefinition Width="*"  />
                         </Grid.ColumnDefinitions>
 
@@ -194,6 +196,12 @@
                                  beh:FocusBehavior.FocusKey="SlipRemarks"
                                  IsEnabled="{Binding IsEditable}"
                                  Text="{Binding SlipRemarks}" />
+                        <TextBox Grid.Column="3"
+                                 beh:FocusBehavior.FocusKey="InternalRemarks"
+                                 IsEnabled="{Binding IsEditable}"
+                                 Text="{Binding InternalRemarks}"
+                                 mah:TextBoxHelper.Watermark="社内摘要（納品書には印字しない）"
+                                 ToolTip="社内向けメモ。画面表示のみで納品書には印字しない" />
                     </Grid>
                 </StackPanel>
             </Grid>

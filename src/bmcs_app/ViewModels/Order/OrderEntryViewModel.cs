@@ -89,6 +89,10 @@ public partial class OrderEntryViewModel(
     [ObservableProperty]
     public partial string SlipRemarks { get; set; } = string.Empty;
 
+    /// <summary>社内摘要。画面表示のみで納品書には印字しない（<see cref="OrderSlip.InternalRemarks"/>）。</summary>
+    [ObservableProperty]
+    public partial string InternalRemarks { get; set; } = string.Empty;
+
     /// <summary>
     /// 新規登録済みかどうか。新規モードでの二重登録防止にのみ使う
     /// （訂正モードでは <see cref="_loadedOrderSlipNumber"/> と <see cref="IsEditLocked"/> で判定する）。
@@ -495,6 +499,7 @@ public partial class OrderEntryViewModel(
         OrderDate = DateTime.Today;
         OrderSlipNumberDisplay = string.Empty;
         SlipRemarks = string.Empty;
+        InternalRemarks = string.Empty;
         OrderStatus = OrderStatus.NotSold;
         IsSaved = false;
         IsEditLocked = false;
@@ -592,6 +597,7 @@ public partial class OrderEntryViewModel(
             OrderDate = sourceLines[0].OrderDate.ToDateTime(TimeOnly.MinValue);
             OrderSlipNumberDisplay = orderSlipNumber;
             SlipRemarks = sourceLines[0].SlipRemarks ?? string.Empty;
+            InternalRemarks = sourceLines[0].InternalRemarks ?? string.Empty;
             OrderStatus = sourceLines.Any(l => l.OrderStatus == OrderStatus.Cancelled)
                 ? OrderStatus.Cancelled
                 : sourceLines.All(l => l.OrderStatus == OrderStatus.FullySold)
@@ -707,11 +713,13 @@ public partial class OrderEntryViewModel(
     {
         var now = DateTime.Now;
         var slipRemarks = string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks;
+        var internalRemarks = string.IsNullOrWhiteSpace(InternalRemarks) ? null : InternalRemarks;
         var entities = nonBlankLines.Select((line, index) => BuildEntity(
             orderSlipNumber: string.Empty, // OrderService.CreateAsync がトランザクション内の採番結果で上書きする
             lineNumber: (short)(index + 1),
             orderDate: orderDate,
             slipRemarks: slipRemarks,
+            internalRemarks: internalRemarks,
             line: line,
             now: now)).ToList();
 
@@ -727,11 +735,13 @@ public partial class OrderEntryViewModel(
     {
         var now = DateTime.Now;
         var slipRemarks = string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks;
+        var internalRemarks = string.IsNullOrWhiteSpace(InternalRemarks) ? null : InternalRemarks;
         var entities = nonBlankLines.Select(line => BuildEntity(
             orderSlipNumber: _loadedOrderSlipNumber!,
             lineNumber: line.PersistedLineNumber ?? 0,
             orderDate: orderDate,
             slipRemarks: slipRemarks,
+            internalRemarks: internalRemarks,
             line: line,
             now: now)).ToList();
 
@@ -746,7 +756,7 @@ public partial class OrderEntryViewModel(
     }
 
     private OrderSlip BuildEntity(
-        string orderSlipNumber, short lineNumber, DateOnly orderDate, string? slipRemarks, SlipLineViewModel line, DateTime now) => new()
+        string orderSlipNumber, short lineNumber, DateOnly orderDate, string? slipRemarks, string? internalRemarks, SlipLineViewModel line, DateTime now) => new()
     {
         OrderSlipNumber = orderSlipNumber,
         LineNumber = lineNumber,
@@ -767,6 +777,7 @@ public partial class OrderEntryViewModel(
         OrderStatus = OrderStatus.NotSold,
         SalesConfirmedQuantity = 0m,
         SlipRemarks = slipRemarks, // 伝票摘要は全行に複写する（docs/database-schema.md 1章）
+        InternalRemarks = internalRemarks, // 社内摘要も同様に全行へ複写する
         LineRemarks = string.IsNullOrWhiteSpace(line.LineRemarks) ? null : line.LineRemarks,
         CreatedBy = string.Empty, // OrderService が現在の社員コードで上書きする（新規のみ）
         CreatedAt = now,

@@ -82,4 +82,7 @@ public class Sales : AuditableEntity
 
     /// <summary>行摘要。</summary>
     public string? LineRemarks { get; set; }
+
+    /// <summary>社内摘要。画面表示のみで帳票には印字しない。同一伝票の全行に同じ値が入る（伝票単位の値）。</summary>
+    public string? InternalRemarks { get; set; }
 }

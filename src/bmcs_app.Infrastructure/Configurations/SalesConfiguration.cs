@@ -29,6 +29,7 @@ public class SalesConfiguration : IEntityTypeConfiguration<Sales>
         builder.Property(e => e.BillingNumber).HasMaxLength(20).IsUnicode(false);
         builder.Property(e => e.SlipRemarks).HasMaxLength(200);
         builder.Property(e => e.LineRemarks).HasMaxLength(100);
+        builder.Property(e => e.InternalRemarks).HasMaxLength(200);
 
         builder.Property(e => e.Quantity).HasPrecision(13, 3);
         builder.Property(e => e.UnitPrice).HasPrecision(15, 4);

@@ -401,6 +401,7 @@ public class SalesService(
         current.OrderLineNumber = incoming.OrderLineNumber;
         current.SlipRemarks = incoming.SlipRemarks;
         current.LineRemarks = incoming.LineRemarks;
+        current.InternalRemarks = incoming.InternalRemarks;
         current.IsDeleted = false;
     }
 }

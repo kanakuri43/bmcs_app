@@ -193,6 +193,7 @@ public class OrderService(
         current.TaxRate = incoming.TaxRate;
         current.SlipRemarks = incoming.SlipRemarks;
         current.LineRemarks = incoming.LineRemarks;
+        current.InternalRemarks = incoming.InternalRemarks;
         current.IsDeleted = false;
     }
 }

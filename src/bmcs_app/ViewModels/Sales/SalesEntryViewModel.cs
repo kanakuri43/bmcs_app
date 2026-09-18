@@ -126,6 +126,10 @@ public partial class SalesEntryViewModel(
     [ObservableProperty]
     public partial string SlipRemarks { get; set; } = string.Empty;
 
+    /// <summary>社内摘要。画面表示のみで納品書には印字しない（<see cref="SalesEntity.InternalRemarks"/>）。</summary>
+    [ObservableProperty]
+    public partial string InternalRemarks { get; set; } = string.Empty;
+
     /// <summary>
     /// 新規登録済みかどうか。新規モードでの二重登録防止にのみ使う
     /// （訂正モードでは <see cref="_loadedSalesSlipNumber"/> と <see cref="IsEditLocked"/> で判定する。
@@ -575,6 +579,7 @@ public partial class SalesEntryViewModel(
         BillingStatusDisplay = "未請求";
         SettlementStatusDisplay = "未消込";
         SlipRemarks = string.Empty;
+        InternalRemarks = string.Empty;
         IsSaved = false;
         IsEditLocked = false;
         IsReloadRequired = false;
@@ -663,11 +668,13 @@ public partial class SalesEntryViewModel(
         var slipDate = ParseSlipDate();
         var now = DateTime.Now;
         var slipRemarks = string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks;
+        var internalRemarks = string.IsNullOrWhiteSpace(InternalRemarks) ? null : InternalRemarks;
         var entities = nonBlankLines.Select((line, index) => BuildEntity(
             salesSlipNumber: string.Empty, // SalesService.CreateAsync がトランザクション内の採番結果で上書きする
             lineNumber: (short)(index + 1),
             slipDate: slipDate,
             slipRemarks: slipRemarks,
+            internalRemarks: internalRemarks,
             line: line,
             now: now)).ToList();
 
@@ -690,11 +697,13 @@ public partial class SalesEntryViewModel(
         var slipDate = ParseSlipDate();
         var now = DateTime.Now;
         var slipRemarks = string.IsNullOrWhiteSpace(SlipRemarks) ? null : SlipRemarks;
+        var internalRemarks = string.IsNullOrWhiteSpace(InternalRemarks) ? null : InternalRemarks;
         var entities = nonBlankLines.Select(line => BuildEntity(
             salesSlipNumber: _loadedSalesSlipNumber!,
             lineNumber: line.PersistedLineNumber ?? 0,
             slipDate: slipDate,
             slipRemarks: slipRemarks,
+            internalRemarks: internalRemarks,
             line: line,
             now: now)).ToList();
 
@@ -713,7 +722,7 @@ public partial class SalesEntryViewModel(
     }
 
     private SalesEntity BuildEntity(
-        string salesSlipNumber, short lineNumber, DateOnly slipDate, string? slipRemarks, SlipLineViewModel line, DateTime now) => new()
+        string salesSlipNumber, short lineNumber, DateOnly slipDate, string? slipRemarks, string? internalRemarks, SlipLineViewModel line, DateTime now) => new()
     {
         SalesSlipNumber = salesSlipNumber,
         LineNumber = lineNumber,
@@ -740,6 +749,7 @@ public partial class SalesEntryViewModel(
         OrderSlipNumber = line.OrderSlipNumber,
         OrderLineNumber = line.OrderLineNumber,
         SlipRemarks = slipRemarks,
+        InternalRemarks = internalRemarks, // 社内摘要も伝票摘要と同様に全行へ複写する
         LineRemarks = string.IsNullOrWhiteSpace(line.LineRemarks) ? null : line.LineRemarks,
         CreatedBy = string.Empty,
         CreatedAt = now,
@@ -912,6 +922,7 @@ public partial class SalesEntryViewModel(
         }
 
         SlipRemarks = sourceLines[0].SlipRemarks ?? string.Empty;
+        InternalRemarks = sourceLines[0].InternalRemarks ?? string.Empty;
         EnsureTrailingBlankLine();
         RenumberLines();
         StatusMessage = $"売上No. {sourceSlipNumber} を複写しました（新規登録として保存されます）。";
@@ -992,6 +1003,7 @@ public partial class SalesEntryViewModel(
             ?.ToDateTime(TimeOnly.MinValue);
         SalesSlipNumberDisplay = salesSlipNumber;
         SlipRemarks = sourceLines[0].SlipRemarks ?? string.Empty;
+        InternalRemarks = sourceLines[0].InternalRemarks ?? string.Empty;
         BillingStatusDisplay = sourceLines.Any(l => l.BillingStatus == BillingLinkStatus.Billed) ? "請求済" : "未請求";
         SettlementStatusDisplay = sourceLines.All(l => l.SettlementStatus == SettlementStatus.FullySettled)
             ? "消込完了"

@@ -22,6 +22,7 @@ public class OrderSlipConfiguration : IEntityTypeConfiguration<OrderSlip>
         builder.Property(e => e.UnitName).HasMaxLength(10);
         builder.Property(e => e.SlipRemarks).HasMaxLength(200);
         builder.Property(e => e.LineRemarks).HasMaxLength(100);
+        builder.Property(e => e.InternalRemarks).HasMaxLength(200);
 
         builder.Property(e => e.OrderQuantity).HasPrecision(13, 3);
         builder.Property(e => e.UnitPrice).HasPrecision(15, 4);
