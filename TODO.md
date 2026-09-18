@@ -138,6 +138,7 @@ M-2（採番規則）・M-3（単価決定）・C-6（訂正・取消方式）�
 | [x] | 4-4 | 受注の状態遷移の実装（未売上／一部売上／売上完了／中止、売上化済数量の更新） | Sonnet | 1-4 | 分納・中止・売上取消による逆遷移が正しく反映される。**2026-09-10実装。** `OrderStatusCalculator`（Domain、純粋関数）＋`OrderStatusService`（Application、`ApplySalesQuantityDeltasAsync`／`CancelSlipAsync`）として実装。**実装範囲はサービス層＋テストのみ（ユーザー確認済み）**。受注入力画面への配線（既存受注の読み込み、削除(F8)の有効化）は、受注No.から既存伝票を読み込む機能自体が未実装のため5-3／10-1に先送り。中止は伝票単位のみ・終端状態（解除は実装しない）。単体テスト`OrderStatusCalculatorTests`（7件）・結合テスト`OrderStatusServiceTests`（15件、開発用ライブDB、`BeginTransactionAsync`→`RollbackAsync`でseedデータ非破壊）で分納・逆遷移・中止・各異常系を実証済み。全体テスト（Domain 181件／Application 23件）green。詳細は`docs/design_document.md` 7章 |
 | [ ] | 4-5 | 店頭在庫数表示の暫定対応（非表示または固定値。スコープ外のため） | Sonnet | design_document の不明点 | 在庫連携が未定でも画面が成立している |
 | [x] | 4-6 | 既存受注の直接修正（明細追加・変更・削除して上書き保存） | Sonnet | 4-3, 4-4, 5-3 | 未売上の受注のみ修正・保存できる。一部売上・売上完了・中止済みは読込・表示のみで保存不可。**2026-09-16実装。** 受注入力で「既存受注を読み込んでも保存できない」というユーザー報告を機に、`OrderService`に更新系ユースケースがないこと（4-3・5-3のスコープ外だった）を発見し実装。`docs/database-schema.md`・`docs/product-spec.md`の当初のC-6決定「受注は状態にかかわらず常に直接修正可能」はユーザー確認により「未売上のみ修正可」に改訂（`REVIEW.md` C-6節に追記）。`OrderEditLockEvaluator`（Domain純粋関数）＋`OrderService.UpdateAsync`（`SalesService.UpdateAsync`と同構成だが明示トランザクションなし・全行削除拒否）。付随して、保存失敗後の再保存で行が静かに論理削除される潜在バグ（受注・売上共通）も修正。詳細は`docs/design_document.md` 24章 |
+| [x] | 4-7 | 過去受注の複写入力（売上入力5-5の受注版） | Sonnet | 4-3 | 複写元を検索して明細を引き継げる。**2026-09-18実装。** ツールバーの「複写」ボタン→伝票検索モーダル（`Target=Order`、`IncludeUnavailableOrders=true`）→`OrderQueryService.GetSlipAsync`で明細行を新規登録として展開。受注No.・受注日付・状態は初期化し、税率は新しい受注日付で再解決する。詳細は`docs/design_document.md` 26章 |
 
 ---
 

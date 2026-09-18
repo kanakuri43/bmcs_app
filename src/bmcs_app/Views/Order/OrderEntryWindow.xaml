@@ -44,6 +44,10 @@
                     ToolTip="次の受注（未実装）"
                     Style="{StaticResource SlipNextButtonStyle}" />
             <Separator />
+            <Button Command="{Binding CopyFromPastSlipCommand}"
+                    Content="複写"
+                    ToolTip="過去の受注伝票を複写して新規登録します" />
+            <Separator />
         </ToolBar>
 
         <!-- ===== 伝票ヘッダー ===== -->

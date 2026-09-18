@@ -512,6 +512,69 @@ public partial class OrderEntryViewModel(
         StatusMessage = "新規受注";
     }
 
+    // ── 過去伝票の複写（売上入力5-5の受注版） ──────────────────
+    [RelayCommand]
+    private Task CopyFromPastSlipAsync() => RunBusyAsync(async () =>
+    {
+        var sourceOrderSlipNumber = windowService.ShowDialog<SlipSearchDialog, SlipSearchDialogViewModel, string>(
+            vm =>
+            {
+                vm.Target = SlipSearchTarget.Order;
+                vm.IncludeUnavailableOrders = true;
+            });
+
+        if (string.IsNullOrWhiteSpace(sourceOrderSlipNumber))
+        {
+            return;
+        }
+
+        var sourceLines = await orderQueryService.GetSlipAsync(sourceOrderSlipNumber);
+        if (sourceLines.Count == 0)
+        {
+            StatusMessage = $"受注No.「{sourceOrderSlipNumber}」が見つかりません。";
+            return;
+        }
+
+        var customer = await customerService.GetByCodeAsync(sourceLines[0].CustomerCode);
+        if (customer is null)
+        {
+            StatusMessage = "複写元の得意先が見つかりません。";
+            return;
+        }
+
+        New();
+        await ApplyCustomerAsync(customer);
+        CustomerName = sourceLines[0].CustomerName;
+
+        var orderDate = OrderDate is { } orderDateValue ? DateOnly.FromDateTime(orderDateValue) : DateOnly.FromDateTime(DateTime.Today);
+        ClearLines();
+        foreach (var source in sourceLines.OrderBy(l => l.LineNumber))
+        {
+            var line = CreateLine();
+            var taxRate = TaxRateResolver.ResolveRate(_taxRateMasters, orderDate, source.TaxCategory);
+
+            line.ProductCode = source.ProductCode;
+            line.ProductName = source.ProductName;
+            line.Specification = source.Specification;
+            line.UnitName = source.UnitName;
+            line.Quantity = source.OrderQuantity;
+            line.UnitPrice = source.UnitPrice;
+            line.CostPrice = source.CostPrice;
+            line.TaxCategory = source.TaxCategory;
+            line.TaxRate = taxRate;
+            line.RoundingType = customer.RoundingType;
+            line.LineRemarks = source.LineRemarks ?? string.Empty;
+            line.RaiseAmountChanged();
+            Lines.Add(line);
+        }
+
+        SlipRemarks = sourceLines[0].SlipRemarks ?? string.Empty;
+        InternalRemarks = sourceLines[0].InternalRemarks ?? string.Empty;
+        EnsureTrailingBlankLine();
+        RenumberLines();
+        StatusMessage = $"受注No. {sourceOrderSlipNumber} を複写しました（新規登録として保存されます）。";
+    });
+
     // ── 既存受注の読み込み・修正・中止（TODO.md 5-3・4-6） ─────
     [RelayCommand]
     private void OpenOrderSlipSearch()
