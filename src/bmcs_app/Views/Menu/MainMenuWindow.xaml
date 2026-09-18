@@ -4,11 +4,10 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="販売管理"
-                 Height="1000" Width="360"
-                 MinHeight="600" MinWidth="380"
+                 Height="800" Width="340"
+                 MinHeight="600" MinWidth="340"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False"
-                 ResizeMode="CanMinimize"
                  Background="#FFF3F5F8">
     <!--
         TODO.md 2-7。デザインモック（旧 MainMenuMockWindow）のC案＝リスト・アコーディオン型を
