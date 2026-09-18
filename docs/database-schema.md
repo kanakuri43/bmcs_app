@@ -247,6 +247,28 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 
 ---
 
+### 2.6-1. `deposit_method`（入金方法マスタ）
+
+入金方法（現金・振込・手形・相殺等）を管理するマスタ。旧`ReceiptMethod` enum（tinyint固定値）を
+廃止し、利用者が入金方法を自由に追加・編集できるようマスタ駆動へ移行した（C-11・2026-09-18確定。
+理由・検討経緯は`docs/design_document.md` D-7を参照）。
+
+| カラム | 型 | NULL | 内容 |
+|---|---|---|---|
+| `deposit_method_code` | `varchar(10)` | PK | |
+| `deposit_method_name` | `nvarchar(20)` | × | 画面表示名（「現金」等） |
+| `requires_bank_account` | `bit` | × | この入金方法を選んだ行に入金先口座の指定を要するか（旧`ReceiptMethod.BankTransfer`相当） |
+| `requires_bill_due_date` | `bit` | × | この入金方法を選んだ行に手形期日の指定を要するか（旧`ReceiptMethod.PromissoryNote`相当） |
+| `display_order` | `smallint` | × | 表示順 |
+
+**CHECK 制約**: `CK_deposit_method_requires` … `NOT (requires_bank_account = 1 AND requires_bill_due_date = 1)`（口座と手形期日を同時に必須にはできない）。
+
+**「振込なら口座必須」「手形なら期日必須」という対応関係（旧`CK_receipt_method_columns`/`CK_detail_receipt_method`相当）は、他テーブル（`deposit_method`）を参照する必要がありDBのCHECK制約では表現できないため、アプリ層（`ReceiptEntryService.ValidateLinesAsync`／`DetailReceiptEntryService.ValidateLineFieldsAsync`）のみで担保する。** トリガーは作らない（このリポジトリにトリガー・ユーザー定義SPは無く、`rowversion`楽観的排他との相性も悪いため。C-11の検討経緯を参照）。
+
+初期データ（`018_create_deposit_method_master.sql`で投入。旧enum値1〜4と1:1対応）: `CASH`（現金）／`TRANSFER`（振込・`requires_bank_account=1`）／`NOTE`（手形・`requires_bill_due_date=1`）／`OFFSET`（相殺）。
+
+---
+
 ### 2.7. `menu`（メニュー構成マスタ）
 
 | カラム | 型 | NULL | 内容 |
@@ -374,16 +396,15 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `customer_code` | `varchar(10)` | × | （**伝票単位の値**） |
 | `tax_unit` | `tinyint` | × | `1`＝請求単位／`2`＝伝票単位（内税明細単位の入金は `detail_receipt` が担うため対象外） |
 | `customer_name` | `nvarchar(60)` | × | スナップショット |
-| `receipt_method` | `tinyint` | × | `1`＝現金／`2`＝振込／`3`＝手形／`4`＝相殺（**行単位の値**） |
-| `bank_account_code` | `varchar(10)` | ○ | 入金先口座（FK → `bank_account`）。`receipt_method=2`（振込）の行のみ必須（**行単位の値**） |
-| `bill_due_date` | `date` | ○ | 手形期日。`receipt_method=3`（手形）の行のみ必須（**行単位の値**） |
+| `deposit_method_code` | `varchar(10)` | × | 入金方法（FK → `deposit_method`。2.6-1節。**行単位の値**。2026-09-18に`receipt_method`（tinyint）から移行） |
+| `bank_account_code` | `varchar(10)` | ○ | 入金先口座（FK → `bank_account`）。`deposit_method.requires_bank_account=1`の行のみ必須（**行単位の値**） |
+| `bill_due_date` | `date` | ○ | 手形期日。`deposit_method.requires_bill_due_date=1`の行のみ必須（**行単位の値**） |
 | `amount` | `decimal(15,2)` | × | この行の入金額（**行単位の値。伝票合計は`SUM`して求める**） |
 | `allocation_status` | `tinyint` | × | `1`＝未充当／`2`＝一部充当／`3`＝充当完了。**キャッシュ列**。同一伝票の`amount`合計と、`receipt_allocation`の`allocated_amount`合計の比較から`SettlementService`が導出する（TODO.md 7-1） |
 | `slip_remarks` | `nvarchar(200)` | ○ | 伝票摘要（**伝票単位の値**。同一伝票の全行に複写。1章参照） |
 | `line_remarks` | `nvarchar(100)` | ○ | 行摘要 |
 
-**CHECK制約 `CK_receipt_method_columns`** … `receipt_method`と`bank_account_code`／`bill_due_date`
-の対応をDBで強制する（振込は口座必須・期日NULL、手形は期日必須・口座NULL、現金・相殺は両方NULL）。
+**CHECK制約 `CK_receipt_bank_account_bill_due_date_exclusive`** … `bank_account_code IS NULL OR bill_due_date IS NULL`（口座と手形期日が同時に埋まらないことのみDBで強制する）。「入金方法によって口座・期日のどちらが必須か」という要求方向の検証（旧`CK_receipt_method_columns`が担っていた部分）は、他テーブル（`deposit_method`）参照が必要でDBのCHECK制約では表現できないため、アプリ層のみで担保する（2.6-1節）。
 
 利用者にとって重要なのは「請求残高がいくら減ったか」であり、どの請求に充当されたかではないため
 （2026-09-15ユーザー確認）、画面（入金入力）は本テーブルの明細行のみを直接編集し、充当は保存時に
@@ -423,8 +444,8 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `receipt_date` | `date` | × | （**伝票単位の値**） |
 | `customer_code` | `varchar(10)` | × | （**伝票単位の値**） |
 | `customer_name` | `nvarchar(60)` | × | スナップショット |
-| `receipt_method` | `tinyint` | × | 締め入金と同じ区分 |
-| `bank_account_code` | `varchar(10)` | ○ | FK → `bank_account` |
+| `deposit_method_code` | `varchar(10)` | × | 入金方法（FK → `deposit_method`。2.6-1節）。締め入金と同じマスタを使うが、手形期日を保持する列が無いため`requires_bill_due_date=1`の入金方法は画面側で選択肢から除外する（2026-09-18に`receipt_method`（tinyint）から移行） |
+| `bank_account_code` | `varchar(10)` | ○ | FK → `bank_account`。`deposit_method.requires_bank_account=1`の行のみ必須 |
 | `receipt_amount` | `decimal(15,2)` | × | 入金額（**伝票単位の値**） |
 | `target_type` | `tinyint` | × | `1`＝売上明細行を直接指定／`2`＝明細請求書を指定 |
 | `target_sales_slip_number` | `varchar(20)` | ○ | `target_type=1` のとき使用。**FK参照先は `sales`**（統合後） |

@@ -257,7 +257,7 @@ GO
 --    docs/design_document.md 17章、2026-09-15改訂。充当状態3種を網羅）
 -- -----------------------------------------------------------------------------
 INSERT INTO dbo.receipt
-    (receipt_slip_number, line_number, receipt_date, customer_code, tax_unit, customer_name, receipt_method,
+    (receipt_slip_number, line_number, receipt_date, customer_code, tax_unit, customer_name, deposit_method_code,
      bank_account_code, bill_due_date, amount, allocation_status, created_by, created_at, updated_by, updated_at)
 VALUES
     -- CUS001・請求単位: 充当完了（振込1行）
@@ -265,19 +265,19 @@ VALUES
     -- 紐づくsales行へ配分される。全額11000.00を充当するとSALINV002（amount=10000）が消込
     -- 完了になり、既存のSALINV002の消込状態（一部消込・settled_amount=4000.00）という境界値が
     -- 再現できなくなる。一部入金に変更し、SALINV002の既存値と整合させた）。
-    (N'RCP_INV001', 1, '2026-07-25', N'CUS001', 1, N'株式会社山田商事', 2,
+    (N'RCP_INV001', 1, '2026-07-25', N'CUS001', 1, N'株式会社山田商事', N'TRANSFER',
      N'BNK001', NULL, 4000.00,
      3, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     -- CUS001・請求単位: 未充当（前受・過入金。充当先が無いため receipt_allocation の行を作らない）
-    (N'RCP_INV002', 1, '2026-08-05', N'CUS001', 1, N'株式会社山田商事', 1,
+    (N'RCP_INV002', 1, '2026-08-05', N'CUS001', 1, N'株式会社山田商事', N'CASH',
      NULL, NULL, 3000.00,
      1, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     -- CUS002・伝票単位: 一部充当（振込8,000＋現金2,000の2行で合計10,000。複数の支払手段が
     -- 混在するケースを網羅する。2026-09-15改訂）
-    (N'RCP_SLP001', 1, '2026-08-01', N'CUS002', 2, N'鈴木工業株式会社', 2,
+    (N'RCP_SLP001', 1, '2026-08-01', N'CUS002', 2, N'鈴木工業株式会社', N'TRANSFER',
      N'BNK001', NULL, 8000.00,
      2, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    (N'RCP_SLP001', 2, '2026-08-01', N'CUS002', 2, N'鈴木工業株式会社', 1,
+    (N'RCP_SLP001', 2, '2026-08-01', N'CUS002', 2, N'鈴木工業株式会社', N'CASH',
      NULL, NULL, 2000.00,
      2, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
@@ -344,14 +344,14 @@ GO
 -- 9. 明細入金（充当先2種類: 売上明細行を直接指定／明細請求書を指定）
 -- -----------------------------------------------------------------------------
 INSERT INTO dbo.detail_receipt
-    (detail_receipt_number, line_number, receipt_date, customer_code, customer_name, receipt_method,
+    (detail_receipt_number, line_number, receipt_date, customer_code, customer_name, deposit_method_code,
      bank_account_code, receipt_amount, target_type,
      target_sales_slip_number, target_sales_line_number, target_detail_invoice_number,
      allocated_amount, fee_adjustment_amount, allocation_status,
      created_by, created_at, updated_by, updated_at)
 VALUES
     -- target_type=SalesLine（SALLIN003を直接指定。消込完了済の実績）
-    (N'DRC001', 1, '2026-07-25', N'CUS003', N'石山市立石山小学校', 1,
+    (N'DRC001', 1, '2026-07-25', N'CUS003', N'石山市立石山小学校', N'CASH',
      NULL, 2750.00, 1,
      N'SALLIN003', 1, NULL,
      2750.00, 0.00, 3,
@@ -360,7 +360,7 @@ VALUES
     -- receipt_amount/allocated_amountは8250.00（2026-09-14修正: DIV001のtotal_amount修正
     -- （8861.00→8250.00）に追従。DIV001を全額入金した実績のため常にDIV001.total_amountと
     -- 一致させる）。
-    (N'DRC002', 1, '2026-07-22', N'CUS003', N'石山市立石山小学校', 2,
+    (N'DRC002', 1, '2026-07-22', N'CUS003', N'石山市立石山小学校', N'TRANSFER',
      N'BNK001', 8250.00, 2,
      NULL, NULL, N'DIV001',
      8250.00, 0.00, 3,

@@ -51,7 +51,7 @@ public sealed record CustomerLedgerEntry
     public DateOnly? ReceiptDate { get; init; }
     public string? ReceiptSlipNumber { get; init; }
     public short? ReceiptLineNumber { get; init; }
-    public ReceiptMethod? ReceiptMethod { get; init; }
+    public string? DepositMethodName { get; init; }
 
     /// <summary>
     /// 貸方（残高を減らす額）。<see cref="Kind"/> が <see cref="LedgerEntryKind.Receipt"/> の

@@ -18,6 +18,9 @@ namespace bmcs_app.Domain.Calculations;
 /// <param name="ReceiptLines">締め得意先（<see cref="Enums.TaxUnit.Invoice"/>／<see cref="Enums.TaxUnit.Slip"/>）の入金明細行。</param>
 /// <param name="DetailReceiptLines">都度得意先（<see cref="Enums.TaxUnit.Line"/>）の明細入金行。</param>
 /// <param name="DetailInvoiceLinks">明細請求書と売上明細行の連携（都度得意先のみ使用）。</param>
+/// <param name="DepositMethods">
+/// 入金方法マスタの全行（無効化済みを含む。過去の入金が参照するコードの名称解決に使うため）。
+/// </param>
 public sealed record CustomerLedgerInput(
     Customer Customer,
     DateOnly PeriodFrom,
@@ -26,7 +29,8 @@ public sealed record CustomerLedgerInput(
     IReadOnlyList<Billing> ConfirmedBillings,
     IReadOnlyList<Receipt> ReceiptLines,
     IReadOnlyList<DetailReceipt> DetailReceiptLines,
-    IReadOnlyList<DetailInvoiceSalesLine> DetailInvoiceLinks);
+    IReadOnlyList<DetailInvoiceSalesLine> DetailInvoiceLinks,
+    IReadOnlyList<DepositMethod> DepositMethods);
 
 /// <summary>
 /// <see cref="CustomerLedgerBuilder.Build"/> の出力。<see cref="Entries"/> の先頭は前月繰越行。

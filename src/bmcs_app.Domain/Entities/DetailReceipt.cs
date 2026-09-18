@@ -19,7 +19,8 @@ public class DetailReceipt : AuditableEntity
 
     public required string CustomerName { get; set; }
 
-    public required ReceiptMethod ReceiptMethod { get; set; }
+    /// <summary>この行の支払手段（<see cref="DepositMethod"/>マスタのコード）。</summary>
+    public required string DepositMethodCode { get; set; }
 
     public string? BankAccountCode { get; set; }
 

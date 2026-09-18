@@ -26,7 +26,7 @@ public class ReceiptConfiguration : IEntityTypeConfiguration<Receipt>
 
         builder.Property(e => e.Amount).HasPrecision(15, 2);
 
-        builder.Property(e => e.ReceiptMethod).HasConversion<byte>();
+        builder.Property(e => e.DepositMethodCode).HasMaxLength(10).IsUnicode(false);
         builder.Property(e => e.AllocationStatus).HasConversion<byte>();
 
         builder.HasOne<Customer>().WithMany()
@@ -34,6 +34,7 @@ public class ReceiptConfiguration : IEntityTypeConfiguration<Receipt>
             .HasPrincipalKey(c => new { c.CustomerCode, c.TaxUnit })
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne<BankAccount>().WithMany().HasForeignKey(e => e.BankAccountCode).OnDelete(DeleteBehavior.NoAction);
+        builder.HasOne<DepositMethod>().WithMany().HasForeignKey(e => e.DepositMethodCode).OnDelete(DeleteBehavior.NoAction);
 
         builder.ConfigureAuditColumns();
     }

@@ -157,6 +157,9 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<BankAccountMasterWindow>();
         builder.Services.AddScoped<BankAccountMasterViewModel>();
 
+        builder.Services.AddScoped<DepositMethodMasterWindow>();
+        builder.Services.AddScoped<DepositMethodMasterViewModel>();
+
         builder.Services.AddScoped<PrinterSettingsWindow>();
         builder.Services.AddScoped<PrinterSettingsViewModel>();
 
@@ -174,6 +177,9 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<BankAccountMasterSearchDialog>();
         builder.Services.AddScoped<BankAccountMasterSearchDialogViewModel>();
+
+        builder.Services.AddScoped<DepositMethodMasterSearchDialog>();
+        builder.Services.AddScoped<DepositMethodMasterSearchDialogViewModel>();
 
         builder.Services.AddScoped<SlipSearchDialog>();
         builder.Services.AddScoped<SlipSearchDialogViewModel>();

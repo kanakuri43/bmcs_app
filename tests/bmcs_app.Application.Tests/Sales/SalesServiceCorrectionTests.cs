@@ -284,7 +284,7 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
                 ReceiptDate = DateOnly.FromDateTime(DateTime.Today),
                 CustomerCode = testCustomerCode,
                 CustomerName = "テスト用得意先",
-                ReceiptMethod = ReceiptMethod.Cash,
+                DepositMethodCode = "CASH",
                 ReceiptAmount = 5500m,
                 TargetType = DetailReceiptTargetType.SalesLine,
                 TargetSalesSlipNumber = salesSlipNumber,

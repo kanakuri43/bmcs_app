@@ -25,12 +25,13 @@ public class DetailReceiptConfiguration : IEntityTypeConfiguration<DetailReceipt
         builder.Property(e => e.AllocatedAmount).HasPrecision(15, 2);
         builder.Property(e => e.FeeAdjustmentAmount).HasPrecision(15, 2);
 
-        builder.Property(e => e.ReceiptMethod).HasConversion<byte>();
+        builder.Property(e => e.DepositMethodCode).HasMaxLength(10).IsUnicode(false);
         builder.Property(e => e.TargetType).HasConversion<byte>();
         builder.Property(e => e.AllocationStatus).HasConversion<byte>();
 
         builder.HasOne<Customer>().WithMany().HasForeignKey(e => e.CustomerCode).OnDelete(DeleteBehavior.NoAction);
         builder.HasOne<BankAccount>().WithMany().HasForeignKey(e => e.BankAccountCode).OnDelete(DeleteBehavior.NoAction);
+        builder.HasOne<DepositMethod>().WithMany().HasForeignKey(e => e.DepositMethodCode).OnDelete(DeleteBehavior.NoAction);
         // 対象は実際には TaxUnit=Line の売上行のみ。DetailInvoiceSalesLineConfiguration と
         // 同じ理由で複合FKにはしない（010_unify_tax_unit_tables.sql 手順8）。
         builder.HasOne<Sales>().WithMany()

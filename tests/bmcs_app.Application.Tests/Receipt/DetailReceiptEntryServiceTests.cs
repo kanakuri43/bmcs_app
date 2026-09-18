@@ -26,6 +26,9 @@ namespace bmcs_app.Application.Tests.Receipt;
 public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixture<DevDatabaseFixture>
 {
     private const string BankAccountCode = "BNK001";
+    private const string CashMethod = "CASH";
+    private const string BankTransferMethod = "TRANSFER";
+    private const string PromissoryNoteMethod = "NOTE";
 
     [Fact]
     public async Task 売上明細行を直接指定すると全額充当され消込完了になる()
@@ -399,7 +402,7 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
             await Assert.ThrowsAsync<DetailReceiptEntryException>(() => service.SaveNewAsync(
                 customerCode, new DateOnly(2026, 8, 25), slipRemarks: null,
                 lines: [new DetailReceiptLineInput(
-                    DetailReceiptTargetType.SalesLine, slip, 1, null, ReceiptMethod.BankTransfer, null, null)]));
+                    DetailReceiptTargetType.SalesLine, slip, 1, null, BankTransferMethod, null, null)]));
         }
         finally
         {
@@ -427,15 +430,15 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
                 lines:
                 [
                     new DetailReceiptLineInput(
-                        DetailReceiptTargetType.SalesLine, slip1, 1, null, ReceiptMethod.BankTransfer, BankAccountCode, null),
+                        DetailReceiptTargetType.SalesLine, slip1, 1, null, BankTransferMethod, BankAccountCode, null),
                     // 現金の行に口座コードを渡しても保存時に無視される（修正点7）。
                     new DetailReceiptLineInput(
-                        DetailReceiptTargetType.SalesLine, slip2, 1, null, ReceiptMethod.Cash, BankAccountCode, null),
+                        DetailReceiptTargetType.SalesLine, slip2, 1, null, CashMethod, BankAccountCode, null),
                 ]);
 
             var lines = await ReloadAsync(dbContext, detailReceiptNumber);
-            var transferLine = lines.Single(l => l.ReceiptMethod == ReceiptMethod.BankTransfer);
-            var cashLine = lines.Single(l => l.ReceiptMethod == ReceiptMethod.Cash);
+            var transferLine = lines.Single(l => l.DepositMethodCode == BankTransferMethod);
+            var cashLine = lines.Single(l => l.DepositMethodCode == CashMethod);
             Assert.Equal(BankAccountCode, transferLine.BankAccountCode);
             Assert.Null(cashLine.BankAccountCode);
         }
@@ -461,7 +464,7 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
             await Assert.ThrowsAsync<DetailReceiptEntryException>(() => service.SaveNewAsync(
                 customerCode, new DateOnly(2026, 8, 25), slipRemarks: null,
                 lines: [new DetailReceiptLineInput(
-                    DetailReceiptTargetType.SalesLine, slip, 1, null, ReceiptMethod.PromissoryNote, null, null)]));
+                    DetailReceiptTargetType.SalesLine, slip, 1, null, PromissoryNoteMethod, null, null)]));
         }
         finally
         {
@@ -569,7 +572,7 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
             Assert.Single(lines);
             Assert.Equal(customerCode, lines[0].CustomerCode);
             Assert.Equal("テスト摘要", lines[0].SlipRemarks);
-            Assert.Equal(ReceiptMethod.Cash, lines[0].ReceiptMethod);
+            Assert.Equal(CashMethod, lines[0].DepositMethodCode);
             Assert.Equal(1000m, lines[0].AllocatedAmount);
         }
         finally
@@ -741,7 +744,7 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
 
             await service.UpdateAsync(
                 detailReceiptNumber, new DateOnly(2026, 8, 26), "訂正後の摘要",
-                [new DetailReceiptLineCorrection(loadedLineNumbers[0], ReceiptMethod.Cash, null, null)],
+                [new DetailReceiptLineCorrection(loadedLineNumbers[0], CashMethod, null, null)],
                 loadedLineNumbers);
 
             var corrected = await ReloadAsync(dbContext, detailReceiptNumber);
@@ -782,7 +785,7 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
             // slipB を指す行を削除し、slipA を指す行だけを残す。
             await service.UpdateAsync(
                 detailReceiptNumber, new DateOnly(2026, 8, 25), null,
-                [new DetailReceiptLineCorrection(keepLineNumber, ReceiptMethod.Cash, null, null)],
+                [new DetailReceiptLineCorrection(keepLineNumber, CashMethod, null, null)],
                 loadedLineNumbers);
 
             var corrected = (await ReloadAsync(dbContext, detailReceiptNumber)).Where(l => !l.IsDeleted).ToList();
@@ -821,8 +824,8 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
             var ex = await Assert.ThrowsAsync<DetailReceiptEntryException>(() => service.UpdateAsync(
                 detailReceiptNumber, new DateOnly(2026, 8, 25), null,
                 [
-                    new DetailReceiptLineCorrection(loadedLineNumbers[0], ReceiptMethod.Cash, null, null),
-                    new DetailReceiptLineCorrection(newLineNumber, ReceiptMethod.Cash, null, null),
+                    new DetailReceiptLineCorrection(loadedLineNumbers[0], CashMethod, null, null),
+                    new DetailReceiptLineCorrection(newLineNumber, CashMethod, null, null),
                 ],
                 loadedLineNumbers));
             Assert.Contains("充当先を追加する", ex.Message);
@@ -887,7 +890,7 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
                 ReceiptDate = new DateOnly(2026, 8, 25),
                 CustomerCode = customerCode,
                 CustomerName = "テスト用都度得意先",
-                ReceiptMethod = ReceiptMethod.Cash,
+                DepositMethodCode = CashMethod,
                 ReceiptAmount = 1000m,
                 TargetType = DetailReceiptTargetType.SalesLine,
                 TargetSalesSlipNumber = slip,
@@ -904,7 +907,7 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
 
             await Assert.ThrowsAsync<SlipConcurrencyException>(() => service.UpdateAsync(
                 detailReceiptNumber, new DateOnly(2026, 8, 25), null,
-                [new DetailReceiptLineCorrection(loadedLineNumbers[0], ReceiptMethod.Cash, null, null)],
+                [new DetailReceiptLineCorrection(loadedLineNumbers[0], CashMethod, null, null)],
                 loadedLineNumbers));
         }
         finally
@@ -914,10 +917,10 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
     }
 
     private static DetailReceiptLineInput CashLineToSales(string salesSlipNumber, short lineNumber) =>
-        new(DetailReceiptTargetType.SalesLine, salesSlipNumber, lineNumber, null, ReceiptMethod.Cash, null, null);
+        new(DetailReceiptTargetType.SalesLine, salesSlipNumber, lineNumber, null, CashMethod, null, null);
 
     private static DetailReceiptLineInput CashLineToInvoice(string detailInvoiceNumber) =>
-        new(DetailReceiptTargetType.DetailInvoice, null, null, detailInvoiceNumber, ReceiptMethod.Cash, null, null);
+        new(DetailReceiptTargetType.DetailInvoice, null, null, detailInvoiceNumber, CashMethod, null, null);
 
     private static (BmcsDbContext DbContext, DetailReceiptEntryService Service, DetailInvoiceService DetailInvoiceService) Resolve(
         AsyncServiceScope scope) => (
@@ -1014,7 +1017,7 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
             ReceiptDate = new DateOnly(2026, 7, 1),
             CustomerCode = customerCode,
             CustomerName = "テスト用都度得意先",
-            ReceiptMethod = ReceiptMethod.Cash,
+            DepositMethodCode = CashMethod,
             ReceiptAmount = allocatedAmount,
             TargetType = DetailReceiptTargetType.SalesLine,
             TargetSalesSlipNumber = targetSalesSlipNumber,

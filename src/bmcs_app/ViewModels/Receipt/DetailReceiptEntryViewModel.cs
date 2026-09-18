@@ -35,6 +35,7 @@ public partial class DetailReceiptEntryViewModel(
     DetailInvoiceService detailInvoiceService,
     CustomerService customerService,
     BankAccountService bankAccountService,
+    DepositMethodService depositMethodService,
     WindowService windowService) : ViewModelBase
 {
     private Customer? _customer;
@@ -56,13 +57,11 @@ public partial class DetailReceiptEntryViewModel(
 
     public ObservableCollection<BankAccount> BankAccounts { get; } = [];
 
-    public ObservableCollection<ReceiptMethodOption> ReceiptMethodOptions { get; } =
-    [
-        new(ReceiptMethod.Cash, "現金"),
-        new(ReceiptMethod.BankTransfer, "振込"),
-        new(ReceiptMethod.Offset, "相殺"),
-        // 手形は除外する（detail_receipt は手形期日を保持する列を持たないため。決定3・2026-09-15確定）。
-    ];
+    /// <summary>
+    /// 手形期日を要する入金方法は除外する（detail_receipt は手形期日を保持する列を持たないため。
+    /// 決定3・2026-09-15確定。旧enumのハードコード除外を2026-09-18にマスタのフラグ駆動へ移行）。
+    /// </summary>
+    public ObservableCollection<DepositMethod> DepositMethods { get; } = [];
 
     public ObservableCollection<DetailReceiptLineViewModel> Lines { get; } = [];
 
@@ -176,6 +175,13 @@ public partial class DetailReceiptEntryViewModel(
         foreach (var account in accounts)
         {
             BankAccounts.Add(account);
+        }
+
+        var depositMethods = await depositMethodService.GetDepositMethodsAsync();
+        DepositMethods.Clear();
+        foreach (var depositMethod in depositMethods.Where(m => !m.RequiresBillDueDate))
+        {
+            DepositMethods.Add(depositMethod);
         }
 
         if (PreviewSlipNumber is { } previewSlipNumber)
@@ -419,6 +425,7 @@ public partial class DetailReceiptEntryViewModel(
         TargetDisplay = $"{c.SalesSlipNumber}-{c.LineNumber} {c.ProductName}",
         Amount = c.RemainingAmount,
         SourceSalesCandidate = c,
+        DepositMethod = DepositMethods.FirstOrDefault(),
     };
 
     private DetailReceiptLineViewModel CreateLineFromInvoiceCandidate(DetailReceiptInvoiceCandidate c) => new(OnDeleteLine)
@@ -428,6 +435,7 @@ public partial class DetailReceiptEntryViewModel(
         TargetDisplay = $"{c.DetailInvoiceNumber}（請求書一括）",
         Amount = c.TotalAmount,
         SourceInvoiceCandidate = c,
+        DepositMethod = DepositMethods.FirstOrDefault(),
     };
 
     private void OnDeleteLine(DetailReceiptLineViewModel line)
@@ -522,6 +530,12 @@ public partial class DetailReceiptEntryViewModel(
 
         var receiptDate = DateOnly.FromDateTime(receiptDateValue);
 
+        if (Lines.Any(l => l.DepositMethod is null))
+        {
+            StatusMessage = "入金方法を選択してください。";
+            return;
+        }
+
         try
         {
             if (_loadedDetailReceiptNumber is null)
@@ -531,7 +545,7 @@ public partial class DetailReceiptEntryViewModel(
                     l.TargetSalesSlipNumber,
                     l.TargetSalesLineNumber,
                     l.TargetDetailInvoiceNumber,
-                    l.ReceiptMethod,
+                    l.DepositMethod!.DepositMethodCode,
                     l.BankAccountCode,
                     string.IsNullOrWhiteSpace(l.LineRemarks) ? null : l.LineRemarks)).ToList();
 
@@ -551,7 +565,7 @@ public partial class DetailReceiptEntryViewModel(
                 // （PersistedLineNumber が設定済み）のはず（このクラスの doc comment参照）。
                 var lineCorrections = Lines.Select(l => new DetailReceiptLineCorrection(
                     l.PersistedLineNumber!.Value,
-                    l.ReceiptMethod,
+                    l.DepositMethod!.DepositMethodCode,
                     l.BankAccountCode,
                     string.IsNullOrWhiteSpace(l.LineRemarks) ? null : l.LineRemarks)).ToList();
 
@@ -651,7 +665,7 @@ public partial class DetailReceiptEntryViewModel(
                 TargetSalesLineNumber = line.TargetSalesLineNumber,
                 TargetDetailInvoiceNumber = line.TargetDetailInvoiceNumber,
                 TargetDisplay = display,
-                ReceiptMethod = line.ReceiptMethod,
+                DepositMethod = await ResolveDepositMethodAsync(line.DepositMethodCode),
                 BankAccountCode = line.BankAccountCode,
                 Amount = line.AllocatedAmount,
                 LineRemarks = line.LineRemarks ?? string.Empty,
@@ -699,9 +713,29 @@ public partial class DetailReceiptEntryViewModel(
     }
 
     private void ClearLines() => Lines.Clear();
-}
 
-// ReceiptMethodOption は ReceiptEntryViewModel.cs（同名前空間）で定義済みのものを共用する。
+    /// <summary>
+    /// コードから<see cref="DepositMethods"/>内のインスタンスを引く。無効化済みで一覧から外れている
+    /// コードを参照する過去伝票を読み込む場合はここで取得して一覧に加える
+    /// （<see cref="ReceiptEntryViewModel.ResolveDepositMethodAsync"/>と同じ理由）。
+    /// </summary>
+    private async Task<DepositMethod?> ResolveDepositMethodAsync(string depositMethodCode)
+    {
+        var found = DepositMethods.FirstOrDefault(m => m.DepositMethodCode == depositMethodCode);
+        if (found is not null)
+        {
+            return found;
+        }
+
+        var fetched = await depositMethodService.GetByCodeAsync(depositMethodCode);
+        if (fetched is not null)
+        {
+            DepositMethods.Add(fetched);
+        }
+
+        return fetched;
+    }
+}
 
 /// <summary>売上伝票タブの上段リストの1行（同一売上No.の候補明細をまとめたサマリ）。</summary>
 public sealed record DetailReceiptCandidateSlipSummary(

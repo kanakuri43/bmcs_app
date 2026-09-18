@@ -29,6 +29,8 @@ public class BmcsDbContext(DbContextOptions<BmcsDbContext> options) : DbContext(
 
     public DbSet<BankAccount> BankAccounts => Set<BankAccount>();
 
+    public DbSet<DepositMethod> DepositMethods => Set<DepositMethod>();
+
     public DbSet<Menu> Menus => Set<Menu>();
 
     public DbSet<OrderSlip> OrderSlips => Set<OrderSlip>();

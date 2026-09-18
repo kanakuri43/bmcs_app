@@ -29,13 +29,13 @@ public class Receipt : AuditableEntity
     /// <summary>伝票単位の値。スナップショット。</summary>
     public required string CustomerName { get; set; }
 
-    /// <summary>行単位の値。この行の支払手段。</summary>
-    public required ReceiptMethod ReceiptMethod { get; set; }
+    /// <summary>行単位の値。この行の支払手段（<see cref="DepositMethod"/>マスタのコード）。</summary>
+    public required string DepositMethodCode { get; set; }
 
-    /// <summary>行単位の値。入金先口座。ReceiptMethod=BankTransfer のときのみ使用。</summary>
+    /// <summary>行単位の値。入金先口座。入金方法が口座指定を要する場合のみ使用。</summary>
     public string? BankAccountCode { get; set; }
 
-    /// <summary>行単位の値。手形期日。ReceiptMethod=PromissoryNote のときのみ使用。</summary>
+    /// <summary>行単位の値。手形期日。入金方法が期日指定を要する場合のみ使用。</summary>
     public DateOnly? BillDueDate { get; set; }
 
     /// <summary>行単位の値。この行の入金額（伝票合計はSUMして求める）。</summary>

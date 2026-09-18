@@ -14,6 +14,28 @@ public class CustomerLedgerBuilderTests
     private static readonly DateOnly PeriodFrom = new(2026, 7, 1);
     private static readonly DateOnly PeriodTo = new(2026, 8, 31);
 
+    private const string CashMethod = "CASH";
+    private const string BankTransferMethod = "TRANSFER";
+
+    private static readonly IReadOnlyList<DepositMethod> TestDepositMethods =
+    [
+        NewDepositMethod(CashMethod, "現金", requiresBankAccount: false),
+        NewDepositMethod(BankTransferMethod, "振込", requiresBankAccount: true),
+    ];
+
+    private static DepositMethod NewDepositMethod(string code, string name, bool requiresBankAccount) => new()
+    {
+        DepositMethodCode = code,
+        DepositMethodName = name,
+        RequiresBankAccount = requiresBankAccount,
+        RequiresBillDueDate = false,
+        DisplayOrder = 1,
+        CreatedBy = "TEST",
+        CreatedAt = DateTime.Now,
+        UpdatedBy = "TEST",
+        UpdatedAt = DateTime.Now,
+    };
+
     // ---- CUS001（締め・請求単位・締日20・切捨・課税10%） ----
 
     [Fact]
@@ -36,11 +58,12 @@ public class CustomerLedgerBuilderTests
 
         var receipts = new[]
         {
-            NewReceipt("RCP_INV001", 1, new DateOnly(2026, 7, 25), customer, ReceiptMethod.BankTransfer, 4_000m),
-            NewReceipt("RCP_INV002", 1, new DateOnly(2026, 8, 5), customer, ReceiptMethod.Cash, 3_000m),
+            NewReceipt("RCP_INV001", 1, new DateOnly(2026, 7, 25), customer, BankTransferMethod, 4_000m),
+            NewReceipt("RCP_INV002", 1, new DateOnly(2026, 8, 5), customer, CashMethod, 3_000m),
         };
 
-        var input = new CustomerLedgerInput(customer, PeriodFrom, PeriodTo, sales, billings, receipts, [], []);
+        var input = new CustomerLedgerInput(
+            customer, PeriodFrom, PeriodTo, sales, billings, receipts, [], [], TestDepositMethods);
 
         var result = CustomerLedgerBuilder.Build(input);
 
@@ -82,15 +105,15 @@ public class CustomerLedgerBuilderTests
         };
         var receipts = new[]
         {
-            NewReceipt("RCP_INV001", 1, new DateOnly(2026, 7, 25), customer, ReceiptMethod.BankTransfer, 4_000m),
-            NewReceipt("RCP_INV002", 1, new DateOnly(2026, 8, 5), customer, ReceiptMethod.Cash, 3_000m),
+            NewReceipt("RCP_INV001", 1, new DateOnly(2026, 7, 25), customer, BankTransferMethod, 4_000m),
+            NewReceipt("RCP_INV002", 1, new DateOnly(2026, 8, 5), customer, CashMethod, 3_000m),
         };
 
-        var fullPeriod = CustomerLedgerBuilder.Build(
-            new CustomerLedgerInput(customer, PeriodFrom, PeriodTo, sales, billings, receipts, [], []));
+        var fullPeriod = CustomerLedgerBuilder.Build(new CustomerLedgerInput(
+            customer, PeriodFrom, PeriodTo, sales, billings, receipts, [], [], TestDepositMethods));
 
         var augustOnly = CustomerLedgerBuilder.Build(new CustomerLedgerInput(
-            customer, new DateOnly(2026, 8, 1), PeriodTo, sales, billings, receipts, [], []));
+            customer, new DateOnly(2026, 8, 1), PeriodTo, sales, billings, receipts, [], [], TestDepositMethods));
 
         // 7月末残高 7,000 が8月分の繰越として引き継がれる。
         Assert.Equal(7_000m, augustOnly.OpeningBalance);
@@ -115,11 +138,12 @@ public class CustomerLedgerBuilderTests
 
         var receipts = new[]
         {
-            NewReceipt("RCP_SLP001", 1, new DateOnly(2026, 8, 1), customer, ReceiptMethod.BankTransfer, 8_000m),
-            NewReceipt("RCP_SLP001", 2, new DateOnly(2026, 8, 1), customer, ReceiptMethod.Cash, 2_000m),
+            NewReceipt("RCP_SLP001", 1, new DateOnly(2026, 8, 1), customer, BankTransferMethod, 8_000m),
+            NewReceipt("RCP_SLP001", 2, new DateOnly(2026, 8, 1), customer, CashMethod, 2_000m),
         };
 
-        var input = new CustomerLedgerInput(customer, PeriodFrom, PeriodTo, sales, [], receipts, [], []);
+        var input = new CustomerLedgerInput(
+            customer, PeriodFrom, PeriodTo, sales, [], receipts, [], [], TestDepositMethods);
 
         var result = CustomerLedgerBuilder.Build(input);
 
@@ -151,7 +175,7 @@ public class CustomerLedgerBuilderTests
         };
 
         var result = CustomerLedgerBuilder.Build(
-            new CustomerLedgerInput(customer, PeriodFrom, PeriodTo, sales, [], [], [], []));
+            new CustomerLedgerInput(customer, PeriodFrom, PeriodTo, sales, [], [], [], [], TestDepositMethods));
 
         var kinds = result.Entries.Skip(1).Select(e => (e.Kind, e.SalesSlipNumber, e.DebitAmount)).ToList();
         Assert.Equal(
@@ -183,9 +207,9 @@ public class CustomerLedgerBuilderTests
 
         var detailReceipts = new[]
         {
-            NewDetailReceiptDirect("DRC001", 1, new DateOnly(2026, 7, 25), customer, ReceiptMethod.Cash,
+            NewDetailReceiptDirect("DRC001", 1, new DateOnly(2026, 7, 25), customer, CashMethod,
                 2_750m, "SALLIN003", 1),
-            NewDetailReceiptViaInvoice("DRC002", 1, new DateOnly(2026, 7, 22), customer, ReceiptMethod.BankTransfer,
+            NewDetailReceiptViaInvoice("DRC002", 1, new DateOnly(2026, 7, 22), customer, BankTransferMethod,
                 8_250m, "DIV001"),
         };
 
@@ -194,7 +218,8 @@ public class CustomerLedgerBuilderTests
             NewInvoiceLink("DIV001", "SALLIN002", 1),
         };
 
-        var input = new CustomerLedgerInput(customer, PeriodFrom, PeriodTo, sales, [], [], detailReceipts, invoiceLinks);
+        var input = new CustomerLedgerInput(
+            customer, PeriodFrom, PeriodTo, sales, [], [], detailReceipts, invoiceLinks, TestDepositMethods);
 
         var result = CustomerLedgerBuilder.Build(input);
 
@@ -228,14 +253,14 @@ public class CustomerLedgerBuilderTests
 
         var detailReceipts = new[]
         {
-            NewDetailReceiptDirect("DRC101", 1, new DateOnly(2026, 7, 5), customer, ReceiptMethod.Cash,
+            NewDetailReceiptDirect("DRC101", 1, new DateOnly(2026, 7, 5), customer, CashMethod,
                 2_000m, "SALX", 1),
-            NewDetailReceiptDirect("DRC102", 1, new DateOnly(2026, 7, 10), customer, ReceiptMethod.BankTransfer,
+            NewDetailReceiptDirect("DRC102", 1, new DateOnly(2026, 7, 10), customer, BankTransferMethod,
                 3_000m, "SALX", 1),
         };
 
-        var result = CustomerLedgerBuilder.Build(
-            new CustomerLedgerInput(customer, PeriodFrom, PeriodTo, sales, [], [], detailReceipts, []));
+        var result = CustomerLedgerBuilder.Build(new CustomerLedgerInput(
+            customer, PeriodFrom, PeriodTo, sales, [], [], detailReceipts, [], TestDepositMethods));
 
         // 売上行(証跡=DRC101) → 継続行(証跡=DRC102、売上側は空欄) → DRC101入金 → DRC102入金 の4行構成。
         var salesRows = result.Entries.Where(e => e.EntryDate == new DateOnly(2026, 7, 1) && e.Kind == LedgerEntryKind.Sales).ToList();
@@ -262,11 +287,11 @@ public class CustomerLedgerBuilderTests
         var detailReceipts = new[]
         {
             // 取消済み明細請求書を指す入金（連携行が既に削除されているデータ異常のケース）。
-            NewDetailReceiptViaInvoice("DRC999", 1, new DateOnly(2026, 7, 1), customer, ReceiptMethod.Cash, 1_000m, "DIV999"),
+            NewDetailReceiptViaInvoice("DRC999", 1, new DateOnly(2026, 7, 1), customer, CashMethod, 1_000m, "DIV999"),
         };
 
-        var result = CustomerLedgerBuilder.Build(
-            new CustomerLedgerInput(customer, PeriodFrom, PeriodTo, sales, [], [], detailReceipts, []));
+        var result = CustomerLedgerBuilder.Build(new CustomerLedgerInput(
+            customer, PeriodFrom, PeriodTo, sales, [], [], detailReceipts, [], TestDepositMethods));
 
         Assert.Equal(-1_000m, result.ClosingBalance);
         Assert.True(result.IsBalanced);
@@ -282,7 +307,7 @@ public class CustomerLedgerBuilderTests
         var customer = NewCustomer("CUS999", TaxUnit.Invoice, RoundingType.Floor);
 
         var result = CustomerLedgerBuilder.Build(
-            new CustomerLedgerInput(customer, PeriodFrom, PeriodTo, [], [], [], [], []));
+            new CustomerLedgerInput(customer, PeriodFrom, PeriodTo, [], [], [], [], [], TestDepositMethods));
 
         var entry = Assert.Single(result.Entries);
         Assert.Equal(LedgerEntryKind.OpeningBalance, entry.Kind);
@@ -296,7 +321,7 @@ public class CustomerLedgerBuilderTests
         var customer = NewCustomer("CUS999", TaxUnit.Invoice, RoundingType.Floor);
 
         Assert.Throws<ArgumentException>(() => CustomerLedgerBuilder.Build(
-            new CustomerLedgerInput(customer, PeriodTo, PeriodFrom, [], [], [], [], [])));
+            new CustomerLedgerInput(customer, PeriodTo, PeriodFrom, [], [], [], [], [], TestDepositMethods)));
     }
 
     [Fact]
@@ -406,7 +431,7 @@ public class CustomerLedgerBuilderTests
 
     private static Receipt NewReceipt(
         string receiptSlipNumber, short lineNumber, DateOnly receiptDate, Customer customer,
-        ReceiptMethod method, decimal amount) => new()
+        string depositMethodCode, decimal amount) => new()
     {
         ReceiptSlipNumber = receiptSlipNumber,
         LineNumber = lineNumber,
@@ -414,8 +439,8 @@ public class CustomerLedgerBuilderTests
         CustomerCode = customer.CustomerCode,
         TaxUnit = customer.TaxUnit,
         CustomerName = customer.CustomerName,
-        ReceiptMethod = method,
-        BankAccountCode = method == ReceiptMethod.BankTransfer ? "BNK001" : null,
+        DepositMethodCode = depositMethodCode,
+        BankAccountCode = depositMethodCode == BankTransferMethod ? "BNK001" : null,
         Amount = amount,
         AllocationStatus = AllocationStatus.FullyAllocated,
         CreatedBy = "TEST",
@@ -426,15 +451,15 @@ public class CustomerLedgerBuilderTests
 
     private static DetailReceipt NewDetailReceiptDirect(
         string detailReceiptNumber, short lineNumber, DateOnly receiptDate, Customer customer,
-        ReceiptMethod method, decimal amount, string targetSalesSlipNumber, short targetSalesLineNumber) => new()
+        string depositMethodCode, decimal amount, string targetSalesSlipNumber, short targetSalesLineNumber) => new()
     {
         DetailReceiptNumber = detailReceiptNumber,
         LineNumber = lineNumber,
         ReceiptDate = receiptDate,
         CustomerCode = customer.CustomerCode,
         CustomerName = customer.CustomerName,
-        ReceiptMethod = method,
-        BankAccountCode = method == ReceiptMethod.BankTransfer ? "BNK001" : null,
+        DepositMethodCode = depositMethodCode,
+        BankAccountCode = depositMethodCode == BankTransferMethod ? "BNK001" : null,
         ReceiptAmount = amount,
         TargetType = DetailReceiptTargetType.SalesLine,
         TargetSalesSlipNumber = targetSalesSlipNumber,
@@ -451,15 +476,15 @@ public class CustomerLedgerBuilderTests
 
     private static DetailReceipt NewDetailReceiptViaInvoice(
         string detailReceiptNumber, short lineNumber, DateOnly receiptDate, Customer customer,
-        ReceiptMethod method, decimal amount, string targetDetailInvoiceNumber) => new()
+        string depositMethodCode, decimal amount, string targetDetailInvoiceNumber) => new()
     {
         DetailReceiptNumber = detailReceiptNumber,
         LineNumber = lineNumber,
         ReceiptDate = receiptDate,
         CustomerCode = customer.CustomerCode,
         CustomerName = customer.CustomerName,
-        ReceiptMethod = method,
-        BankAccountCode = method == ReceiptMethod.BankTransfer ? "BNK001" : null,
+        DepositMethodCode = depositMethodCode,
+        BankAccountCode = depositMethodCode == BankTransferMethod ? "BNK001" : null,
         ReceiptAmount = amount,
         TargetType = DetailReceiptTargetType.DetailInvoice,
         TargetSalesSlipNumber = null,

@@ -1,4 +1,4 @@
-using bmcs_app.Domain.Enums;
+using bmcs_app.Domain.Entities;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -31,23 +31,23 @@ public partial class ReceiptLineViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBankAccountVisible))]
     [NotifyPropertyChangedFor(nameof(IsBillDueDateVisible))]
-    public partial ReceiptMethod ReceiptMethod { get; set; } = ReceiptMethod.Cash;
+    public partial DepositMethod? DepositMethod { get; set; }
 
-    /// <summary>入金先口座欄の表示要否（振込のときだけ）。</summary>
-    public bool IsBankAccountVisible => ReceiptMethod == ReceiptMethod.BankTransfer;
+    /// <summary>入金先口座欄の表示要否（入金方法が口座指定を要する場合だけ）。</summary>
+    public bool IsBankAccountVisible => DepositMethod?.RequiresBankAccount == true;
 
-    /// <summary>手形期日欄の表示要否（手形のときだけ）。</summary>
-    public bool IsBillDueDateVisible => ReceiptMethod == ReceiptMethod.PromissoryNote;
+    /// <summary>手形期日欄の表示要否（入金方法が期日指定を要する場合だけ）。</summary>
+    public bool IsBillDueDateVisible => DepositMethod?.RequiresBillDueDate == true;
 
     /// <summary>入金方法を変更したら、対象外になった付随欄をクリアする（DBのCHECK制約と対応）。</summary>
-    partial void OnReceiptMethodChanged(ReceiptMethod value)
+    partial void OnDepositMethodChanged(DepositMethod? value)
     {
-        if (value != ReceiptMethod.BankTransfer)
+        if (value?.RequiresBankAccount != true)
         {
             BankAccountCode = null;
         }
 
-        if (value != ReceiptMethod.PromissoryNote)
+        if (value?.RequiresBillDueDate != true)
         {
             BillDueDate = null;
         }

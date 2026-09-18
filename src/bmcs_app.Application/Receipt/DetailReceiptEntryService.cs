@@ -113,7 +113,7 @@ public class DetailReceiptEntryService(
             throw new DetailReceiptEntryException("明細行を1件以上入力してください。");
         }
 
-        ValidateLineFields(lines);
+        var depositMethods = await ValidateLineFieldsAsync(lines, cancellationToken);
 
         var salesKeys = lines
             .Where(l => l.TargetType == DetailReceiptTargetType.SalesLine)
@@ -222,8 +222,8 @@ public class DetailReceiptEntryService(
                 ReceiptDate = receiptDate,
                 CustomerCode = customer.CustomerCode,
                 CustomerName = customer.CustomerName,
-                ReceiptMethod = line.ReceiptMethod,
-                BankAccountCode = line.ReceiptMethod == ReceiptMethod.BankTransfer ? line.BankAccountCode : null,
+                DepositMethodCode = line.DepositMethodCode,
+                BankAccountCode = depositMethods[line.DepositMethodCode].RequiresBankAccount ? line.BankAccountCode : null,
                 ReceiptAmount = 0m, // 全行の合計が確定してから一括で設定する
                 TargetType = line.TargetType,
                 TargetSalesSlipNumber = line.TargetType == DetailReceiptTargetType.SalesLine
@@ -370,7 +370,7 @@ public class DetailReceiptEntryService(
             throw new DetailReceiptEntryException("訂正で充当先を追加することはできません。別伝票で登録してください。");
         }
 
-        ValidateLineFieldsForCorrection(lines);
+        var depositMethods = await ValidateLineFieldsForCorrectionAsync(lines, cancellationToken);
 
         var keptLineNumbers = lines.Select(l => l.LineNumber).ToHashSet();
         foreach (var current in currentLines.Where(l => !keptLineNumbers.Contains(l.LineNumber)))
@@ -381,8 +381,8 @@ public class DetailReceiptEntryService(
         foreach (var incoming in lines)
         {
             var current = currentByLineNumber[incoming.LineNumber];
-            current.ReceiptMethod = incoming.ReceiptMethod;
-            current.BankAccountCode = incoming.ReceiptMethod == ReceiptMethod.BankTransfer
+            current.DepositMethodCode = incoming.DepositMethodCode;
+            current.BankAccountCode = depositMethods[incoming.DepositMethodCode].RequiresBankAccount
                 ? incoming.BankAccountCode : null;
             current.LineRemarks = incoming.LineRemarks;
         }
@@ -488,40 +488,35 @@ public class DetailReceiptEntryService(
     }
 
     /// <summary>
-    /// 訂正で編集可能なフィールド（入金方法・入金先口座）のみを検証する。<see cref="ValidateLineFields"/>
-    /// と異なり充当先の妥当性は見ない（訂正では充当先を変更できないため）。
+    /// 訂正で編集可能なフィールド（入金方法・入金先口座）のみを検証する。<see cref="ValidateLineFieldsAsync"/>
+    /// と異なり充当先の妥当性は見ない（訂正では充当先を変更できないため）。手形除外の判定は
+    /// <see cref="Domain.Entities.DepositMethod.RequiresBillDueDate"/>に基づく（旧enumから
+    /// 2026-09-18にマスタ駆動へ移行。DBのCHECK制約では他テーブル参照ができないため、
+    /// この検証がクロステーブル整合性の唯一の担保点になる）。
     /// </summary>
-    private static void ValidateLineFieldsForCorrection(IReadOnlyList<DetailReceiptLineCorrection> lines)
+    private async Task<Dictionary<string, Domain.Entities.DepositMethod>> ValidateLineFieldsForCorrectionAsync(
+        IReadOnlyList<DetailReceiptLineCorrection> lines, CancellationToken cancellationToken)
     {
+        var depositMethods = await LoadDepositMethodsAsync(lines.Select(l => l.DepositMethodCode), cancellationToken);
+
         foreach (var line in lines)
         {
-            if (line.ReceiptMethod == ReceiptMethod.PromissoryNote)
-            {
-                throw new DetailReceiptEntryException(
-                    "この画面では入金方法に手形を指定できません（明細入金は手形期日を保持する列を持ちません）。");
-            }
-
-            if (line.ReceiptMethod == ReceiptMethod.BankTransfer && string.IsNullOrWhiteSpace(line.BankAccountCode))
-            {
-                throw new DetailReceiptEntryException("振込の行は入金先口座を指定してください。");
-            }
+            var method = GetDepositMethodOrThrow(depositMethods, line.DepositMethodCode);
+            ValidateDepositMethodForDetailReceipt(method, line.BankAccountCode);
         }
+
+        return depositMethods;
     }
 
-    private static void ValidateLineFields(IReadOnlyList<DetailReceiptLineInput> lines)
+    private async Task<Dictionary<string, Domain.Entities.DepositMethod>> ValidateLineFieldsAsync(
+        IReadOnlyList<DetailReceiptLineInput> lines, CancellationToken cancellationToken)
     {
+        var depositMethods = await LoadDepositMethodsAsync(lines.Select(l => l.DepositMethodCode), cancellationToken);
+
         foreach (var line in lines)
         {
-            if (line.ReceiptMethod == ReceiptMethod.PromissoryNote)
-            {
-                throw new DetailReceiptEntryException(
-                    "この画面では入金方法に手形を指定できません（明細入金は手形期日を保持する列を持ちません）。");
-            }
-
-            if (line.ReceiptMethod == ReceiptMethod.BankTransfer && string.IsNullOrWhiteSpace(line.BankAccountCode))
-            {
-                throw new DetailReceiptEntryException("振込の行は入金先口座を指定してください。");
-            }
+            var method = GetDepositMethodOrThrow(depositMethods, line.DepositMethodCode);
+            ValidateDepositMethodForDetailReceipt(method, line.BankAccountCode);
 
             var isSalesTarget = line.TargetType == DetailReceiptTargetType.SalesLine;
             var salesTargetValid = line.TargetSalesSlipNumber is not null && line.TargetSalesLineNumber is not null;
@@ -531,6 +526,39 @@ public class DetailReceiptEntryService(
             {
                 throw new DetailReceiptEntryException("充当先の指定が不正です。");
             }
+        }
+
+        return depositMethods;
+    }
+
+    private Task<Dictionary<string, Domain.Entities.DepositMethod>> LoadDepositMethodsAsync(
+        IEnumerable<string> depositMethodCodes, CancellationToken cancellationToken)
+    {
+        var codes = depositMethodCodes.Distinct().ToList();
+        return dbContext.DepositMethods
+            .AsNoTracking()
+            .Where(m => codes.Contains(m.DepositMethodCode))
+            .ToDictionaryAsync(m => m.DepositMethodCode, cancellationToken);
+    }
+
+    private static Domain.Entities.DepositMethod GetDepositMethodOrThrow(
+        IReadOnlyDictionary<string, Domain.Entities.DepositMethod> depositMethods, string depositMethodCode)
+        => depositMethods.TryGetValue(depositMethodCode, out var method)
+            ? method
+            : throw new DetailReceiptEntryException($"入金方法「{depositMethodCode}」は見つかりません。");
+
+    /// <summary>この画面（detail_receipt）は手形期日を保持する列を持たないため、手形系の入金方法は使えない。</summary>
+    private static void ValidateDepositMethodForDetailReceipt(Domain.Entities.DepositMethod method, string? bankAccountCode)
+    {
+        if (method.RequiresBillDueDate)
+        {
+            throw new DetailReceiptEntryException(
+                $"この画面では入金方法「{method.DepositMethodName}」は指定できません（明細入金は手形期日を保持する列を持ちません）。");
+        }
+
+        if (method.RequiresBankAccount && string.IsNullOrWhiteSpace(bankAccountCode))
+        {
+            throw new DetailReceiptEntryException($"{method.DepositMethodName}の行は入金先口座を指定してください。");
         }
     }
 
@@ -633,7 +661,7 @@ public sealed record DetailReceiptLineInput(
     string? TargetSalesSlipNumber,
     short? TargetSalesLineNumber,
     string? TargetDetailInvoiceNumber,
-    ReceiptMethod ReceiptMethod,
+    string DepositMethodCode,
     string? BankAccountCode,
     string? LineRemarks);
 
@@ -644,7 +672,7 @@ public sealed record DetailReceiptLineInput(
 /// </summary>
 public sealed record DetailReceiptLineCorrection(
     short LineNumber,
-    ReceiptMethod ReceiptMethod,
+    string DepositMethodCode,
     string? BankAccountCode,
     string? LineRemarks);
 

@@ -397,7 +397,7 @@ public class DetailInvoiceServiceTests(DevDatabaseFixture fixture) : IClassFixtu
                 ReceiptDate = new DateOnly(2025, 7, 15),
                 CustomerCode = CustomerCode,
                 CustomerName = "テスト用都度得意先",
-                ReceiptMethod = ReceiptMethod.BankTransfer,
+                DepositMethodCode = "TRANSFER",
                 ReceiptAmount = 110m,
                 TargetType = DetailReceiptTargetType.DetailInvoice,
                 TargetDetailInvoiceNumber = issued.DetailInvoiceNumber,

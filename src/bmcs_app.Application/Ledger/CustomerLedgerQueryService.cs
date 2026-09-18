@@ -65,8 +65,13 @@ public class CustomerLedgerQueryService(BmcsDbContext dbContext)
                 .ToListAsync(cancellationToken);
         }
 
+        // 過去の入金が参照するコードの名称解決に使うため、無効化済み（IsDeleted）の入金方法も含める
+        // （Customer と同じ方針。このクラスの doc comment 参照）。
+        var depositMethods = await dbContext.DepositMethods.AsNoTracking().ToListAsync(cancellationToken);
+
         var input = new CustomerLedgerInput(
-            customer, periodFrom, periodTo, salesLines, confirmedBillings, receiptLines, detailReceiptLines, invoiceLinks);
+            customer, periodFrom, periodTo, salesLines, confirmedBillings, receiptLines, detailReceiptLines,
+            invoiceLinks, depositMethods);
 
         return CustomerLedgerBuilder.Build(input);
     }

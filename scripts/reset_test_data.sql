@@ -19,6 +19,8 @@
 --   menu（メニュー構成マスタ。開発・本番共通の実データであり、テストデータではない。
 --         014_seed_menu_structure.sql が正の投入元）
 --   tax_rate_master（税率マスタ。実運用の参照データであり、テストデータではない）
+--   deposit_method（入金方法マスタ。tax_rate_masterと同じく実運用の参照データであり、
+--                   テストデータではない。018_create_deposit_method_master.sql が正の投入元）
 --
 -- 採番（slip_number_sequence）は行を削除せず current_value のみ 0 にリセットする
 -- （伝票種別ごとに1行を永続保持する運用のため。2.17節）。

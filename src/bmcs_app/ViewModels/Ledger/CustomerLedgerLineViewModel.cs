@@ -41,19 +41,10 @@ public sealed class CustomerLedgerLineViewModel(CustomerLedgerEntry entry)
             : Entry.SalesSlipNumber is not null
                 ? "消費税（伝票単位）"
                 : "消費税（未締め分・仮計算）",
-        LedgerEntryKind.Receipt => Entry.ReceiptMethod is { } method ? $"入金（{ReceiptMethodLabel(method)}）" : "入金",
+        LedgerEntryKind.Receipt => Entry.DepositMethodName is { } name ? $"入金（{name}）" : "入金",
         _ => string.Empty,
     };
 
     /// <summary>請求済みマーク（＊）。デモ画面の「請求」列を踏襲。</summary>
     public string BilledMark => Entry.BillingStatus == BillingLinkStatus.Billed ? "＊" : string.Empty;
-
-    private static string ReceiptMethodLabel(ReceiptMethod method) => method switch
-    {
-        ReceiptMethod.Cash => "現金",
-        ReceiptMethod.BankTransfer => "振込",
-        ReceiptMethod.PromissoryNote => "手形",
-        ReceiptMethod.Offset => "相殺",
-        _ => string.Empty,
-    };
 }

@@ -37,10 +37,9 @@
 
             <!-- 入金方法 -->
             <ComboBox Grid.Column="2"
-                      ItemsSource="{Binding DataContext.ReceiptMethodOptions, RelativeSource={RelativeSource AncestorType=Window}}"
-                      SelectedValue="{Binding ReceiptMethod}"
-                      SelectedValuePath="Value"
-                      DisplayMemberPath="Display"
+                      ItemsSource="{Binding DataContext.DepositMethods, RelativeSource={RelativeSource AncestorType=Window}}"
+                      SelectedItem="{Binding DepositMethod}"
+                      DisplayMemberPath="DepositMethodName"
                       Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 入金先口座（振込のときだけ表示） -->

@@ -37,6 +37,7 @@ public partial class ReceiptEntryViewModel(
     ReceiptEntryService receiptEntryService,
     CustomerService customerService,
     BankAccountService bankAccountService,
+    DepositMethodService depositMethodService,
     BillingClosedDateService billingClosedDateService,
     WindowService windowService) : ViewModelBase
 {
@@ -60,13 +61,7 @@ public partial class ReceiptEntryViewModel(
 
     public ObservableCollection<BankAccount> BankAccounts { get; } = [];
 
-    public ObservableCollection<ReceiptMethodOption> ReceiptMethodOptions { get; } =
-    [
-        new(ReceiptMethod.Cash, "現金"),
-        new(ReceiptMethod.BankTransfer, "振込"),
-        new(ReceiptMethod.PromissoryNote, "手形"),
-        new(ReceiptMethod.Offset, "相殺"),
-    ];
+    public ObservableCollection<DepositMethod> DepositMethods { get; } = [];
 
     public ObservableCollection<ReceiptLineViewModel> Lines { get; } = [];
 
@@ -152,6 +147,13 @@ public partial class ReceiptEntryViewModel(
         foreach (var account in accounts)
         {
             BankAccounts.Add(account);
+        }
+
+        var depositMethods = await depositMethodService.GetDepositMethodsAsync();
+        DepositMethods.Clear();
+        foreach (var depositMethod in depositMethods)
+        {
+            DepositMethods.Add(depositMethod);
         }
 
         Lines.CollectionChanged += OnLinesCollectionChanged;
@@ -264,7 +266,10 @@ public partial class ReceiptEntryViewModel(
         return $"請求締め済みのため入金日付を{minimum:yyyy/MM/dd}に変更しました";
     }
 
-    private ReceiptLineViewModel CreateLine() => new(onDelete: OnDeleteLine);
+    private ReceiptLineViewModel CreateLine() => new(onDelete: OnDeleteLine)
+    {
+        DepositMethod = DepositMethods.FirstOrDefault(),
+    };
 
     private void OnDeleteLine(ReceiptLineViewModel line)
     {
@@ -491,8 +496,14 @@ public partial class ReceiptEntryViewModel(
 
         foreach (var line in Lines.Where(l => !l.IsBlank))
         {
+            if (line.DepositMethod is not { } depositMethod)
+            {
+                error = "入金方法を選択してください。";
+                return false;
+            }
+
             DateOnly? billDueDate = null;
-            if (line.ReceiptMethod == ReceiptMethod.PromissoryNote)
+            if (depositMethod.RequiresBillDueDate)
             {
                 if (line.BillDueDate is not { } billDueDateValue)
                 {
@@ -504,7 +515,7 @@ public partial class ReceiptEntryViewModel(
             }
 
             lineInputs.Add(new ReceiptLineInput(
-                line.ReceiptMethod,
+                depositMethod.DepositMethodCode,
                 line.BankAccountCode,
                 billDueDate,
                 line.Amount,
@@ -530,8 +541,14 @@ public partial class ReceiptEntryViewModel(
 
         foreach (var line in Lines.Where(l => !l.IsBlank))
         {
+            if (line.DepositMethod is not { } depositMethod)
+            {
+                error = "入金方法を選択してください。";
+                return false;
+            }
+
             DateOnly? billDueDate = null;
-            if (line.ReceiptMethod == ReceiptMethod.PromissoryNote)
+            if (depositMethod.RequiresBillDueDate)
             {
                 if (line.BillDueDate is not { } billDueDateValue)
                 {
@@ -544,7 +561,7 @@ public partial class ReceiptEntryViewModel(
 
             lineCorrections.Add(new ReceiptLineCorrection(
                 line.PersistedLineNumber ?? 0,
-                line.ReceiptMethod,
+                depositMethod.DepositMethodCode,
                 line.BankAccountCode,
                 billDueDate,
                 line.Amount,
@@ -591,7 +608,7 @@ public partial class ReceiptEntryViewModel(
             var lineVm = CreateLine();
             lineVm.LineNumber = line.LineNumber;
             lineVm.PersistedLineNumber = line.LineNumber;
-            lineVm.ReceiptMethod = line.ReceiptMethod;
+            lineVm.DepositMethod = await ResolveDepositMethodAsync(line.DepositMethodCode);
             lineVm.BankAccountCode = line.BankAccountCode;
             lineVm.BillDueDate = line.BillDueDate?.ToDateTime(TimeOnly.MinValue);
             lineVm.Amount = line.Amount;
@@ -614,6 +631,29 @@ public partial class ReceiptEntryViewModel(
             : lockResult.IsLocked
                 ? $"入金No. {receiptSlipNumber} を読み込みました（編集不可: {lockResult.Reason}）"
                 : $"入金No. {receiptSlipNumber} を読み込みました。";
+    }
+
+    /// <summary>
+    /// コードから<see cref="DepositMethods"/>内のインスタンスを引く（ComboBoxのSelectedItemはインスタンス
+    /// 参照で一致判定するため）。無効化済みで一覧から外れているコードを参照する過去伝票を読み込む場合は
+    /// ここで取得して一覧に加える（<see cref="BankAccounts"/>には無い対応だが、入金方法は必須項目のため
+    /// 選択が外れたままにはできない）。
+    /// </summary>
+    private async Task<DepositMethod?> ResolveDepositMethodAsync(string depositMethodCode)
+    {
+        var found = DepositMethods.FirstOrDefault(m => m.DepositMethodCode == depositMethodCode);
+        if (found is not null)
+        {
+            return found;
+        }
+
+        var fetched = await depositMethodService.GetByCodeAsync(depositMethodCode);
+        if (fetched is not null)
+        {
+            DepositMethods.Add(fetched);
+        }
+
+        return fetched;
     }
 
     private void ClearForm()
@@ -656,6 +696,3 @@ public partial class ReceiptEntryViewModel(
         SaveCommand.NotifyCanExecuteChanged();
     }
 }
-
-/// <summary>入金方法の選択肢（ComboBox表示用）。</summary>
-public sealed record ReceiptMethodOption(ReceiptMethod Value, string Display);

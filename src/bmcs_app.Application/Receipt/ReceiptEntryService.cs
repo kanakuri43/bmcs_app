@@ -80,7 +80,7 @@ public class ReceiptEntryService(
         IReadOnlyList<ReceiptLineInput> lines,
         CancellationToken cancellationToken = default)
     {
-        ValidateLines(lines);
+        await ValidateLinesAsync(lines, cancellationToken);
 
         var dateCheck = await billingClosedDateService.CheckAsync(customerCode, receiptDate, "入金日付", cancellationToken);
         if (!dateCheck.IsAllowed)
@@ -112,7 +112,7 @@ public class ReceiptEntryService(
                 CustomerCode = customer.CustomerCode,
                 TaxUnit = customer.TaxUnit,
                 CustomerName = customer.CustomerName,
-                ReceiptMethod = line.ReceiptMethod,
+                DepositMethodCode = line.DepositMethodCode,
                 BankAccountCode = line.BankAccountCode,
                 BillDueDate = line.BillDueDate,
                 Amount = line.Amount,
@@ -252,7 +252,7 @@ public class ReceiptEntryService(
         IReadOnlyList<short> loadedLineNumbers,
         CancellationToken cancellationToken = default)
     {
-        ValidateLines(lines.Select(l => l.ToInput()).ToList());
+        await ValidateLinesAsync(lines.Select(l => l.ToInput()).ToList(), cancellationToken);
 
         var employeeCode = currentEmployeeContext.EmployeeCode;
         var now = DateTime.Now;
@@ -300,7 +300,7 @@ public class ReceiptEntryService(
         foreach (var incoming in incomingKept)
         {
             var current = currentByLineNumber[incoming.LineNumber];
-            current.ReceiptMethod = incoming.ReceiptMethod;
+            current.DepositMethodCode = incoming.DepositMethodCode;
             current.BankAccountCode = incoming.BankAccountCode;
             current.BillDueDate = incoming.BillDueDate;
             current.Amount = incoming.Amount;
@@ -319,7 +319,7 @@ public class ReceiptEntryService(
                 CustomerCode = customerCode,
                 TaxUnit = taxUnit,
                 CustomerName = customerName,
-                ReceiptMethod = incoming.ReceiptMethod,
+                DepositMethodCode = incoming.DepositMethodCode,
                 BankAccountCode = incoming.BankAccountCode,
                 BillDueDate = incoming.BillDueDate,
                 Amount = incoming.Amount,
@@ -489,7 +489,12 @@ public class ReceiptEntryService(
             "入金を取消しました。ReceiptSlipNumber={ReceiptSlipNumber} 行数={LineCount}", receiptSlipNumber, lines.Count);
     }
 
-    private static void ValidateLines(IReadOnlyList<ReceiptLineInput> lines)
+    /// <summary>
+    /// 「振込なら口座必須」「手形なら期日必須」の対応は<see cref="Domain.Entities.DepositMethod"/>の
+    /// フラグに基づく（旧enum+CHECK制約から2026-09-18にマスタ駆動へ移行。DBのCHECK制約では他テーブル
+    /// 参照ができないため、この検証がクロステーブル整合性の唯一の担保点になる）。
+    /// </summary>
+    private async Task ValidateLinesAsync(IReadOnlyList<ReceiptLineInput> lines, CancellationToken cancellationToken)
     {
         if (lines.Count == 0)
         {
@@ -501,14 +506,27 @@ public class ReceiptEntryService(
             throw new ReceiptEntryException("入金額の合計は0より大きい値を入力してください。");
         }
 
+        var codes = lines.Select(l => l.DepositMethodCode).Distinct().ToList();
+        var depositMethods = await dbContext.DepositMethods
+            .AsNoTracking()
+            .Where(m => codes.Contains(m.DepositMethodCode))
+            .ToDictionaryAsync(m => m.DepositMethodCode, cancellationToken);
+
         foreach (var line in lines)
         {
-            switch (line.ReceiptMethod)
+            if (!depositMethods.TryGetValue(line.DepositMethodCode, out var method))
             {
-                case ReceiptMethod.BankTransfer when string.IsNullOrWhiteSpace(line.BankAccountCode):
-                    throw new ReceiptEntryException("振込の行は入金先口座を指定してください。");
-                case ReceiptMethod.PromissoryNote when line.BillDueDate is null:
-                    throw new ReceiptEntryException("手形の行は手形期日を指定してください。");
+                throw new ReceiptEntryException($"入金方法「{line.DepositMethodCode}」は見つかりません。");
+            }
+
+            if (method.RequiresBankAccount && string.IsNullOrWhiteSpace(line.BankAccountCode))
+            {
+                throw new ReceiptEntryException($"{method.DepositMethodName}の行は入金先口座を指定してください。");
+            }
+
+            if (method.RequiresBillDueDate && line.BillDueDate is null)
+            {
+                throw new ReceiptEntryException($"{method.DepositMethodName}の行は手形期日を指定してください。");
             }
         }
     }
@@ -600,7 +618,7 @@ public class ReceiptEntryService(
 
 /// <summary>入金明細行の入力（支払手段の内訳）。</summary>
 public sealed record ReceiptLineInput(
-    ReceiptMethod ReceiptMethod,
+    string DepositMethodCode,
     string? BankAccountCode,
     DateOnly? BillDueDate,
     decimal Amount,
@@ -613,13 +631,13 @@ public sealed record ReceiptLineInput(
 /// </summary>
 public sealed record ReceiptLineCorrection(
     short LineNumber,
-    ReceiptMethod ReceiptMethod,
+    string DepositMethodCode,
     string? BankAccountCode,
     DateOnly? BillDueDate,
     decimal Amount,
     string? LineRemarks)
 {
-    public ReceiptLineInput ToInput() => new(ReceiptMethod, BankAccountCode, BillDueDate, Amount, LineRemarks);
+    public ReceiptLineInput ToInput() => new(DepositMethodCode, BankAccountCode, BillDueDate, Amount, LineRemarks);
 }
 
 /// <summary>

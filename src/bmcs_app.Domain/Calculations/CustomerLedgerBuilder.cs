@@ -36,10 +36,11 @@ public static class CustomerLedgerBuilder
 
         var customer = input.Customer;
         var dayBeforeFrom = input.PeriodFrom.AddDays(-1);
+        var depositMethodNameByCode = input.DepositMethods.ToDictionary(m => m.DepositMethodCode, m => m.DepositMethodName);
 
         var entries = new List<SortableEntry>();
 
-        AddSalesEntries(entries, input, customer);
+        AddSalesEntries(entries, input, customer, depositMethodNameByCode);
 
         if (customer.TaxUnit == TaxUnit.Slip)
         {
@@ -50,7 +51,7 @@ public static class CustomerLedgerBuilder
             AddInvoiceTaxEntries(entries, input, customer, dayBeforeFrom);
         }
 
-        AddReceiptEntries(entries, input, customer);
+        AddReceiptEntries(entries, input, customer, depositMethodNameByCode);
 
         entries.Sort((a, b) => a.Key.CompareTo(b.Key));
 
@@ -120,7 +121,9 @@ public static class CustomerLedgerBuilder
             .Sum(b => b.TaxAmount);
     }
 
-    private static void AddSalesEntries(List<SortableEntry> entries, CustomerLedgerInput input, Customer customer)
+    private static void AddSalesEntries(
+        List<SortableEntry> entries, CustomerLedgerInput input, Customer customer,
+        IReadOnlyDictionary<string, string> depositMethodNameByCode)
     {
         var traceBySalesLine = customer.TaxUnit == TaxUnit.Line
             ? LedgerReceiptPairing.Pair(input.DetailReceiptLines, input.DetailInvoiceLinks)
@@ -156,7 +159,8 @@ public static class CustomerLedgerBuilder
                     ReceiptDate = firstTrace?.ReceiptDate,
                     ReceiptSlipNumber = firstTrace?.DetailReceiptNumber,
                     ReceiptLineNumber = firstTrace?.LineNumber,
-                    ReceiptMethod = firstTrace?.ReceiptMethod,
+                    DepositMethodName = firstTrace is null
+                        ? null : depositMethodNameByCode.GetValueOrDefault(firstTrace.DepositMethodCode),
                     Remarks = sales.LineRemarks,
                 }));
 
@@ -173,7 +177,7 @@ public static class CustomerLedgerBuilder
                         ReceiptDate = trace.ReceiptDate,
                         ReceiptSlipNumber = trace.DetailReceiptNumber,
                         ReceiptLineNumber = trace.LineNumber,
-                        ReceiptMethod = trace.ReceiptMethod,
+                        DepositMethodName = depositMethodNameByCode.GetValueOrDefault(trace.DepositMethodCode),
                     }));
             }
         }
@@ -239,7 +243,9 @@ public static class CustomerLedgerBuilder
     }
 
     /// <summary>入金は常に入金日付の独立行として残高に反映する（D-2）。</summary>
-    private static void AddReceiptEntries(List<SortableEntry> entries, CustomerLedgerInput input, Customer customer)
+    private static void AddReceiptEntries(
+        List<SortableEntry> entries, CustomerLedgerInput input, Customer customer,
+        IReadOnlyDictionary<string, string> depositMethodNameByCode)
     {
         if (customer.TaxUnit == TaxUnit.Line)
         {
@@ -254,7 +260,7 @@ public static class CustomerLedgerBuilder
                         ReceiptDate = line.ReceiptDate,
                         ReceiptSlipNumber = line.DetailReceiptNumber,
                         ReceiptLineNumber = line.LineNumber,
-                        ReceiptMethod = line.ReceiptMethod,
+                        DepositMethodName = depositMethodNameByCode.GetValueOrDefault(line.DepositMethodCode),
                         ReceiptAmount = line.AllocatedAmount,
                         Remarks = BuildDetailReceiptTargetRemarks(line),
                     }));
@@ -274,7 +280,7 @@ public static class CustomerLedgerBuilder
                     ReceiptDate = line.ReceiptDate,
                     ReceiptSlipNumber = line.ReceiptSlipNumber,
                     ReceiptLineNumber = line.LineNumber,
-                    ReceiptMethod = line.ReceiptMethod,
+                    DepositMethodName = depositMethodNameByCode.GetValueOrDefault(line.DepositMethodCode),
                     ReceiptAmount = line.Amount,
                     Remarks = line.LineRemarks,
                 }));

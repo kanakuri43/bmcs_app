@@ -27,7 +27,7 @@
 | 月次締め解除 | 管理者権限のみ。確定済み月次締めを解除済にする。**月次締めとは別画面（別メニュー項目）とする**（C-8・2026-09-10確定、請求締め解除と同じ理由） |
 | データ検索 | 受注/売上/入金を横断的に検索し、納品書未発行の売上をまとめて一括発行 |
 | 共通検索モーダル | 得意先・商品の検索モーダル。商品検索は「マスタから」「過去の取引履歴から」の2軸、最大6件を伝票へ一括転記 |
-| マスタ管理 | 得意先・商品・銀行・単価計算・社員・**自社情報（適格請求書発行事業者の登録番号等）**の各種マスタ管理、プリンタ設定（保存先はproduct-spec.md参照。D-4・2026-09-10） |
+| マスタ管理 | 得意先・商品・銀行・**入金方法（27章、D-7・2026-09-18）**・単価計算・社員・**自社情報（適格請求書発行事業者の登録番号等）**の各種マスタ管理、プリンタ設定（保存先はproduct-spec.md参照。D-4・2026-09-10） |
 
 ---
 
@@ -2147,3 +2147,64 @@ DBアクセスは`src/bmcs_app.Application/Billing/BillingClosedDateService.cs`�
   複写を禁止しているが、受注入力画面にはプレビューモードという概念自体が存在しないため、
   `NewCommand`等と同じ無条件コマンドとした。訂正モード中に押すと`New()`により新規状態へ
   リセットされる（売上側で編集中に複写した場合と同じ挙動）。
+
+---
+
+## 27. 入金方法マスタの新設（`ReceiptMethod` enum の廃止、2026-09-18実装）
+
+入金方法（現金・振込・手形・相殺）は`ReceiptMethod` enum（tinyint固定値）でハードコードされており、
+利用者が入金方法を追加・改称するにはコード修正・再ビルドが必要だった。ユーザー要望「入金区分を
+コード直書きでなくマスタで管理したい」を受け、`deposit_method`マスタへ完全に置き換えた
+（**D-7・2026-09-18確定**）。当初検討した振込手数料の参考値（`transfer_fee`）は、実装後にユーザーへ
+確認したところ「イメージと異なる、忘れてほしい」との指摘を受け撤回した（2026-09-18）。`product-spec.md`
+M-14「振込手数料差額は手入力のみ、自動計算・自動補正提案は行わない」は本移行の対象外であり、
+方針は変更していない。
+
+### 27-1. 設計判断
+
+- **付随項目の必須制約はマスタのフラグで表す（`requires_bank_account`／`requires_bill_due_date`）。**
+  旧`CK_receipt_method_columns`／`CK_receipt_method`／`CK_detail_receipt_method`が担っていた
+  「振込＝口座必須・期日NULL／手形＝期日必須・口座NULL／それ以外＝両方NULL」という対応関係のうち、
+  「口座と期日が同時に埋まらない」という単一テーブルで表現できる部分だけをCHECK制約
+  （`CK_receipt_bank_account_bill_due_date_exclusive`）として残し、「入金方法によってどちらが
+  必須か」という他テーブル参照が要る部分はアプリ層（`ReceiptEntryService.ValidateLinesAsync`／
+  `DetailReceiptEntryService.ValidateLineFieldsAsync`）のみで担保する（**C-11・2026-09-18確定**）。
+  トリガーは作らない。このリポジトリにトリガー・ユーザー定義SPは1つも無く、`rowversion`楽観的
+  排他制御・`SlipConcurrencyGuard.TouchAll`との相性が悪いため（docs/architecture.md 9章）。
+- **`detail_receipt`の手形除外はマスタのフラグで自然に表現する。** `detail_receipt`は手形期日を
+  保持する列を持たない（18章で確定済み）ため、`requires_bill_due_date=1`の入金方法を選択肢から
+  除外するだけで足り、専用フラグは追加しない。
+- **列名は`receipt_method`（tinyint）から`deposit_method_code`（varchar(10)、FK）へリネームした。**
+  型・意味の両方が変わるため同名維持は混乱を招く。FK列の命名規約（`bank_account_code`等と同じ
+  `<マスタ名>_code`）にも揃えた。
+- **入金方法名のスナップショットは持たない。** `CustomerLedgerEntry.DepositMethodName`は
+  `CustomerLedgerQueryService`が都度`deposit_method`（`IsDeleted`で絞らない。過去の入金が
+  無効化済みの入金方法を参照していても名称解決できるようにするため）を読み、
+  `CustomerLedgerBuilder`がコード→名称の辞書で解決する。帳票に入金方法名を印字する要件が無く、
+  `customer_name`スナップショットのような「発行当時の名称を固定する」要件も現時点で無いため。
+
+### 27-2. マイグレーション
+
+`scripts/018_create_deposit_method_master.sql`で実施。`deposit_method`テーブルを新設し、旧enum値
+1〜4と1:1対応する初期4行（`CASH`／`TRANSFER`／`NOTE`／`OFFSET`）を投入したうえで、`receipt`／
+`detail_receipt`の`receipt_method`列を`deposit_method_code`へ列追加→バックフィル→NOT NULL化→
+旧列DROPの手順で置き換えた。適用前に対象データが2件のみであることを確認済み。
+
+`scripts/seed_dev_data.sql`のreceipt/detail_receipt投入部分も`deposit_method_code`（文字列コード）
+に更新した。
+
+### 27-3. 影響範囲・検証
+
+- 新規マスタ画面（入金方法マスタ）を`BankAccount`マスタ一式と同じパターン（コード直接入力＋
+  Space検索モーダル＋Enter読込）で追加し、メインメニュー「マスタ管理」配下に登録した
+  （`scripts/014_seed_menu_structure.sql`に`MNU_DEPOSIT_METHOD`を追加）。
+- 入金入力画面・明細入金画面のComboBoxは、ハードコードの選択肢からマスタ全件ロード（`BankAccounts`
+  と同じ`ObservableCollection`供給パターン）に置き換えた。行ViewModelは`SelectedValue`ではなく
+  `SelectedItem`でマスタ行のエンティティ自体を保持し、`RequiresBankAccount`／`RequiresBillDueDate`
+  を直接読んで付随欄の表示制御を行う。
+- 検証: `dotnet build`成功（0警告0エラー）。`dotnet test`でDomain 281件全green、Application
+  184/185件green（残る1件`SalesServiceCorrectionTests.月次締め確定済みの年月への訂正は拒否される`
+  は本移行と無関係の既存事象。請求締め日付制限とseedデータの組み合わせに起因し、`receipt`/
+  `deposit_method`を一切参照しないテストのため対象外とした）。マイグレーション適用後、SQLCMDで
+  `deposit_method`の4行・`receipt`/`detail_receipt`の`deposit_method_code`バックフィル結果・
+  FK制約の有効性を確認済み。
