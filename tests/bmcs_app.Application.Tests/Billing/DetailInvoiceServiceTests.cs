@@ -311,9 +311,9 @@ public class DetailInvoiceServiceTests(DevDatabaseFixture fixture) : IClassFixtu
             if (secondInvoiceNumber is not null)
             {
                 await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                    $"DELETE FROM dbo.detail_invoice_sales_line WHERE detail_invoice_number = {secondInvoiceNumber}");
+                    $"DELETE FROM dbo.detail_invoice_sales_lines WHERE detail_invoice_number = {secondInvoiceNumber}");
                 await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                    $"DELETE FROM dbo.detail_invoice WHERE detail_invoice_number = {secondInvoiceNumber}");
+                    $"DELETE FROM dbo.detail_invoices WHERE detail_invoice_number = {secondInvoiceNumber}");
             }
             await CleanupAsync(dbContext, [CustomerCode], [slip]);
         }
@@ -417,7 +417,7 @@ public class DetailInvoiceServiceTests(DevDatabaseFixture fixture) : IClassFixtu
         finally
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.detail_receipt WHERE detail_receipt_number = {detailReceiptNumber}");
+                $"DELETE FROM dbo.detail_receipts WHERE detail_receipt_number = {detailReceiptNumber}");
             await CleanupAsync(dbContext, [CustomerCode], [slip]);
         }
     }
@@ -512,13 +512,13 @@ public class DetailInvoiceServiceTests(DevDatabaseFixture fixture) : IClassFixtu
         foreach (var slipNumber in salesSlipNumbers)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.detail_invoice_sales_line WHERE sales_slip_number = {slipNumber}");
+                $"DELETE FROM dbo.detail_invoice_sales_lines WHERE sales_slip_number = {slipNumber}");
         }
 
         foreach (var customerCode in customerCodes)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.detail_invoice WHERE customer_code = {customerCode}");
+                $"DELETE FROM dbo.detail_invoices WHERE customer_code = {customerCode}");
         }
 
         foreach (var slipNumber in salesSlipNumbers)
@@ -530,7 +530,7 @@ public class DetailInvoiceServiceTests(DevDatabaseFixture fixture) : IClassFixtu
         foreach (var customerCode in customerCodes)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.customer WHERE customer_code = {customerCode}");
+                $"DELETE FROM dbo.customers WHERE customer_code = {customerCode}");
         }
     }
 }

@@ -12,7 +12,7 @@ public class BillingConfiguration : IEntityTypeConfiguration<Billing>
 {
     public void Configure(EntityTypeBuilder<Billing> builder)
     {
-        builder.ToTable("billing");
+        builder.ToTable("billings");
         builder.HasKey(e => e.BillingNumber);
 
         builder.Property(e => e.BillingNumber).HasMaxLength(20).IsUnicode(false);
@@ -38,7 +38,7 @@ public class BillingConfiguration : IEntityTypeConfiguration<Billing>
         builder.Property(e => e.ReleasedBy).HasMaxLength(10).IsUnicode(false);
 
         // Sales / Receipt から複合FK (billing_number, tax_unit) で参照されるための
-        // 代替キー（UQ_billing_number_tax_unit）。税単位をまたいで請求データを
+        // 代替キー（UQ_billings_number_tax_unit）。税単位をまたいで請求データを
         // 参照できないことをDBに強制させるため。
         builder.HasAlternateKey(e => new { e.BillingNumber, e.TaxUnit });
 

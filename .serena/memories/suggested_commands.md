@@ -20,7 +20,7 @@ sqlcmdは `go-sqlcmd`（v1.9.0系）。認証情報は `src/bmcs_app/appsettings
 - スキーマ確認（乖離チェック）:
   `sqlcmd ... -Q "SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('dbo.<table>')"` 等
 - テスト後の残留データ確認（`__`接頭辞のテスト用customer_codeが残っていないか）:
-  `sqlcmd -S 172.16.3.171 -d bmcs_db -U sa -P '<password>' -C -Q "SELECT COUNT(*) FROM dbo.customer WHERE customer_code LIKE '\_\_TST%' ESCAPE '\'"`
+  `sqlcmd -S 172.16.3.171 -d bmcs_db -U sa -P '<password>' -C -Q "SELECT COUNT(*) FROM dbo.customers WHERE customer_code LIKE '\_\_TST%' ESCAPE '\'"`
 
 **注意**: `scripts/001_*.sql` 等の適用済みDDLファイルは絶対に改変しない。スキーマ変更は必ず新しい連番ファイルを追加する（`docs/database-schema.md` 3章）。
 

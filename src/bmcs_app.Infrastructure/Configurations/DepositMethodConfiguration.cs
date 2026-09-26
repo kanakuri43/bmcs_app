@@ -8,7 +8,7 @@ public class DepositMethodConfiguration : IEntityTypeConfiguration<DepositMethod
 {
     public void Configure(EntityTypeBuilder<DepositMethod> builder)
     {
-        builder.ToTable("deposit_method");
+        builder.ToTable("deposit_methods");
 
         builder.HasKey(e => e.DepositMethodCode);
 

@@ -5,7 +5,7 @@ namespace bmcs_app.Domain.Numbering;
 /// <summary>
 /// 伝票番号の文字列表現（TODO.md 4-1）。DB非依存の純粋ロジックのみを持つ
 /// （docs/architecture.md 2章「DBに依存しない単体テストの対象はDomainに集める」）。
-/// 採番そのもの（<c>slip_number_sequence</c> への同時実行制御付きINCREMENT）は
+/// 採番そのもの（<c>slip_number_sequences</c> への同時実行制御付きINCREMENT）は
 /// Infrastructure/Application 層が担当し、ここでは関与しない。
 /// </summary>
 public static class SlipNumberFormatter
@@ -20,7 +20,7 @@ public static class SlipNumberFormatter
     public static string Format(long sequenceValue) => sequenceValue.ToString("D8");
 
     /// <summary>
-    /// <see cref="SlipNumberKind"/> から <c>slip_number_sequence.sequence_key</c> の
+    /// <see cref="SlipNumberKind"/> から <c>slip_number_sequences.sequence_key</c> の
     /// 文字列リテラルを解決する。DBのキー文字列をここ1箇所に閉じ込める。
     /// </summary>
     public static string ToSequenceKey(SlipNumberKind kind) => kind switch

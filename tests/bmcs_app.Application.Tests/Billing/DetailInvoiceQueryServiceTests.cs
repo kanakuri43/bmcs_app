@@ -158,11 +158,11 @@ public class DetailInvoiceQueryServiceTests(DevDatabaseFixture fixture) : IClass
         foreach (var slipNumber in salesSlipNumbers)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.detail_invoice_sales_line WHERE sales_slip_number = {slipNumber}");
+                $"DELETE FROM dbo.detail_invoice_sales_lines WHERE sales_slip_number = {slipNumber}");
         }
 
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"DELETE FROM dbo.detail_invoice WHERE customer_code = {customerCode}");
+            $"DELETE FROM dbo.detail_invoices WHERE customer_code = {customerCode}");
 
         foreach (var slipNumber in salesSlipNumbers)
         {
@@ -171,6 +171,6 @@ public class DetailInvoiceQueryServiceTests(DevDatabaseFixture fixture) : IClass
         }
 
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"DELETE FROM dbo.customer WHERE customer_code = {customerCode}");
+            $"DELETE FROM dbo.customers WHERE customer_code = {customerCode}");
     }
 }

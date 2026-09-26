@@ -709,7 +709,7 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
         finally
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.monthly_closing WHERE customer_code = {customerCode}");
+                $"DELETE FROM dbo.monthly_closings WHERE customer_code = {customerCode}");
             await CleanupAsync(dbContext, [customerCode], [slip]);
         }
     }
@@ -1081,19 +1081,19 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
         foreach (var customerCode in customerCodes)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.detail_receipt WHERE customer_code = {customerCode}");
+                $"DELETE FROM dbo.detail_receipts WHERE customer_code = {customerCode}");
         }
 
         foreach (var slipNumber in salesSlipNumbers)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.detail_invoice_sales_line WHERE sales_slip_number = {slipNumber}");
+                $"DELETE FROM dbo.detail_invoice_sales_lines WHERE sales_slip_number = {slipNumber}");
         }
 
         foreach (var customerCode in customerCodes)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.detail_invoice WHERE customer_code = {customerCode}");
+                $"DELETE FROM dbo.detail_invoices WHERE customer_code = {customerCode}");
         }
 
         foreach (var slipNumber in salesSlipNumbers)
@@ -1105,7 +1105,7 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
         foreach (var customerCode in customerCodes)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.customer WHERE customer_code = {customerCode}");
+                $"DELETE FROM dbo.customers WHERE customer_code = {customerCode}");
         }
     }
 }

@@ -10,19 +10,19 @@
 -- （seed_dev_data.sql と同様の位置づけ）。何度でも再実行してよい。
 --
 -- 対象テーブル（マスタ・ジャーナル・締め集計。FKの逆順で削除）:
---   employee, customer, product, bank_account,
---   order_slip, sales, receipt, receipt_allocation, detail_receipt,
---   billing, detail_invoice, detail_invoice_sales_line, monthly_closing
+--   employees, customers, products, bank_accounts,
+--   orders, sales, receipts, receipt_allocations, detail_receipts,
+--   billings, detail_invoices, detail_invoice_sales_lines, monthly_closings
 --
 -- 対象外（意図的に残す）:
---   company_info（自社情報。指示により維持）
---   menu（メニュー構成マスタ。開発・本番共通の実データであり、テストデータではない。
+--   company_infos（自社情報。指示により維持）
+--   menus（メニュー構成マスタ。開発・本番共通の実データであり、テストデータではない。
 --         014_seed_menu_structure.sql が正の投入元）
---   tax_rate_master（税率マスタ。実運用の参照データであり、テストデータではない）
---   deposit_method（入金方法マスタ。tax_rate_masterと同じく実運用の参照データであり、
+--   tax_rates（税率マスタ。実運用の参照データであり、テストデータではない）
+--   deposit_methods（入金方法マスタ。tax_ratesと同じく実運用の参照データであり、
 --                   テストデータではない。018_create_deposit_method_master.sql が正の投入元）
 --
--- 採番（slip_number_sequence）は行を削除せず current_value のみ 0 にリセットする
+-- 採番（slip_number_sequences）は行を削除せず current_value のみ 0 にリセットする
 -- （伝票種別ごとに1行を永続保持する運用のため。2.17節）。
 --
 -- 適用: sqlcmd -S 172.16.3.171 -U sa -d bmcs_db -C -I -i scripts\reset_test_data.sql
@@ -37,28 +37,28 @@ GO
 -- -----------------------------------------------------------------------------
 -- 1. ジャーナル・締め集計（FKの逆順で削除）
 -- -----------------------------------------------------------------------------
-DELETE FROM dbo.detail_invoice_sales_line;
-DELETE FROM dbo.detail_receipt;
-DELETE FROM dbo.detail_invoice;
-DELETE FROM dbo.receipt_allocation;
-DELETE FROM dbo.receipt;
+DELETE FROM dbo.detail_invoice_sales_lines;
+DELETE FROM dbo.detail_receipts;
+DELETE FROM dbo.detail_invoices;
+DELETE FROM dbo.receipt_allocations;
+DELETE FROM dbo.receipts;
 DELETE FROM dbo.sales;
-DELETE FROM dbo.billing;
-DELETE FROM dbo.order_slip;
-DELETE FROM dbo.monthly_closing;
+DELETE FROM dbo.billings;
+DELETE FROM dbo.orders;
+DELETE FROM dbo.monthly_closings;
 GO
 
 -- -----------------------------------------------------------------------------
--- 2. マスタ（company_info・menu・tax_rate_master は対象外）
+-- 2. マスタ（company_infos・menus・tax_rates は対象外）
 -- -----------------------------------------------------------------------------
-DELETE FROM dbo.customer;
-DELETE FROM dbo.product;
-DELETE FROM dbo.bank_account;
-DELETE FROM dbo.employee;
+DELETE FROM dbo.customers;
+DELETE FROM dbo.products;
+DELETE FROM dbo.bank_accounts;
+DELETE FROM dbo.employees;
 GO
 
 -- -----------------------------------------------------------------------------
 -- 3. 採番リセット（行は残し current_value のみ0に戻す）
 -- -----------------------------------------------------------------------------
-UPDATE dbo.slip_number_sequence SET current_value = 0;
+UPDATE dbo.slip_number_sequences SET current_value = 0;
 GO

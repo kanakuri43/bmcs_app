@@ -43,7 +43,7 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
   3. 「内税明細単位」の得意先（＝都度得意先）の明細請求書で、明細ごとに算出した税額の合計を印字してよいか。
   現行の他システム・既存帳票でどう運用しているかも確認材料とする。業務ルール側の記述は [`docs/product-spec.md`](product-spec.md) の共通業務ルール9を参照。
 
-- **銀行マスタの用途**: マスタ管理の対象に「銀行」があるが、用途の記載がない。Phase 1-1 では**自社の入金口座マスタ**（入金入力で入金先口座を選ぶ／請求書に振込先を印字する）と解釈して `bank_account` を定義した。全銀協の金融機関コードマスタ（得意先の振込元を記録する用途）である可能性も残るため、実際の運用を確認したい。
+- **銀行マスタの用途**: マスタ管理の対象に「銀行」があるが、用途の記載がない。Phase 1-1 では**自社の入金口座マスタ**（入金入力で入金先口座を選ぶ／請求書に振込先を印字する）と解釈して `bank_accounts` を定義した。全銀協の金融機関コードマスタ（得意先の振込元を記録する用途）である可能性も残るため、実際の運用を確認したい。
 - **得意先マスタの支払条件・与信限度額の要否**: 締め得意先には支払条件（例: 20日締め翌月末払い）が必要になることが多いが、設計資料に記載がない。Phase 1-1 では推測を避けて項目を作っていない。必要であれば `ALTER TABLE` で追加する（属性の追加は後続フェーズで可能）。与信限度額の管理を行うかも併せて確認したい。
 
 これらは実装着手前にユーザーへの確認が必要。
@@ -52,7 +52,7 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
 
 ## 3. 共通検索モーダルの実装確定事項（Phase 3、2026-09-08 確定）
 
-- **商品検索モーダル「過去の取引履歴から」の対象データ**: 売上のみ（`sales`）。`order_slip`（受注）は対象外。
+- **商品検索モーダル「過去の取引履歴から」の対象データ**: 売上のみ（`sales`）。`orders`（受注）は対象外。
 - **履歴から転記する単価**: 履歴行の単価（過去の実売価格）。「マスタから」軸は商品マスタの単価。
 - **履歴軸の得意先スコープ**: 呼び出し元画面で選択済みの得意先のみ。得意先が未選択の場合は履歴タブを無効化し、「先に得意先を選択してください」と案内する。
 - **履歴軸はカナ検索非対応**: 売上テーブルに商品カナ列がないため。「マスタから」軸のみコード・名称・カナ・規格で検索できる。
@@ -74,16 +74,16 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
 
 ## 5. 受注入力画面（Phase 4-3、2026-09-08確定）
 
-旧WPFプロトタイプ（`bmcs_app.Order`／`OrderMainView.xaml`）のツールバー・ヘッダー・明細・フッター集計・StatusBarの構成をそのまま再現した。ただし旧プロトタイプが前提とする項目のうち、本プロジェクトの `order_slip` エンティティに列がない、または機能自体が未実装のものは、**枠（コントロール）だけ用意し `IsEnabled="False"` で使用不可にした**（非表示にはしない）。
+旧WPFプロトタイプ（`bmcs_app.Order`／`OrderMainView.xaml`）のツールバー・ヘッダー・明細・フッター集計・StatusBarの構成をそのまま再現した。ただし旧プロトタイプが前提とする項目のうち、本プロジェクトの `orders` エンティティに列がない、または機能自体が未実装のものは、**枠（コントロール）だけ用意し `IsEnabled="False"` で使用不可にした**（非表示にはしない）。
 
 | 項目 | 状態 | 理由 |
 |---|---|---|
-| 受注日付・得意先（コード+名称、Space/Enter対応）・明細行・フッター集計・保存(F10)・新規(F3)・行追加(F2) | **実装済み** | `order_slip` に対応する列があり、既存の `ConsumptionTaxCalculator`／`IUnitPriceCalculator`／`SlipNumberService` を再利用できる |
+| 受注日付・得意先（コード+名称、Space/Enter対応）・明細行・フッター集計・保存(F10)・新規(F3)・行追加(F2) | **実装済み** | `orders` に対応する列があり、既存の `ConsumptionTaxCalculator`／`IUnitPriceCalculator`／`SlipNumberService` を再利用できる |
 | 受注No. | 実装済みだが**読み取り専用表示**。手入力・Space/Enterでの検索は行わない | 採番は保存時にトランザクション内で1回だけ行う方針（`docs/architecture.md` 6章）であり、画面を開いた時点や入力中の手入力・検索を許さない |
 | 得意先名の編集（諸口得意先） | **未実装** | `Customer` に「諸口」相当のフラグがない |
-| 担当者（コード＋名称） | **枠のみ・使用不可** | `order_slip` に担当者列がない（社員マスタ画面自体は2-3で実装済み）。将来列を追加する場合は属性追加（`ALTER TABLE`）で対応する |
-| 摘要（伝票摘要） | **実装済み（2026-09-09）** | ジャーナル系テーブル（`sales`／`receipt`／`detail_receipt`／`order_slip`）に `slip_remarks` 列を追加し（`scripts/011_add_slip_and_line_remarks.sql`）、`order_slip` に対しては本画面から保存できる。同一伝票の全明細行に複写して保存する（`docs/database-schema.md` 1章） |
-| 行摘要（明細行摘要） | **実装済み（2026-09-09）** | 上記と同時に `line_remarks` 列を追加。`src/bmcs_app/Views/Common/SlipLineControl.xaml` の行摘要 TextBox の `IsEnabled="False"` を解除した。`SlipLineControl` は売上入力（Phase 5-2）とも共用するため、両方に効く。`sales`／`receipt`／`detail_receipt` はエンティティ・EF設定まで追加済みだが、対応する入力画面自体が未実装（Phase 5-2／7章）のため画面側の配線はまだない |
+| 担当者（コード＋名称） | **枠のみ・使用不可** | `orders` に担当者列がない（社員マスタ画面自体は2-3で実装済み）。将来列を追加する場合は属性追加（`ALTER TABLE`）で対応する |
+| 摘要（伝票摘要） | **実装済み（2026-09-09）** | ジャーナル系テーブル（`sales`／`receipts`／`detail_receipts`／`orders`）に `slip_remarks` 列を追加し（`scripts/011_add_slip_and_line_remarks.sql`）、`orders` に対しては本画面から保存できる。同一伝票の全明細行に複写して保存する（`docs/database-schema.md` 1章） |
+| 行摘要（明細行摘要） | **実装済み（2026-09-09）** | 上記と同時に `line_remarks` 列を追加。`src/bmcs_app/Views/Common/SlipLineControl.xaml` の行摘要 TextBox の `IsEnabled="False"` を解除した。`SlipLineControl` は売上入力（Phase 5-2）とも共用するため、両方に効く。`sales`／`receipts`／`detail_receipts` はエンティティ・EF設定まで追加済みだが、対応する入力画面自体が未実装（Phase 5-2／7章）のため画面側の配線はまだない |
 | 受注状態バッジ | 「受注状態：未売上」を実装（`OrderStatus.NotSold` 固定表示） | 本画面は新規登録のみを扱うため常にこの値で正しい。状態遷移ロジック自体は 4-4 で `OrderStatusService`（サービス層）として実装済み（7章）だが、既存受注を読み込む機能がまだ無いため、本画面のバッジ表示への配線は既存受注の読み込み手段（5-3／10-1）が揃うまで先送りする |
 | 前の受注／次の受注（ナビゲーション） | **枠のみ・使用不可**（`CanExecute` を常に `false` にして無効化） | 既存受注の一覧・検索機能が未実装 |
 | 削除（F8） | **枠のみ・使用不可** | 旧プロトタイプは物理削除だが、TODO.md の暫定設定 M-17「伝票は物理削除しない」・C-6「取消は状態を戻す」と矛盾するため、そのままは持ち込めない。中止（`OrderStatusService.CancelSlipAsync`）自体は 4-4 で実装済み（7章）。本画面から呼べるようにするには、まず受注No.から既存受注を読み込む機能（受注状態バッジと同じ理由で未実装）が必要なため、F8 配線はそれが揃うまで先送りする |
@@ -160,7 +160,7 @@ Phase 5-3（受注からの売上確定）は`ApplySalesQuantityDeltasAsync`を�
 GUI配線が無いため、GUIでのsmoke testは行わない。
 
 - 単体テスト: `tests/bmcs_app.Domain.Tests/Calculations/OrderStatusCalculatorTests.cs`（境界値：0／一部／ちょうど／超過／受注数量0）。
-- 結合テスト: `tests/bmcs_app.Application.Tests/Order/OrderStatusServiceTests.cs`。開発用ライブDBに対し、`BeginTransactionAsync`→検証→`RollbackAsync`で完結させ、seedデータ（`order_slip`のORD001〜ORD004）には触れない。分納（未売上→一部売上→売上完了）、逆遷移（売上完了→一部売上→未売上）、中止（未売上／一部売上／複数行の一括中止）、および両方の異常系（受注数量超過、マイナス残、中止済み行への売上化、存在しない行、デルタ重複、トランザクション外呼び出し、売上完了済み受注の中止、中止済み受注の再中止、存在しない受注番号）を検証済み。
+- 結合テスト: `tests/bmcs_app.Application.Tests/Order/OrderStatusServiceTests.cs`。開発用ライブDBに対し、`BeginTransactionAsync`→検証→`RollbackAsync`で完結させ、seedデータ（`orders`のORD001〜ORD004）には触れない。分納（未売上→一部売上→売上完了）、逆遷移（売上完了→一部売上→未売上）、中止（未売上／一部売上／複数行の一括中止）、および両方の異常系（受注数量超過、マイナス残、中止済み行への売上化、存在しない行、デルタ重複、トランザクション外呼び出し、売上完了済み受注の中止、中止済み受注の再中止、存在しない受注番号）を検証済み。
 
 ---
 
@@ -237,7 +237,7 @@ M-9暫定設定（マイナス数量・マイナス金額＋伝票区分カラ�
   条件を追加した。返品・値引行や論理削除された行（5-6）が、商品検索モーダルの
   「過去の取引履歴から」タブに単価候補として現れないようにするため。
 - 明細行UI（`SlipLineControl.xaml`）に区分列（幅68、`EnumDisplayConverter`で表示）を追加。
-  `order_slip`には伝票区分の概念がないため、受注入力画面では列を非表示にする
+  `orders`には伝票区分の概念がないため、受注入力画面では列を非表示にする
   （`SlipLineViewModel.IsSlipTypeVisible`をホストが画面単位で設定）。
 
 ### 8-3. 過去伝票の複写入力（Phase 5-5）
@@ -278,9 +278,9 @@ C-6（元伝票の直接修正、赤伝方式は不採用）に沿って実装�
   （`docs/database-schema.md` 2.8節。C-6は「取消も直接修正」としているが、物理削除しない
   という既存方針と整合させるため`is_deleted`方式を採用）。
 - **編集ロック判定** (`SalesEditLockEvaluator`。Domain純粋関数＋`SalesEditLockService`が
-  `monthly_closing`／`detail_invoice_sales_line`を照会): ①`billing_number`が確定済み請求を指す
-  ①'明細請求書発行済み（`detail_invoice_sales_line`に連携している。Phase 6-5で追加。13章参照）
-  ②対象年月の`monthly_closing`が確定済み ③`settlement_status`=消込完了。理由文言を返すのみで、
+  `monthly_closings`／`detail_invoice_sales_lines`を照会): ①`billing_number`が確定済み請求を指す
+  ①'明細請求書発行済み（`detail_invoice_sales_lines`に連携している。Phase 6-5で追加。13章参照）
+  ②対象年月の`monthly_closings`が確定済み ③`settlement_status`=消込完了。理由文言を返すのみで、
   ViewModelは業務判断をせずそのまま表示する（docs/architecture.md 5章）。
 - **伝票単位の楽観的排他制御の共通処理**（`SlipConcurrencyGuard`。docs/architecture.md 9章が
   Phase 5での実装を予告していたもの）を`src/bmcs_app.Application/Common/`に新設し、
@@ -333,7 +333,7 @@ C-6（元伝票の直接修正、赤伝方式は不採用）に沿って実装�
 ## 9. 請求締め処理（Phase 6-1、2026-09-11確定）
 
 締め得意先（`tax_unit`＝請求単位／伝票単位、`closing_day ≠ 0`）の期間内売上・入金を集計し、
-`billing`へ請求データを確定する。Phase 5までで`sales.billing_number`を書き込む経路が
+`billings`へ請求データを確定する。Phase 5までで`sales.billing_number`を書き込む経路が
 存在せず常にNULLだったため、C-6の編集ロック条件①（請求締め済み）が実データで一度も発火
 していなかった欠落を埋める。
 
@@ -349,7 +349,7 @@ C-6（元伝票の直接修正、赤伝方式は不採用）に沿って実装�
 | | 下限 | 上限 | 二重集計を防ぐ手段 |
 |---|---|---|---|
 | 売上（`sales`） | なし | 締め日 | `billing_number IS NULL`（集計済みマーカー） |
-| 入金（`receipt`） | 前回確定`billing`の締め日 + 1日 | 締め日 | 期間で区切る |
+| 入金（`receipts`） | 前回確定`billings`の締め日 + 1日 | 締め日 | 期間で区切る |
 
 この非対称はデータモデルから必然的に導かれる。`receipt.billing_number`は「充当先の請求データ」
 であり、Phase 7（入金入力）が**過去の**請求へ古い順に充当したときに設定される値のため、締め処理
@@ -361,7 +361,7 @@ C-6（元伝票の直接修正、赤伝方式は不採用）に沿って実装�
 **残存リスク（既知・許容）**: 前回締め日より前の日付で**後から登録された入金**は、どの締めの
 期間にも入らず永久に拾われない。対処は締め解除（6-2）→再締め。
 
-前回確定`billing`＝同一`customer_code`／`billing_status`＝確定／`is_deleted`＝偽のうち
+前回確定`billings`＝同一`customer_code`／`billing_status`＝確定／`is_deleted`＝偽のうち
 `closing_year_month`が最大のもの。存在しなければ前回残高0・入金の下限なし。
 
 ### 9-3. 金額の組み立て
@@ -393,9 +393,9 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 
 ### 9-5. 二重締め防止 ― アプリ側とDB側の二段構え
 
-**アプリ側**: 確定前に同一`customer_code`×`closing_year_month`の確定済み`billing`が無いこと
+**アプリ側**: 確定前に同一`customer_code`×`closing_year_month`の確定済み`billings`が無いこと
 を確認する。あればその得意先をスキップする（理由付きで結果に含める）。あわせて、より新しい
-`closing_year_month`の確定済み`billing`が既にある場合も拒否する（締め順序の逆転防止）。
+`closing_year_month`の確定済み`billings`が既にある場合も拒否する（締め順序の逆転防止）。
 
 **DB側**: フィルタ付き一意インデックス`UQ_billing_customer_closing_ym_confirmed`
 （`ON billing (customer_code, closing_year_month) WHERE billing_status = 1 AND is_deleted = 0`。
@@ -404,8 +404,8 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 
 ### 9-6. 締め対象にしない得意先
 
-- 対象売上・対象入金が無く、かつ前回残高も0 → `billing`を作らない（空の請求書を出さない）。
-- 対象が無くても前回残高≠0 → 繰越請求として`billing`を作る。
+- 対象売上・対象入金が無く、かつ前回残高も0 → `billings`を作らない（空の請求書を出さない）。
+- 対象が無くても前回残高≠0 → 繰越請求として`billings`を作る。
 
 ### 9-7. 実装
 
@@ -453,24 +453,24 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 
 ## 10. 締め解除処理（Phase 6-2、2026-09-14実装／2026-09-15改訂: 請求日単位の一括解除に変更）
 
-確定済み`billing`を解除済（`billing_status = 2`）にし、紐付く`sales`行の`billing_number`を
+確定済み`billings`を解除済（`billing_status = 2`）にし、紐付く`sales`行の`billing_number`を
 `NULL`、`billing_status`（`BillingLinkStatus`）を未請求へ戻す。管理者権限のみの操作のため、
 請求締め処理（9章）とは別画面（別ウィンドウ）として提供する（C-8・2026-09-10確定）。
 
 **解除の指定単位は請求番号1件ではなく、請求日（`billing_date`）。** 請求締め処理（9章）が
-「締め日を指定して一括」確定するのと粒度を揃え、指定した請求日に確定済みの`billing`を
+「締め日を指定して一括」確定するのと粒度を揃え、指定した請求日に確定済みの`billings`を
 すべてまとめて解除する（2026-09-15ユーザー指示）。`billing_date`は締める側が締め切り日を
 そのまま書いた値（9章）であり、締め1回を一意に指すキーとして使える。
 
 ### 10-1. 解除できる対象の制約 ― 締め順序の逆転防止と対になる制約
 
-**解除できるのは、同一得意先の確定済み`billing`のうち`closing_year_month`が最も新しいものに
-限る。** それより古いものを解除すると、より新しい確定済み`billing`が引き継いだ`previous_balance`
+**解除できるのは、同一得意先の確定済み`billings`のうち`closing_year_month`が最も新しいものに
+限る。** それより古いものを解除すると、より新しい確定済み`billings`が引き継いだ`previous_balance`
 の参照元が失われ、9-2の前回残高チェーンが破綻する。判定は9-5と対称で、
 「同一`customer_code`／`billing_status`＝確定／`is_deleted`＝偽のうち`closing_year_month`が
 最大のもの」を求め、それが解除対象自身でなければ拒否する（`BillingReleaseException`）。
 
-解除後は、その1つ前の確定済み`billing`が再び「最新の確定済み」になるため、連鎖的に古い方から
+解除後は、その1つ前の確定済み`billings`が再び「最新の確定済み」になるため、連鎖的に古い方から
 順に解除していくことができる。
 
 **指定した請求日の対象が複数件（複数得意先）ある場合、1件でもこの制約に違反すれば
@@ -479,21 +479,21 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 
 その他の拒否条件:
 
-- 指定した請求日に確定済みの`billing`が1件も存在しない。
+- 指定した請求日に確定済みの`billings`が1件も存在しない。
 
 ### 10-2. 実装
 
 - `src/bmcs_app.Application/Billing/BillingReleaseService.cs`が本体。`PreviewAsync`
-  （画面表示用の読み取り専用取得。指定した請求日の確定済み`billing`一覧と、各件の
+  （画面表示用の読み取り専用取得。指定した請求日の確定済み`billings`一覧と、各件の
   `BlockReason`＝解除できない理由を返す）と`ReleaseByBillingDateAsync`（解除の確定）を持つ。
   `ReleaseByBillingDateAsync`は9章の`ConfirmAsync`と同じく明示トランザクションで包み、
   対象全件の`BlockReason`を先に判定してから（1件でも非nullなら`SaveChangesAsync`前に
-  例外を投げてロールバックする）、`billing`本体と紐付く`sales`行をまとめて同一トランザクション
+  例外を投げてロールバックする）、`billings`本体と紐付く`sales`行をまとめて同一トランザクション
   内で更新する。締め順序の逆転判定は対象得意先分をまとめて1クエリで行う（得意先ごとに
   都度問い合わせるN+1を避ける）。
 - Phase 7（入金・消込）が未実装だった2026-09-14時点では`receipt.billing_number`（充当先）が
   解除対象を指しているケースは考慮していなかったが、Phase 7実装後も**充当済みの入金
-  （`receipt_allocation`）は解除時に付け替えない**方針を採用済み（16章「既知の限界」）。
+  （`receipt_allocations`）は解除時に付け替えない**方針を採用済み（16章「既知の限界」）。
   解除で外れた売上行の消込キャッシュ列は`SettlementService.RecalculateForCustomerAsync`で
   未消込へ戻す。
 - 画面（`Views/Billing/BillingReleaseWindow.xaml`／`ViewModels/Billing/BillingReleaseViewModel.cs`）
@@ -508,13 +508,13 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 ### 検証方法
 
 - 結合テスト: `tests/bmcs_app.Application.Tests/Billing/BillingReleaseServiceTests.cs`。
-  解除後の状態遷移（`billing`／`sales`両方）、二重解除の拒否、締め順序が逆転するケースの拒否、
+  解除後の状態遷移（`billings`／`sales`両方）、二重解除の拒否、締め順序が逆転するケースの拒否、
   対象0件の請求日を指定した場合の拒否、**All-or-nothing（対象の一部が締め順序逆転で
   拒否される場合に他の対象も一切更新されないこと）**に加え、**完了条件「解除→再締めで
   金額が一致する」を、解除後に同条件で`BillingClosingService.ConfirmAsync`を再実行し
   金額が一致することで直接検証**している。
 - 実機確認: メインメニューの「締め解除処理」ボタンから画面を開き、UI Automation経由で
-  seedデータの確定済み`billing`（`BIL_INV001`／`BIL_SLP001`）の請求日を入力して一覧に
+  seedデータの確定済み`billings`（`BIL_INV001`／`BIL_SLP001`）の請求日を入力して一覧に
   正しく表示されることを確認済み（解除操作自体は結合テストで検証済みのため、
   共有のseedデータを実機操作で変更することは避けた）。
 
@@ -523,7 +523,7 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 ## 11. 明細請求書発行（Phase 6-3、2026-09-14実装）
 
 都度得意先（`tax_unit = 3` 内税明細単位）の未請求かつ消込完了でない売上明細行を数件選び、
-`detail_invoice`／`detail_invoice_sales_line`へ確定する。`detail_invoice`テーブル・EFエンティティ・
+`detail_invoices`／`detail_invoice_sales_lines`へ確定する。`detail_invoices`テーブル・EFエンティティ・
 採番系列（`SlipNumberKind.DetailInvoice`）はPhase 1で作成済みだったが、そこへ書き込む経路が
 一つも無かった欠落を本タスクで埋める。
 
@@ -531,7 +531,7 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 
 共通業務ルール2（`docs/product-spec.md`）のとおり、対象条件は**未請求かつ消込完了でない**
 売上明細行（`tax_unit = 3`）。「未請求」の判定は`sales.billing_status`（キャッシュ）ではなく
-**`detail_invoice_sales_line`に連携行が存在しないこと**で行う。締め請求（`billing_number`）とは
+**`detail_invoice_sales_lines`に連携行が存在しないこと**で行う。締め請求（`billing_number`）とは
 異なり、明細請求は連携テーブルの有無が唯一の正であり、`billing_status`はその写しに過ぎないため
 （万一両者が食い違っても、連携行が無い行は候補に出て再請求でき、自己修復になる）。
 
@@ -549,9 +549,9 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 検証する（9-4が伝票単位で行っている検証と対称。端数区分は登録後不変のため、本来一致するはず
 のデータ異常を検出する）。
 
-二重請求防止は`detail_invoice_sales_line`のDB側UNIQUE制約（`UQ_detail_invoice_sales_line_sales_line`）
+二重請求防止は`detail_invoice_sales_lines`のDB側UNIQUE制約（`UQ_detail_invoice_sales_line_sales_line`）
 とアプリ側の事前チェック（11-1の対象条件クエリを発行直前にトランザクション内で再実行）の二段構え。
-`detail_invoice_sales_line`はrowversionを持たない（行の追加・削除のみで更新が無いテーブルのため）
+`detail_invoice_sales_lines`はrowversionを持たない（行の追加・削除のみで更新が無いテーブルのため）
 ので、この再確認とDB側のUNIQUE制約が排他制御の担保になる（`docs/architecture.md` 9章）。
 
 **`tax_unit = 3`の締め請求データ（`sales.billing_number`）は常にNULLのまま。** `CK_sales_billing_number_by_tax_unit`
@@ -572,11 +572,11 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
   追加 ▶」／「◀ 除外」ボタンの両方から行える。
 - 一覧を持たず、明細請求書No.を直接入力してEnterで既存分を読み込む方式（得意先／商品マスタ・
   締め解除処理と同じコード直接入力方式。2026-09-14ユーザー確認）。既存分を読み込んだ場合は
-  読み取り専用表示にする。`detail_invoice`は「発行済／取消」の2状態で訂正の概念が無いため
+  読み取り専用表示にする。`detail_invoices`は「発行済／取消」の2状態で訂正の概念が無いため
   （訂正はPhase 6-4の取消→再発行で行う想定）。
 - 宛名（`addressee_name`）は得意先コード確定時に得意先名を初期値として転記し、手入力で
   上書き可能にする（C-9・2026-09-10確定。他のジャーナル系画面と同じ「名称欄を直接書き換える」
-  方式だが、`detail_invoice`は`customer_name`（得意先マスタのスナップショット）と
+  方式だが、`detail_invoices`は`customer_name`（得意先マスタのスナップショット）と
   `addressee_name`（印字用宛名）を別カラムで持つため、本画面では宛名専用の入力欄として分離した）。
 - 発行成功後は完了メッセージを出して画面を起動直後の状態に戻す（`docs/product-spec.md` UI/UX節
   「登録後のリセット」）。
@@ -620,9 +620,9 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 
 ### 12-1. 連携行は物理削除する
 
-`docs/database-schema.md` 2.14節のとおり、取消では`detail_invoice_sales_line`の該当行を
+`docs/database-schema.md` 2.14節のとおり、取消では`detail_invoice_sales_lines`の該当行を
 **物理削除**する（このテーブルが`row_version`を持たないのは行の追加・削除しか発生しない前提
-のため）。ヘッダー（`detail_invoice`）は物理削除せず`invoice_status`を取消済（`2`）にし
+のため）。ヘッダー（`detail_invoices`）は物理削除せず`invoice_status`を取消済（`2`）にし
 `cancelled_at`／`cancelled_by`を立てるだけに留める（締め解除と同じ非破壊方式）。
 
 連携行を削除すると、`DetailInvoiceService.BuildCandidateQuery`（11-1節）の
@@ -705,16 +705,16 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 `CK_sales_billing_number_by_tax_unit`により常にNULLのため、①は都度得意先には決して発火せず、
 **明細請求書を発行済みでも売上入力画面から自由に訂正・取消できてしまっていた**。結果:
 
-- `detail_invoice`ヘッダーの確定金額（スナップショット）が実データと乖離する。
-- 訂正で行を論理削除しても`detail_invoice_sales_line`の連携行は残り、`IsDeleted=true`の売上を
+- `detail_invoices`ヘッダーの確定金額（スナップショット）が実データと乖離する。
+- 訂正で行を論理削除しても`detail_invoice_sales_lines`の連携行は残り、`IsDeleted=true`の売上を
   指し続ける（`DetailInvoiceService.GetByNumberAsync`は`!IsDeleted`で絞っていないため、その行を
   明細として表示し続ける）。
 
 **対応（C-6改訂・2026-09-14ユーザー確認）**: 編集ロックに4つ目の条件「明細請求書発行済み
-（いずれかの明細行が`detail_invoice_sales_line`に連携している）」を追加した。判定順は
+（いずれかの明細行が`detail_invoice_sales_lines`に連携している）」を追加した。判定順は
 ①請求締め→①'明細請求書発行済→②月次締め→③消込完了（`SalesEditLockEvaluator.Evaluate`、
 `docs/product-spec.md`共通業務ルール5・`docs/database-schema.md` 2.0節を合わせて改訂）。
-DBアクセス（`detail_invoice_sales_line`の存在確認）は`SalesEditLockService.EvaluateAsync`に
+DBアクセス（`detail_invoice_sales_lines`の存在確認）は`SalesEditLockService.EvaluateAsync`に
 追加し、判定ロジック自体は純粋関数のまま維持した。`SalesService.UpdateAsync`／`CancelSlipAsync`
 は`SalesEditLockService`経由のため呼び出し側の変更は不要で、訂正後の再判定にも自動的に効く。
 
@@ -745,7 +745,7 @@ EF Coreの例外型を漏らさない」と規定しているが、`BillingClosi
   にも入らず永久に拾われない。対処は締め解除（6-2）→再締め。
 - **`sales.billing_status`とリンクの一致にDB側の防波堤が無い（新規確認・対応しない）**:
   `billing_status`（請求済／未請求）と実際の紐付け（`tax_unit`1/2は`billing_number`、
-  `tax_unit=3`は`detail_invoice_sales_line`の存在）の一致は、アプリのトランザクションだけが
+  `tax_unit=3`は`detail_invoice_sales_lines`の存在）の一致は、アプリのトランザクションだけが
   担保しており、DB側のCHECK制約は無い。二重請求側（`UQ_detail_invoice_sales_line_sales_line`）・
   二重締め側（`UQ_billing_customer_closing_ym_confirmed`）はDB側の最終防衛線を持つのと非対称だが、
   `tax_unit=3`側は連携テーブルの存在確認が必要でCHECK制約として書けないため、`tax_unit`1/2側だけ
@@ -759,11 +759,11 @@ EF Coreの例外型を漏らさない」と規定しているが、`BillingClosi
   締め請求と明細請求が互いの対象を拾わないこと、締め→解除→売上訂正→再締めが二重計上せず
   訂正後の金額で確定すること、発行→取消→売上訂正→再発行も同様に訂正後の金額になること、
   請求締め済み・明細請求書発行済みの売上がそれぞれ訂正・取消を拒否されること（後者は取消後に
-  再び編集できることも含む）、締め→解除→再締めを繰り返しても確定済み`billing`が常に1件だけ
+  再び編集できることも含む）、締め→解除→再締めを繰り返しても確定済み`billings`が常に1件だけ
   であることを検証。専用のテスト得意先（`__TPHR01`〜`__TPHR07`、`closing_day = 17`）で実行後、
   finallyで物理削除する方式（既存の`BillingClosingServiceTests`等と同じ）。全体テスト
   （Domain 205件／Application 68件）すべてgreen。実行後にテスト用の行が
-  `customer`／`sales`／`billing`／`detail_invoice`／`detail_invoice_sales_line`に残っていないこと
+  `customers`／`sales`／`billings`／`detail_invoices`／`detail_invoice_sales_lines`に残っていないこと
   を`sqlcmd`で確認済み。
 - 実機確認: 本レビューはコードレビューと結合テストが中心のため、GUI操作による実機確認は
   行っていない（ビルド成功と自動テストのみで検証）。
@@ -795,11 +795,11 @@ EF Coreの例外型を漏らさない」と規定しているが、`BillingClosi
 
 ### 14-3. 階層・権限フィルタの実装
 
-- `MenuTreeBuilder`（Domain/Calculations、純粋関数）が`menu`の全行と社員の権限レベルから
+- `MenuTreeBuilder`（Domain/Calculations、純粋関数）が`menus`の全行と社員の権限レベルから
   「カテゴリ（親）→表示可能な機能（子）」の階層を組み立てる。子の
   `required_permission_level ≦ 社員の権限レベル`のものだけを残し、表示できる子が1件も無い
   カテゴリはメニュー自体を表示しない（単体テスト`MenuTreeBuilderTests`4件）。
-- `MenuService.GetMenuTreeAsync`（Application/Master）が`menu`全行（論理削除除く）を取得する
+- `MenuService.GetMenuTreeAsync`（Application/Master）が`menus`全行（論理削除除く）を取得する
   だけで、フィルタは行わない（フィルタはDomain層の責務）。
 - `MainMenuViewModel.LoadAsync`が`ICurrentEmployeeContext.EmployeeCode`から
   `EmployeeService.GetByCodeAsync`で社員名・権限レベルを取得し、上記フィルタを適用して
@@ -808,7 +808,7 @@ EF Coreの例外型を漏らさない」と規定しているが、`BillingClosi
   （メニューが1件も表示されない状態になる。実機確認済み）。
 - 画面遷移は`screen_key`文字列を`switch`する`OpenMenuItemCommand`に一本化した
   （個別の`OpenXxxCommand`は全廃）。未知の`screen_key`は警告メッセージを表示し、
-  例外にしない（`menu`データの入力誤りに対する防御）。
+  例外にしない（`menus`データの入力誤りに対する防御）。
 - カテゴリの色分け（アコーディオン見出しの左バー・ホバー色）は表示順に応じた固定パレットを
   循環させる。ViewModelはWPFのMedia型（Brush）を持たず整数インデックス（`ColorIndex`）のみを
   持ち、View側の`MenuAccentColorConverter`がインデックス→Brushへ変換する
@@ -919,7 +919,7 @@ Phase 7-2実装（2026-09-15、17章）でNo欄のSpace検索・Enter読込・�
 
 `Receipt`/`DetailReceipt`エンティティ・DDL・採番系列はPhase 1で用意済みだったが、書き込む
 コードが一つも無く、`sales.settlement_status`/`settled_amount`は常に未消込／0のままだった
-（4-4の`order_slip`と同じ「テーブルはあるが導出ロジックが無い」欠落）。Phase 4-4（受注状態
+（4-4の`orders`と同じ「テーブルはあるが導出ロジックが無い」欠落）。Phase 4-4（受注状態
 遷移）と同じ前例に従い、**本タスクはサービス層＋テストのみ**。画面（7-2 入金入力・7-4 明細
 入金・7-5 入金の取消訂正）は後続タスクで別途実装し、UI配線・実機確認は行わない。
 
@@ -932,7 +932,7 @@ Phase 7-2実装（2026-09-15、17章）でNo欄のSpace検索・Enter読込・�
 2. **振込手数料差額（`fee_adjustment_amount`）は消込済金額に含める。** 売上明細行への
    充当額は`allocated_amount + fee_adjustment_amount`。入金側自身の充当状態
    （`AllocationStatus`）の判定には含めない（実際に受け取った現金の消化状況を表すため）。
-3. **締め入金（`receipt`）は`billing`単位で充当するが、キャッシュ列は`sales`明細行にある。**
+3. **締め入金（`receipts`）は`billings`単位で充当するが、キャッシュ列は`sales`明細行にある。**
    `billing_number`へ充当した額を、その`billing_number`を持つ売上明細行へ伝票日付→伝票
    番号→行番号の古い順に配分する。
 4. **既存の取り残しバグ2件を本タスクの範囲に含めて修正する**（16-7参照）。
@@ -942,11 +942,11 @@ Phase 7-2実装（2026-09-15、17章）でNo欄のSpace検索・Enter読込・�
 完了条件は「登録・取消・訂正のいずれでもキャッシュ列が実態と一致する」であり、4-4の
 `OrderStatusService`と同じデルタ方式（差分だけを適用する）ではドリフトを許す（訂正で
 充当先自体が変わるケースを追跡しきれない）。代わりに`SettlementService`は**入金データ
-（`receipt`／`detail_receipt`）から得意先単位で毎回全件再計算して書き戻す**。
+（`receipts`／`detail_receipts`）から得意先単位で毎回全件再計算して書き戻す**。
 
 スコープを「伝票」ではなく「得意先」にした理由:
 
-- `customer_code`は`sales`/`receipt`/`detail_receipt`いずれも伝票単位の値で、訂正でも
+- `customer_code`は`sales`/`receipts`/`detail_receipts`いずれも伝票単位の値で、訂正でも
   変わらない。訂正で充当先（`billing_number`等）が変わった場合、変更前・変更後の両方の
   グループを自動的に再計算できる（差分追跡が不要になる）。
 - 都度得意先の「直接指定（`target_type=1`）」と「明細請求書経由（`target_type=2`）」の
@@ -1026,12 +1026,12 @@ Entities.Receipt;`のエイリアスへ変更して解消した。**今後`bmcs_
    `PartiallySettled`は編集を許すため、一部消込の行を金額を減らす方向へ訂正できる経路
    があった（訂正前は`settled_amount`が編集ロックに関与せず素通りしていた）。
    `SalesService.UpdateAsync`／`CancelSlipAsync`の`SaveChangesAsync`後・`CommitAsync`前
-   に同様の配線を追加。実際の入金データ（`detail_receipt`等）に基づき新しい金額へ
+   に同様の配線を追加。実際の入金データ（`detail_receipts`等）に基づき新しい金額へ
    丸め直される。
 
 ### 16-8. 既知の限界（対応しない。将来の課題として記録）
 
-- **解除済み`billing`を指したままの`receipt`行は`allocated_amount`が入力データとして
+- **解除済み`billings`を指したままの`receipts`行は`allocated_amount`が入力データとして
   残る。** `SettlementService`は入力データ（`allocated_amount`／`fee_adjustment_amount`）
   を書き換えない。解除された充当の付け替え（別のbillingへ回す等）は7-2（入金入力）の
   責務とし、7-6（消込整合性レビュー）で棚卸しする。
@@ -1097,7 +1097,7 @@ SELECT * FROM dbo.sales WHERE is_deleted = 0 AND (
 
 ### 17-1. 初版の決定（2026-09-15実装・同日撤回）
 
-初版では、確定済みDBスキーマ（`receipt`の明細行＝`billing_number`／`allocated_amount`という
+初版では、確定済みDBスキーマ（`receipts`の明細行＝`billing_number`／`allocated_amount`という
 「請求への充当1件」）を優先し、旧デモの明細行方式（支払手段の内訳）は採用しないと判断して
 実装した。しかし実装後に業務実態をユーザーへ確認したところ、この前提が誤りだと判明したため、
 17-2の方針へ全面的に改訂した。
@@ -1109,14 +1109,14 @@ SELECT * FROM dbo.sales WHERE is_deleted = 0 AND (
 複数の支払手段（現金・振込・手形等）に分かれることがあり、**入金方法は行ごとに選べる必要が
 ある**。この確認により、初版の前提（明細行＝充当行）を撤回し、次の方針とした。
 
-1. **`receipt`の明細行は支払手段の内訳（入金方法＋金額＋行摘要）に変更する。** 旧デモ
+1. **`receipts`の明細行は支払手段の内訳（入金方法＋金額＋行摘要）に変更する。** 旧デモ
    `bmcs_app.Receipt`の明細行方式を採用する。入金先口座は行単位（`receipt_method=2`
    〈振込〉の行のみ）、手形期日も行単位（`receipt_method=3`〈手形〉の行のみ）で持つ。
 2. **請求への充当（`billing_number`／`allocated_amount`／`fee_adjustment_amount`）は
-   `receipt_allocation`テーブルへ分離し、画面には表示しない内部データとする。** 支払手段の
+   `receipt_allocations`テーブルへ分離し、画面には表示しない内部データとする。** 支払手段の
    内訳行の件数と、充当先の請求の件数は一致しない（例: 入金2行の合計を3件の請求へ古い順に
-   充当）ため、同じ行に両方の意味を持たせることはできない。保存時に`receipt`の明細行合計額を
-   確定済み`billing`の未消込残額へ古い順に自動配分し、`receipt_allocation`へ書き込む（配分
+   充当）ため、同じ行に両方の意味を持たせることはできない。保存時に`receipts`の明細行合計額を
+   確定済み`billings`の未消込残額へ古い順に自動配分し、`receipt_allocations`へ書き込む（配分
    ロジック自体はPhase 7-1の`SettlementAllocator`を無変更で流用）。
    詳細なテーブル定義は`docs/database-schema.md` 2.10節・2.10-1節、移行は
    `scripts/016_split_receipt_allocation.sql`を参照。
@@ -1137,7 +1137,7 @@ SELECT * FROM dbo.sales WHERE is_deleted = 0 AND (
   伝票の保存、`SettlementService`との連携（保存後に`sales.settlement_status`が更新される）、
   都度得意先・存在しない得意先・振込での口座未指定・手形での期日未指定・明細0件・入金額
   合計0以下の例外、既存伝票の読込を検証。`SettlementServiceTests`（16件）も
-  `receipt`/`receipt_allocation`の分離に合わせて改訂。
+  `receipts`/`receipt_allocations`の分離に合わせて改訂。
 - 全体テスト: Domain 239件／Application 101件、すべてgreen。
 - 実機確認: `dotnet run`でアプリを起動し、メインメニューが例外なく開くことを確認
   （ログにエラーなし）。GUI操作を自動で駆動する手段が実行環境に無いため、画面上の
@@ -1147,8 +1147,8 @@ SELECT * FROM dbo.sales WHERE is_deleted = 0 AND (
 
 都度得意先（内税明細単位、`tax_unit=3`）専用の新規登録画面。締め得意先（請求単位／伝票単位）の
 入金は入金入力画面（Phase 7-2）が担う。消込サービス（`SettlementService`、Phase 7-1）・明細請求書
-発行（Phase 6-3/6-4）・`detail_receipt`テーブル・採番系列はすべて実装済みで、本タスクが
-`detail_receipt`へ書き込む唯一の入口だった（`target_type=2`のデータはseed以外に生成経路が
+発行（Phase 6-3/6-4）・`detail_receipts`テーブル・採番系列はすべて実装済みで、本タスクが
+`detail_receipts`へ書き込む唯一の入口だった（`target_type=2`のデータはseed以外に生成経路が
 無かった）。
 
 画面レイアウト・操作方法は旧デモ`bmcs_app.LineReceipt`を可能な限り再現するようユーザーから
@@ -1165,7 +1165,7 @@ SELECT * FROM dbo.sales WHERE is_deleted = 0 AND (
 |---|---|---|
 | 1 | 充当先の粒度 | 売上伝票タブ＝**売上明細行**単位（`target_type=1`）、明細請求書タブ＝**明細請求書まるごと1行**（`target_type=2`）。デモは請求書タブでも行単位だったが、`docs/database-schema.md` 2.11節のスキーマと、TODO.md 7-4の完了条件「売上伝票**または**明細請求書を指定した」に合わせてスキーマ側を採用した |
 | 2 | 明細行の金額 | **読み取り専用**（常に対象の全額または残額を充当）。手入力での減額はしない |
-| 3 | 手形期日 | **画面に持たない**。`detail_receipt`に`bill_due_date`列が無く（`receipt`は`scripts/016`で追加済みだが`detail_receipt`は対象外）、DDL変更なしで完結させた |
+| 3 | 手形期日 | **画面に持たない**。`detail_receipts`に`bill_due_date`列が無く（`receipts`は`scripts/016`で追加済みだが`detail_receipts`は対象外）、DDL変更なしで完結させた |
 | 4 | 前受金 | **無し**。充当先がNULLの行は作らない（Phase 7-2の前受・過入金行とは対照的） |
 | 5 | 手数料差額 | 常に`0`（Phase 7-3は保留中） |
 | 6 | 実装範囲 | 新規登録 ＋ 既存伝票番号による**読み取り専用の読込**のみ。訂正・取消はPhase 7-5（「取消(F8)」は枠のみ用意し無効化。Phase 7-2と同じ前例） |
@@ -1205,7 +1205,7 @@ SELECT * FROM dbo.sales WHERE is_deleted = 0 AND (
    理論上は発行時の計算式から常に一致するはずだが、データ補正等でズレた場合に自動で丸めず
    拒否するほうが安全
 7. **入金方法が振込以外の行は`bank_account_code`を必ず`null`にする**
-8. **入金方法の選択肢から「手形」を除外する。** `detail_receipt`に`bill_due_date`列が無く（決定3）、
+8. **入金方法の選択肢から「手形」を除外する。** `detail_receipts`に`bill_due_date`列が無く（決定3）、
    Phase 7-2は手形選択時に期日入力を必須にしているため、この画面で手形を選べると期日情報が
    保存できずに欠落する。「現金／振込／相殺」の3択とした
 9. **同時実行制御は既存のrowversion楽観的排他に委ねる（追加のロックは実装しない）。** `Sales`・
@@ -1213,7 +1213,7 @@ SELECT * FROM dbo.sales WHERE is_deleted = 0 AND (
    同時に全額入金しようとした場合、`SettlementService.RecalculateForCustomerAsync`が対象の
    `Sales`行をtracking付きで読み込み・更新するため、後にコミットする側はrowversion不一致で
    `DbUpdateConcurrencyException`→`SlipConcurrencyException`で弾かれる。Phase 7-1/7-2と同一の
-   機構であり、`detail_receipt`自体に一意制約は追加しない（追加すると決定1の部分入金・残額
+   機構であり、`detail_receipts`自体に一意制約は追加しない（追加すると決定1の部分入金・残額
    充当が壊れるため）
 
 ### 18-3. 実装構成
@@ -1271,31 +1271,31 @@ DDLの変更は無し（決定3のとおり）。
 RecalculateForCustomerAsync`（得意先単位の全件再計算）をそのまま呼ぶだけで実現できる
 （5-6の`SalesService.UpdateAsync`／`CancelSlipAsync`と同じ設計）。
 
-### 19-1. 発見した設計上の矛盾: `receipt`の編集ロックに条件④をそのまま適用できない
+### 19-1. 発見した設計上の矛盾: `receipts`の編集ロックに条件④をそのまま適用できない
 
 着手前の想定は「C-6の4条件（①請求締め ②明細請求書発行済み ③月次締め ④入金済み）は`sales`側の
-ものであり、`receipt`／`detail_receipt`自体には一切適用しない（月次締めのみロックする）」だった。
+ものであり、`receipts`／`detail_receipts`自体には一切適用しない（月次締めのみロックする）」だった。
 しかし調査の過程で、`BillingClosingService.BuildCandidateAsync`（`docs/design_document.md` 9章）が
 締め処理時に`receipt.Amount`の合計（前回確定`billing.billing_date`〜今回`closing_date`の期間で
 集計）を`billing.CurrentBillingAmount`（`= PreviousBalance − ReceiptAmount + Tax...`）へ
-**スナップショットとして焼き込み、以後誰も再計算しない**ことが判明した。この期間の`receipt`を
+**スナップショットとして焼き込み、以後誰も再計算しない**ことが判明した。この期間の`receipts`を
 無条件に取消・訂正できると、確定済み請求の残高が入金1件分だけ二重に増減する不整合が生まれ、
-`ReceiptEntryService.GetOutstandingBillingsAsync`（`receipt_allocation`から都度計算する現在値）と
+`ReceiptEntryService.GetOutstandingBillingsAsync`（`receipt_allocations`から都度計算する現在値）と
 `billing.CurrentBillingAmount`（締め時点のスナップショット）が永久に食い違う。
 
 この発見をユーザーに提示し、「締め入金(receipt)の編集ロックに、月次締めに加えて『請求締め
 スナップショット』条件を追加するか」を確認した結果、追加する方針で確定した（2026-09-15）。
-`detail_receipt`はこの問題を持たない（`detail_invoice`の金額は`sales`から都度導出され、
-`detail_receipt`からスナップショットを焼き込まれることがないため）。
+`detail_receipts`はこの問題を持たない（`detail_invoices`の金額は`sales`から都度導出され、
+`detail_receipts`からスナップショットを焼き込まれることがないため）。
 
 ### 19-2. 確定した編集ロック方針
 
 | 伝票 | ロック条件 |
 |---|---|
-| `receipt`（締め入金） | (a) 月次締め: `customer_code`＋`receipt_date`の年月に対応する確定済み`monthly_closing`が存在する。(b) 請求締めスナップショット: `receipt_date <= MAX(その得意先の確定済みbilling.billing_date)` |
-| `detail_receipt`（明細入金） | 月次締めのみ |
+| `receipts`（締め入金） | (a) 月次締め: `customer_code`＋`receipt_date`の年月に対応する確定済み`monthly_closings`が存在する。(b) 請求締めスナップショット: `receipt_date <= MAX(その得意先の確定済みbilling.billing_date)` |
+| `detail_receipts`（明細入金） | 月次締めのみ |
 
-現状`monthly_closing`へ書き込むコードは存在しない（Phase 9未着手）ため条件(a)は実質的に常に
+現状`monthly_closings`へ書き込むコードは存在しない（Phase 9未着手）ため条件(a)は実質的に常に
 falseだが、Phase 9-1/9-2実装時に自動的に効くよう条件自体は実装した（`SalesEditLockService`と
 同じ形）。判定結果の型は既存の`SalesEditLock`（`bmcs_app.Domain.Calculations`の
 readonly record struct）をそのまま再利用する。専用の編集ロック判定クラス（`SalesEditLockService`
@@ -1306,7 +1306,7 @@ EvaluateEditLockAsync`として各サービスの public メソッドに実装�
 （Minimal Impact）。
 
 請求締めスナップショットに抵触して訂正・取消できない場合は、締め解除（6-2）してから操作する
-（`BillingReleaseService.ReleaseAsync`は最新の確定`billing`のみ解除可能という既存制約と整合する）。
+（`BillingReleaseService.ReleaseAsync`は最新の確定`billings`のみ解除可能という既存制約と整合する）。
 
 ### 19-3. 明細入金（detail_receipt）の訂正は充当先の追加を許さない
 
@@ -1321,13 +1321,13 @@ EvaluateEditLockAsync`として各サービスの public メソッドに実装�
 以下の問題が起きるため、そもそも再実行しない設計にした。
 
 - **誤って拒否される**: 明細請求書指定の行は、保存した時点で自分自身が「この請求書を指す
-  未削除の`detail_receipt`」として存在するため、`BuildDetailInvoiceCandidateQuery`を再実行すると
+  未削除の`detail_receipts`」として存在するため、`BuildDetailInvoiceCandidateQuery`を再実行すると
   常に自分自身の存在で弾かれる（日付だけを変える訂正すら失敗する）。
-- **他の伝票の影響で金額が変わる**: `sales.settlement_status`は他の`detail_receipt`の登録・取消に
+- **他の伝票の影響で金額が変わる**: `sales.settlement_status`は他の`detail_receipts`の登録・取消に
   よって変動するキャッシュ列であり、訂正の意図とは無関係にこの伝票の充当額が動いてしまう。
 
-`receipt`（締め入金）は候補概念が無く充当は完全に内部自動計算のため、訂正は金額・入金方法・
-行の追加削除すべて自由（`receipt_allocation`は訂正のたびに全面再構築する。19-4節）。
+`receipts`（締め入金）は候補概念が無く充当は完全に内部自動計算のため、訂正は金額・入金方法・
+行の追加削除すべて自由（`receipt_allocations`は訂正のたびに全面再構築する。19-4節）。
 
 ### 19-4. `UpdateAsync`の実装（行単位の差分方式）
 
@@ -1335,16 +1335,16 @@ EvaluateEditLockAsync`として各サービスの public メソッドに実装�
 不採用。`SlipConcurrencyGuard.EnsureLineSetUnchanged`で検証した行がそのまま更新対象になっている
 という保証を保つため）。
 
-**`ReceiptEntryService.UpdateAsync`の処理順**（`receipt`本体は行単位の差分、`receipt_allocation`は
+**`ReceiptEntryService.UpdateAsync`の処理順**（`receipts`本体は行単位の差分、`receipt_allocations`は
 全面再構築）:
 
 1. `ValidateLines`（新規登録と共通）
-2. 対象`receipt`行を取得 → `SlipConcurrencyGuard.EnsureLineSetUnchanged` → 編集ロック判定（訂正前）
+2. 対象`receipts`行を取得 → `SlipConcurrencyGuard.EnsureLineSetUnchanged` → 編集ロック判定（訂正前）
 3. 行diff（更新・論理削除・追加）を適用
 4. 編集ロック判定（訂正後。新しい`receipt_date`で再判定）
-5. 対象伝票の`receipt_allocation`を全部論理削除 → **ここで`SaveChangesAsync`を1回呼ぶ**
+5. 対象伝票の`receipt_allocations`を全部論理削除 → **ここで`SaveChangesAsync`を1回呼ぶ**
 6. `GetOutstandingBillingsAsync`で請求残高を再取得 → 新しい合計額で`BuildAllocationLines`を実行 →
-   新しい`receipt_allocation`行を追加
+   新しい`receipt_allocations`行を追加
 7. `SaveChangesAsync` → `SettlementService.RecalculateForCustomerAsync` → コミット
 
 手順5で`SaveChangesAsync`を挟むのが唯一の非自明な点である。`GetOutstandingBillingsAsync`は
@@ -1359,7 +1359,7 @@ EvaluateEditLockAsync`として各サービスの public メソッドに実装�
 **`DetailReceiptEntryService.UpdateAsync`は単一フェーズ**（候補クエリを一切呼ばないため、
 `SaveChangesAsync`を挟む必要がない）:
 
-1. 対象`detail_receipt`行を取得 → `SlipConcurrencyGuard.EnsureLineSetUnchanged` → 編集ロック判定（訂正前）
+1. 対象`detail_receipts`行を取得 → `SlipConcurrencyGuard.EnsureLineSetUnchanged` → 編集ロック判定（訂正前）
 2. 入力に無い既存行番号を含んでいたら（＝追加しようとした）例外
 3. 既存行を`ReceiptMethod`／`BankAccountCode`／`LineRemarks`で上書き、入力に無い既存行は論理削除
    （全行削除になる場合は例外。「取消をご利用ください」と案内する）
@@ -1368,14 +1368,14 @@ EvaluateEditLockAsync`として各サービスの public メソッドに実装�
 5. 編集ロック判定（訂正後）→ `TouchAll` → `SaveChangesAsync` →
    `SettlementService.RecalculateForCustomerAsync` → コミット
 
-### 19-5. 締め解除済み`billing`への再充当は付け替えない
+### 19-5. 締め解除済み`billings`への再充当は付け替えない
 
-`receipt`の訂正で`receipt_allocation`を全面再構築する際、`GetOutstandingBillingsAsync`は
-`BillingStatus.Confirmed`の`billing`のみを対象にする。したがって、訂正前に確定済み`billing`へ
-充当されていた`receipt`が、その後`billing`が締め解除（6-2）された状態で訂正されると、
-再構築後の`receipt_allocation`はその`billing`を対象外にする（別の確定済み`billing`があれば
+`receipts`の訂正で`receipt_allocations`を全面再構築する際、`GetOutstandingBillingsAsync`は
+`BillingStatus.Confirmed`の`billings`のみを対象にする。したがって、訂正前に確定済み`billings`へ
+充当されていた`receipts`が、その後`billings`が締め解除（6-2）された状態で訂正されると、
+再構築後の`receipt_allocations`はその`billings`を対象外にする（別の確定済み`billings`があれば
 そちらへ、無ければ前受行へ回る）。`BillingReleaseService.ReleaseAsync`が「解除では既存の
-`receipt_allocation`を付け替えない」と明言している既存方針（16章「既知の限界」）の自然な帰結であり、
+`receipt_allocations`を付け替えない」と明言している既存方針（16章「既知の限界」）の自然な帰結であり、
 新たな防止策は設けない。
 
 ### 19-6. ViewModelの構成変更
@@ -1408,11 +1408,11 @@ EvaluateEditLockAsync`として各サービスの public メソッドに実装�
   直接検証3件、候補クエリを再実行しないことの検証1件、`receipt_amount`不変条件の検証1件、
   充当先追加・全行削除の拒否2件、排他制御1件、月次締めロック1件）。両ファイルとも
   `SaveNewAsync`／`UpdateAsync`／`CancelSlipAsync`が自前でトランザクションをコミットするため
-  既存と同じ「コミット＋`finally`で物理削除」方式を踏襲し、`monthly_closing`の削除を
+  既存と同じ「コミット＋`finally`で物理削除」方式を踏襲し、`monthly_closings`の削除を
   `CleanupAsync`に追加した。
 - 全体テスト: Domain 239件／Application 140件、すべてgreen。
-- DB確認: 全テスト実行後、`sqlcmd`で`__TST%`customer_codeを持つ行が`customer`／`receipt`／
-  `receipt_allocation`／`detail_receipt`／`sales`／`billing`／`monthly_closing`／`detail_invoice`
+- DB確認: 全テスト実行後、`sqlcmd`で`__TST%`customer_codeを持つ行が`customers`／`receipts`／
+  `receipt_allocations`／`detail_receipts`／`sales`／`billings`／`monthly_closings`／`detail_invoices`
   のいずれにも残っていないことを確認済み。
 - 実機確認: `dotnet run`でアプリを起動し、例外なく起動することを確認（ログにエラーなし）。
   GUI操作を自動で駆動する手段が実行環境に無いため、画面上のクリック操作までは確認できて
@@ -1448,16 +1448,16 @@ RecalculateForCustomerAsync`が呼ばれるため（各メソッドの末尾）�
   割り当てる（`billing_number = NULL` → 新規`billing_number`）が、`RecalculateForCustomerAsync`を
   呼んでいない。しかし`RecalculateClosingAsync`は`billing_number`ごとにグループ化し、
   `billing_number IS NULL`の行は`pool`を常に`0`として扱う（グルーピングキーが`null`かどうかで
-  分岐しており、`receipt_allocation`の内容を見ない）。新しく確定した`billing_number`は同一
-  トランザクション内で今まさに作られたものであり、それを指す`receipt_allocation`が事前に
-  存在することはあり得ない（`billing`へのFK制約上、存在しない`billing_number`を指す
-  `receipt_allocation`は作れない）ため、締め前後で対象行の`pool`は`0`のまま変化しない。
+  分岐しており、`receipt_allocations`の内容を見ない）。新しく確定した`billing_number`は同一
+  トランザクション内で今まさに作られたものであり、それを指す`receipt_allocations`が事前に
+  存在することはあり得ない（`billings`へのFK制約上、存在しない`billing_number`を指す
+  `receipt_allocations`は作れない）ため、締め前後で対象行の`pool`は`0`のまま変化しない。
   したがって再計算を呼ばなくても値は狂わない。
 - **`DetailInvoiceService.IssueAsync`**（明細請求書発行）: 対象の`sales`行を`detail_invoice_
   sales_line`で明細請求書に連携させるが、同様に`RecalculateForCustomerAsync`を呼ばない。
   `RecalculateDetailAsync`は連携済みの行を「直接指定分 + 請求書経由の残額配分」で計算するが、
-  発行直後の請求書には`detail_receipt`が存在し得ない（FK制約上、存在しない請求書番号を
-  指す`detail_receipt`は作れない）ため`pool = 0`となり、請求書経由の配分は常に`0`。連携前
+  発行直後の請求書には`detail_receipts`が存在し得ない（FK制約上、存在しない請求書番号を
+  指す`detail_receipts`は作れない）ため`pool = 0`となり、請求書経由の配分は常に`0`。連携前
   （直接指定のみで計算）と連携後（直接指定 + 0）の結果は同じになるため、再計算は不要。
 - **`DetailInvoiceService.CancelAsync`**（明細請求書取消）: 連携解除の前提として「連携先の
   売上明細行がすべて未消込（`SettlementStatus.Unsettled`）」を既存ガードで強制している
@@ -1545,7 +1545,7 @@ TODO.md 8-1の文面は「元帳データのマージ実装」（サービス層
 | D-1 | **残高は税込。消費税を独立した明細行として時系列に挿入する。** `tax_unit=1`は請求締め済み区間は`billing.tax_amount`（確定値）を`billing_date`の行、未締め区間は`ConsumptionTaxCalculator.CalculateExternalTaxBuckets`で仮計算した額を期末日付の行として挿入。`tax_unit=2`は伝票ごとの`slip_tax_amount`をその伝票の直下に1回だけ挿入。`tax_unit=3`は`amount`が既に税込なので消費税行を作らない |
 | D-2 | **入金の残高影響は常に入金日付の独立行で発生させる。** 都度得意先の売上行の右側には「入金日付・入金No」を消込の**証跡**として表示するが金額は載せない（`ReceiptAmount`をnullのままにする）。売上と入金が月をまたいでも各月末の売掛残高が日付どおり正確になり、Phase 9-1（月次締め）の暦月末残高の定義と矛盾しない |
 | D-3 | 1つの売上明細行に複数の入金が証跡として紐づく場合、2件目以降は売上側の列を空欄にした行として直下に続ける |
-| D-4 | 繰越は**全期間積み上げ**で算出する。`monthly_closing`／`billing.previous_balance`を起点に使わない（M-11「都度集計する・残高キャッシュ列は持たない」と整合させ、`billing`のスナップショットとの二重計上を避けるため） |
+| D-4 | 繰越は**全期間積み上げ**で算出する。`monthly_closings`／`billing.previous_balance`を起点に使わない（M-11「都度集計する・残高キャッシュ列は持たない」と整合させ、`billings`のスナップショットとの二重計上を避けるため） |
 | D-5 | 解除済みデータ（`billing.billing_status=2`）は残高計算の対象外（product-spec.md「解除済＝集計対象外」） |
 
 ### 21-3. アーキテクチャ
@@ -1572,19 +1572,19 @@ TODO.md 8-1の文面は「元帳データのマージ実装」（サービス層
     （Simplicity First。証跡に万一漏れがあっても残高は狂わない）。
 - `src/bmcs_app.Application/Ledger/CustomerLedgerQueryService.cs`: `GetAsync(customerCode, from, to)`が
   得意先の全期間・未削除の売上・入金・（締め得意先のみ）確定済み請求を読み、`CustomerLedgerBuilder`に
-  渡す。**`receipt_allocation`は一切参照しない**（21-4のR1参照）。
+  渡す。**`receipt_allocations`は一切参照しない**（21-4のR1参照）。
 
 ### 21-4. 申し送り事項
 
 | # | 内容 |
 |---|---|
-| R1 | `BillingReleaseService`は締め解除時に`sales.billing_number`をNULLに戻すが`receipt_allocation`は触らないため、解除済み`billing`を指す充当行が残留しうる。元帳は`receipt_allocation`を参照しない設計のため影響なし（観測事実として記録） |
-| R2 | 元帳の残高と`billing.current_billing_amount`の一致は「遡及入力が無い」前提でのみ成立する。締め後に過去日付の**新規**売上・入金を登録することはC-6の編集ロック（既存行の編集のみ対象）では防げない。元帳は常に実データからの都度集計なので**元帳が正、`billing`は締め時点のスナップショット**であり、この不一致を検出して例外を投げてはならない（正常な業務オペレーションで起こりうる）。**請求締め分は25章「ジャーナル系の日付制限」（2026-09-16実装）で新規登録・日付変更自体を禁止する形で解消済み。月次締め分はPhase 9-1実装時に改めて考慮すること（25-2参照）** |
+| R1 | `BillingReleaseService`は締め解除時に`sales.billing_number`をNULLに戻すが`receipt_allocations`は触らないため、解除済み`billings`を指す充当行が残留しうる。元帳は`receipt_allocations`を参照しない設計のため影響なし（観測事実として記録） |
+| R2 | 元帳の残高と`billing.current_billing_amount`の一致は「遡及入力が無い」前提でのみ成立する。締め後に過去日付の**新規**売上・入金を登録することはC-6の編集ロック（既存行の編集のみ対象）では防げない。元帳は常に実データからの都度集計なので**元帳が正、`billings`は締め時点のスナップショット**であり、この不一致を検出して例外を投げてはならない（正常な業務オペレーションで起こりうる）。**請求締め分は25章「ジャーナル系の日付制限」（2026-09-16実装）で新規登録・日付変更自体を禁止する形で解消済み。月次締め分はPhase 9-1実装時に改めて考慮すること（25-2参照）** |
 | R3 | Phase 7-3（振込手数料差額の入力）実装時、`fee_adjustment_amount`が非ゼロになると元帳の残高に残渣が残りうる。`billing.receipt_amount`も`Σ receipt.Amount`（手数料を含まない）なので両者は一致し元帳固有の問題ではないが、「手数料差額を残高からどう落とすか」の業務判断が7-3で必要になる |
 | R4 | 1伝票の明細行が請求済・未請求に分かれると`tax_unit=2`の`slip_tax_amount`（伝票単位の値）が実態とずれうるが、締め時に`BillingClosingService.CalculateTaxSummary`が検出して例外を投げるため、元帳側に独自の整合チェックは入れていない（元帳は照会画面であり業務ルール違反の検出責務は6-1側） |
-| R5 | `scripts/seed_dev_data.sql`の`monthly_closing`（2026-01/02分）は売上・入金の実データ（2026-07/08分）と月が重ならないため、Phase 9-1実装時にはseedデータの作り直しが必要になる見込み |
-| R6 | Phase 9-1は`CustomerLedgerQueryService.GetAsync(code, 月初, 月末)`の結果を`monthly_closing`の各列にそのまま詰めるだけで済む（`OpeningBalance`/`SalesTotal`/`TaxTotal`/`ReceiptTotal`/`ClosingBalance`が`previous_balance`/`sales_amount`/`tax_amount`/`receipt_amount`/`closing_balance`と1:1対応）。ただし税率別内訳5カラムは`CustomerLedgerResult`に含めていないため、9-1で追加が必要 |
-| R7 | 性能の逃げ道（本タスクでは未実装）: `GetAsync`に`historyFrom`のような引数を足し、それ以前を`monthly_closing`の確定残高で置き換える拡張が考えられる。M-11「性能問題が出た場合に残高キャッシュ列を追加する」に沿う |
+| R5 | `scripts/seed_dev_data.sql`の`monthly_closings`（2026-01/02分）は売上・入金の実データ（2026-07/08分）と月が重ならないため、Phase 9-1実装時にはseedデータの作り直しが必要になる見込み |
+| R6 | Phase 9-1は`CustomerLedgerQueryService.GetAsync(code, 月初, 月末)`の結果を`monthly_closings`の各列にそのまま詰めるだけで済む（`OpeningBalance`/`SalesTotal`/`TaxTotal`/`ReceiptTotal`/`ClosingBalance`が`previous_balance`/`sales_amount`/`tax_amount`/`receipt_amount`/`closing_balance`と1:1対応）。ただし税率別内訳5カラムは`CustomerLedgerResult`に含めていないため、9-1で追加が必要 |
+| R7 | 性能の逃げ道（本タスクでは未実装）: `GetAsync`に`historyFrom`のような引数を足し、それ以前を`monthly_closings`の確定残高で置き換える拡張が考えられる。M-11「性能問題が出た場合に残高キャッシュ列を追加する」に沿う |
 
 ### 21-5. seedデータでの手計算検証（完了条件の直接証跡）
 
@@ -1636,8 +1636,8 @@ Domain単体テスト（`CustomerLedgerBuilderTests`）と、開発用ライブD
 | 行の種別 | 開く画面 | 補足 |
 |---|---|---|
 | `Sales`かつ`SalesSlipNumber`あり | 売上入力 | |
-| `Sales`かつ`SalesSlipNumber`なし（消込証跡の継続行＝D-3。都度得意先のみ） | 明細入金 | 実体は`ReceiptSlipNumber`に入った`detail_receipt`番号 |
-| `Receipt` | 得意先の`TaxUnit`が`Line`なら明細入金、それ以外は入金入力 | `ReceiptSlipNumber`は`receipt`/`detail_receipt`どちらの番号かを区別する情報を持たないため、税区分で分岐する（登録後不変。C-1） |
+| `Sales`かつ`SalesSlipNumber`なし（消込証跡の継続行＝D-3。都度得意先のみ） | 明細入金 | 実体は`ReceiptSlipNumber`に入った`detail_receipts`番号 |
+| `Receipt` | 得意先の`TaxUnit`が`Line`なら明細入金、それ以外は入金入力 | `ReceiptSlipNumber`は`receipts`/`detail_receipts`どちらの番号かを区別する情報を持たないため、税区分で分岐する（登録後不変。C-1） |
 | `ConsumptionTax`かつ`SalesSlipNumber`あり（伝票単位） | 売上入力 | |
 | `ConsumptionTax`（請求単位の確定額・未締め仮計算）／`OpeningBalance` | 開かない | 辿れる伝票が無い。ステータスバーに理由を表示するのみ |
 
@@ -1686,7 +1686,7 @@ WPFの`KeyBinding`はコントロールが`IsEnabled=false`でも生き続ける
   次項目へフォーカス移動しない（`EnterKeyNavigationBehavior`は独自の`KeyBinding`を持つ要素を
   スキップするため）。`Tab`は機能する。
 - `CustomerLedgerBuilder`が生成する`LedgerEntryKind`は`OpeningBalance`/`Sales`/`ConsumptionTax`/
-  `Receipt`の4種のみで受注（`order_slip`）の行は無いため、`OrderEntryWindow`は本タスクで一切
+  `Receipt`の4種のみで受注（`orders`）の行は無いため、`OrderEntryWindow`は本タスクで一切
   変更していない。
 - 消込証跡の継続行（D-3、`SalesSlipNumber`が空欄の行）を明細入金のプレビューに導く分岐は、
   `scripts/seed_dev_data.sql`のCUS003が1売上行に1入金しか持たないため実機再現できない
@@ -1815,7 +1815,7 @@ TODO.md 10-2（納品書一括発行）に着手しようとしたところ、�
 
 ### 23-2. 設計判断: 税率別内訳の「適用税率」表示
 
-`billing`／`detail_invoice`は税種別区分ごとの確定金額（標準税率・軽減税率・非課税の
+`billings`／`detail_invoices`は税種別区分ごとの確定金額（標準税率・軽減税率・非課税の
 固定5カラム）のみを保持し、税率(%)そのものは持たない（`docs/database-schema.md` 2.12・
 2.13節）。適格請求書は税率ごとの対価の額に加えて「適用税率」自体も法定記載事項であるため、
 このままでは印字できない。
@@ -1838,7 +1838,7 @@ TODO.md 10-2（納品書一括発行）に着手しようとしたところ、�
 ### 23-3. 締め解除済み・取消済みを指定した場合の挙動
 
 締め解除（`BillingReleaseService`）は`sales.billing_number`を`NULL`に戻し、明細請求書の
-取消（`DetailInvoiceService.CancelAsync`）は`detail_invoice_sales_line`を物理削除する
+取消（`DetailInvoiceService.CancelAsync`）は`detail_invoice_sales_lines`を物理削除する
 （12-1節）。どちらも既存の非破壊ヘッダー方式のため、解除済み・取消済みの番号を指定して
 印刷すると**明細0件・ヘッダーの確定金額のみ**が返る。これは12章で明細請求書の取消について
 既に文書化・許容されている挙動と同じであり、請求書側も新たな対応はせず同様に扱う
@@ -1918,7 +1918,7 @@ TODO.md 10-2（納品書一括発行）に着手しようとしたところ、�
 の`IsSaved`が読込時に`true`固定されるため）という報告を機に調査した結果、`OrderService`に
 更新系ユースケースが存在しないこと（Phase 4-3・5-3のスコープ外だった）が判明した。
 
-一方、`docs/database-schema.md` 1章・`docs/product-spec.md`共通業務ルール5には「`order_slip`
+一方、`docs/database-schema.md` 1章・`docs/product-spec.md`共通業務ルール5には「`orders`
 （受注）は編集ロック4条件のいずれにも該当しないため状態にかかわらず常に直接修正可能」と
 確定済みの記載があり（C-6・2026-09-10確定、`REVIEW.md` C-6節）、当時「自然な帰結であり
 追加確認は不要」と判断していた。実装前にユーザーへ確認したところ、この判断は覆り
@@ -1928,8 +1928,8 @@ TODO.md 10-2（納品書一括発行）に着手しようとしたところ、�
 ### 24-2. 編集可否の判定: `OrderEditLockEvaluator`
 
 `SalesEditLockEvaluator`と同形のDomain純粋関数だが、Application層のラッパー
-（`SalesEditLockService`相当）は作らない。売上がラッパーを持つのは`monthly_closing`・
-`detail_invoice_sales_line`のDB照会をDomainに持ち込まないためで、受注の判定条件は
+（`SalesEditLockService`相当）は作らない。売上がラッパーを持つのは`monthly_closings`・
+`detail_invoice_sales_lines`のDB照会をDomainに持ち込まないためで、受注の判定条件は
 明細行自身の`order_status`のみで済み外部照会が不要なため、転送しかしないクラスを
 新設する理由がない（TODO.md「将来の差し替えを見据えた抽象化は行わない」）。
 
@@ -1956,7 +1956,7 @@ TODO.md 10-2（納品書一括発行）に着手しようとしたところ、�
   `order_status`を書き換えず（訂正できるのは未売上限定なので常に`NotSold`のまま）、
   新規行も`NotSold`固定なので、訂正後の状態は定義上ロック対象になり得ない。
 - **税額確定（`SalesTaxAmountAssigner`相当）・消込再計算（`SettlementService`相当）を行わない。**
-  `order_slip`は税額列を持たず、消込の概念もないため。
+  `orders`は税額列を持たず、消込の概念もないため。
 - **全行削除を拒否する。** 売上の`UpdateAsync`は全行削除を許容し（結果は`CancelSlipAsync`と
   同じ状態になる）、受注では成立しない。受注の中止は`is_deleted`ではなく
   `order_status = Cancelled`で表すため（`OrderStatusService.CancelSlipAsync`）、訂正で全行を
@@ -2053,15 +2053,15 @@ IsEditable}"`（`IsEditable => !IsEditLocked`）で読取専用にする。受�
 という要求があり、Phase 9（月次締め）を待たず、請求締め（請求集計）分について本タスクで解消した。
 
 編集ロック（既存行の編集・訂正の禁止）と本機能（新規登録・日付変更の入口の禁止）は境界となる
-日付（対象得意先の確定済み`billing`のうち最新の`billing_date`）が同じだが、対象が異なるため
+日付（対象得意先の確定済み`billings`のうち最新の`billing_date`）が同じだが、対象が異なるため
 判定結果を共有しない別クラスとした。
 
 ### 25-2. 対象範囲（ユーザー確認済み、2026-09-16）
 
 - **対象画面は売上入力・入金入力の2画面のみ。** 明細入金（都度得意先専用）・受注入力は対象外。
-- **都度得意先（`tax_unit=3`）は制限しない。** `billing`を1件も持たないため、税単位で分岐せずとも
+- **都度得意先（`tax_unit=3`）は制限しない。** `billings`を1件も持たないため、税単位で分岐せずとも
   自動的に無制限になる（後述）。
-- **月次締め（`monthly_closing`）は対象外。** Phase 9未実装であることに加え、月次締めは得意先×
+- **月次締め（`monthly_closings`）は対象外。** Phase 9未実装であることに加え、月次締めは得意先×
   暦月の任意集合であり許可日が連続にならないため、`DatePicker.DisplayDateStart`（単一の最小日付）
   という設計と相性が悪い。Phase 9-1実装時に、月次締め分の登録制限をどう表現するか改めて設計する。
 
@@ -2079,7 +2079,7 @@ IsEditable}"`（`IsEditable => !IsEditLocked`）で読取専用にする。受�
 その期間に再度登録できる、という既存の締め解除運用とそのまま整合する）。
 
 DBアクセスは`src/bmcs_app.Application/Billing/BillingClosedDateService.cs`が担う。クエリは
-`ReceiptEntryService.EvaluateEditLockAsync`が使うものと同一（対象得意先の確定済み`billing`のうち
+`ReceiptEntryService.EvaluateEditLockAsync`が使うものと同一（対象得意先の確定済み`billings`のうち
 最新の`billing_date`）だが、責務（既存行の編集ロック／新規登録・日付変更の入口）が異なるため
 判定結果は共有せず、あえて別クラスにした（それぞれの文言・利用箇所が独立に変わってよいようにする
 ため。境界を問い合わせるクエリ自体の重複は許容する）。
@@ -2118,10 +2118,10 @@ DBアクセスは`src/bmcs_app.Application/Billing/BillingClosedDateService.cs`�
 - Application結合テスト（開発用ライブDB）: `SalesServiceBillingClosedDateTests`（新規）、
   `ReceiptEntryServiceTests`に追加。締め済み期間の新規登録・訂正の拒否、翌日は登録可、確定済み
   請求が無い得意先・都度得意先は無制限、締め解除後は再度登録可、を直接検証する。
-- 既存の`ReceiptEntryServiceTests`3件（編集ロックの検証）は、確定済み`billing`を**先に**挿入して
+- 既存の`ReceiptEntryServiceTests`3件（編集ロックの検証）は、確定済み`billings`を**先に**挿入して
   から入金を登録する組み立てだったため、本機能により入金登録自体が拒否されるようになり赤くなった。
   実際の業務順序（入金登録 → 後から請求締めが実行され集計期間に呑み込まれる）に合わせて、
-  入金登録を先に行いその後で確定済み`billing`を挿入する順序へ修正した（ルール側は緩めていない）。
+  入金登録を先に行いその後で確定済み`billings`を挿入する順序へ修正した（ルール側は緩めていない）。
 
 ### 25-7. 申し送り
 
@@ -2154,7 +2154,7 @@ DBアクセスは`src/bmcs_app.Application/Billing/BillingClosedDateService.cs`�
 
 入金方法（現金・振込・手形・相殺）は`ReceiptMethod` enum（tinyint固定値）でハードコードされており、
 利用者が入金方法を追加・改称するにはコード修正・再ビルドが必要だった。ユーザー要望「入金区分を
-コード直書きでなくマスタで管理したい」を受け、`deposit_method`マスタへ完全に置き換えた
+コード直書きでなくマスタで管理したい」を受け、`deposit_methods`マスタへ完全に置き換えた
 （**D-7・2026-09-18確定**）。当初検討した振込手数料の参考値（`transfer_fee`）は、実装後にユーザーへ
 確認したところ「イメージと異なる、忘れてほしい」との指摘を受け撤回した（2026-09-18）。`product-spec.md`
 M-14「振込手数料差額は手入力のみ、自動計算・自動補正提案は行わない」は本移行の対象外であり、
@@ -2171,23 +2171,23 @@ M-14「振込手数料差額は手入力のみ、自動計算・自動補正提�
   `DetailReceiptEntryService.ValidateLineFieldsAsync`）のみで担保する（**C-11・2026-09-18確定**）。
   トリガーは作らない。このリポジトリにトリガー・ユーザー定義SPは1つも無く、`rowversion`楽観的
   排他制御・`SlipConcurrencyGuard.TouchAll`との相性が悪いため（docs/architecture.md 9章）。
-- **`detail_receipt`の手形除外はマスタのフラグで自然に表現する。** `detail_receipt`は手形期日を
+- **`detail_receipts`の手形除外はマスタのフラグで自然に表現する。** `detail_receipts`は手形期日を
   保持する列を持たない（18章で確定済み）ため、`requires_bill_due_date=1`の入金方法を選択肢から
   除外するだけで足り、専用フラグは追加しない。
 - **列名は`receipt_method`（tinyint）から`deposit_method_code`（varchar(10)、FK）へリネームした。**
   型・意味の両方が変わるため同名維持は混乱を招く。FK列の命名規約（`bank_account_code`等と同じ
   `<マスタ名>_code`）にも揃えた。
 - **入金方法名のスナップショットは持たない。** `CustomerLedgerEntry.DepositMethodName`は
-  `CustomerLedgerQueryService`が都度`deposit_method`（`IsDeleted`で絞らない。過去の入金が
+  `CustomerLedgerQueryService`が都度`deposit_methods`（`IsDeleted`で絞らない。過去の入金が
   無効化済みの入金方法を参照していても名称解決できるようにするため）を読み、
   `CustomerLedgerBuilder`がコード→名称の辞書で解決する。帳票に入金方法名を印字する要件が無く、
   `customer_name`スナップショットのような「発行当時の名称を固定する」要件も現時点で無いため。
 
 ### 27-2. マイグレーション
 
-`scripts/018_create_deposit_method_master.sql`で実施。`deposit_method`テーブルを新設し、旧enum値
-1〜4と1:1対応する初期4行（`CASH`／`TRANSFER`／`NOTE`／`OFFSET`）を投入したうえで、`receipt`／
-`detail_receipt`の`receipt_method`列を`deposit_method_code`へ列追加→バックフィル→NOT NULL化→
+`scripts/018_create_deposit_method_master.sql`で実施。`deposit_methods`テーブルを新設し、旧enum値
+1〜4と1:1対応する初期4行（`CASH`／`TRANSFER`／`NOTE`／`OFFSET`）を投入したうえで、`receipts`／
+`detail_receipts`の`receipt_method`列を`deposit_method_code`へ列追加→バックフィル→NOT NULL化→
 旧列DROPの手順で置き換えた。適用前に対象データが2件のみであることを確認済み。
 
 `scripts/seed_dev_data.sql`のreceipt/detail_receipt投入部分も`deposit_method_code`（文字列コード）
@@ -2204,7 +2204,7 @@ M-14「振込手数料差額は手入力のみ、自動計算・自動補正提�
   を直接読んで付随欄の表示制御を行う。
 - 検証: `dotnet build`成功（0警告0エラー）。`dotnet test`でDomain 281件全green、Application
   184/185件green（残る1件`SalesServiceCorrectionTests.月次締め確定済みの年月への訂正は拒否される`
-  は本移行と無関係の既存事象。請求締め日付制限とseedデータの組み合わせに起因し、`receipt`/
-  `deposit_method`を一切参照しないテストのため対象外とした）。マイグレーション適用後、SQLCMDで
-  `deposit_method`の4行・`receipt`/`detail_receipt`の`deposit_method_code`バックフィル結果・
+  は本移行と無関係の既存事象。請求締め日付制限とseedデータの組み合わせに起因し、`receipts`/
+  `deposit_methods`を一切参照しないテストのため対象外とした）。マイグレーション適用後、SQLCMDで
+  `deposit_methods`の4行・`receipts`/`detail_receipts`の`deposit_method_code`バックフィル結果・
   FK制約の有効性を確認済み。

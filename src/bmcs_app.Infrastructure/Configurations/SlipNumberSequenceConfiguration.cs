@@ -8,7 +8,7 @@ public class SlipNumberSequenceConfiguration : IEntityTypeConfiguration<SlipNumb
 {
     public void Configure(EntityTypeBuilder<SlipNumberSequence> builder)
     {
-        builder.ToTable("slip_number_sequence");
+        builder.ToTable("slip_number_sequences");
 
         builder.HasKey(e => e.SequenceKey);
 

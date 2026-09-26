@@ -36,7 +36,7 @@ public class BillingPhaseReviewTests(DevDatabaseFixture fixture) : IClassFixture
         var invoiceCustomer = "__TPHR01";
         var lineCustomer = "__TPHR02";
         await InsertCustomerAsync(dbContext, invoiceCustomer, TaxUnit.Invoice, TestClosingDay, RoundingType.Floor);
-        // 内税明細単位は closing_day = 0 が相互制約（CK_customer_tax_unit_closing_day）。
+        // 内税明細単位は closing_day = 0 が相互制約（CK_customers_tax_unit_closing_day）。
         await InsertCustomerAsync(dbContext, lineCustomer, TaxUnit.Line, closingDay: 0, RoundingType.Floor);
 
         var invoiceSlip = "__TPHR01_INV";
@@ -66,7 +66,7 @@ public class BillingPhaseReviewTests(DevDatabaseFixture fixture) : IClassFixture
         finally
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.detail_invoice_sales_line WHERE sales_slip_number = {lineSlip}");
+                $"DELETE FROM dbo.detail_invoice_sales_lines WHERE sales_slip_number = {lineSlip}");
             await CleanupSalesAndCustomersAsync(dbContext, [invoiceCustomer, lineCustomer], [invoiceSlip, lineSlip]);
         }
     }
@@ -158,12 +158,12 @@ public class BillingPhaseReviewTests(DevDatabaseFixture fixture) : IClassFixture
             if (secondInvoiceNumber is not null)
             {
                 await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                    $"DELETE FROM dbo.detail_invoice_sales_line WHERE detail_invoice_number = {secondInvoiceNumber}");
+                    $"DELETE FROM dbo.detail_invoice_sales_lines WHERE detail_invoice_number = {secondInvoiceNumber}");
                 await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                    $"DELETE FROM dbo.detail_invoice WHERE detail_invoice_number = {secondInvoiceNumber}");
+                    $"DELETE FROM dbo.detail_invoices WHERE detail_invoice_number = {secondInvoiceNumber}");
             }
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.detail_invoice_sales_line WHERE sales_slip_number = {slip}");
+                $"DELETE FROM dbo.detail_invoice_sales_lines WHERE sales_slip_number = {slip}");
             await CleanupSalesAndCustomersAsync(dbContext, [customerCode], [slip]);
         }
     }
@@ -249,7 +249,7 @@ public class BillingPhaseReviewTests(DevDatabaseFixture fixture) : IClassFixture
         finally
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.detail_invoice_sales_line WHERE sales_slip_number = {slip}");
+                $"DELETE FROM dbo.detail_invoice_sales_lines WHERE sales_slip_number = {slip}");
             await CleanupSalesAndCustomersAsync(dbContext, [customerCode], [slip]);
         }
     }
@@ -416,11 +416,11 @@ public class BillingPhaseReviewTests(DevDatabaseFixture fixture) : IClassFixture
         foreach (var customerCode in customerCodes)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.billing WHERE customer_code = {customerCode}");
+                $"DELETE FROM dbo.billings WHERE customer_code = {customerCode}");
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.detail_invoice WHERE customer_code = {customerCode}");
+                $"DELETE FROM dbo.detail_invoices WHERE customer_code = {customerCode}");
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.customer WHERE customer_code = {customerCode}");
+                $"DELETE FROM dbo.customers WHERE customer_code = {customerCode}");
         }
     }
 }

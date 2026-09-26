@@ -185,7 +185,7 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
         finally
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.receipt WHERE customer_code = {CustomerInvoice}");
+                $"DELETE FROM dbo.receipts WHERE customer_code = {CustomerInvoice}");
             await CleanupAsync(dbContext, CustomerInvoice, [slipA, slipLate]);
         }
     }
@@ -243,7 +243,7 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
         finally
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.receipt WHERE customer_code = {CustomerSlip}");
+                $"DELETE FROM dbo.receipts WHERE customer_code = {CustomerSlip}");
             await CleanupAsync(dbContext, CustomerSlip, [slip1]);
         }
     }
@@ -346,7 +346,7 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
         finally
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.receipt WHERE receipt_slip_number = {receiptSlip}");
+                $"DELETE FROM dbo.receipts WHERE receipt_slip_number = {receiptSlip}");
             await CleanupAsync(dbContext, CustomerInvoice, []);
         }
     }
@@ -471,8 +471,8 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
         }
 
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"DELETE FROM dbo.billing WHERE customer_code = {customerCode}");
+            $"DELETE FROM dbo.billings WHERE customer_code = {customerCode}");
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"DELETE FROM dbo.customer WHERE customer_code = {customerCode}");
+            $"DELETE FROM dbo.customers WHERE customer_code = {customerCode}");
     }
 }

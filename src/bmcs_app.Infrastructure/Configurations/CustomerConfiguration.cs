@@ -8,7 +8,7 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> builder)
     {
-        builder.ToTable("customer");
+        builder.ToTable("customers");
 
         builder.HasKey(e => e.CustomerCode);
 
@@ -26,11 +26,11 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(e => e.TaxUnit).HasConversion<byte>();
         builder.Property(e => e.RoundingType).HasConversion<byte>();
 
-        // CK_customer_tax_unit_closing_day 等の CHECK 制約は DB 側（Phase 1-5）で
+        // CK_customers_tax_unit_closing_day 等の CHECK 制約は DB 側（Phase 1-5）で
         // 既に強制済みのため、EF Core 側では再定義しない（マイグレーションを使わない方針）。
 
         // Sales / Receipt / Billing から複合FK (customer_code, tax_unit) で参照される
-        // ための代替キー（UQ_customer_code_tax_unit、010_unify_tax_unit_tables.sql）。
+        // ための代替キー（UQ_customers_code_tax_unit、010_unify_tax_unit_tables.sql）。
         // 「伝票の税単位は得意先マスタの税区分と必ず一致する」をDBに強制させるため。
         builder.HasAlternateKey(e => new { e.CustomerCode, e.TaxUnit });
 

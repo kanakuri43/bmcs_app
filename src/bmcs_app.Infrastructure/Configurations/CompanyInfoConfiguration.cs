@@ -8,7 +8,7 @@ public class CompanyInfoConfiguration : IEntityTypeConfiguration<CompanyInfo>
 {
     public void Configure(EntityTypeBuilder<CompanyInfo> builder)
     {
-        builder.ToTable("company_info");
+        builder.ToTable("company_infos");
 
         builder.HasKey(e => e.CompanyInfoId);
 

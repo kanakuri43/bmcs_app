@@ -9,7 +9,7 @@ namespace bmcs_app.Application.Master;
 
 /// <summary>
 /// 得意先マスタのユースケース。
-/// 税区分×締日の整合（docs/database-schema.md の CK_customer_tax_unit_closing_day）と、
+/// 税区分×締日の整合（docs/database-schema.md の CK_customers_tax_unit_closing_day）と、
 /// 登録後の締め区分・税区分の変更禁止をここで担保する（DB の CHECK 制約は最終防衛線）。
 /// </summary>
 public class CustomerService(

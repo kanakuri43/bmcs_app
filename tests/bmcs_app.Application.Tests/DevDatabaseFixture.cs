@@ -49,10 +49,10 @@ public sealed class DevDatabaseFixture : IAsyncLifetime
         var dbContext = scope.ServiceProvider.GetRequiredService<BmcsDbContext>();
 
         await dbContext.Database.ExecuteSqlAsync(
-            $"DELETE FROM dbo.slip_number_sequence WHERE sequence_key = {TestSequenceKey}");
+            $"DELETE FROM dbo.slip_number_sequences WHERE sequence_key = {TestSequenceKey}");
         await dbContext.Database.ExecuteSqlAsync(
             $"""
-            INSERT INTO dbo.slip_number_sequence
+            INSERT INTO dbo.slip_number_sequences
                 (sequence_key, current_value, created_by, created_at, updated_by, updated_at)
             VALUES ({TestSequenceKey}, 0, N'TEST', SYSDATETIME(), N'TEST', SYSDATETIME())
             """);
@@ -68,7 +68,7 @@ public sealed class DevDatabaseFixture : IAsyncLifetime
         await using var scope = _serviceProvider.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<BmcsDbContext>();
         await dbContext.Database.ExecuteSqlAsync(
-            $"DELETE FROM dbo.slip_number_sequence WHERE sequence_key = {TestSequenceKey}");
+            $"DELETE FROM dbo.slip_number_sequences WHERE sequence_key = {TestSequenceKey}");
 
         await _serviceProvider.DisposeAsync();
     }

@@ -139,7 +139,7 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
   3. **伝票番号の採番と伝票登録を1つの整合単位にまとめる場合**（下記）
   4. **キャッシュ列を「書いた内容をDBから読み直して」再計算する場合**（入金消込。TODO.md 7-1）。
      `SettlementService.RecalculateForCustomerAsync`（`src/bmcs_app.Application/Receipt/`）は、
-     入金明細（`receipt`／`detail_receipt`）から得意先の売上明細行の消込キャッシュ列
+     入金明細（`receipts`／`detail_receipts`）から得意先の売上明細行の消込キャッシュ列
      （`sales.settlement_status`／`settled_amount`）を再計算する。再計算方式（差分ではなく
      毎回全件から導出する。docs/design_document.md 16章）は、呼び出し元が入金行を保存した
      **後**でなければ再計算の入力（DB上の確定値）が揃わないため、1ユースケース内で
@@ -152,7 +152,7 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
      （`SlipNumberService.NextAsync` と同じアサーション）。
   5. **導出データを「書いた内容をDBから読み直して」再構築する場合**（入金の訂正。TODO.md 7-5）。
      `ReceiptEntryService.UpdateAsync`は、明細行（支払手段の内訳）を更新した直後に
-     `receipt_allocation`（請求への充当。導出データ）を全部論理削除して`SaveChangesAsync`を
+     `receipt_allocations`（請求への充当。導出データ）を全部論理削除して`SaveChangesAsync`を
      1回呼び、その**後**に`GetOutstandingBillingsAsync`（サーバー側クエリ）で請求残高を
      再取得して新しい充当を組み立てる。上記4番目のケースと同じ理由（サーバー側クエリは
      ChangeTracker上の未コミット変更を見ないため、確定させてから読み直す必要がある）で、
@@ -222,7 +222,7 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
   の再計算（`SettlementService.RecalculateForCustomerAsync`）は得意先の全売上・全入金行に
   及ぶ派生更新であり、ここで全行を Modified にすると、再計算のたびに無関係な伝票を編集中の
   別ユーザーが不要に弾かれる。**値が実際に変わった行だけを Modified にする。** 真に競合すべき
-  ケース（同一 `billing` への2つの入金の同時登録）は、両方が実際に `settled_amount` を書き換え
+  ケース（同一 `billings` への2つの入金の同時登録）は、両方が実際に `settled_amount` を書き換え
   るため、変更行だけを対象にしても rowversion で正しく検出される。
 
 ## 10. 命名・フォルダ規約
@@ -242,10 +242,10 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 ### エンティティ・マッピングの実装方針（Phase 1-6 で確定）
 
 - **PascalCase ↔ snake_case の変換は `EFCore.NamingConventions`（`UseSnakeCaseNamingConvention()`）に任せる。** 列ごとに `HasColumnName` を書かずに済む。ただし**数字を含む列名**（`address1`／`address2` 等）は自動変換が意図通りにならないため、該当プロパティのみ `HasColumnName` を明示する。
-- **テーブル名は DDL の単数形に対して `ToTable()` を必ず明示する。** DbSet プロパティは複数形（`Customers` 等）で宣言するため、命名変換に任せると `customers` のように誤って複数形になる。
+- **テーブル名には `ToTable()` を必ず明示する。** DB のテーブル名は複数形の `snake_case`（`docs/database-schema.md` 2.0節）だが、`ToTable()` を省略すると DbSet プロパティ名からの命名変換に暗黙に追従してしまう。DDL を正としテーブル名の変更が DbSet 名の変更で意図せず連動しないようにするため、常に明示する。
 - **ナビゲーションプロパティは持たせない。** 得意先元帳はアプリ側 LINQ で複数テーブルをマージする方針であり、`Include()` によるナビゲーション経由の結合を使わないため。リポジトリを作らない方針と同様、使わない抽象化を先回りして作らない。
 - **ただし FK 関係は `HasOne<TPrincipal>().WithMany().HasForeignKey(...)` で登録する（ナビゲーションプロパティなしで）。** これを省略すると、複数エンティティを同一 `SaveChangesAsync()` で保存したときに EF Core が依存関係を解決できず、INSERT 文の順序が（観測した限りでは）テーブル名のアルファベット順になり、FK 制約違反を起こす。DB 側にすでに存在する FK 制約（Phase 1-5）と対になる形で、全 FK 関係を登録する。
-- **監査列は共通基底クラスで重複を排除する。** `TrackedEntity`（`CreatedBy`/`CreatedAt`/`UpdatedBy`/`UpdatedAt`）と、これを継承し `IsDeleted`/`RowVersion` を追加する `AuditableEntity` の2段構成。監査列の Fluent API 設定は共通拡張メソッド（`Configurations/AuditableEntityConfigurationExtensions.cs`）に集約する。**旧 `TaxUnitConfigurationExtensions.cs`（`BillingTaxUnitBase` 等の税単位別共通基底クラス向け拡張）は、`sales`/`receipt`/`billing` の統合（2026-09-08、`docs/database-schema.md` 2.8節）に伴い削除した。** 統合後は `Sales`/`Receipt`/`Billing` それぞれに派生クラスがなくなり、共有すべき基底クラスが存在しないため。
+- **監査列は共通基底クラスで重複を排除する。** `TrackedEntity`（`CreatedBy`/`CreatedAt`/`UpdatedBy`/`UpdatedAt`）と、これを継承し `IsDeleted`/`RowVersion` を追加する `AuditableEntity` の2段構成。監査列の Fluent API 設定は共通拡張メソッド（`Configurations/AuditableEntityConfigurationExtensions.cs`）に集約する。**旧 `TaxUnitConfigurationExtensions.cs`（`BillingTaxUnitBase` 等の税単位別共通基底クラス向け拡張）は、`sales`/`receipts`/`billings` の統合（2026-09-08、`docs/database-schema.md` 2.8節）に伴い削除した。** 統合後は `Sales`/`Receipt`/`Billing` それぞれに派生クラスがなくなり、共有すべき基底クラスが存在しないため。
 - **`decimal` は `HasPrecision(p, s)` を必ず明示する。** 省略すると既定精度（18,2）になり、`decimal(15,4)` の単価カラム等で桁落ちする。
 - **`varchar`/`char` 列は `.IsUnicode(false)` を明示する。** 省略すると EF Core が `nvarchar` パラメータを送り、SQL Server 側で暗黙変換が発生してインデックスを使えなくなる（コード系カラムは PK/FK で全 JOIN に絡むため実害が大きい）。
 - **`date` 型は C# `DateOnly` にマッピングする。** EF Core 8+ のネイティブ対応。時刻成分を持たせないことでバグを防ぐ。
@@ -395,7 +395,7 @@ Phase 5-1（消費税計算）着手時に前倒しで構築した。
 - **接続文字列**: `src/bmcs_app` と同じパターン。`appsettings.Development.json.sample`
   （コミットする）を複製して `appsettings.Development.json`（`.gitignore` の既存パターンが
   深さを問わず一致するため自動的に除外される）を作り、`Password` を記入する。
-- **テスト分離**: 実キー（`order_slip` 等）の `current_value` は変更しない。
+- **テスト分離**: 実キー（`orders` 等）の `current_value` は変更しない。
   - 並列採番の重複・欠番なしを検証するテストのみ、`"__test_slip_number"` という
     業務キーと衝突しない使い捨てキーを使い、コミットする（変化することが検証対象のため）。
     フィクスチャが `InitializeAsync`/`DisposeAsync` で冪等に作成・削除する。

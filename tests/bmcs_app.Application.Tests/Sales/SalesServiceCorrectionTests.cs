@@ -337,7 +337,7 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
         finally
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.detail_receipt WHERE detail_receipt_number = {"__TSTCOR_DRC01"}");
+                $"DELETE FROM dbo.detail_receipts WHERE detail_receipt_number = {"__TSTCOR_DRC01"}");
             if (salesSlipNumber is not null)
             {
                 await dbContext.Database.ExecuteSqlInterpolatedAsync(
@@ -345,7 +345,7 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
             }
 
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.customer WHERE customer_code = {testCustomerCode}");
+                $"DELETE FROM dbo.customers WHERE customer_code = {testCustomerCode}");
         }
     }
 
@@ -626,7 +626,7 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
         if (orderSlipNumber is not null)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.order_slip WHERE order_slip_number = {orderSlipNumber}");
+                $"DELETE FROM dbo.orders WHERE order_slip_number = {orderSlipNumber}");
         }
     }
 

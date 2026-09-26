@@ -1,7 +1,7 @@
 namespace bmcs_app.Domain.Enums;
 
 /// <summary>
-/// 採番系列の種別（TODO.md 4-1）。<c>slip_number_sequence.sequence_key</c> に対応する。
+/// 採番系列の種別（TODO.md 4-1）。<c>slip_number_sequences.sequence_key</c> に対応する。
 /// 税単位（<see cref="TaxUnit"/>）では系列を分けない。伝票番号が得意先の税区分によって
 /// 別系列になると、現場で伝票番号から伝票を探すときに混乱するため
 /// （docs/database-schema.md 2.17節）。

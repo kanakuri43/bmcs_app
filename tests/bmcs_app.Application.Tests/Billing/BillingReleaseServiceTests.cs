@@ -364,9 +364,9 @@ public class BillingReleaseServiceTests(DevDatabaseFixture fixture) : IClassFixt
         foreach (var customerCode in customerCodes)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.billing WHERE customer_code = {customerCode}");
+                $"DELETE FROM dbo.billings WHERE customer_code = {customerCode}");
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.customer WHERE customer_code = {customerCode}");
+                $"DELETE FROM dbo.customers WHERE customer_code = {customerCode}");
         }
     }
 }

@@ -317,7 +317,7 @@ public class DeliveryNoteServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         foreach (var customerCode in customerCodes)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM dbo.customer WHERE customer_code = {customerCode}");
+                $"DELETE FROM dbo.customers WHERE customer_code = {customerCode}");
         }
     }
 }

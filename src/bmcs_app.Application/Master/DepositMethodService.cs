@@ -112,7 +112,7 @@ public class DepositMethodService(
         logger.LogInformation("入金方法を無効化しました。DepositMethodCode={DepositMethodCode}", depositMethod.DepositMethodCode);
     }
 
-    /// <summary>口座と手形期日を同時に必須にすることはできない（CK_deposit_method_requiresの先回り）。</summary>
+    /// <summary>口座と手形期日を同時に必須にすることはできない（CK_deposit_methods_requiresの先回り）。</summary>
     private static void ValidateRequiresFlags(DepositMethod depositMethod)
     {
         if (depositMethod.RequiresBankAccount && depositMethod.RequiresBillDueDate)

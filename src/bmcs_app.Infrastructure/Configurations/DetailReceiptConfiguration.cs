@@ -8,7 +8,7 @@ public class DetailReceiptConfiguration : IEntityTypeConfiguration<DetailReceipt
 {
     public void Configure(EntityTypeBuilder<DetailReceipt> builder)
     {
-        builder.ToTable("detail_receipt");
+        builder.ToTable("detail_receipts");
 
         builder.HasKey(e => new { e.DetailReceiptNumber, e.LineNumber });
 

@@ -12,7 +12,7 @@ public class MonthlyClosingConfiguration : IEntityTypeConfiguration<MonthlyClosi
 {
     public void Configure(EntityTypeBuilder<MonthlyClosing> builder)
     {
-        builder.ToTable("monthly_closing");
+        builder.ToTable("monthly_closings");
 
         builder.HasKey(e => new { e.ClosingDate, e.CustomerCode });
 

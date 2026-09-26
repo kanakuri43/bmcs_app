@@ -14,10 +14,10 @@
 --   - 得意先の税単位3種（tax_unit=1/2/3）と締め区分（締め・都度）の対応
 --   - 商品の税種別区分3種
 --   - docs/product-spec.md「伝票の状態遷移」の全18状態
---   - sales/receipt/detail_receiptの消込・充当キャッシュ列は、SettlementService
+--   - sales/receipts/detail_receiptsの消込・充当キャッシュ列は、SettlementService
 --     （TODO.md 7-1）の再計算ルールで再現可能な値になっている（2026-09-14修正）
 --
--- 010_unify_tax_unit_tables.sql での統合に追従し、sales / receipt / billing
+-- 010_unify_tax_unit_tables.sql での統合に追従し、sales / receipts / billings
 -- （旧・税単位別8テーブル）は tax_unit 列を持つ単一テーブルへの投入に変更した。
 --
 -- 適用: sqlcmd -S 172.16.3.171 -U sa -d bmcs_db -C -I -i scripts\seed_dev_data.sql
@@ -26,8 +26,8 @@
 USE bmcs_db;
 GO
 
--- scripts/013_add_billing_confirmed_unique_index.sql が billing にフィルタ付き一意索引を
--- 追加したため、sqlcmd既定の QUOTED_IDENTIFIER OFF のままだと本スクリプトの billing への
+-- scripts/013_add_billing_confirmed_unique_index.sql が billings にフィルタ付き一意索引を
+-- 追加したため、sqlcmd既定の QUOTED_IDENTIFIER OFF のままだと本スクリプトの billings への
 -- DML自体が失敗する。フィルタ付き索引を持つテーブルへのDMLは QUOTED_IDENTIFIER ON が必須
 -- （sqlcmdは既定でOFF。呼び出し側は -I オプションでも ON にできるが、本スクリプト単体で
 -- 再実行できるようここでも明示する。TODO.md 7-1の実装検証で発見）。
@@ -37,21 +37,21 @@ GO
 -- -----------------------------------------------------------------------------
 -- 1. 既存テストデータの削除（FKの逆順）
 -- -----------------------------------------------------------------------------
-DELETE FROM dbo.detail_invoice_sales_line WHERE detail_invoice_number IN (N'DIV001', N'DIV002');
-DELETE FROM dbo.detail_receipt WHERE detail_receipt_number IN (N'DRC001', N'DRC002');
-DELETE FROM dbo.detail_invoice WHERE detail_invoice_number IN (N'DIV001', N'DIV002');
-DELETE FROM dbo.receipt_allocation WHERE receipt_slip_number IN (N'RCP_INV001', N'RCP_INV002', N'RCP_SLP001');
-DELETE FROM dbo.receipt WHERE receipt_slip_number IN (N'RCP_INV001', N'RCP_INV002', N'RCP_SLP001');
+DELETE FROM dbo.detail_invoice_sales_lines WHERE detail_invoice_number IN (N'DIV001', N'DIV002');
+DELETE FROM dbo.detail_receipts WHERE detail_receipt_number IN (N'DRC001', N'DRC002');
+DELETE FROM dbo.detail_invoices WHERE detail_invoice_number IN (N'DIV001', N'DIV002');
+DELETE FROM dbo.receipt_allocations WHERE receipt_slip_number IN (N'RCP_INV001', N'RCP_INV002', N'RCP_SLP001');
+DELETE FROM dbo.receipts WHERE receipt_slip_number IN (N'RCP_INV001', N'RCP_INV002', N'RCP_SLP001');
 DELETE FROM dbo.sales WHERE sales_slip_number IN (N'SALINV001', N'SALINV002', N'SALSLP001', N'SALSLP002',
                                                    N'SALLIN001', N'SALLIN002', N'SALLIN003', N'SALLIN004');
-DELETE FROM dbo.billing WHERE billing_number IN (N'BIL_INV001', N'BIL_INV002', N'BIL_SLP001');
-DELETE FROM dbo.order_slip WHERE order_slip_number IN (N'ORD001', N'ORD002', N'ORD003', N'ORD004');
-DELETE FROM dbo.monthly_closing WHERE closing_date IN ('2026-01-31', '2026-02-28');
-DELETE FROM dbo.customer WHERE customer_code IN (N'CUS001', N'CUS002', N'CUS003');
-DELETE FROM dbo.product WHERE product_code IN (N'PRD001', N'PRD002', N'PRD003');
-DELETE FROM dbo.bank_account WHERE bank_account_code IN (N'BNK001');
-DELETE FROM dbo.company_info WHERE company_info_id = 1;
-DELETE FROM dbo.employee WHERE employee_code IN (N'EMP001', N'EMP002');
+DELETE FROM dbo.billings WHERE billing_number IN (N'BIL_INV001', N'BIL_INV002', N'BIL_SLP001');
+DELETE FROM dbo.orders WHERE order_slip_number IN (N'ORD001', N'ORD002', N'ORD003', N'ORD004');
+DELETE FROM dbo.monthly_closings WHERE closing_date IN ('2026-01-31', '2026-02-28');
+DELETE FROM dbo.customers WHERE customer_code IN (N'CUS001', N'CUS002', N'CUS003');
+DELETE FROM dbo.products WHERE product_code IN (N'PRD001', N'PRD002', N'PRD003');
+DELETE FROM dbo.bank_accounts WHERE bank_account_code IN (N'BNK001');
+DELETE FROM dbo.company_infos WHERE company_info_id = 1;
+DELETE FROM dbo.employees WHERE employee_code IN (N'EMP001', N'EMP002');
 GO
 
 -- -----------------------------------------------------------------------------
@@ -59,15 +59,15 @@ GO
 -- -----------------------------------------------------------------------------
 
 -- 社員（一般／管理者）
-INSERT INTO dbo.employee (employee_code, employee_name, employee_name_kana, permission_level, created_by, created_at, updated_by, updated_at)
+INSERT INTO dbo.employees (employee_code, employee_name, employee_name_kana, permission_level, created_by, created_at, updated_by, updated_at)
 VALUES
     (N'EMP001', N'営業一郎', N'ｴｲｷﾞｮｳｲﾁﾛｳ', 1, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'EMP002', N'管理者太郎', N'ｶﾝﾘｼｬﾀﾛｳ', 9, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
 -- 得意先: 税単位3種（Invoice/Slip/Line）を1つずつ網羅
--- CK_customer_tax_unit_closing_day の相互制約（tax_unit=3 ⇔ closing_day=0）を満たす。
-INSERT INTO dbo.customer
+-- CK_customers_tax_unit_closing_day の相互制約（tax_unit=3 ⇔ closing_day=0）を満たす。
+INSERT INTO dbo.customers
     (customer_code, customer_name, customer_name_kana, postal_code, address1, contact_person_name,
      sales_employee_code, closing_day, tax_unit, rounding_type, print_representative_flag,
      created_by, created_at, updated_by, updated_at)
@@ -84,7 +84,7 @@ VALUES
 GO
 
 -- 商品: 税種別区分3種を1つずつ網羅
-INSERT INTO dbo.product
+INSERT INTO dbo.products
     (product_code, product_name, product_name_kana, specification, unit_name,
      standard_unit_price_excl_tax, standard_unit_price_incl_tax, standard_cost_price, tax_category,
      created_by, created_at, updated_by, updated_at)
@@ -98,7 +98,7 @@ VALUES
 GO
 
 -- 銀行口座
-INSERT INTO dbo.bank_account
+INSERT INTO dbo.bank_accounts
     (bank_account_code, bank_name, branch_name, account_type, account_number, account_holder_name,
      is_print_on_invoice, display_order, created_by, created_at, updated_by, updated_at)
 VALUES
@@ -107,7 +107,7 @@ VALUES
 GO
 
 -- 自社情報（1レコード運用）
-INSERT INTO dbo.company_info
+INSERT INTO dbo.company_infos
     (company_info_id, company_name, invoice_registration_number, postal_code, address1,
      phone_number, representative_name, created_by, created_at, updated_by, updated_at)
 VALUES
@@ -118,7 +118,7 @@ GO
 -- -----------------------------------------------------------------------------
 -- 3. 受注: order_status の4状態を1つずつ網羅
 -- -----------------------------------------------------------------------------
-INSERT INTO dbo.order_slip
+INSERT INTO dbo.orders
     (order_slip_number, line_number, order_date, customer_code, customer_name,
      product_code, product_name, order_quantity, unit_price, amount, cost_price,
      tax_category, tax_rate, allocated_quantity, order_status, sales_confirmed_quantity,
@@ -149,7 +149,7 @@ GO
 -- -----------------------------------------------------------------------------
 -- 4. 請求データ（統合版。先に作る。売上・入金から参照されるため）
 -- -----------------------------------------------------------------------------
-INSERT INTO dbo.billing
+INSERT INTO dbo.billings
     (billing_number, customer_code, tax_unit, customer_name, billing_date, closing_year_month,
      previous_balance, receipt_amount, sales_amount, tax_amount, current_billing_amount,
      standard_rate_taxable_amount, standard_rate_tax_amount, reduced_rate_taxable_amount, reduced_rate_tax_amount, tax_exempt_amount,
@@ -176,7 +176,7 @@ VALUES
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
-UPDATE dbo.billing
+UPDATE dbo.billings
     SET released_at = '2026-06-25T09:00:00', released_by = N'EMP002'
     WHERE billing_number = N'BIL_INV002';
 GO
@@ -256,7 +256,7 @@ GO
 -- 6. 締め入金（明細行＝支払手段の内訳。充当は receipt_allocation が別に持つ。
 --    docs/design_document.md 17章、2026-09-15改訂。充当状態3種を網羅）
 -- -----------------------------------------------------------------------------
-INSERT INTO dbo.receipt
+INSERT INTO dbo.receipts
     (receipt_slip_number, line_number, receipt_date, customer_code, tax_unit, customer_name, deposit_method_code,
      bank_account_code, bill_due_date, amount, allocation_status, created_by, created_at, updated_by, updated_at)
 VALUES
@@ -282,7 +282,7 @@ VALUES
      2, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
-INSERT INTO dbo.receipt_allocation
+INSERT INTO dbo.receipt_allocations
     (receipt_slip_number, line_number, customer_code, tax_unit, billing_number, allocated_amount,
      fee_adjustment_amount, created_by, created_at, updated_by, updated_at)
 VALUES
@@ -299,7 +299,7 @@ GO
 -- -----------------------------------------------------------------------------
 -- 7. 明細請求書（発行済／取消の2状態）
 -- -----------------------------------------------------------------------------
-INSERT INTO dbo.detail_invoice
+INSERT INTO dbo.detail_invoices
     (detail_invoice_number, customer_code, customer_name, addressee_name, issue_date,
      sales_amount, tax_amount, total_amount,
      standard_rate_taxable_amount, standard_rate_tax_amount, reduced_rate_taxable_amount, reduced_rate_tax_amount, tax_exempt_amount,
@@ -326,7 +326,7 @@ VALUES
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
-UPDATE dbo.detail_invoice
+UPDATE dbo.detail_invoices
     SET cancelled_at = '2026-07-06T09:00:00', cancelled_by = N'EMP002'
     WHERE detail_invoice_number = N'DIV002';
 GO
@@ -334,7 +334,7 @@ GO
 -- -----------------------------------------------------------------------------
 -- 8. 連携テーブル（DIV001 と請求済の売上明細行を紐付け）
 -- -----------------------------------------------------------------------------
-INSERT INTO dbo.detail_invoice_sales_line
+INSERT INTO dbo.detail_invoice_sales_lines
     (detail_invoice_number, sales_slip_number, sales_line_number, created_by, created_at, updated_by, updated_at)
 VALUES
     (N'DIV001', N'SALLIN002', 1, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
@@ -343,7 +343,7 @@ GO
 -- -----------------------------------------------------------------------------
 -- 9. 明細入金（充当先2種類: 売上明細行を直接指定／明細請求書を指定）
 -- -----------------------------------------------------------------------------
-INSERT INTO dbo.detail_receipt
+INSERT INTO dbo.detail_receipts
     (detail_receipt_number, line_number, receipt_date, customer_code, customer_name, deposit_method_code,
      bank_account_code, receipt_amount, target_type,
      target_sales_slip_number, target_sales_line_number, target_detail_invoice_number,
@@ -371,7 +371,7 @@ GO
 -- 10. 月次締め（得意先×月末日で1レコード。billing の締め期間とは別に暦月で集計する。
 --     確定／解除済の2状態を網羅。直近月はレコードを作らず「未締め」を再現）
 -- -----------------------------------------------------------------------------
-INSERT INTO dbo.monthly_closing
+INSERT INTO dbo.monthly_closings
     (closing_date, customer_code, tax_unit, customer_name,
      previous_balance, sales_amount, receipt_amount, tax_amount, closing_balance,
      standard_rate_taxable_amount, standard_rate_tax_amount, reduced_rate_taxable_amount, reduced_rate_tax_amount, tax_exempt_amount,
@@ -406,7 +406,7 @@ VALUES
      1, '2026-03-01T09:00:00', N'EMP002', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
-UPDATE dbo.monthly_closing
+UPDATE dbo.monthly_closings
     SET closing_status = 2, released_at = '2026-03-02T09:00:00', released_by = N'EMP002'
     WHERE closing_date = '2026-02-28';
 GO

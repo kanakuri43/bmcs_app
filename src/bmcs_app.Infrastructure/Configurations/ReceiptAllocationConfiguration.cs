@@ -12,7 +12,7 @@ public class ReceiptAllocationConfiguration : IEntityTypeConfiguration<ReceiptAl
 {
     public void Configure(EntityTypeBuilder<ReceiptAllocation> builder)
     {
-        builder.ToTable("receipt_allocation");
+        builder.ToTable("receipt_allocations");
         builder.HasKey(e => new { e.ReceiptSlipNumber, e.LineNumber });
 
         builder.Property(e => e.ReceiptSlipNumber).HasMaxLength(20).IsUnicode(false);

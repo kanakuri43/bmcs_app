@@ -965,11 +965,11 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         BmcsDbContext dbContext, string customerCode, string? salesSlipNumber = null)
     {
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"DELETE FROM dbo.monthly_closing WHERE customer_code = {customerCode}");
+            $"DELETE FROM dbo.monthly_closings WHERE customer_code = {customerCode}");
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"DELETE FROM dbo.receipt_allocation WHERE customer_code = {customerCode}");
+            $"DELETE FROM dbo.receipt_allocations WHERE customer_code = {customerCode}");
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"DELETE FROM dbo.receipt WHERE customer_code = {customerCode}");
+            $"DELETE FROM dbo.receipts WHERE customer_code = {customerCode}");
 
         if (salesSlipNumber is not null)
         {
@@ -979,8 +979,8 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         }
 
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"DELETE FROM dbo.billing WHERE customer_code = {customerCode}");
+            $"DELETE FROM dbo.billings WHERE customer_code = {customerCode}");
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"DELETE FROM dbo.customer WHERE customer_code = {customerCode}");
+            $"DELETE FROM dbo.customers WHERE customer_code = {customerCode}");
     }
 }

@@ -8,7 +8,7 @@ public class OrderSlipConfiguration : IEntityTypeConfiguration<OrderSlip>
 {
     public void Configure(EntityTypeBuilder<OrderSlip> builder)
     {
-        builder.ToTable("order_slip");
+        builder.ToTable("orders");
 
         builder.HasKey(e => new { e.OrderSlipNumber, e.LineNumber });
 

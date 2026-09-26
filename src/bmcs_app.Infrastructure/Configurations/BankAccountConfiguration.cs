@@ -8,7 +8,7 @@ public class BankAccountConfiguration : IEntityTypeConfiguration<BankAccount>
 {
     public void Configure(EntityTypeBuilder<BankAccount> builder)
     {
-        builder.ToTable("bank_account");
+        builder.ToTable("bank_accounts");
 
         builder.HasKey(e => e.BankAccountCode);
 

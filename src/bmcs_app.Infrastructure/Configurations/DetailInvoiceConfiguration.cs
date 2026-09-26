@@ -8,7 +8,7 @@ public class DetailInvoiceConfiguration : IEntityTypeConfiguration<DetailInvoice
 {
     public void Configure(EntityTypeBuilder<DetailInvoice> builder)
     {
-        builder.ToTable("detail_invoice");
+        builder.ToTable("detail_invoices");
 
         builder.HasKey(e => e.DetailInvoiceNumber);
 

@@ -13,7 +13,7 @@ public class ReceiptConfiguration : IEntityTypeConfiguration<Receipt>
 {
     public void Configure(EntityTypeBuilder<Receipt> builder)
     {
-        builder.ToTable("receipt");
+        builder.ToTable("receipts");
         builder.HasKey(e => new { e.ReceiptSlipNumber, e.LineNumber });
 
         builder.Property(e => e.ReceiptSlipNumber).HasMaxLength(20).IsUnicode(false);

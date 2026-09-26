@@ -8,7 +8,7 @@ public class TaxRateMasterConfiguration : IEntityTypeConfiguration<TaxRateMaster
 {
     public void Configure(EntityTypeBuilder<TaxRateMaster> builder)
     {
-        builder.ToTable("tax_rate_master");
+        builder.ToTable("tax_rates");
 
         builder.HasKey(e => e.EffectiveDate);
 

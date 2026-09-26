@@ -240,8 +240,8 @@ public class SalesServiceBillingClosedDateTests(DevDatabaseFixture fixture) : IC
         }
 
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"DELETE FROM dbo.billing WHERE customer_code = {customerCode}");
+            $"DELETE FROM dbo.billings WHERE customer_code = {customerCode}");
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"DELETE FROM dbo.customer WHERE customer_code = {customerCode}");
+            $"DELETE FROM dbo.customers WHERE customer_code = {customerCode}");
     }
 }

@@ -10,7 +10,7 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
     {
         // DbSet プロパティ名（複数形）から命名変換されるテーブル名が DDL の単数形と
         // 一致しないため、全エンティティで ToTable を明示する。
-        builder.ToTable("employee");
+        builder.ToTable("employees");
 
         builder.HasKey(e => e.EmployeeCode);
 
