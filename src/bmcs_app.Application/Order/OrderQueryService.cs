@@ -11,7 +11,9 @@ namespace bmcs_app.Application.Order;
 /// </summary>
 public class OrderQueryService(BmcsDbContext dbContext)
 {
-    private const int MaxSearchSourceRows = 1000;
+    // EF Core 10 は List<string>.Contains を IN (@p1, @p2, ...) に展開する（パラメータ数は
+    // パディングされる）。この上限を大きく上げる場合は SQL Server のパラメータ数上限（2100）に
+    // 注意し、EF.Parameter によるOPENJSON展開への切り替えを検討すること。
     private const int MaxSearchResultSlips = 200;
 
     /// <summary>
@@ -41,31 +43,53 @@ public class OrderQueryService(BmcsDbContext dbContext)
         bool excludeUnavailableForSales = true,
         CancellationToken cancellationToken = default)
     {
-        var query = dbContext.OrderSlips.AsNoTracking().Where(o => !o.IsDeleted);
+        var baseQuery = dbContext.OrderSlips.AsNoTracking().Where(o => !o.IsDeleted);
+        var keyQuery = baseQuery;
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
-            query = query.Where(o =>
+            keyQuery = keyQuery.Where(o =>
                 o.OrderSlipNumber.Contains(keyword)
                 || o.CustomerCode.Contains(keyword)
                 || o.CustomerName.Contains(keyword));
         }
 
-        var rows = await query
-            .OrderByDescending(o => o.OrderDate)
-            .ThenByDescending(o => o.OrderSlipNumber)
-            .Take(MaxSearchSourceRows)
+        if (excludeUnavailableForSales)
+        {
+            // 売上化余地のある行を1つでも持つ受注だけを候補にする。除外判定を伝票キー確定の
+            // 後段に置くと、除外対象がSQL側の枠を占有して有効な受注が取りこぼされる。
+            var availableSlipNumbers = keyQuery
+                .Where(o => o.OrderStatus == OrderStatus.NotSold || o.OrderStatus == OrderStatus.PartiallySold)
+                .Select(o => o.OrderSlipNumber);
+
+            keyQuery = keyQuery.Where(o => availableSlipNumbers.Contains(o.OrderSlipNumber));
+        }
+
+        // 上限は伝票単位に効かせる。明細行に Take を掛けると、行数の多い伝票が枠を食って
+        // 新しい伝票が取りこぼされる。
+        var slipKeys = await keyQuery
+            .Select(o => new { o.OrderSlipNumber, o.OrderDate })
+            .Distinct()
+            .OrderByDescending(k => k.OrderDate)
+            .ThenByDescending(k => k.OrderSlipNumber)
+            .Take(MaxSearchResultSlips)
             .ToListAsync(cancellationToken);
 
-        var slips = rows
-            .GroupBy(o => o.OrderSlipNumber)
-            .Where(g => !excludeUnavailableForSales
-                || g.Any(o => o.OrderStatus is OrderStatus.NotSold or OrderStatus.PartiallySold));
+        if (slipKeys.Count == 0)
+        {
+            return [];
+        }
 
-        return slips
+        var slipNumbers = slipKeys.Select(k => k.OrderSlipNumber).ToList();
+
+        var rows = await baseQuery
+            .Where(o => slipNumbers.Contains(o.OrderSlipNumber))
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .GroupBy(o => o.OrderSlipNumber)
             .OrderByDescending(g => g.Max(o => o.OrderDate))
             .ThenByDescending(g => g.Key)
-            .Take(MaxSearchResultSlips)
             .Select(g =>
             {
                 var first = g.OrderBy(o => o.LineNumber).First();

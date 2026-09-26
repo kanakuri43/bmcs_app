@@ -10,7 +10,9 @@ namespace bmcs_app.Application.Receipt;
 /// </summary>
 public class ReceiptQueryService(BmcsDbContext dbContext)
 {
-    private const int MaxSearchSourceRows = 1000;
+    // EF Core 10 は List<string>.Contains を IN (@p1, @p2, ...) に展開する（パラメータ数は
+    // パディングされる）。この上限を大きく上げる場合は SQL Server のパラメータ数上限（2100）に
+    // 注意し、EF.Parameter によるOPENJSON展開への切り替えを検討すること。
     private const int MaxSearchResultSlips = 200;
 
     /// <summary>
@@ -20,27 +22,42 @@ public class ReceiptQueryService(BmcsDbContext dbContext)
     public async Task<List<ReceiptHit>> SearchAsync(
         string? keyword, CancellationToken cancellationToken = default)
     {
-        var query = dbContext.Receipts.AsNoTracking().Where(r => !r.IsDeleted);
+        var baseQuery = dbContext.Receipts.AsNoTracking().Where(r => !r.IsDeleted);
+        var keyQuery = baseQuery;
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
-            query = query.Where(r =>
+            keyQuery = keyQuery.Where(r =>
                 r.ReceiptSlipNumber.Contains(keyword)
                 || r.CustomerCode.Contains(keyword)
                 || r.CustomerName.Contains(keyword));
         }
 
-        var rows = await query
-            .OrderByDescending(r => r.ReceiptDate)
-            .ThenByDescending(r => r.ReceiptSlipNumber)
-            .Take(MaxSearchSourceRows)
+        // 上限は伝票単位に効かせる。明細行に Take を掛けると、行数の多い伝票が枠を食って
+        // 新しい伝票が取りこぼされる。
+        var slipKeys = await keyQuery
+            .Select(r => new { r.ReceiptSlipNumber, r.ReceiptDate })
+            .Distinct()
+            .OrderByDescending(k => k.ReceiptDate)
+            .ThenByDescending(k => k.ReceiptSlipNumber)
+            .Take(MaxSearchResultSlips)
+            .ToListAsync(cancellationToken);
+
+        if (slipKeys.Count == 0)
+        {
+            return [];
+        }
+
+        var slipNumbers = slipKeys.Select(k => k.ReceiptSlipNumber).ToList();
+
+        var rows = await baseQuery
+            .Where(r => slipNumbers.Contains(r.ReceiptSlipNumber))
             .ToListAsync(cancellationToken);
 
         return rows
             .GroupBy(r => r.ReceiptSlipNumber)
             .OrderByDescending(g => g.Max(r => r.ReceiptDate))
             .ThenByDescending(g => g.Key)
-            .Take(MaxSearchResultSlips)
             .Select(g =>
             {
                 var first = g.OrderBy(r => r.LineNumber).First();

@@ -11,7 +11,9 @@ namespace bmcs_app.Application.Receipt;
 /// </summary>
 public class DetailReceiptQueryService(BmcsDbContext dbContext)
 {
-    private const int MaxSearchSourceRows = 1000;
+    // EF Core 10 は List<string>.Contains を IN (@p1, @p2, ...) に展開する（パラメータ数は
+    // パディングされる）。この上限を大きく上げる場合は SQL Server のパラメータ数上限（2100）に
+    // 注意し、EF.Parameter によるOPENJSON展開への切り替えを検討すること。
     private const int MaxSearchResultSlips = 200;
 
     /// <summary>
@@ -21,27 +23,42 @@ public class DetailReceiptQueryService(BmcsDbContext dbContext)
     public async Task<List<DetailReceiptHit>> SearchAsync(
         string? keyword, CancellationToken cancellationToken = default)
     {
-        var query = dbContext.DetailReceipts.AsNoTracking().Where(r => !r.IsDeleted);
+        var baseQuery = dbContext.DetailReceipts.AsNoTracking().Where(r => !r.IsDeleted);
+        var keyQuery = baseQuery;
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
-            query = query.Where(r =>
+            keyQuery = keyQuery.Where(r =>
                 r.DetailReceiptNumber.Contains(keyword)
                 || r.CustomerCode.Contains(keyword)
                 || r.CustomerName.Contains(keyword));
         }
 
-        var rows = await query
-            .OrderByDescending(r => r.ReceiptDate)
-            .ThenByDescending(r => r.DetailReceiptNumber)
-            .Take(MaxSearchSourceRows)
+        // 上限は伝票単位に効かせる。明細行に Take を掛けると、行数の多い伝票が枠を食って
+        // 新しい伝票が取りこぼされる。
+        var slipKeys = await keyQuery
+            .Select(r => new { r.DetailReceiptNumber, r.ReceiptDate })
+            .Distinct()
+            .OrderByDescending(k => k.ReceiptDate)
+            .ThenByDescending(k => k.DetailReceiptNumber)
+            .Take(MaxSearchResultSlips)
+            .ToListAsync(cancellationToken);
+
+        if (slipKeys.Count == 0)
+        {
+            return [];
+        }
+
+        var slipNumbers = slipKeys.Select(k => k.DetailReceiptNumber).ToList();
+
+        var rows = await baseQuery
+            .Where(r => slipNumbers.Contains(r.DetailReceiptNumber))
             .ToListAsync(cancellationToken);
 
         return rows
             .GroupBy(r => r.DetailReceiptNumber)
             .OrderByDescending(g => g.Max(r => r.ReceiptDate))
             .ThenByDescending(g => g.Key)
-            .Take(MaxSearchResultSlips)
             .Select(g =>
             {
                 var first = g.OrderBy(r => r.LineNumber).First();

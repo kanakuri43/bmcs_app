@@ -11,7 +11,9 @@ namespace bmcs_app.Application.Sales;
 /// </summary>
 public class SalesQueryService(BmcsDbContext dbContext)
 {
-    private const int MaxSearchSourceRows = 1000;
+    // EF Core 10 は List<string>.Contains を IN (@p1, @p2, ...) に展開する（パラメータ数は
+    // パディングされる）。この上限を大きく上げる場合は SQL Server のパラメータ数上限（2100）に
+    // 注意し、EF.Parameter によるOPENJSON展開への切り替えを検討すること。
     private const int MaxSearchResultSlips = 200;
 
     /// <summary>
@@ -35,27 +37,42 @@ public class SalesQueryService(BmcsDbContext dbContext)
     public async Task<List<SalesSlipHit>> SearchAsync(
         string? keyword, CancellationToken cancellationToken = default)
     {
-        var query = dbContext.Sales.AsNoTracking().Where(s => !s.IsDeleted);
+        var baseQuery = dbContext.Sales.AsNoTracking().Where(s => !s.IsDeleted);
+        var keyQuery = baseQuery;
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
-            query = query.Where(s =>
+            keyQuery = keyQuery.Where(s =>
                 s.SalesSlipNumber.Contains(keyword)
                 || s.CustomerCode.Contains(keyword)
                 || s.CustomerName.Contains(keyword));
         }
 
-        var rows = await query
-            .OrderByDescending(s => s.SlipDate)
-            .ThenByDescending(s => s.SalesSlipNumber)
-            .Take(MaxSearchSourceRows)
+        // 上限は伝票単位に効かせる。明細行に Take を掛けると、行数の多い伝票が枠を食って
+        // 新しい伝票が取りこぼされる。
+        var slipKeys = await keyQuery
+            .Select(s => new { s.SalesSlipNumber, s.SlipDate })
+            .Distinct()
+            .OrderByDescending(k => k.SlipDate)
+            .ThenByDescending(k => k.SalesSlipNumber)
+            .Take(MaxSearchResultSlips)
+            .ToListAsync(cancellationToken);
+
+        if (slipKeys.Count == 0)
+        {
+            return [];
+        }
+
+        var slipNumbers = slipKeys.Select(k => k.SalesSlipNumber).ToList();
+
+        var rows = await baseQuery
+            .Where(s => slipNumbers.Contains(s.SalesSlipNumber))
             .ToListAsync(cancellationToken);
 
         return rows
             .GroupBy(s => s.SalesSlipNumber)
             .OrderByDescending(g => g.Max(s => s.SlipDate))
             .ThenByDescending(g => g.Key)
-            .Take(MaxSearchResultSlips)
             .Select(g =>
             {
                 var first = g.OrderBy(s => s.LineNumber).First();
