@@ -147,6 +147,48 @@ public class SalesServiceBillingClosedDateTests(DevDatabaseFixture fixture) : IC
         }
     }
 
+    [Fact]
+    public async Task 請求集約元は請求集約先の請求締め済み期間に売上を登録できない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var rootCode = "__SDLG1R";
+        var childCode = "__SDLG1C";
+        string? salesSlipNumber = null;
+        try
+        {
+            await InsertCustomerAsync(dbContext, rootCode);
+            await InsertCustomerAsync(dbContext, childCode, billingCustomerCode: rootCode);
+            // billingsは請求集約先(root)にしか作られない。childは自身のコードでは1件もbillingsを
+            // 持たない（Phase 12-B）。
+            await InsertBillingAsync(dbContext, "__TSTBIL_SDL06", rootCode, new DateOnly(2026, 9, 30));
+
+            var ex = await Assert.ThrowsAsync<SalesOperationException>(
+                () => service.CreateAsync([NewLine(childCode, new DateOnly(2026, 9, 30))], RoundingType.Floor));
+            Assert.Contains("請求締め済み", ex.Message);
+
+            salesSlipNumber = await service.CreateAsync(
+                [NewLine(childCode, new DateOnly(2026, 10, 1))], RoundingType.Floor);
+            Assert.Equal(8, salesSlipNumber.Length);
+        }
+        finally
+        {
+            if (salesSlipNumber is not null)
+            {
+                await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                    $"DELETE FROM dbo.sales WHERE sales_slip_number = {salesSlipNumber}");
+            }
+
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.billings WHERE customer_code = {rootCode}");
+            // 自己参照FK（billing_customer_code）のため請求集約元(child)を先に削除する。
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.customers WHERE customer_code = {childCode}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.customers WHERE customer_code = {rootCode}");
+        }
+    }
+
     private static (BmcsDbContext DbContext, SalesService Service) Resolve(AsyncServiceScope scope) => (
         scope.ServiceProvider.GetRequiredService<BmcsDbContext>(),
         scope.ServiceProvider.GetRequiredService<SalesService>());
@@ -179,7 +221,8 @@ public class SalesServiceBillingClosedDateTests(DevDatabaseFixture fixture) : IC
     };
 
     private static Task InsertCustomerAsync(
-        BmcsDbContext dbContext, string customerCode, TaxUnit taxUnit = TaxUnit.Invoice)
+        BmcsDbContext dbContext, string customerCode, TaxUnit taxUnit = TaxUnit.Invoice,
+        string? billingCustomerCode = null)
     {
         var now = DateTime.Now;
         dbContext.Customers.Add(new CustomerEntity
@@ -189,7 +232,7 @@ public class SalesServiceBillingClosedDateTests(DevDatabaseFixture fixture) : IC
             ClosingDay = taxUnit == TaxUnit.Line ? (byte)0 : (byte)15,
             TaxUnit = taxUnit,
             RoundingType = RoundingType.Floor,
-            BillingCustomerCode = customerCode,
+            BillingCustomerCode = billingCustomerCode ?? customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,

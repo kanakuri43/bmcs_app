@@ -229,6 +229,12 @@ public partial class ReceiptEntryViewModel(
             return;
         }
 
+        if (!customer.IsBillingRoot)
+        {
+            StatusMessage = $"「{customer.CustomerName}」は請求集約元です。入金は請求集約先「{customer.BillingCustomerCode}」で登録してください。";
+            return;
+        }
+
         _customer = customer;
         CustomerCode = customer.CustomerCode;
         CustomerName = customer.CustomerName;

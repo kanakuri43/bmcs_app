@@ -59,7 +59,7 @@ public class SettlementService(
 
         var result = customer.TaxUnit == TaxUnit.Line
             ? await RecalculateDetailAsync(customerCode, employeeCode, now, cancellationToken)
-            : await RecalculateClosingAsync(customerCode, employeeCode, now, cancellationToken);
+            : await RecalculateClosingAsync(customer, employeeCode, now, cancellationToken);
 
         try
         {
@@ -75,8 +75,9 @@ public class SettlementService(
         }
 
         logger.LogInformation(
-            "消込を再計算しました。CustomerCode={CustomerCode} 更新売上行数={SalesLineCount} 更新入金行数={ReceiptLineCount}",
-            customerCode, result.UpdatedSalesLineCount, result.UpdatedReceiptLineCount);
+            "消込を再計算しました。CustomerCode={CustomerCode} 請求集約先={BillingCustomerCode} " +
+            "更新売上行数={SalesLineCount} 更新入金行数={ReceiptLineCount}",
+            customerCode, customer.BillingCustomerCode, result.UpdatedSalesLineCount, result.UpdatedReceiptLineCount);
 
         return result;
     }
@@ -86,21 +87,35 @@ public class SettlementService(
     /// <c>receipt</c>が<c>billing_number</c>へ充当した額を、その<c>billing_number</c>を持つ
     /// 売上明細行へ伝票日付→伝票番号→行番号の古い順に配分する。<c>billing_number</c>がNULLの
     /// 行（未請求）はプール0（未消込）になる。
+    ///
+    /// 対象は<paramref name="customer"/>1件ではなく、その**請求集約グループ**（請求集約先＋全請求集約元、
+    /// docs/design_document.md 28章）全体。請求集約元の売上は請求集約先の<c>billing</c>に取り込まれ
+    /// （<c>sales.billing_number</c> = 請求集約先の請求番号）、入金は請求集約先にしか入らないため、
+    /// 単一得意先スコープのままでは請求集約元の売上が永久に未消込のまま残る（Phase 12-B）。
+    /// グルーピングキー（<c>billing_number</c>／<c>receipt_slip_number</c>）と整列キー（<c>sales</c>の
+    /// 主キー）はいずれも全社で一意（得意先単位ではない）ため、対象を得意先集合へ広げても配分本体
+    /// （下記の<see cref="SettlementAllocator.Allocate"/>呼び出し）は無改修で成立する。
     /// </summary>
     private async Task<SettlementRecalculationResult> RecalculateClosingAsync(
-        string customerCode, string employeeCode, DateTime now, CancellationToken cancellationToken)
+        CustomerEntity customer, string employeeCode, DateTime now, CancellationToken cancellationToken)
     {
-        var salesLines = await dbContext.Sales
-            .Where(s => s.CustomerCode == customerCode && !s.IsDeleted)
+        var groupCodes = await dbContext.Customers
+            .AsNoTracking()
+            .Where(c => c.BillingCustomerCode == customer.BillingCustomerCode)
+            .Select(c => c.CustomerCode)
             .ToListAsync(cancellationToken);
 
-        var receiptLines = await dbContext.Receipts
-            .Where(r => r.CustomerCode == customerCode && !r.IsDeleted)
-            .ToListAsync(cancellationToken);
+        var salesLines = groupCodes.Count == 1
+            ? await dbContext.Sales.Where(s => s.CustomerCode == groupCodes[0] && !s.IsDeleted).ToListAsync(cancellationToken)
+            : await dbContext.Sales.Where(s => groupCodes.Contains(s.CustomerCode) && !s.IsDeleted).ToListAsync(cancellationToken);
 
-        var allocationLines = await dbContext.ReceiptAllocations
-            .Where(a => a.CustomerCode == customerCode && !a.IsDeleted)
-            .ToListAsync(cancellationToken);
+        var receiptLines = groupCodes.Count == 1
+            ? await dbContext.Receipts.Where(r => r.CustomerCode == groupCodes[0] && !r.IsDeleted).ToListAsync(cancellationToken)
+            : await dbContext.Receipts.Where(r => groupCodes.Contains(r.CustomerCode) && !r.IsDeleted).ToListAsync(cancellationToken);
+
+        var allocationLines = groupCodes.Count == 1
+            ? await dbContext.ReceiptAllocations.Where(a => a.CustomerCode == groupCodes[0] && !a.IsDeleted).ToListAsync(cancellationToken)
+            : await dbContext.ReceiptAllocations.Where(a => groupCodes.Contains(a.CustomerCode) && !a.IsDeleted).ToListAsync(cancellationToken);
 
         var poolByBilling = allocationLines
             .Where(a => a.BillingNumber is not null)

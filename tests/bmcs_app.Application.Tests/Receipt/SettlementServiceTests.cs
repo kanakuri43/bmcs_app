@@ -562,11 +562,193 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
         }
     }
 
+    // 親子請求（請求集約、Phase 12-B）。請求集約先（Root）と請求集約元（Child）は
+    // closing_day・tax_unit・rounding_type が一致していなければならないため、いずれも
+    // InsertCustomerAsync の既定値（ClosingDay=15・RoundingType.Floor）のまま組む。
+    private const string CustomerBillingRoot = "__TSTSTLP1";
+    private const string CustomerBillingChild = "__TSTSTLC1";
+
+    [Fact]
+    public async Task 請求集約元の売上は請求集約先への入金で消し込まれる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            await InsertCustomerAsync(dbContext, CustomerBillingRoot, TaxUnit.Invoice);
+            await InsertCustomerAsync(dbContext, CustomerBillingChild, TaxUnit.Invoice, billingCustomerCode: CustomerBillingRoot);
+            await InsertBillingAsync(dbContext, "__TSTBIL_STLG1", CustomerBillingRoot, TaxUnit.Invoice, currentBillingAmount: 11000m);
+
+            const string rootSlip = "__TSTSAL_STLG1R";
+            const string childSlip = "__TSTSAL_STLG1C";
+            await InsertSalesAsync(dbContext,
+                NewClosingSalesLine(CustomerBillingRoot, TaxUnit.Invoice, rootSlip, 1, 6000m, "__TSTBIL_STLG1", productCode: "1001"),
+                NewClosingSalesLine(CustomerBillingChild, TaxUnit.Invoice, childSlip, 1, 4000m, "__TSTBIL_STLG1", productCode: "1001"));
+
+            await InsertReceiptAsync(dbContext,
+                NewReceiptLine(CustomerBillingRoot, TaxUnit.Invoice, "__TSTRCP_STLG1", 1, 11000m, bankAccountCode: "1"));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerBillingRoot, TaxUnit.Invoice, "__TSTRCP_STLG1", 1, "__TSTBIL_STLG1", 11000m));
+
+            // 請求集約元（Child）のコードで呼んでも、グループ（Root＋Child）が解決されて
+            // 両方の売上が消込完了になることを確認する（起点がどちらでも同じ結果になる証明）。
+            var result = await service.RecalculateForBillingGroupAsync(CustomerBillingChild);
+
+            var rootSales = await ReloadSalesAsync(dbContext, rootSlip);
+            var childSales = await ReloadSalesAsync(dbContext, childSlip);
+            Assert.Equal(SettlementStatus.FullySettled, rootSales.Single().SettlementStatus);
+            Assert.Equal(6000m, rootSales.Single().SettledAmount);
+            Assert.Equal(SettlementStatus.FullySettled, childSales.Single().SettlementStatus);
+            Assert.Equal(4000m, childSales.Single().SettledAmount);
+            Assert.Equal(2, result.UpdatedSalesLineCount);
+        }
+        finally
+        {
+            await transaction.RollbackAsync();
+        }
+    }
+
+    [Fact]
+    public async Task 請求集約グループ内では伝票日付の古い順に配分される()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            await InsertCustomerAsync(dbContext, CustomerBillingRoot, TaxUnit.Invoice);
+            await InsertCustomerAsync(dbContext, CustomerBillingChild, TaxUnit.Invoice, billingCustomerCode: CustomerBillingRoot);
+            await InsertBillingAsync(dbContext, "__TSTBIL_STLG2", CustomerBillingRoot, TaxUnit.Invoice, currentBillingAmount: 10000m);
+
+            const string rootSlip = "__TSTSAL_STLG2R";
+            const string childSlip = "__TSTSAL_STLG2C";
+            await InsertSalesAsync(dbContext,
+                NewClosingSalesLine(CustomerBillingRoot, TaxUnit.Invoice, rootSlip, 1, 6000m, "__TSTBIL_STLG2", slipDate: new DateOnly(2026, 7, 2), productCode: "1001"),
+                NewClosingSalesLine(CustomerBillingChild, TaxUnit.Invoice, childSlip, 1, 4000m, "__TSTBIL_STLG2", slipDate: new DateOnly(2026, 7, 1), productCode: "1001"));
+
+            await InsertReceiptAsync(dbContext,
+                NewReceiptLine(CustomerBillingRoot, TaxUnit.Invoice, "__TSTRCP_STLG2", 1, 5500m, bankAccountCode: "1"));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerBillingRoot, TaxUnit.Invoice, "__TSTRCP_STLG2", 1, "__TSTBIL_STLG2", 5500m));
+
+            await service.RecalculateForBillingGroupAsync(CustomerBillingRoot);
+
+            // 請求集約元（07/01・古い）が請求集約先（07/02）より先に全額充当され、不足分は
+            // 新しい行に残る。
+            var childSales = await ReloadSalesAsync(dbContext, childSlip);
+            var rootSales = await ReloadSalesAsync(dbContext, rootSlip);
+            Assert.Equal(4000m, childSales.Single().SettledAmount);
+            Assert.Equal(SettlementStatus.FullySettled, childSales.Single().SettlementStatus);
+            Assert.Equal(1500m, rootSales.Single().SettledAmount);
+            Assert.Equal(SettlementStatus.PartiallySettled, rootSales.Single().SettlementStatus);
+        }
+        finally
+        {
+            await transaction.RollbackAsync();
+        }
+    }
+
+    [Fact]
+    public async Task 請求集約元の返品行はグループ全体が全額入金されたときだけ消込完了になる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            await InsertCustomerAsync(dbContext, CustomerBillingRoot, TaxUnit.Invoice);
+            await InsertCustomerAsync(dbContext, CustomerBillingChild, TaxUnit.Invoice, billingCustomerCode: CustomerBillingRoot);
+
+            // 請求A: 全額入金（8,000）→ 返品行を含めて全行が消込完了になる。
+            await InsertBillingAsync(dbContext, "__TSTBIL_STLG3A", CustomerBillingRoot, TaxUnit.Invoice, currentBillingAmount: 8000m);
+            const string rootSlipA = "__TSTSAL_STLG3AR";
+            const string childSlipA = "__TSTSAL_STLG3AC";
+            await InsertSalesAsync(dbContext,
+                NewClosingSalesLine(CustomerBillingRoot, TaxUnit.Invoice, rootSlipA, 1, 10000m, "__TSTBIL_STLG3A", productCode: "1001"),
+                NewClosingSalesLine(CustomerBillingChild, TaxUnit.Invoice, childSlipA, 1, -2000m, "__TSTBIL_STLG3A", SlipType.Return, productCode: "1001"));
+            await InsertReceiptAsync(dbContext,
+                NewReceiptLine(CustomerBillingRoot, TaxUnit.Invoice, "__TSTRCP_STLG3A", 1, 8000m, bankAccountCode: "1"));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerBillingRoot, TaxUnit.Invoice, "__TSTRCP_STLG3A", 1, "__TSTBIL_STLG3A", 8000m));
+
+            // 請求B: 不足入金（5,000）→ 正の売上行だけ一部消込、返品行は未消込のまま残る。
+            await InsertBillingAsync(dbContext, "__TSTBIL_STLG3B", CustomerBillingRoot, TaxUnit.Invoice, currentBillingAmount: 8000m, closingYearMonth: "202608");
+            const string rootSlipB = "__TSTSAL_STLG3BR";
+            const string childSlipB = "__TSTSAL_STLG3BC";
+            await InsertSalesAsync(dbContext,
+                NewClosingSalesLine(CustomerBillingRoot, TaxUnit.Invoice, rootSlipB, 1, 10000m, "__TSTBIL_STLG3B", productCode: "1001"),
+                NewClosingSalesLine(CustomerBillingChild, TaxUnit.Invoice, childSlipB, 1, -2000m, "__TSTBIL_STLG3B", SlipType.Return, productCode: "1001"));
+            await InsertReceiptAsync(dbContext,
+                NewReceiptLine(CustomerBillingRoot, TaxUnit.Invoice, "__TSTRCP_STLG3B", 1, 5000m, bankAccountCode: "1"));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerBillingRoot, TaxUnit.Invoice, "__TSTRCP_STLG3B", 1, "__TSTBIL_STLG3B", 5000m));
+
+            await service.RecalculateForBillingGroupAsync(CustomerBillingRoot);
+
+            var rootSalesA = await ReloadSalesAsync(dbContext, rootSlipA);
+            var childSalesA = await ReloadSalesAsync(dbContext, childSlipA);
+            Assert.Equal(SettlementStatus.FullySettled, rootSalesA.Single().SettlementStatus);
+            Assert.Equal(SettlementStatus.FullySettled, childSalesA.Single().SettlementStatus);
+            Assert.Equal(-2000m, childSalesA.Single().SettledAmount);
+
+            var rootSalesB = await ReloadSalesAsync(dbContext, rootSlipB);
+            var childSalesB = await ReloadSalesAsync(dbContext, childSlipB);
+            Assert.Equal(SettlementStatus.PartiallySettled, rootSalesB.Single().SettlementStatus);
+            Assert.Equal(5000m, rootSalesB.Single().SettledAmount);
+            Assert.Equal(SettlementStatus.Unsettled, childSalesB.Single().SettlementStatus);
+            Assert.Equal(0m, childSalesB.Single().SettledAmount);
+        }
+        finally
+        {
+            await transaction.RollbackAsync();
+        }
+    }
+
+    [Fact]
+    public async Task 請求集約元の未請求売上は請求集約先の入金があっても未消込のまま()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            await InsertCustomerAsync(dbContext, CustomerBillingRoot, TaxUnit.Invoice);
+            await InsertCustomerAsync(dbContext, CustomerBillingChild, TaxUnit.Invoice, billingCustomerCode: CustomerBillingRoot);
+            await InsertBillingAsync(dbContext, "__TSTBIL_STLG4", CustomerBillingRoot, TaxUnit.Invoice, currentBillingAmount: 10000m);
+
+            const string rootSlip = "__TSTSAL_STLG4R";
+            const string childSlip = "__TSTSAL_STLG4C";
+            await InsertSalesAsync(dbContext,
+                NewClosingSalesLine(CustomerBillingRoot, TaxUnit.Invoice, rootSlip, 1, 10000m, "__TSTBIL_STLG4", productCode: "1001"),
+                // 請求集約元の未請求売上（billing_number=null）。
+                NewClosingSalesLine(CustomerBillingChild, TaxUnit.Invoice, childSlip, 1, 3000m, null, productCode: "1001"));
+
+            await InsertReceiptAsync(dbContext,
+                NewReceiptLine(CustomerBillingRoot, TaxUnit.Invoice, "__TSTRCP_STLG4", 1, 10000m, bankAccountCode: "1"));
+            await InsertReceiptAllocationAsync(dbContext,
+                NewReceiptAllocationLine(CustomerBillingRoot, TaxUnit.Invoice, "__TSTRCP_STLG4", 1, "__TSTBIL_STLG4", 10000m));
+
+            await service.RecalculateForBillingGroupAsync(CustomerBillingRoot);
+
+            var rootSales = await ReloadSalesAsync(dbContext, rootSlip);
+            var childSales = await ReloadSalesAsync(dbContext, childSlip);
+            Assert.Equal(SettlementStatus.FullySettled, rootSales.Single().SettlementStatus);
+            Assert.Equal(SettlementStatus.Unsettled, childSales.Single().SettlementStatus);
+            Assert.Equal(0m, childSales.Single().SettledAmount);
+        }
+        finally
+        {
+            await transaction.RollbackAsync();
+        }
+    }
+
     private static (BmcsDbContext DbContext, SettlementService Service) Resolve(AsyncServiceScope scope) => (
         scope.ServiceProvider.GetRequiredService<BmcsDbContext>(),
         scope.ServiceProvider.GetRequiredService<SettlementService>());
 
-    private static Task InsertCustomerAsync(BmcsDbContext dbContext, string customerCode, TaxUnit taxUnit)
+    private static Task InsertCustomerAsync(
+        BmcsDbContext dbContext, string customerCode, TaxUnit taxUnit, string? billingCustomerCode = null)
     {
         var now = DateTime.Now;
         dbContext.Customers.Add(new CustomerEntity
@@ -576,7 +758,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             ClosingDay = taxUnit == TaxUnit.Line ? (byte)0 : (byte)15,
             TaxUnit = taxUnit,
             RoundingType = RoundingType.Floor,
-            BillingCustomerCode = customerCode,
+            BillingCustomerCode = billingCustomerCode ?? customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,
@@ -697,7 +879,8 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
 
     private static SalesEntity NewClosingSalesLine(
         string customerCode, TaxUnit taxUnit, string slipNumber, short lineNumber, decimal amount,
-        string? billingNumber, SlipType slipType = SlipType.Sales, DateOnly? slipDate = null)
+        string? billingNumber, SlipType slipType = SlipType.Sales, DateOnly? slipDate = null,
+        string productCode = "PRD001")
     {
         var now = DateTime.Now;
         return new SalesEntity
@@ -709,7 +892,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             TaxUnit = taxUnit,
             CustomerName = "テスト用得意先",
             SlipType = slipType,
-            ProductCode = "PRD001",
+            ProductCode = productCode,
             ProductName = "テスト用商品",
             Quantity = 1m,
             UnitPrice = Math.Abs(amount),
@@ -769,7 +952,8 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
 
     /// <summary>締め入金の明細行（支払手段の内訳）。充当は別途<see cref="NewReceiptAllocationLine"/>で作る。</summary>
     private static ReceiptEntity NewReceiptLine(
-        string customerCode, TaxUnit taxUnit, string receiptSlipNumber, short lineNumber, decimal amount)
+        string customerCode, TaxUnit taxUnit, string receiptSlipNumber, short lineNumber, decimal amount,
+        string bankAccountCode = "BNK001")
     {
         var now = DateTime.Now;
         return new ReceiptEntity
@@ -781,7 +965,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             TaxUnit = taxUnit,
             CustomerName = "テスト用得意先",
             DepositMethodCode = "TRANSFER",
-            BankAccountCode = "BNK001",
+            BankAccountCode = bankAccountCode,
             Amount = amount,
             AllocationStatus = AllocationStatus.Unallocated,
             CreatedBy = "TEST",

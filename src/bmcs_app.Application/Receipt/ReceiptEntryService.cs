@@ -48,7 +48,7 @@ public class ReceiptEntryService(
     /// <summary>
     /// 得意先の請求残高を返す（画面の「請求残高」表示用。保存しない）。
     /// </summary>
-    /// <exception cref="ReceiptEntryException">得意先が存在しない、または都度得意先の場合。</exception>
+    /// <exception cref="ReceiptEntryException">得意先が存在しない、都度得意先、または請求集約元の場合。</exception>
     public async Task<CustomerReceivableSummary> GetReceivableSummaryAsync(
         string customerCode, CancellationToken cancellationToken = default)
     {
@@ -70,7 +70,8 @@ public class ReceiptEntryService(
     /// その合計額を確定済み請求へ古い順に配分した結果を<c>receipt_allocation</c>へ保存する。
     /// </summary>
     /// <exception cref="ReceiptEntryException">
-    /// 得意先が存在しない、都度得意先、明細行が0件、明細行の合計額が0以下、振込の行で入金先口座が
+    /// 得意先が存在しない、都度得意先、請求集約元（親子請求、docs/design_document.md 28章。業務ルール4:
+    /// 入金は請求集約先にだけ入る）、明細行が0件、明細行の合計額が0以下、振込の行で入金先口座が
     /// 未指定、手形の行で手形期日が未指定、または入金日付が請求締め済み期間（申し送り事項R2）の場合。
     /// </exception>
     public async Task<string> SaveNewAsync(
@@ -207,11 +208,8 @@ public class ReceiptEntryService(
             return new SalesEditLock(true, "月次締め済みのため訂正・取消できません。");
         }
 
-        var latestConfirmedBillingDate = await dbContext.Billings
-            .AsNoTracking()
-            .Where(b => b.CustomerCode == customerCode && !b.IsDeleted && b.BillingStatus == BillingStatus.Confirmed)
-            .Select(b => (DateOnly?)b.BillingDate)
-            .MaxAsync(cancellationToken);
+        var latestConfirmedBillingDate = await billingClosedDateService.GetLatestConfirmedBillingDateAsync(
+            customerCode, cancellationToken);
 
         if (latestConfirmedBillingDate is not null && receiptDate <= latestConfirmedBillingDate.Value)
         {
@@ -543,6 +541,12 @@ public class ReceiptEntryService(
         {
             throw new ReceiptEntryException(
                 "都度得意先（内税明細単位）はこの画面では入金登録できません。明細入金画面をご利用ください。");
+        }
+
+        if (!customer.IsBillingRoot)
+        {
+            throw new ReceiptEntryException(
+                $"「{customer.CustomerName}」は請求集約元です。入金は請求集約先「{customer.BillingCustomerCode}」で登録してください。");
         }
 
         return customer;

@@ -11,16 +11,29 @@ namespace bmcs_app.Application.Billing;
 /// に委ね、本クラスはDBアクセス（対象得意先の確定済み<c>billing</c>のうち最新の<c>billing_date</c>の照会）
 /// のみ担う。都度得意先（<see cref="TaxUnit.Line"/>）は<c>billing</c>を1件も持たないため、税単位で
 /// 分岐せずとも自動的に無制限になる。
+///
+/// <c>billings</c>は請求集約先（<c>billing_customer_code</c>）にしか作られない（親子請求、
+/// docs/design_document.md 28章）。請求集約元は対象得意先自身のコードでは<c>billings</c>を
+/// 1件も持てないため、先に請求集約先を解決してから照会する。単独得意先（<c>billing_customer_code</c>
+/// が自分自身）はこの解決を経ても対象コードが変わらないため挙動は不変。
 /// </summary>
 public class BillingClosedDateService(BmcsDbContext dbContext)
 {
-    public Task<DateOnly?> GetLatestConfirmedBillingDateAsync(
+    public async Task<DateOnly?> GetLatestConfirmedBillingDateAsync(
         string customerCode, CancellationToken cancellationToken = default)
-        => dbContext.Billings
+    {
+        var billingCustomerCode = await dbContext.Customers
             .AsNoTracking()
-            .Where(b => b.CustomerCode == customerCode && !b.IsDeleted && b.BillingStatus == BillingStatus.Confirmed)
+            .Where(c => c.CustomerCode == customerCode)
+            .Select(c => c.BillingCustomerCode)
+            .FirstOrDefaultAsync(cancellationToken) ?? customerCode;
+
+        return await dbContext.Billings
+            .AsNoTracking()
+            .Where(b => b.CustomerCode == billingCustomerCode && !b.IsDeleted && b.BillingStatus == BillingStatus.Confirmed)
             .Select(b => (DateOnly?)b.BillingDate)
             .MaxAsync(cancellationToken);
+    }
 
     /// <summary>画面の<c>DatePicker.DisplayDateStart</c>供給用。制限が無ければ<c>null</c>。</summary>
     public async Task<DateOnly?> GetMinimumEntryDateAsync(

@@ -27,13 +27,16 @@ public class SettlementPhaseReviewTests(DevDatabaseFixture fixture) : IClassFixt
         var dbContext = scope.ServiceProvider.GetRequiredService<BmcsDbContext>();
         var service = scope.ServiceProvider.GetRequiredService<SettlementService>();
 
-        var customerCodes = await dbContext.Customers.AsNoTracking()
-            .Select(c => c.CustomerCode)
+        // 請求集約グループ単位で再計算するため、グループの代表（請求集約先コード）ごとに1回だけ呼べば
+        // 十分（Phase 12-B）。得意先ごとに呼ぶと同じグループを重複して再計算してしまう。
+        var billingCustomerCodes = await dbContext.Customers.AsNoTracking()
+            .Select(c => c.BillingCustomerCode)
+            .Distinct()
             .ToListAsync();
 
         var driftedCustomers = new List<string>();
 
-        foreach (var customerCode in customerCodes)
+        foreach (var customerCode in billingCustomerCodes)
         {
             dbContext.ChangeTracker.Clear();
 

@@ -234,6 +234,34 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
     }
 
     [Fact]
+    public async Task 請求集約元はこの画面で入金登録できない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        var rootCode = "__RCEG1R";
+        var childCode = "__RCEG1C";
+        try
+        {
+            await InsertCustomerAsync(dbContext, rootCode);
+            await InsertCustomerAsync(dbContext, childCode, billingCustomerCode: rootCode);
+
+            var exSummary = await Assert.ThrowsAsync<ReceiptEntryException>(
+                () => service.GetReceivableSummaryAsync(childCode));
+            Assert.Contains("請求集約", exSummary.Message);
+
+            var exSave = await Assert.ThrowsAsync<ReceiptEntryException>(() => service.SaveNewAsync(
+                childCode, new DateOnly(2026, 8, 25), slipRemarks: null, lines: [CashLine(1000m)]));
+            Assert.Contains("請求集約", exSave.Message);
+        }
+        finally
+        {
+            // 自己参照FK（billing_customer_code）のため請求集約元(child)を先に削除する。
+            await CleanupAsync(dbContext, childCode);
+            await CleanupAsync(dbContext, rootCode);
+        }
+    }
+
+    [Fact]
     public async Task 存在しない得意先は例外になる()
     {
         await using var scope = fixture.Services.CreateAsyncScope();
@@ -816,7 +844,8 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         scope.ServiceProvider.GetRequiredService<ReceiptEntryService>());
 
     private static Task InsertCustomerAsync(
-        BmcsDbContext dbContext, string customerCode, TaxUnit taxUnit = TaxUnit.Invoice)
+        BmcsDbContext dbContext, string customerCode, TaxUnit taxUnit = TaxUnit.Invoice,
+        string? billingCustomerCode = null)
     {
         var now = DateTime.Now;
         dbContext.Customers.Add(new CustomerEntity
@@ -826,7 +855,7 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             ClosingDay = taxUnit == TaxUnit.Line ? (byte)0 : (byte)15,
             TaxUnit = taxUnit,
             RoundingType = RoundingType.Floor,
-            BillingCustomerCode = customerCode,
+            BillingCustomerCode = billingCustomerCode ?? customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,
