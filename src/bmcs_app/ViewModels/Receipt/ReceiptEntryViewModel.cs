@@ -132,9 +132,6 @@ public partial class ReceiptEntryViewModel(
     /// <summary>得意先確定時に取得した請求残高（今回の入金額を含まない、入金前の残高）。</summary>
     public decimal OutstandingTotal => _outstandingTotal;
 
-    /// <summary>今回の入金後に見込まれる請求残高。</summary>
-    public decimal OutstandingAfterReceiptTotal => _outstandingTotal - ReceiptTotal;
-
     private bool CanSave => IsEditable && _customer is not null && Lines.Any(l => !l.IsBlank);
 
     private bool CanDeleteSlip => CanEdit && _loadedReceiptSlipNumber is not null && !IsEditLocked;
@@ -601,9 +598,6 @@ public partial class ReceiptEntryViewModel(
         SlipRemarks = header.SlipRemarks ?? string.Empty;
         _customer = customer;
 
-        // 得意先確定時の請求残高表示をそのまま流用する。この伝票自身の充当額を除外していないため、
-        // 訂正で金額を変えた場合の「入金後残高」の見え方は目安に留まる（新規登録画面の情報表示を
-        // そのまま転用したもので、7-5の完了条件には影響しない）。
         _outstandingTotal = customer is null
             ? 0m
             : (await receiptEntryService.GetReceivableSummaryAsync(customer.CustomerCode)).OutstandingTotal;
@@ -698,7 +692,6 @@ public partial class ReceiptEntryViewModel(
     {
         OnPropertyChanged(nameof(ReceiptTotal));
         OnPropertyChanged(nameof(OutstandingTotal));
-        OnPropertyChanged(nameof(OutstandingAfterReceiptTotal));
         SaveCommand.NotifyCanExecuteChanged();
     }
 }

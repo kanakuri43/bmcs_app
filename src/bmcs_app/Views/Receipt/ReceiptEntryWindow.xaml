@@ -206,15 +206,9 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,16,0" VerticalAlignment="Center">
-                <StackPanel Margin="0,0,16,0">
+                <StackPanel>
                     <TextBlock Text="《今回入金額》" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                     <TextBlock Text="{Binding ReceiptTotal, StringFormat={}{0:N0}}" HorizontalAlignment="Right" FontWeight="Bold" />
-                </StackPanel>
-                <StackPanel>
-                    <TextBlock Text="《入金後残高》" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Text="{Binding OutstandingAfterReceiptTotal, StringFormat={}{0:N0}}"
-                               HorizontalAlignment="Right" FontWeight="Bold" FontSize="16"
-                               Foreground="{DynamicResource MahApps.Brushes.Accent}" />
                 </StackPanel>
             </StackPanel>
 
