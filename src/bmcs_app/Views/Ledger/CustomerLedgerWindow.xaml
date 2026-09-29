@@ -21,6 +21,14 @@
         <KeyBinding Key="F5" Command="{Binding SearchCommand}" />
     </mah:MetroWindow.InputBindings>
 
+    <mah:MetroWindow.Resources>
+        <!-- 行・数量・金額系の列はヘッダーも右詰めにする -->
+        <Style x:Key="RightAlignedColumnHeaderStyle" TargetType="{x:Type GridViewColumnHeader}"
+               BasedOn="{StaticResource {x:Type GridViewColumnHeader}}">
+            <Setter Property="HorizontalContentAlignment" Value="Right" />
+        </Style>
+    </mah:MetroWindow.Resources>
+
     <Grid Margin="16" beh:ImeAwareSpaceKeyBindingBehavior.IsEnabled="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" /> <!-- ヘッダー -->
@@ -93,7 +101,13 @@
                          伝票かを表示する（TODO.md 12-E）。売上・入金行以外は空欄。 -->
                     <GridViewColumn Header="得意先" Width="140" DisplayMemberBinding="{Binding CustomerLabel}" />
                     <GridViewColumn Header="伝票No" Width="110" DisplayMemberBinding="{Binding Entry.SalesSlipNumber}" />
-                    <GridViewColumn Header="行" Width="36" DisplayMemberBinding="{Binding Entry.SalesLineNumber}" />
+                    <GridViewColumn Header="行" Width="36" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Entry.SalesLineNumber}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
                     <GridViewColumn Header="商品コード" Width="80" DisplayMemberBinding="{Binding Entry.ProductCode}" />
                     <GridViewColumn Header="商品名／摘要" Width="160" DisplayMemberBinding="{Binding Description}" />
                     <GridViewColumn Header="課税区分" Width="70">
@@ -103,21 +117,21 @@
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="数量" Width="70">
+                    <GridViewColumn Header="数量" Width="70" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Entry.Quantity, StringFormat={}{0:N3}}" HorizontalAlignment="Right" />
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="単価" Width="80">
+                    <GridViewColumn Header="単価" Width="80" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Entry.UnitPrice, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="売上額" Width="90">
+                    <GridViewColumn Header="売上額" Width="90" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Entry.DebitAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
@@ -127,14 +141,14 @@
                     <GridViewColumn Header="請求" Width="36" DisplayMemberBinding="{Binding BilledMark}" />
                     <GridViewColumn Header="入金日付" Width="90" DisplayMemberBinding="{Binding Entry.ReceiptDate, StringFormat={}{0:yyyy/MM/dd}}" />
                     <GridViewColumn Header="入金No" Width="110" DisplayMemberBinding="{Binding Entry.ReceiptSlipNumber}" />
-                    <GridViewColumn Header="入金額" Width="90">
+                    <GridViewColumn Header="入金額" Width="90" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Entry.ReceiptAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="残高" Width="100">
+                    <GridViewColumn Header="残高" Width="100" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <!-- 取引履歴のみモード（請求集約元、TODO.md 12-E）は残高を表示しない
