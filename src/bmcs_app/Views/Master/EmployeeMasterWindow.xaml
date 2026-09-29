@@ -3,7 +3,7 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
-                 Title="bmcs_app - 社員マスタ"
+                 Title="社員マスタ"
                  Height="420" Width="560"
                  ResizeMode="CanMinimize"
                  WindowStartupLocation="CenterScreen"

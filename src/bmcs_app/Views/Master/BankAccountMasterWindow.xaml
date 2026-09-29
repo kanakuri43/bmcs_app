@@ -3,7 +3,7 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
-                 Title="bmcs_app - 銀行マスタ"
+                 Title="銀行マスタ"
                  Height="520" Width="600"
                  ResizeMode="CanMinimize"
                  WindowStartupLocation="CenterScreen"
