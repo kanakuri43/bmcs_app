@@ -58,6 +58,19 @@ public abstract class PagedReportDocumentBuilder : ReportDocumentBuilder
 
     public FixedDocument Build()
     {
+        var document = new FixedDocument();
+        BuildInto(document);
+        return document;
+    }
+
+    /// <summary>
+    /// 既存の<see cref="Build"/>と同じページ組み立てを、呼び出し元が用意した<paramref name="document"/>に
+    /// 追加する（TODO.md 10-7、複数請求書を1つの<see cref="FixedDocument"/>にまとめて印刷する用途）。
+    /// ページ番号（<c>pageNumber</c>/<c>totalPages</c>）はこのビルダー分だけで1始まりに閉じる
+    /// （請求書ごとに「1/N ページ」と表示するため、連結先の既存ページ数はここでは加味しない）。
+    /// </summary>
+    public void BuildInto(FixedDocument document)
+    {
         var linesOnFirstPage = Math.Max(1,
             (int)((ContentHeight - FullHeaderHeight - TableHeaderHeight - FooterHeight) / LineHeight));
         var linesOnLaterPages = Math.Max(1,
@@ -65,7 +78,6 @@ public abstract class PagedReportDocumentBuilder : ReportDocumentBuilder
 
         var pageSplits = ReportPagination.Split(LineCount, linesOnFirstPage, linesOnLaterPages);
         pageSplits = ReportPagination.AvoidTrailingHeaderOrphans(pageSplits, IsPageBreakSensitive);
-        var document = new FixedDocument();
 
         for (var i = 0; i < pageSplits.Count; i++)
         {
@@ -75,8 +87,6 @@ public abstract class PagedReportDocumentBuilder : ReportDocumentBuilder
                 isFirst: i == 0, isLast: i == pageSplits.Count - 1,
                 pageNumber: i + 1, totalPages: pageSplits.Count);
         }
-
-        return document;
     }
 
     private void AddPage(

@@ -8,15 +8,14 @@
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 6-1。締め得意先（tax_unit=請求単位／伝票単位）を締め日区分で一括処理する画面。
+        TODO.md 6-1・10-7。締め得意先（tax_unit=請求単位／伝票単位）を締め日区分で一括処理する画面。
         入力は締め日区分（対象得意先の絞り込み）と請求日（締め切り日）の2つのみ。
         対象年月は別入力にしない（請求日から導出できる冗長な入力だったため。2026-09-11ユーザー確認）。
-        行選択（チェックボックス）は持たない（docs/design_document.md 9章。一括処理の方針上不要）。
-        プレビューはボタンを持たず、画面表示時（既定条件）と条件変更時に自動で再取得する
-        （2026-09-11ユーザー確認）。保存を伴う確定のみ明示操作（ボタン／F10）にする。
-        確定後は結果一覧（請求番号入り）を残したまま選択行を印刷できる（TODO.md 10-5、
-        2026-09-16改訂。docs/design_document.md 9章参照。条件を変更すると次のバッチとして
-        一覧が置き換わる）。
+        一覧は「これから締めたらどうなるか」のプレビューではなく、billingsに実在する確定済み
+        請求データを請求日だけで抽出したもの（2026-09-29改訂）。未確定の請求日を選ぶと0件になる。
+        一覧は拡張選択（Ctrl/Shiftクリック。チェックボックス列は持たない）で複数行を選べ、
+        選択行をまとめて印刷できる（請求書の再発行手段。docs/design_document.md 9章参照）。
+        プレビューが無くなった分、締め確定（F10）の実行前に確認ダイアログを挟む。
     -->
     <mah:MetroWindow.InputBindings>
         <KeyBinding Key="F10" Command="{Binding ConfirmCommand}" />
@@ -52,12 +51,14 @@
         <!-- ===== 一覧 ===== -->
         <ListView Grid.Row="1"
                   ItemsSource="{Binding Results}"
-                  SelectedItem="{Binding SelectedResult}"
+                  SelectionMode="Extended"
+                  beh:MultiSelectionBehavior.SelectedItems="{Binding SelectedResults}"
                   beh:RowActivationBehavior.Command="{Binding PrintCommand}">
             <ListView.View>
                 <GridView>
+                    <GridViewColumn Header="請求番号" Width="100" DisplayMemberBinding="{Binding BillingNumber}" />
                     <GridViewColumn Header="得意先コード" Width="90" DisplayMemberBinding="{Binding CustomerCode}" />
-                    <GridViewColumn Header="得意先名" Width="160" DisplayMemberBinding="{Binding CustomerName}" />
+                    <GridViewColumn Header="得意先名" Width="150" DisplayMemberBinding="{Binding CustomerName}" />
                     <GridViewColumn Header="税区分" Width="80">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -65,13 +66,13 @@
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="前回残高" Width="100" DisplayMemberBinding="{Binding PreviousBalance, StringFormat={}{0:N0}}" />
-                    <GridViewColumn Header="入金額" Width="100" DisplayMemberBinding="{Binding ReceiptAmount, StringFormat={}{0:N0}}" />
-                    <GridViewColumn Header="売上額" Width="100" DisplayMemberBinding="{Binding SalesAmount, StringFormat={}{0:N0}}" />
-                    <GridViewColumn Header="消費税" Width="90" DisplayMemberBinding="{Binding TaxAmount, StringFormat={}{0:N0}}" />
-                    <GridViewColumn Header="今回請求額" Width="110" DisplayMemberBinding="{Binding CurrentBillingAmount, StringFormat={}{0:N0}}" />
-                    <GridViewColumn Header="請求番号" Width="100" DisplayMemberBinding="{Binding BillingNumber}" />
-                    <GridViewColumn Header="備考" Width="220" DisplayMemberBinding="{Binding SkipReason}" />
+                    <GridViewColumn Header="締め年月" Width="80" DisplayMemberBinding="{Binding ClosingYearMonth}" />
+                    <GridViewColumn Header="前回残高" Width="95" DisplayMemberBinding="{Binding PreviousBalance, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="入金額" Width="95" DisplayMemberBinding="{Binding ReceiptAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="売上額" Width="95" DisplayMemberBinding="{Binding SalesAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="消費税" Width="85" DisplayMemberBinding="{Binding TaxAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="今回請求額" Width="105" DisplayMemberBinding="{Binding CurrentBillingAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="確定日時" Width="130" DisplayMemberBinding="{Binding ConfirmedAt, StringFormat={}{0:yyyy/MM/dd HH:mm}}" />
                 </GridView>
             </ListView.View>
         </ListView>
@@ -84,7 +85,7 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" Orientation="Horizontal">
-                <TextBlock Text="確定対象の今回請求額 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Text="今回請求額 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Text="{Binding TotalCurrentBillingAmount, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" />
                 <TextBlock Text="処理中..." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="OrangeRed"
                            Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
@@ -93,8 +94,7 @@
             <Button Grid.Column="1"
                     Content="選択行を印刷 (F11)"
                     Command="{Binding PrintCommand}"
-                    CommandParameter="{Binding SelectedResult}"
-                    ToolTip="選択した請求書を印刷します（確定済みの行のみ。F11）"
+                    ToolTip="選択した請求書をまとめて印刷します（複数選択可。F11）"
                     Padding="12,6" />
         </Grid>
 

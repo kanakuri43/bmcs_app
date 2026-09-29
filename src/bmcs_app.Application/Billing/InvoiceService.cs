@@ -1,5 +1,6 @@
 using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Entities;
+using bmcs_app.Domain.Enums;
 using bmcs_app.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using SalesEntity = bmcs_app.Domain.Entities.Sales;
@@ -15,6 +16,32 @@ namespace bmcs_app.Application.Billing;
 /// </summary>
 public class InvoiceService(BmcsDbContext dbContext)
 {
+    /// <summary>
+    /// 画面の一覧表示用に、指定した請求日の確定済み請求データを読み取り専用で返す（TODO.md 10-7、
+    /// 再印刷用の一覧）。<see cref="BillingReleaseService.PreviewAsync"/>と同じ絞り込み
+    /// （<c>billing_date</c>一致・確定済み・未削除）を使う。解除済み（<c>BillingStatus.Released</c>）は
+    /// 対象外（同一得意先に解除済みの旧番号と再締めした新番号が並び得るため。2026-09-29ユーザー確認）。
+    /// </summary>
+    public Task<List<InvoiceListItem>> GetByBillingDateAsync(
+        DateOnly billingDate, CancellationToken cancellationToken = default)
+        => dbContext.Billings
+            .AsNoTracking()
+            .Where(b => b.BillingDate == billingDate && !b.IsDeleted && b.BillingStatus == BillingStatus.Confirmed)
+            .OrderBy(b => b.CustomerCode)
+            .Select(b => new InvoiceListItem(
+                b.BillingNumber,
+                b.CustomerCode,
+                b.CustomerName,
+                b.TaxUnit,
+                b.ClosingYearMonth,
+                b.PreviousBalance,
+                b.ReceiptAmount,
+                b.SalesAmount,
+                b.TaxAmount,
+                b.CurrentBillingAmount,
+                b.ConfirmedAt))
+            .ToListAsync(cancellationToken);
+
     /// <summary>
     /// 指定した請求番号の請求書データを組み立てる（画面表示・印刷用、保存しない）。
     /// 確定済み・解除済みのどちらも取得対象とする（過去の参照用の印刷を禁止する理由がないため）。

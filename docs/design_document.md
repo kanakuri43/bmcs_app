@@ -417,26 +417,39 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
   の採番が複数得意先分必要になるため明示トランザクションで包み、`SaveChangesAsync`は最後に
   1回だけ呼ぶ（6章が「請求締め」を明示トランザクションの例として挙げている想定どおり）。
 - 画面（`Views/Billing/BillingClosingWindow.xaml`／`ViewModels/Billing/BillingClosingViewModel.cs`）
-  は「締め日を指定して一括」処理する専用画面。対象年月・締め日区分（得意先マスタに実在する
-  `closing_day`から選択）・請求日を指定し、「締め確定」で確定する。**プレビューは対象取得
-  ボタンを持たず、画面表示時（既定条件＝当月・締め日区分の先頭）と条件変更時（対象年月・
-  締め日区分）に自動で再取得する**（2026-09-11ユーザー確認）。保存を伴う確定操作のみボタン
-  （F10）による明示操作にする。対象年月のテキストボックスは`UpdateSourceTrigger=LostFocus`
-  にし、1文字入力するごとにDB照会が走らないようにしている。一覧はチェックボックスによる
-  行選択を持たない（一括処理の方針上不要であり、既存画面にチェックボックス一覧のパターンが
-  無いため新パターンを増やさない）。
-- **締め確定後のリセット**（`docs/product-spec.md` UI/UX節の「登録後のリセット」を本画面に
-  適用したもの。2026-09-11確定、**2026-09-16改訂**）: 当初は「締め確定」成功後に対象年月・
-  締め日区分・請求日の入力条件と結果一覧を両方クリアし、画面表示直後の状態へ即座に戻していた。
-  **TODO.md 10-5（請求書印刷）の実装で、この仕様が「確定した請求書をその場の一覧から選択して
-  印刷したい」という要求と直接矛盾することが判明**（確定した瞬間に印刷対象の請求番号が一覧から
-  消えてしまう）。ユーザー確認のうえ、**確定後は結果一覧（請求番号入り）をクリアしない**方式に
-  変更した。入力条件（対象年月・締め日区分・請求日）もそのまま残す。一覧の`ListView`に選択行
-  ＋印刷コマンド（`SelectedResult`／`PrintCommand`、`BillingClosingViewModel`）を追加し、
-  `docs/report-spec.md` 2-2節の`InvoiceService.GetByNumberAsync`でヘッダーの確定値から
-  請求書データを組み立てて印刷する。次のバッチ（別の締め日区分・請求日）に進みたい場合は、
-  入力条件を変更すれば既存の自動再取得（`OnSelectedClosingDayChanged`／`OnClosingDateChanged`）
-  が一覧を新しいプレビュー結果で置き換える。完了メッセージ（確定件数）は従来どおり画面上に残す。
+  は「締め日を指定して一括」処理する専用画面。締め日区分（得意先マスタに実在する`closing_day`
+  から選択）・請求日を指定し、「締め確定」で確定する。対象年月は別入力にしない（請求日から
+  導出できる冗長な入力だったため。2026-09-11ユーザー確認）。
+
+### 9-7. 一覧＝確定済み請求データの照会（2026-09-29改訂。請求書の再印刷）
+
+**一覧は「これから締めたらどうなるか」の集計プレビューではなく、`billings`に実在する確定済み
+請求データを請求日（`billing_date`）だけで抽出したもの。** 締め日区分は抽出条件に使わない
+（`billings`に締め日区分を保持する列が無いため）。抽出条件（`InvoiceService.GetByBillingDateAsync`）:
+`billing_date`一致・`billing_status = 1`（確定）・`is_deleted = 0`。解除済み(`billing_status = 2`)は
+表示しない（同一得意先に解除済みの旧番号と再締めした新番号が並び得るため、印刷対象の判別が
+つかなくなることを避けた。2026-09-29ユーザー確認）。未確定の請求日を選んだときは1件も表示しない。
+
+**当初（2026-09-11〜2026-09-16）は`BillingClosingService.PreviewAsync`による「これから締めたら
+どうなるか」の集計プレビューを画面表示時・条件変更時に自動再取得し、確定後もその場の一覧
+（請求番号入り）から選択行を印刷する方式だった。** しかし画面を開き直すと`PreviewAsync`は
+「既にこの締め年月で確定済みです」というスキップ行（請求番号なし）を返すため、過去に締めた
+請求書を再印刷する手段が実質存在しなかった。**過去に締めた請求書をいつでも再照会・再印刷
+できることを優先し、確定前の集計プレビュー機能はこの画面から廃止した**（2026-09-29ユーザー
+確認）。`BillingClosingService.PreviewAsync`自体は結合テストの検証用に残しているが、画面からは
+呼ばない。
+
+これに伴い、締め確定（F10）は実行前に対象件数を提示する確認ダイアログを挟む（`BillingReleaseViewModel`
+と同型。プレビューが無くなった分、何も見えない状態での即DB書き込みを避ける）。
+
+一覧は拡張選択（`SelectionMode="Extended"`、Ctrl/Shiftクリック。チェックボックス列は持たない。
+2026-09-29ユーザー確認）で複数行を選べる。選択した行はまとめて1つの`FixedDocument`に連結して
+1回のプレビューダイアログで印刷でき、これが請求書の再発行手段になる
+（`PagedReportDocumentBuilder.BuildInto`、`BillingClosingViewModel.PrintCommand`）。
+F11／ボタン／行のダブルクリック・Enter（`RowActivationBehavior`）のいずれからも「選択中の
+全行を印刷」で一貫させるため、`PrintCommand`はパラメータを取らない
+（選択の同期は新規`MultiSelectionBehavior`が担う。`ListBox.SelectedItems`は依存関係
+プロパティでないため直接バインドできないため）。
 
 ### 検証方法
 
@@ -447,6 +460,10 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
   「専用のテスト得意先で確定した後、finallyで物理削除する」方式を採る。seedの得意先
   （CUS001=20日締め／CUS002=末日締め／CUS003=都度）とは重ならない`closing_day = 15`の
   専用テスト得意先を新設し、seedデータには一切触れない。
+- 結合テスト（一覧の抽出、9-7章）: `tests/bmcs_app.Application.Tests/Billing/InvoiceServiceTests.cs`の
+  `GetByBillingDateAsync`向けテスト3件（得意先コード順で返す・確定済みが無い請求日は0件・
+  解除済みは含まれない）。`closing_day = 18`の専用テスト得意先を新設し、seedデータには
+  一切触れない（同ファイルの請求集約テストと同じ方式）。
 
 ---
 
@@ -733,7 +750,8 @@ EF Coreの例外型を漏らさない」と規定しているが、`BillingClosi
 あわせて、請求系3画面のViewModel（`BillingClosingViewModel`・`BillingReleaseViewModel`・
 `DetailInvoiceIssueViewModel`）は業務例外だけをcatchし`catch (Exception)`のフォールバックを
 持たない不整合があった（`SalesEntryViewModel`／`OrderEntryViewModel`は持つ）ため、同じ形の
-フォールバックを追加した。`BillingClosingViewModel`の`_ = PreviewAsync()`と
+フォールバックを追加した。`BillingClosingViewModel`の`_ = PreviewAsync()`（2026-09-29に
+`_ = RefreshAsync()`へ改名。9-7節参照）と
 `DetailInvoiceIssueViewModel`の`_ = ApplyCustomerAsync(...)`（いずれもfire-and-forget）は
 例外が`TaskScheduler.UnobservedTaskException`（ログのみ・UI通知なし）に落ち一覧が黙って古いまま
 になる経路だったため、各メソッド内部にtry/catchを足して塞いだ（呼び出し側の構造は変更していない）。
@@ -1850,7 +1868,9 @@ TODO.md 10-2（納品書一括発行）に着手しようとしたところ、�
 
 明細請求書のみ、取消済み（`InvoiceStatus = Cancelled`）は画面の印刷ボタンを無効化する
 （F8の`CanCancel`が発行済みのみ許可するのと対称。取消済みは明細0件になり印刷の実用性が
-低いため）。締め得意先の請求書は確定・解除済みのどちらでも印刷ボタンが有効。
+低いため）。締め得意先の請求書は`InvoiceService.GetByNumberAsync`自体は確定・解除済みの
+どちらでも取得できるが、請求締め処理画面の一覧（9-7節、2026-09-29改訂）は確定済みしか
+表示しないため、その画面からは解除済みを選んで印刷することはできない。
 
 ### 23-4. 既存仕様との矛盾と解決: 請求締め処理画面のリセット挙動
 

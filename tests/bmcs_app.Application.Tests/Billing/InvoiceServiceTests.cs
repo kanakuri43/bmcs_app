@@ -138,6 +138,94 @@ public class InvoiceServiceTests(DevDatabaseFixture fixture) : IClassFixture<Dev
         }
     }
 
+    [Fact]
+    public async Task 指定した請求日の確定済み請求データを得意先コード順で返す()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<BmcsDbContext>();
+        var closingService = scope.ServiceProvider.GetRequiredService<BillingClosingService>();
+        var invoiceService = Resolve(scope);
+
+        const string customerA = "__TSTGBD2";
+        const string customerB = "__TSTGBD1";
+        await InsertCustomerAsync(dbContext, customerA, salesEmployeeCode: "101");
+        await InsertCustomerAsync(dbContext, customerB, salesEmployeeCode: "101");
+
+        var slipA = "__TSTGBD_A";
+        var slipB = "__TSTGBD_B";
+        var billingDate = new DateOnly(2025, 8, 18);
+        dbContext.Sales.Add(NewSalesLine(customerA, slipA, 1, new DateOnly(2025, 8, 1), quantity: 2m, unitPrice: 1000m, productCode: "1001"));
+        dbContext.Sales.Add(NewSalesLine(customerB, slipB, 1, new DateOnly(2025, 8, 1), quantity: 3m, unitPrice: 1000m, productCode: "1001"));
+        await dbContext.SaveChangesAsync();
+
+        try
+        {
+            await closingService.ConfirmAsync(TestClosingDay, billingDate);
+
+            var results = await invoiceService.GetByBillingDateAsync(billingDate);
+            var testResults = results.Where(r => r.CustomerCode == customerA || r.CustomerCode == customerB).ToList();
+
+            Assert.Equal(2, testResults.Count);
+            // 得意先コード順（"__TSTGBD1" < "__TSTGBD2"）に整列されていることを確認する。
+            Assert.Equal(customerB, testResults[0].CustomerCode);
+            Assert.Equal(customerA, testResults[1].CustomerCode);
+        }
+        finally
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.sales WHERE sales_slip_number = {slipA}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.sales WHERE sales_slip_number = {slipB}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.billings WHERE customer_code = {customerA}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.billings WHERE customer_code = {customerB}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.customers WHERE customer_code = {customerA}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.customers WHERE customer_code = {customerB}");
+        }
+    }
+
+    [Fact]
+    public async Task 確定済みが無い請求日は0件を返す()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var invoiceService = Resolve(scope);
+
+        var results = await invoiceService.GetByBillingDateAsync(new DateOnly(1999, 1, 1));
+
+        Assert.Empty(results);
+    }
+
+    [Fact]
+    public async Task 解除済みの請求データは一覧に含まれない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<BmcsDbContext>();
+        var closingService = scope.ServiceProvider.GetRequiredService<BillingClosingService>();
+        var releaseService = scope.ServiceProvider.GetRequiredService<BillingReleaseService>();
+        var invoiceService = Resolve(scope);
+
+        const string customer = "__TSTGBD3";
+        await InsertCustomerAsync(dbContext, customer, salesEmployeeCode: "101");
+
+        var slip = "__TSTGBD_C";
+        var billingDate = new DateOnly(2025, 8, 19);
+        dbContext.Sales.Add(NewSalesLine(customer, slip, 1, new DateOnly(2025, 8, 1), quantity: 1m, unitPrice: 1000m, productCode: "1001"));
+        await dbContext.SaveChangesAsync();
+
+        try
+        {
+            await closingService.ConfirmAsync(TestClosingDay, billingDate);
+            await releaseService.ReleaseByBillingDateAsync(billingDate);
+
+            var results = await invoiceService.GetByBillingDateAsync(billingDate);
+
+            Assert.DoesNotContain(results, r => r.CustomerCode == customer);
+        }
+        finally
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.sales WHERE sales_slip_number = {slip}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.billings WHERE customer_code = {customer}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.customers WHERE customer_code = {customer}");
+        }
+    }
+
     private static InvoiceService Resolve(AsyncServiceScope scope)
         => scope.ServiceProvider.GetRequiredService<InvoiceService>();
 
