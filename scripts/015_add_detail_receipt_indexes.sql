@@ -19,7 +19,7 @@
 USE bmcs_db;
 GO
 
--- SettlementService.RecalculateForCustomerAsync の主クエリ（得意先×入金日で絞る）。
+-- SettlementService.RecalculateForBillingGroupAsync の主クエリ（得意先×入金日で絞る）。
 -- receipt の IX_receipt_customer_code_receipt_date と対になる。
 IF NOT EXISTS (SELECT 1 FROM sys.indexes
                WHERE name = N'IX_detail_receipt_customer_code_receipt_date' AND object_id = OBJECT_ID(N'dbo.detail_receipt'))

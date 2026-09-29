@@ -17,7 +17,7 @@ public class CustomerLedgerQueryService(BmcsDbContext dbContext)
     /// <summary>
     /// 得意先1件の元帳を組み立てる。得意先が存在しなければ null。
     /// 無効化済み（IsDeleted）の得意先も対象にする（過去の残高照会は必要なため。
-    /// <c>SettlementService.RecalculateForCustomerAsync</c> と同じ方針）。
+    /// <c>SettlementService.RecalculateForBillingGroupAsync</c> と同じ方針）。
     /// </summary>
     public async Task<CustomerLedgerResult?> GetAsync(
         string customerCode, DateOnly periodFrom, DateOnly periodTo, CancellationToken cancellationToken = default)

@@ -406,7 +406,7 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `settlement_status` | `tinyint` | × | `1`＝未消込／`2`＝一部消込／`3`＝消込完了 |
 | `settled_amount` | `decimal(15,2)` | × | 消込済金額 |
 
-**`settlement_status`／`settled_amount` はキャッシュ列。** `SettlementService.RecalculateForCustomerAsync`（`src/bmcs_app.Application/Receipt/`、TODO.md 7-1）が入金データから得意先単位で再計算する。対象額は本テーブルの `amount`（税抜・税込いずれも `amount` がそのまま対象額になり、消費税分は行レベルの消込に載せない）。`tax_unit`=1/2 は `receipt_allocations`（`billing_number` 経由）、`tax_unit`=3 は `detail_receipts`（直接指定・明細請求書経由の合算）が充当元になる。詳細は `docs/design_document.md` 16章。
+**`settlement_status`／`settled_amount` はキャッシュ列。** `SettlementService.RecalculateForBillingGroupAsync`（`src/bmcs_app.Application/Receipt/`、TODO.md 7-1）が入金データから得意先単位で再計算する。対象額は本テーブルの `amount`（税抜・税込いずれも `amount` がそのまま対象額になり、消費税分は行レベルの消込に載せない）。`tax_unit`=1/2 は `receipt_allocations`（`billing_number` 経由）、`tax_unit`=3 は `detail_receipts`（直接指定・明細請求書経由の合算）が充当元になる。詳細は `docs/design_document.md` 16章。
 | `order_slip_number` | `varchar(20)` | ○ | 受注からの売上化の場合の受注伝票番号 |
 | `order_line_number` | `smallint` | ○ | 同、行番号 |
 | `billing_number` | `varchar(20)` | ○ | 請求データへの参照。**`NULL`＝未請求**、または `tax_unit=3`（明細請求書との紐付けは連携テーブル2.14で行うため常にNULL） |

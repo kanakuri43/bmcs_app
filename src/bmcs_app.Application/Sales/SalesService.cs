@@ -242,7 +242,7 @@ public class SalesService(
 
         // 訂正で金額を減らした場合に消込済金額が売上金額を超えて取り残る不整合を防ぐ
         // （TODO.md 7-1）。訂正後の金額に合わせてクランプし直す。
-        await settlementService.RecalculateForCustomerAsync(currentLines[0].CustomerCode, cancellationToken);
+        await settlementService.RecalculateForBillingGroupAsync(currentLines[0].CustomerCode, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
 
@@ -299,10 +299,10 @@ public class SalesService(
             throw new SlipConcurrencyException("他のユーザーが更新しました。再読み込みしてください。", ex);
         }
 
-        // 取消した行自体は再計算対象から外れる（RecalculateForCustomerAsyncはIsDeleted行を
+        // 取消した行自体は再計算対象から外れる（RecalculateForBillingGroupAsyncはIsDeleted行を
         // 読まない）が、同じ請求／明細請求書に属する他の売上明細行への配分が取消によって
         // 変わりうるため再計算する（TODO.md 7-1）。
-        await settlementService.RecalculateForCustomerAsync(lines[0].CustomerCode, cancellationToken);
+        await settlementService.RecalculateForBillingGroupAsync(lines[0].CustomerCode, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
 

@@ -138,13 +138,13 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
   2. ストアドプロシージャの実行と EF Core の更新を1つの整合単位にまとめる場合
   3. **伝票番号の採番と伝票登録を1つの整合単位にまとめる場合**（下記）
   4. **キャッシュ列を「書いた内容をDBから読み直して」再計算する場合**（入金消込。TODO.md 7-1）。
-     `SettlementService.RecalculateForCustomerAsync`（`src/bmcs_app.Application/Receipt/`）は、
+     `SettlementService.RecalculateForBillingGroupAsync`（`src/bmcs_app.Application/Receipt/`）は、
      入金明細（`receipts`／`detail_receipts`）から得意先の売上明細行の消込キャッシュ列
      （`sales.settlement_status`／`settled_amount`）を再計算する。再計算方式（差分ではなく
      毎回全件から導出する。docs/design_document.md 16章）は、呼び出し元が入金行を保存した
      **後**でなければ再計算の入力（DB上の確定値）が揃わないため、1ユースケース内で
      `SaveChangesAsync` を2回呼ぶ構成になる（①入金行の保存 → ②
-     `RecalculateForCustomerAsync` 内部での消込キャッシュ列の保存）。1つの整合単位である
+     `RecalculateForBillingGroupAsync` 内部での消込キャッシュ列の保存）。1つの整合単位である
      ことは明示トランザクションで担保する。`SettlementService` 自身は
      `BeginTransactionAsync`／`CommitAsync` を呼ばず、呼び出し元が開始した明示トランザクション
      に参加する（`OrderStatusService.ApplySalesQuantityDeltasAsync` と同じ構成）。明示
@@ -219,7 +219,7 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 - **派生（キャッシュ）列の再計算では `TouchAll` を使わない（TODO.md 7-1）。** `TouchAll` は
   ユーザーが伝票を編集するときに「自分が変更しなかった行を他人が変更した」を検出するための
   意図的な rowversion 照合強制であり、対象は編集中の1伝票に限られる。一方、消込キャッシュ列
-  の再計算（`SettlementService.RecalculateForCustomerAsync`）は得意先の全売上・全入金行に
+  の再計算（`SettlementService.RecalculateForBillingGroupAsync`）は得意先の全売上・全入金行に
   及ぶ派生更新であり、ここで全行を Modified にすると、再計算のたびに無関係な伝票を編集中の
   別ユーザーが不要に弾かれる。**値が実際に変わった行だけを Modified にする。** 真に競合すべき
   ケース（同一 `billings` への2つの入金の同時登録）は、両方が実際に `settled_amount` を書き換え

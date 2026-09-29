@@ -12,7 +12,7 @@ namespace bmcs_app.Application.Tests.Receipt;
 /// ではなく、**DBに現存する全得意先**に対して直接検証する。
 /// </summary>
 /// <remarks>
-/// <see cref="SettlementService.RecalculateForCustomerAsync"/>は「値が実際に変わった行だけ」を
+/// <see cref="SettlementService.RecalculateForBillingGroupAsync"/>は「値が実際に変わった行だけ」を
 /// 更新する設計（<c>docs/architecture.md</c> 9章）であるため、既存データに対して呼び出しても
 /// キャッシュ列が実態と一致していれば更新件数は0のはず。得意先ごとにトランザクションを開始して
 /// 呼び出し、更新件数が0であることを確認したうえで必ずRollbackする（seed・実データを一切変更
@@ -38,7 +38,7 @@ public class SettlementPhaseReviewTests(DevDatabaseFixture fixture) : IClassFixt
             dbContext.ChangeTracker.Clear();
 
             await using var transaction = await dbContext.Database.BeginTransactionAsync();
-            var result = await service.RecalculateForCustomerAsync(customerCode);
+            var result = await service.RecalculateForBillingGroupAsync(customerCode);
             await transaction.RollbackAsync();
 
             if (result.UpdatedSalesLineCount != 0 || result.UpdatedReceiptLineCount != 0)

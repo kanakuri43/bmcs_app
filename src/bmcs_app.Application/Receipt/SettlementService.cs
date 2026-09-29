@@ -38,7 +38,7 @@ public class SettlementService(
     /// <exception cref="InvalidOperationException">明示トランザクションが開始されていない場合。</exception>
     /// <exception cref="SettlementException">得意先が存在しない、または保存に失敗した場合。</exception>
     /// <exception cref="SlipConcurrencyException">他のユーザーが対象行を更新していた場合。</exception>
-    public async Task<SettlementRecalculationResult> RecalculateForCustomerAsync(
+    public async Task<SettlementRecalculationResult> RecalculateForBillingGroupAsync(
         string customerCode, CancellationToken cancellationToken = default)
     {
         if (dbContext.Database.CurrentTransaction is null)

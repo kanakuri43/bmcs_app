@@ -215,7 +215,7 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
     {
         // TODO.md 7-1レビューで発見した既存不整合の修正確認: UpdateAsyncは消込完了(3)のみを
         // 編集ロック対象にし一部消込(2)は編集を許すため、金額を減らす訂正でsettled_amountが
-        // 新しいamountを超えて取り残る経路があった。SettlementService.RecalculateForCustomerAsync
+        // 新しいamountを超えて取り残る経路があった。SettlementService.RecalculateForBillingGroupAsync
         // を配線したことで、実際の入金データ（detail_receipt）に基づき新しい金額へ丸め直される
         // ことを確認する。内税明細単位（都度得意先）はbilling_numberを持たないため、
         // 一部消込のままUpdateAsyncの編集ロックに引っかからない（CUS001は請求単位で

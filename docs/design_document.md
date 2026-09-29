@@ -494,7 +494,7 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 - Phase 7（入金・消込）が未実装だった2026-09-14時点では`receipt.billing_number`（充当先）が
   解除対象を指しているケースは考慮していなかったが、Phase 7実装後も**充当済みの入金
   （`receipt_allocations`）は解除時に付け替えない**方針を採用済み（16章「既知の限界」）。
-  解除で外れた売上行の消込キャッシュ列は`SettlementService.RecalculateForCustomerAsync`で
+  解除で外れた売上行の消込キャッシュ列は`SettlementService.RecalculateForBillingGroupAsync`で
   未消込へ戻す。
 - 画面（`Views/Billing/BillingReleaseWindow.xaml`／`ViewModels/Billing/BillingReleaseViewModel.cs`）
   は9章の`BillingClosingWindow`と同型で、請求日入力欄を持ち、条件変更時に自動でプレビュー
@@ -953,7 +953,7 @@ Phase 7-2実装（2026-09-15、17章）でNo欄のSpace検索・Enter読込・�
   合算が、得意先の全売上・全明細入金が同時に視界に入ることで単純なローカル計算になる。
 - 7-6（消込整合性レビュー）が同じ関数を「実態」の定義として再利用できる。
 
-公開メソッドは`SettlementService.RecalculateForCustomerAsync(string customerCode)`の
+公開メソッドは`SettlementService.RecalculateForBillingGroupAsync(string customerCode)`の
 1本のみ。得意先の`TaxUnit`で締め得意先向け（`RecalculateClosingAsync`）・都度得意先向け
 （`RecalculateDetailAsync`）に内部分岐する。
 
@@ -1019,7 +1019,7 @@ Entities.Receipt;`のエイリアスへ変更して解消した。**今後`bmcs_
    ReleaseAsync`は`sales.billing_number`をNULLに戻すが、`settlement_status`/
    `settled_amount`は触れておらず、解除前が消込完了のままだと解除後も編集不可
    （C-6条件④）のまま宙に浮いていた。`ReleaseAsync`の`SaveChangesAsync`後・
-   `CommitAsync`前に`SettlementService.RecalculateForCustomerAsync`を呼ぶ配線を追加。
+   `CommitAsync`前に`SettlementService.RecalculateForBillingGroupAsync`を呼ぶ配線を追加。
    解除で`billing_number`が外れた行は充当先を失うため未消込へ戻る。
 2. **売上訂正で金額を減らすと消込済金額が新しい金額を超えて取り残る。**
    `SalesEditLockEvaluator`の編集ロック条件4は`FullySettled`のみを対象にし
@@ -1179,7 +1179,7 @@ SELECT * FROM dbo.sales WHERE is_deleted = 0 AND (
 ### 18-2. 実装時にPlanエージェントの設計検証で判明した修正点
 
 骨格（候補条件2本＋トランザクション内再確認＋`receipt_amount = Σallocated`＋同一tx内
-`SettlementService.RecalculateForCustomerAsync`呼び出し）は既存実装と整合したが、初期案には
+`SettlementService.RecalculateForBillingGroupAsync`呼び出し）は既存実装と整合したが、初期案には
 以下の穴があったため設計を補正した（`DetailReceiptEntryService`に反映済み）。
 
 1. **候補条件は「未消込」だけでなく「未消込または一部消込」にする。** 金額が常に全額（または
@@ -1210,7 +1210,7 @@ SELECT * FROM dbo.sales WHERE is_deleted = 0 AND (
    保存できずに欠落する。「現金／振込／相殺」の3択とした
 9. **同時実行制御は既存のrowversion楽観的排他に委ねる（追加のロックは実装しない）。** `Sales`・
    `DetailReceipt`はいずれも`AuditableEntity`を継承し`RowVersion`を持つ。2人が同じ売上明細行に
-   同時に全額入金しようとした場合、`SettlementService.RecalculateForCustomerAsync`が対象の
+   同時に全額入金しようとした場合、`SettlementService.RecalculateForBillingGroupAsync`が対象の
    `Sales`行をtracking付きで読み込み・更新するため、後にコミットする側はrowversion不一致で
    `DbUpdateConcurrencyException`→`SlipConcurrencyException`で弾かれる。Phase 7-1/7-2と同一の
    機構であり、`detail_receipts`自体に一意制約は追加しない（追加すると決定1の部分入金・残額
@@ -1268,7 +1268,7 @@ DDLの変更は無し（決定3のとおり）。
 枠のみ無効化されていた。本タスクは`ReceiptEntryService`／`DetailReceiptEntryService`に
 `UpdateAsync`（訂正）・`CancelSlipAsync`（取消）・`EvaluateEditLockAsync`（編集ロック判定）を
 追加し、両画面のUI配線まで行う。消込の巻き戻し自体は7-1の`SettlementService.
-RecalculateForCustomerAsync`（得意先単位の全件再計算）をそのまま呼ぶだけで実現できる
+RecalculateForBillingGroupAsync`（得意先単位の全件再計算）をそのまま呼ぶだけで実現できる
 （5-6の`SalesService.UpdateAsync`／`CancelSlipAsync`と同じ設計）。
 
 ### 19-1. 発見した設計上の矛盾: `receipts`の編集ロックに条件④をそのまま適用できない
@@ -1345,7 +1345,7 @@ EvaluateEditLockAsync`として各サービスの public メソッドに実装�
 5. 対象伝票の`receipt_allocations`を全部論理削除 → **ここで`SaveChangesAsync`を1回呼ぶ**
 6. `GetOutstandingBillingsAsync`で請求残高を再取得 → 新しい合計額で`BuildAllocationLines`を実行 →
    新しい`receipt_allocations`行を追加
-7. `SaveChangesAsync` → `SettlementService.RecalculateForCustomerAsync` → コミット
+7. `SaveChangesAsync` → `SettlementService.RecalculateForBillingGroupAsync` → コミット
 
 手順5で`SaveChangesAsync`を挟むのが唯一の非自明な点である。`GetOutstandingBillingsAsync`は
 サーバー側の`GroupBy`／`ToDictionaryAsync`クエリであり、ChangeTracker上の未コミットな論理削除を
@@ -1366,7 +1366,7 @@ EvaluateEditLockAsync`として各サービスの public メソッドに実装�
 4. **`receiptAmount = Σ AllocatedAmount`（生き残った行のみ）を生き残る全行へ書き直す**
    （18-4節が指摘した伝票単位の全行同値不変条件を、ここで初めて確定させる）
 5. 編集ロック判定（訂正後）→ `TouchAll` → `SaveChangesAsync` →
-   `SettlementService.RecalculateForCustomerAsync` → コミット
+   `SettlementService.RecalculateForBillingGroupAsync` → コミット
 
 ### 19-5. 締め解除済み`billings`への再充当は付け替えない
 
@@ -1435,17 +1435,17 @@ EvaluateEditLockAsync`として各サービスの public メソッドに実装�
 - `ReceiptEntryService`／`DetailReceiptEntryService`の`SaveNewAsync`（`AllocationStatus.Unallocated`）
 
 いずれも、値を書いた**同一トランザクション内**で必ず`SettlementService.
-RecalculateForCustomerAsync`が呼ばれるため（各メソッドの末尾）、プレースホルダのまま
+RecalculateForBillingGroupAsync`が呼ばれるため（各メソッドの末尾）、プレースホルダのまま
 コミットされることはない。**キャッシュ列の実質的な書き手が1箇所しかない**という構造が、
 そもそも不整合を作りにくくしている。
 
 ### 20-2. 消込に影響しうる他の操作の分析（コード）
 
-`RecalculateForCustomerAsync`を呼ばない既存の書き込み経路のうち、消込キャッシュに影響しうる
+`RecalculateForBillingGroupAsync`を呼ばない既存の書き込み経路のうち、消込キャッシュに影響しうる
 ものを個別に検討した。
 
 - **`BillingClosingService.ConfirmAsync`**（締め処理）: 対象の`sales`行へ新しい`billing_number`を
-  割り当てる（`billing_number = NULL` → 新規`billing_number`）が、`RecalculateForCustomerAsync`を
+  割り当てる（`billing_number = NULL` → 新規`billing_number`）が、`RecalculateForBillingGroupAsync`を
   呼んでいない。しかし`RecalculateClosingAsync`は`billing_number`ごとにグループ化し、
   `billing_number IS NULL`の行は`pool`を常に`0`として扱う（グルーピングキーが`null`かどうかで
   分岐しており、`receipt_allocations`の内容を見ない）。新しく確定した`billing_number`は同一
@@ -1454,7 +1454,7 @@ RecalculateForCustomerAsync`が呼ばれるため（各メソッドの末尾）�
   `receipt_allocations`は作れない）ため、締め前後で対象行の`pool`は`0`のまま変化しない。
   したがって再計算を呼ばなくても値は狂わない。
 - **`DetailInvoiceService.IssueAsync`**（明細請求書発行）: 対象の`sales`行を`detail_invoice_
-  sales_line`で明細請求書に連携させるが、同様に`RecalculateForCustomerAsync`を呼ばない。
+  sales_line`で明細請求書に連携させるが、同様に`RecalculateForBillingGroupAsync`を呼ばない。
   `RecalculateDetailAsync`は連携済みの行を「直接指定分 + 請求書経由の残額配分」で計算するが、
   発行直後の請求書には`detail_receipts`が存在し得ない（FK制約上、存在しない請求書番号を
   指す`detail_receipts`は作れない）ため`pool = 0`となり、請求書経由の配分は常に`0`。連携前
@@ -1465,13 +1465,13 @@ RecalculateForCustomerAsync`が呼ばれるため（各メソッドの末尾）�
   「請求書経由（pool=0のため寄与0）」から「非連携（直接指定のみ）」に移るだけであり、
   ガードにより連携解除前の値が既に`0`であることが保証されているため、値は変化しない。
 
-以上により、`RecalculateForCustomerAsync`を呼んでいない既存の書き込み経路は、いずれも
+以上により、`RecalculateForBillingGroupAsync`を呼んでいない既存の書き込み経路は、いずれも
 呼ばなくても消込キャッシュ列が狂わないことをコードレベルで確認した。**新たな不具合は
 見つからなかった。**
 
 ### 20-3. 既存データに対する再計算差分ゼロ検証（実データ）
 
-`SettlementService.RecalculateForCustomerAsync`は「値が実際に変わった行だけ」を更新する設計
+`SettlementService.RecalculateForBillingGroupAsync`は「値が実際に変わった行だけ」を更新する設計
 （`docs/architecture.md` 9章）であるため、開発用ライブDBに現存する**全得意先**に対して
 呼び出し、更新件数が0件であることを直接確認した
 （`tests/bmcs_app.Application.Tests/Receipt/SettlementPhaseReviewTests.cs`、得意先ごとに
@@ -1509,7 +1509,7 @@ SELECT COUNT(*) FROM dbo.sales WHERE is_deleted = 0 AND settlement_status <> (
   7-3実装時に`fee_adjustment_amount`が非ゼロの実データが生まれるため、20-3・20-4の
   検証を再実施することが望ましい。
 - `SettlementPhaseReviewTests`（20-3のテスト）は今後の回帰検知として恒久的に維持する
-  （新しい書き込み経路が`RecalculateForCustomerAsync`の呼び出しを漏らした場合、次にこの
+  （新しい書き込み経路が`RecalculateForBillingGroupAsync`の呼び出しを漏らした場合、次にこの
   テストを実行したタイミングでいずれかの得意先に差分が出て検出できる）。
 
 ### 検証方法
@@ -2246,7 +2246,7 @@ DB制約の具体的な実現方式（計算列を使った複合自己参照FK�
 | DB | `customers.billing_customer_code` ＋ 計算列2本 ＋ 複合自己参照FK ＋ CHECK制約で「集約先の存在」「孫の禁止」「締日/税区分/端数区分の一致」「都度得意先は集約元不可」をすべてDB側で強制 | **A（本タスク）** |
 | 得意先マスタ | 請求得意先コード欄の追加、リンク検証、業務ルール7の変更可否判定、集約元を持つ得意先の無効化禁止 | **A（本タスク）** |
 | 日付制限 | `BillingClosedDateService`は対象得意先自身の`billings`しか見ないため、請求集約元では確定済み請求期間への遡及登録を防げない。**請求集約先を解決してから`billings`を引くよう修正が必要**（優先度高。次回締めに取りこぼしが混入する実害があるため） | B |
-| 消込 | `SettlementService.RecalculateForCustomerAsync`の対象クエリ（`sales`/`receipts`/`receipt_allocations`）をグループの得意先コード集合に広げる。配分ロジック自体（`billing_number`でのグルーピング）は無改修で親子売上を自然に合算する。スコープ変更を反映し`RecalculateForBillingGroupAsync`に改称 | B |
+| 消込 | `SettlementService.RecalculateForBillingGroupAsync`の対象クエリ（`sales`/`receipts`/`receipt_allocations`）をグループの得意先コード集合に広げる。配分ロジック自体（`billing_number`でのグルーピング）は無改修で親子売上を自然に合算する。スコープ変更を反映し`RecalculateForBillingGroupAsync`に改称 | B |
 | 入金入力 | `ReceiptEntryService.GetClosingCustomerAsync`で請求集約元を業務例外で拒否 | B |
 | 請求締め | `BillingClosingService`の締め対象ループを請求集約先のみに絞り、売上・入金の抽出をグループ集合に広げる | C |
 | 締め解除 | `BillingReleaseService`の再計算呼び出しを消込のグループスコープ拡張に合わせる | C |

@@ -269,7 +269,7 @@ public class DetailReceiptEntryService(
             throw new DetailReceiptEntryException("入金の保存に失敗しました。", ex);
         }
 
-        await settlementService.RecalculateForCustomerAsync(customer.CustomerCode, cancellationToken);
+        await settlementService.RecalculateForBillingGroupAsync(customer.CustomerCode, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
 
@@ -427,7 +427,7 @@ public class DetailReceiptEntryService(
             throw new DetailReceiptEntryException("明細入金の保存に失敗しました。", ex);
         }
 
-        await settlementService.RecalculateForCustomerAsync(currentLines[0].CustomerCode, cancellationToken);
+        await settlementService.RecalculateForBillingGroupAsync(currentLines[0].CustomerCode, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
 
@@ -478,7 +478,7 @@ public class DetailReceiptEntryService(
             throw new SlipConcurrencyException("他のユーザーが更新しました。再読み込みしてください。", ex);
         }
 
-        await settlementService.RecalculateForCustomerAsync(lines[0].CustomerCode, cancellationToken);
+        await settlementService.RecalculateForBillingGroupAsync(lines[0].CustomerCode, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
 

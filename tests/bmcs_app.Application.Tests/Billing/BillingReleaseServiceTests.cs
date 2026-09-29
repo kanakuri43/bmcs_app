@@ -82,7 +82,7 @@ public class BillingReleaseServiceTests(DevDatabaseFixture fixture) : IClassFixt
         // TODO.md 7-1レビューで発見した既存不整合の修正確認: 解除前にbilling_numberが外れる
         // ことだけを見ていたため、消込キャッシュ列（settlement_status/settled_amount）が
         // 消込完了のまま取り残されていた。BillingReleaseService.ReleaseByBillingDateAsyncに
-        // SettlementService.RecalculateForCustomerAsyncを配線したことで解消したことを確認する。
+        // SettlementService.RecalculateForBillingGroupAsyncを配線したことで解消したことを確認する。
         await using var scope = fixture.Services.CreateAsyncScope();
         var (dbContext, closingService, releaseService) = Resolve(scope);
 

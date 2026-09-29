@@ -111,7 +111,7 @@ public class BillingReleaseService(
         // 本処理では付け替えない（再消込は7-2の責務。docs/design_document.md 16章「既知の限界」）。
         foreach (var customerCode in targets.Select(b => b.CustomerCode).Distinct())
         {
-            await settlementService.RecalculateForCustomerAsync(customerCode, cancellationToken);
+            await settlementService.RecalculateForBillingGroupAsync(customerCode, cancellationToken);
         }
 
         await transaction.CommitAsync(cancellationToken);

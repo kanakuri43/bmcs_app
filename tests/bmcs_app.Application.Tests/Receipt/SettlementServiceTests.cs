@@ -21,7 +21,7 @@ namespace bmcs_app.Application.Tests.Receipt;
 /// 別に持つ（docs/design_document.md 17章、2026-09-15改訂）。
 /// </summary>
 /// <remarks>
-/// <see cref="SettlementService.RecalculateForCustomerAsync"/> は自前で<c>BeginTransactionAsync</c>
+/// <see cref="SettlementService.RecalculateForBillingGroupAsync"/> は自前で<c>BeginTransactionAsync</c>
 /// しないため、<c>OrderStatusServiceTests</c>と同じ「外側をトランザクションで包み、
 /// テストの最後に必ずRollbackする」方式が使える。得意先・売上・入金・請求・明細請求書を
 /// すべてこのトランザクション内で作成するため、seedデータには一切触れず、後始末の
@@ -54,7 +54,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertReceiptAllocationAsync(dbContext,
                 NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL01", 1, "__TSTBIL_STL01", 11000m));
 
-            var result = await service.RecalculateForCustomerAsync(CustomerInvoice);
+            var result = await service.RecalculateForBillingGroupAsync(CustomerInvoice);
 
             var persisted = await ReloadSalesAsync(dbContext, slip);
             Assert.All(persisted, l => Assert.Equal(SettlementStatus.FullySettled, l.SettlementStatus));
@@ -89,7 +89,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertReceiptAllocationAsync(dbContext,
                 NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL02", 1, "__TSTBIL_STL02", 5500m));
 
-            await service.RecalculateForCustomerAsync(CustomerInvoice);
+            await service.RecalculateForBillingGroupAsync(CustomerInvoice);
 
             var persisted = await ReloadSalesAsync(dbContext, slip);
             var line1 = persisted.Single(l => l.LineNumber == 1);
@@ -132,7 +132,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
                 NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STLAB", 1, "__TSTBIL_STLA", 11000m),
                 NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STLAB", 2, "__TSTBIL_STLB", 5500m));
 
-            await service.RecalculateForCustomerAsync(CustomerInvoice);
+            await service.RecalculateForBillingGroupAsync(CustomerInvoice);
 
             var salesA = await ReloadSalesAsync(dbContext, slipA);
             var salesB = await ReloadSalesAsync(dbContext, slipB);
@@ -167,7 +167,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertReceiptAllocationAsync(dbContext,
                 NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL03", 1, "__TSTBIL_STL03", 9780m, feeAdjustmentAmount: 220m));
 
-            await service.RecalculateForCustomerAsync(CustomerInvoice);
+            await service.RecalculateForBillingGroupAsync(CustomerInvoice);
 
             var persistedSales = await ReloadSalesAsync(dbContext, slip);
             Assert.Equal(SettlementStatus.FullySettled, persistedSales.Single().SettlementStatus);
@@ -205,7 +205,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertReceiptAllocationAsync(dbContext,
                 NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL04", 1, "__TSTBIL_STL04", 8000m));
 
-            await service.RecalculateForCustomerAsync(CustomerInvoice);
+            await service.RecalculateForBillingGroupAsync(CustomerInvoice);
 
             var persisted = await ReloadSalesAsync(dbContext, slip);
             Assert.All(persisted, l => Assert.Equal(SettlementStatus.FullySettled, l.SettlementStatus));
@@ -239,7 +239,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertReceiptAllocationAsync(dbContext,
                 NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL05", 1, "__TSTBIL_STL05", 5000m));
 
-            await service.RecalculateForCustomerAsync(CustomerInvoice);
+            await service.RecalculateForBillingGroupAsync(CustomerInvoice);
 
             var persisted = await ReloadSalesAsync(dbContext, slip);
             var salesLine = persisted.Single(l => l.LineNumber == 1);
@@ -274,7 +274,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertReceiptAsync(dbContext,
                 NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL06", 1, 3000m));
 
-            await service.RecalculateForCustomerAsync(CustomerInvoice);
+            await service.RecalculateForBillingGroupAsync(CustomerInvoice);
 
             var persistedSales = await ReloadSalesAsync(dbContext, slip);
             Assert.Equal(SettlementStatus.Unsettled, persistedSales.Single().SettlementStatus);
@@ -309,7 +309,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertReceiptAllocationAsync(dbContext,
                 NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL07", 1, "__TSTBIL_STL07", 15000m));
 
-            await service.RecalculateForCustomerAsync(CustomerInvoice);
+            await service.RecalculateForBillingGroupAsync(CustomerInvoice);
 
             var persisted = await ReloadSalesAsync(dbContext, slip);
             Assert.Equal(10000m, persisted.Single().SettledAmount);
@@ -337,7 +337,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertDetailReceiptAsync(dbContext,
                 NewDirectDetailReceiptLine(CustomerLine, "__TSTDRC_STL08", 1, slip, 1, 2750m));
 
-            await service.RecalculateForCustomerAsync(CustomerLine);
+            await service.RecalculateForBillingGroupAsync(CustomerLine);
 
             var persisted = await ReloadSalesAsync(dbContext, slip);
             Assert.Equal(SettlementStatus.FullySettled, persisted.Single().SettlementStatus);
@@ -372,7 +372,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertDetailReceiptAsync(dbContext,
                 NewInvoiceDetailReceiptLine(CustomerLine, "__TSTDRC_STL09", 1, "__TSTDIV_STL09", 6000m));
 
-            await service.RecalculateForCustomerAsync(CustomerLine);
+            await service.RecalculateForBillingGroupAsync(CustomerLine);
 
             var salesA = await ReloadSalesAsync(dbContext, slipA);
             var salesB = await ReloadSalesAsync(dbContext, slipB);
@@ -405,7 +405,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
                 NewDirectDetailReceiptLine(CustomerLine, "__TSTDRC_STL10A", 1, slip, 1, 4000m),
                 NewInvoiceDetailReceiptLine(CustomerLine, "__TSTDRC_STL10B", 1, "__TSTDIV_STL10", 6000m));
 
-            await service.RecalculateForCustomerAsync(CustomerLine);
+            await service.RecalculateForBillingGroupAsync(CustomerLine);
 
             var persisted = await ReloadSalesAsync(dbContext, slip);
             Assert.Equal(SettlementStatus.FullySettled, persisted.Single().SettlementStatus);
@@ -440,7 +440,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             allocation.IsDeleted = true;
             await InsertReceiptAllocationAsync(dbContext, allocation);
 
-            await service.RecalculateForCustomerAsync(CustomerInvoice);
+            await service.RecalculateForBillingGroupAsync(CustomerInvoice);
 
             var persisted = await ReloadSalesAsync(dbContext, slip);
             Assert.Equal(SettlementStatus.Unsettled, persisted.Single().SettlementStatus);
@@ -472,7 +472,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
                 NewReceiptLine(CustomerInvoice, TaxUnit.Invoice, receiptSlip, 1, 10000m));
             await InsertReceiptAllocationAsync(dbContext,
                 NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, receiptSlip, 1, "__TSTBIL_STL12", 10000m));
-            await service.RecalculateForCustomerAsync(CustomerInvoice);
+            await service.RecalculateForBillingGroupAsync(CustomerInvoice);
             var afterCreate = await ReloadSalesAsync(dbContext, slip);
             Assert.Equal(SettlementStatus.FullySettled, afterCreate.Single().SettlementStatus);
             Assert.Equal(10000m, afterCreate.Single().SettledAmount);
@@ -483,7 +483,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             var allocationLine = await dbContext.ReceiptAllocations.SingleAsync(a => a.ReceiptSlipNumber == receiptSlip && a.LineNumber == 1);
             allocationLine.AllocatedAmount = 6000m;
             await dbContext.SaveChangesAsync();
-            await service.RecalculateForCustomerAsync(CustomerInvoice);
+            await service.RecalculateForBillingGroupAsync(CustomerInvoice);
             var afterUpdate = await ReloadSalesAsync(dbContext, slip);
             Assert.Equal(SettlementStatus.PartiallySettled, afterUpdate.Single().SettlementStatus);
             Assert.Equal(6000m, afterUpdate.Single().SettledAmount);
@@ -492,7 +492,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             receiptLine.IsDeleted = true;
             allocationLine.IsDeleted = true;
             await dbContext.SaveChangesAsync();
-            await service.RecalculateForCustomerAsync(CustomerInvoice);
+            await service.RecalculateForBillingGroupAsync(CustomerInvoice);
             var afterCancel = await ReloadSalesAsync(dbContext, slip);
             Assert.Equal(SettlementStatus.Unsettled, afterCancel.Single().SettlementStatus);
             Assert.Equal(0m, afterCancel.Single().SettledAmount);
@@ -522,8 +522,8 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             await InsertReceiptAllocationAsync(dbContext,
                 NewReceiptAllocationLine(CustomerInvoice, TaxUnit.Invoice, "__TSTRCP_STL13", 1, "__TSTBIL_STL13", 10000m));
 
-            var first = await service.RecalculateForCustomerAsync(CustomerInvoice);
-            var second = await service.RecalculateForCustomerAsync(CustomerInvoice);
+            var first = await service.RecalculateForBillingGroupAsync(CustomerInvoice);
+            var second = await service.RecalculateForBillingGroupAsync(CustomerInvoice);
 
             Assert.True(first.UpdatedSalesLineCount > 0);
             Assert.Equal(0, second.UpdatedSalesLineCount);
@@ -542,7 +542,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
         var (_, service) = Resolve(scope);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.RecalculateForCustomerAsync(CustomerInvoice));
+            () => service.RecalculateForBillingGroupAsync(CustomerInvoice));
     }
 
     [Fact]
@@ -554,7 +554,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
         try
         {
             await Assert.ThrowsAsync<SettlementException>(
-                () => service.RecalculateForCustomerAsync("__TSTSTL_NONE"));
+                () => service.RecalculateForBillingGroupAsync("__TSTSTL_NONE"));
         }
         finally
         {
