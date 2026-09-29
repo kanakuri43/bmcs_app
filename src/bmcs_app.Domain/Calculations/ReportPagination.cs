@@ -56,4 +56,43 @@ public static class ReportPagination
 
         return pages;
     }
+
+    /// <summary>
+    /// <see cref="Split"/>の結果を、ページ末尾に見出し行（<paramref name="isHeaderRow"/>が真を返す行）が
+    /// 孤立しないよう調整する（TODO.md 12-D、親子請求の請求書帳票。docs/report-spec.md 2-2-1節）。
+    /// 該当する場合、そのページの末尾から見出し行を1件切り出して次ページの先頭へ移す。
+    /// 見出し行の直後には必ず1件以上の明細行と小計行が続く構造（<see cref="InvoiceReportRowBuilder"/>）
+    /// のため、この調整は見出し行と次ページへ送られる行が同じページ境界にまたがることはなく、
+    /// 1回の走査で十分（連鎖的な調整は発生しない）。
+    /// </summary>
+    public static IReadOnlyList<(int StartIndex, int Count)> AvoidTrailingHeaderOrphans(
+        IReadOnlyList<(int StartIndex, int Count)> pages, Func<int, bool> isHeaderRow)
+    {
+        if (pages.Count <= 1)
+        {
+            return pages;
+        }
+
+        var adjusted = pages.ToList();
+        for (var i = 0; i < adjusted.Count - 1; i++)
+        {
+            var (startIndex, count) = adjusted[i];
+            if (count == 0)
+            {
+                continue;
+            }
+
+            var lastRowIndex = startIndex + count - 1;
+            if (!isHeaderRow(lastRowIndex))
+            {
+                continue;
+            }
+
+            adjusted[i] = (startIndex, count - 1);
+            var (nextStart, nextCount) = adjusted[i + 1];
+            adjusted[i + 1] = (nextStart - 1, nextCount + 1);
+        }
+
+        return adjusted;
+    }
 }

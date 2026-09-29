@@ -2211,7 +2211,7 @@ M-14「振込手数料差額は手入力のみ、自動計算・自動補正提�
 
 ---
 
-## 28. 親子請求（請求集約）の設計（2026-09-29確定、Phase A・B・C実装済み）
+## 28. 親子請求（請求集約）の設計（2026-09-29確定、Phase A・B・C・D実装済み）
 
 ### 28-1. 背景・スコープ
 
@@ -2219,7 +2219,7 @@ M-14「振込手数料差額は手入力のみ、自動計算・自動補正提�
 
 用語は**「請求集約先」（他の得意先の分もまとめて請求される得意先）／「請求集約元」（請求が他の得意先に集約される得意先）**とし、「親得意先」「子得意先」は使わない。既存の `sub_customer_id`（学校のクラス・先生等の宛名を都度書き換える仕組み。C-9・2026-09-10で「子得意先マスタは作らない」と確定済み）とは別概念であり、C-9の決定を覆すものではない（`docs/database-schema.md` 1章・`docs/product-spec.md` 共通業務ルール3参照）。
 
-機能全体はDB・得意先マスタ・請求締め・締め解除・消込・入金入力・得意先元帳・請求書帳票の8領域にまたがる。**段階実装とし、Phase Aで設計資料の確定とDBスキーマ変更・得意先マスタ画面、Phase Bで日付制限・消込のグループスコープ拡張・入金入力のガード、Phase Cで請求締め・締め解除のグループスコープ拡張を実装済み。** 帳票・得意先元帳（Phase D〜E、28-4節）は次セッション以降に回すが、設計方針は本章で確定済み。
+機能全体はDB・得意先マスタ・請求締め・締め解除・消込・入金入力・得意先元帳・請求書帳票の8領域にまたがる。**段階実装とし、Phase Aで設計資料の確定とDBスキーマ変更・得意先マスタ画面、Phase Bで日付制限・消込のグループスコープ拡張・入金入力のガード、Phase Cで請求締め・締め解除のグループスコープ拡張、Phase Dで請求書帳票の請求集約元ごとの内訳表示を実装済み。** 得意先元帳（Phase E、28-4節）は次セッション以降に回すが、設計方針は本章で確定済み。
 
 ### 28-2. 確定した業務ルール（2026-09-29ユーザー確認済み）
 
@@ -2304,3 +2304,16 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 **締め解除（`BillingReleaseService`）は改修不要と確認済み**。対象抽出は`billing_date`のみで絞るため、上記の修正後は自動的に請求集約先のみが対象になる。売上の紐付け解除クエリは`billing_number`の所属だけで判定し`customer_code`で一切絞っていないため、請求集約元の売上行も無改修で正しく拾われて未請求へ戻る。消込再計算はPhase 12-Bで実装済みの`SettlementService.RecalculateForBillingGroupAsync`を対象`billing`のCustomerCode（＝請求集約先）ごとに呼ぶだけで、グループ解決がそのまま請求集約元の消込キャッシュも巻き戻す。
 
 **テスト**: `tests/bmcs_app.Application.Tests/Billing/BillingClosingServiceTests.cs`に2件追加。1件は請求集約先・請求集約元それぞれに105円の売上を登録し、個別に丸めると10+10=20円になるはずの税額が、グループとして合算（210円）してから1回だけ丸めることで21円になることを確認する（グループ合算が丸め前に行われている証明）。もう1件は請求集約元名義に残存する入金が請求集約先の`ReceiptAmount`に合算される回帰テスト。`tests/bmcs_app.Application.Tests/Billing/BillingReleaseServiceTests.cs`に1件追加（請求集約先・請求集約元双方の売上を消込完了済み状態にしてから締め解除し、両方が未請求・未消込に戻ることを確認）。
+
+### 28-8. Phase D の実装詳細（請求書帳票の請求集約元ごとの内訳表示）
+
+**2026-09-29実装。** DBスキーマ変更なし。実装内容は`docs/report-spec.md` 2-2-1節に一本化して記載。ここでは層をまたぐ変更点だけ要約する。
+
+- `InvoiceService.GetByNumberAsync`（Application）: 明細の並び順を得意先コード優先（`OrderBy(CustomerCode).ThenBy(SlipDate)...`）に変更。単独得意先ではCustomerCodeが全行同じ値のため挙動不変。
+- `InvoiceLine`／`InvoiceData`（Application, DTO）: `InvoiceLine`に`CustomerCode`／`CustomerName`（伝票単位のスナップショット）、`InvoiceData`に`CustomerCode`（＝`billing.customer_code`、常に請求集約先自身のコード）を追加。
+- `InvoiceReportRow`／`InvoiceReportRowBuilder`（Domain、新規、単体テスト済み）: 得意先ごとに見出し行・明細行・小計行を並べる表示順を組み立てる純粋関数。単独得意先（明細のCustomerCodeが1種類だけ）なら明細のみを返す。
+- `ReportPagination.AvoidTrailingHeaderOrphans`（Domain、新規、単体テスト済み）: 既存の`Split`は無改修のまま、その結果を後段で調整するページ末尾見出し行の孤立防止。
+- `PagedReportDocumentBuilder`（Presentation）: `IsGroupMarkerRow`／`IsPageBreakSensitive`の2つの`protected virtual`フックを追加（既定はいずれも`false`で`DetailInvoiceDocumentBuilder`には無影響）。明細行の描画に明示的な`rowHeight: LineHeight`を渡すよう変更（`isHeader: true`のとき既定の`TableHeaderHeight`になってしまうと改ページ計算のページ収容行数と食い違うため）。
+- `InvoiceDocumentBuilder`（Presentation）: `InvoiceReportRowBuilder`で組み立てた表示行に基づいて`LineCount`／`BuildLineCells`／`IsGroupMarkerRow`／`IsPageBreakSensitive`を実装。集約時のみフルヘッダーに「請求集約元: N社」の1行を追加し`FullHeaderHeight`を+18.0。
+
+**テスト**: `tests/bmcs_app.Domain.Tests/Calculations/InvoiceReportRowBuilderTests.cs`（新規、5件）・`ReportPaginationTests.cs`に5件追加。`tests/bmcs_app.Application.Tests/Billing/InvoiceServiceTests.cs`に1件追加（請求集約先・請求集約元それぞれの売上を`BillingClosingService.ConfirmAsync`で実際に合算締めしたうえで`InvoiceService.GetByNumberAsync`を呼び、明細が得意先コード順に両得意先分含まれることを確認する結合テスト）。全体テスト（Domain 299件全green／Application は開発用DBのseedデータ乖離による既知の失敗125件を除き全green、Phase 12-C時点と同数）。WPFの`FixedDocument`描画自体（見出し行・小計行の見た目、改ページ時の孤立防止の実際の表示）を検証する自動テストはこの環境に無いため未実施（Phase 10-3〜10-5と同様の既知の限界）。実機確認は`dotnet run`でのアプリ起動まで。

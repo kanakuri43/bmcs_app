@@ -67,4 +67,59 @@ public class ReportPaginationTests
         Assert.Throws<ArgumentOutOfRangeException>(
             () => ReportPagination.Split(totalLineCount: -1, linesOnFirstPage: 10, linesOnLaterPages: 20));
     }
+
+    [Fact]
+    public void ページ末尾の見出し行を次ページの先頭へ送る()
+    {
+        // 行9（0始まり）が見出し行。1ページ目は0〜9(10行)で見出し行がちょうど末尾に来る。
+        var pages = new List<(int StartIndex, int Count)> { (0, 10), (10, 5) };
+
+        var adjusted = ReportPagination.AvoidTrailingHeaderOrphans(pages, lineIndex => lineIndex == 9);
+
+        Assert.Equal((0, 9), adjusted[0]);
+        Assert.Equal((9, 6), adjusted[1]);
+    }
+
+    [Fact]
+    public void 見出し行がページ末尾でなければ調整しない()
+    {
+        var pages = new List<(int StartIndex, int Count)> { (0, 10), (10, 5) };
+
+        var adjusted = ReportPagination.AvoidTrailingHeaderOrphans(pages, lineIndex => lineIndex == 5);
+
+        Assert.Equal(pages, adjusted);
+    }
+
+    [Fact]
+    public void ページが1枚だけなら調整しない()
+    {
+        var pages = new List<(int StartIndex, int Count)> { (0, 10) };
+
+        var adjusted = ReportPagination.AvoidTrailingHeaderOrphans(pages, _ => true);
+
+        Assert.Equal(pages, adjusted);
+    }
+
+    [Fact]
+    public void 明細0件のページは調整対象にならない()
+    {
+        var pages = new List<(int StartIndex, int Count)> { (0, 0), (0, 5) };
+
+        var adjusted = ReportPagination.AvoidTrailingHeaderOrphans(pages, _ => true);
+
+        Assert.Equal(pages, adjusted);
+    }
+
+    [Fact]
+    public void 複数ページにまたがる見出し行の孤立をそれぞれ調整する()
+    {
+        // 行9・行19がそれぞれのページ末尾に来る見出し行。
+        var pages = new List<(int StartIndex, int Count)> { (0, 10), (10, 10), (20, 5) };
+
+        var adjusted = ReportPagination.AvoidTrailingHeaderOrphans(pages, lineIndex => lineIndex is 9 or 19);
+
+        Assert.Equal((0, 9), adjusted[0]);
+        Assert.Equal((9, 10), adjusted[1]);
+        Assert.Equal((19, 6), adjusted[2]);
+    }
 }

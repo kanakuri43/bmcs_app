@@ -32,10 +32,15 @@ public class InvoiceService(BmcsDbContext dbContext)
             return null;
         }
 
+        // 得意先コード順を最優先にする。請求集約先の請求書では、この billing_number に
+        // 請求集約元（支店等）の売上も合算されるため（Phase 12-C）、得意先ごとに固めて並べる
+        // ことで見出し行・小計行（InvoiceReportRowBuilder、Presentation層）が正しく組み立てられる。
+        // 単独得意先ではCustomerCodeが全行同じ値のため、この並び順の変更自体は無害
+        // （既存の単独得意先の帳票をバイト単位で不変に保つ）。
         var lines = await dbContext.Sales
             .AsNoTracking()
             .Where(s => s.BillingNumber == billingNumber && !s.IsDeleted)
-            .OrderBy(s => s.SlipDate).ThenBy(s => s.SalesSlipNumber).ThenBy(s => s.LineNumber)
+            .OrderBy(s => s.CustomerCode).ThenBy(s => s.SlipDate).ThenBy(s => s.SalesSlipNumber).ThenBy(s => s.LineNumber)
             .ToListAsync(cancellationToken);
 
         // 過去伝票の再発行に対応するため、論理削除された得意先も取得できるようにする
@@ -66,6 +71,7 @@ public class InvoiceService(BmcsDbContext dbContext)
             BillingDate: header.BillingDate,
             ClosingYearMonth: header.ClosingYearMonth,
             TaxUnit: header.TaxUnit,
+            CustomerCode: header.CustomerCode,
             CustomerName: header.CustomerName,
             CustomerPostalCode: customer?.PostalCode,
             CustomerAddress1: customer?.Address1,
@@ -88,6 +94,8 @@ public class InvoiceService(BmcsDbContext dbContext)
         SalesSlipNumber: line.SalesSlipNumber,
         LineNumber: line.LineNumber,
         SlipDate: line.SlipDate,
+        CustomerCode: line.CustomerCode,
+        CustomerName: line.CustomerName,
         SlipType: line.SlipType,
         ProductCode: line.ProductCode,
         ProductName: line.ProductName,

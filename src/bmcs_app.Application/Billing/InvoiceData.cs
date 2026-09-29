@@ -21,11 +21,16 @@ namespace bmcs_app.Application.Billing;
 /// <param name="PrintBankAccounts">
 /// <c>bank_account.is_print_on_invoice</c>が真の口座（<c>display_order</c>順）。
 /// </param>
+/// <param name="CustomerCode">
+/// <c>billing.customer_code</c>（請求データは請求集約先にしか作られないため、この値は常に
+/// 請求集約先または単独得意先自身のコード。TODO.md 12-D、親子請求）。
+/// </param>
 public sealed record InvoiceData(
     string BillingNumber,
     DateOnly BillingDate,
     string ClosingYearMonth,
     TaxUnit TaxUnit,
+    string CustomerCode,
     string CustomerName,
     string? CustomerPostalCode,
     string? CustomerAddress1,
@@ -41,11 +46,18 @@ public sealed record InvoiceData(
     decimal CurrentBillingAmount,
     IReadOnlyList<InvoiceLine> Lines);
 
-/// <summary>請求書の明細行1行分。</summary>
+/// <summary>
+/// 請求書の明細行1行分。<see cref="CustomerCode"/>／<see cref="CustomerName"/>は伝票単位の値
+/// （<c>sales.customer_code</c>／<c>customer_name</c>のスナップショット）で、単独得意先の請求書では
+/// ヘッダーの<see cref="InvoiceData.CustomerName"/>と常に一致するが、請求集約先の請求書では
+/// 明細行ごとに異なりうる（請求集約元の分も合算されているため。TODO.md 12-D、親子請求）。
+/// </summary>
 public sealed record InvoiceLine(
     string SalesSlipNumber,
     short LineNumber,
     DateOnly SlipDate,
+    string CustomerCode,
+    string CustomerName,
     SlipType SlipType,
     string ProductCode,
     string ProductName,

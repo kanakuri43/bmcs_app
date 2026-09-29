@@ -2,17 +2,23 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using bmcs_app.Application.Billing;
+using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Enums;
 
 namespace bmcs_app.Reports;
 
 /// <summary>
-/// 請求書のレイアウト（TODO.md 10-5）。締め得意先（請求単位／伝票単位）向け。前回請求額・入金額・
-/// 今回売上額・消費税額・今回ご請求額の請求書サマリー（<c>billing</c>ヘッダーの本体データ）を
+/// 請求書のレイアウト（TODO.md 10-5、12-D）。締め得意先（請求単位／伝票単位）向け。前回請求額・
+/// 入金額・今回売上額・消費税額・今回ご請求額の請求書サマリー（<c>billing</c>ヘッダーの本体データ）を
 /// 明細テーブルの上に表示する。明細請求書と同様、複数の売上伝票にまたがるため「伝票No.」列を持つ。
 /// 税率別内訳（フッター）は本請求期間の売上・消費税（<c>SalesAmount</c>／<c>TaxTotal</c>）に対する
 /// もので、前回残高・入金を含む今回ご請求額（<c>CurrentBillingAmount</c>）とは別物であるため
 /// 表示上も分離する。
+///
+/// 親子請求（請求集約、TODO.md 12-D）: <c>data.Lines</c>が複数得意先にまたがる場合
+/// （<see cref="InvoiceService"/>が得意先コード順に整列済み）、<see cref="InvoiceReportRowBuilder"/>
+/// （Domain純粋関数）で得意先ごとの見出し行・小計行を挟んだ表示順を組み立てる。単独得意先の場合は
+/// 明細のみが返るため、既存の単独得意先の帳票はバイト単位で不変（docs/report-spec.md 2-2-1節）。
 /// </summary>
 public sealed class InvoiceDocumentBuilder(InvoiceData data) : PagedReportDocumentBuilder
 {
@@ -28,16 +34,56 @@ public sealed class InvoiceDocumentBuilder(InvoiceData data) : PagedReportDocume
         new("摘要", 70, ReportColumnAlign.Left),
     ];
 
-    protected override double FullHeaderHeight => 340.0;
+    private readonly IReadOnlyList<InvoiceReportRow> _rows = InvoiceReportRowBuilder.Build(
+        data.Lines.Select(l => (l.CustomerCode, l.CustomerName, l.Amount)).ToList());
+
+    /// <summary>請求集約先の請求書（配下の請求集約元の分も合算されている）かどうか。</summary>
+    private bool IsAggregated => _rows.Any(r => r.Kind == InvoiceReportRowKind.GroupHeader);
+
+    /// <summary>
+    /// 配下の請求集約元（自分自身＝請求集約先を除く）の件数。請求集約先自身の売上が
+    /// 今回の請求期間に無い場合（配下の分だけで請求データが作られたケース）もありうるため、
+    /// 「見出し行の総数」からではなく「請求集約先自身のコードが明細に含まれているか」で判定する。
+    /// </summary>
+    private int AggregatedChildCount
+    {
+        get
+        {
+            var groupCount = _rows.Count(r => r.Kind == InvoiceReportRowKind.GroupHeader);
+            var rootHasOwnLines = data.Lines.Any(l => l.CustomerCode == data.CustomerCode);
+            return rootHasOwnLines ? groupCount - 1 : groupCount;
+        }
+    }
+
+    // 集約時は続紙ヘッダーに「請求集約元: N社」の1行が増える分だけフルヘッダーの高さを増やす
+    // （可変にし忘れると最終ページでフッターが本文と重なる。docs/report-spec.md 2-2-1節）。
+    protected override double FullHeaderHeight => IsAggregated ? 358.0 : 340.0;
     protected override double CompactHeaderHeight => 34.0;
     protected override double FooterHeight => 220.0;
-    protected override int LineCount => data.Lines.Count;
+    protected override int LineCount => _rows.Count;
 
     protected override IReadOnlyList<ReportColumn> Columns => ColumnDefinitions;
 
+    protected override bool IsGroupMarkerRow(int lineIndex)
+        => _rows[lineIndex].Kind != InvoiceReportRowKind.Line;
+
+    protected override bool IsPageBreakSensitive(int lineIndex)
+        => _rows[lineIndex].Kind == InvoiceReportRowKind.GroupHeader;
+
     protected override string?[] BuildLineCells(int lineIndex)
     {
-        var line = data.Lines[lineIndex];
+        var row = _rows[lineIndex];
+        return row.Kind switch
+        {
+            InvoiceReportRowKind.GroupHeader => [null, null, row.Label, null, null, null, null, null],
+            InvoiceReportRowKind.GroupSubtotal =>
+                [null, null, row.Label, null, null, row.SubtotalAmount!.Value.ToString("N0"), null, null],
+            _ => BuildDetailLineCells(data.Lines[row.SourceLineIndex!.Value]),
+        };
+    }
+
+    private static string?[] BuildDetailLineCells(InvoiceLine line)
+    {
         var slipTypePrefix = line.SlipType switch
         {
             SlipType.Return => "[返品] ",
@@ -157,6 +203,14 @@ public sealed class InvoiceDocumentBuilder(InvoiceData data) : PagedReportDocume
         row.Children.Add(Tb("対象年月:　", 9, FontWeights.Bold));
         row.Children.Add(Tb($"{data.ClosingYearMonth[..4]}年{data.ClosingYearMonth[4..]}月分", 9));
         panel.Children.Add(row);
+
+        if (IsAggregated)
+        {
+            var aggregationRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 0) };
+            aggregationRow.Children.Add(Tb("請求集約元:　", 9, FontWeights.Bold));
+            aggregationRow.Children.Add(Tb($"{AggregatedChildCount}社", 9));
+            panel.Children.Add(aggregationRow);
+        }
 
         return panel;
     }

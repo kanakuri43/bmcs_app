@@ -43,6 +43,19 @@ public abstract class PagedReportDocumentBuilder : ReportDocumentBuilder
     /// <summary><paramref name="lineIndex"/>（0始まり）の行を <see cref="Columns"/> と同じ順序のセル文字列で返す。</summary>
     protected abstract string?[] BuildLineCells(int lineIndex);
 
+    /// <summary>
+    /// 見出し行・小計行のような、通常の明細行とは異なる太字・単色背景で描画すべき行かどうか
+    /// （TODO.md 12-D、親子請求）。既定はfalse（全行が通常の明細行）。
+    /// </summary>
+    protected virtual bool IsGroupMarkerRow(int lineIndex) => false;
+
+    /// <summary>
+    /// ページ末尾に来ると孤立してしまう行（見出し行）かどうか（TODO.md 12-D、親子請求）。
+    /// <see cref="ReportPagination.AvoidTrailingHeaderOrphans"/>が参照する。既定はfalse
+    /// （調整不要）。
+    /// </summary>
+    protected virtual bool IsPageBreakSensitive(int lineIndex) => false;
+
     public FixedDocument Build()
     {
         var linesOnFirstPage = Math.Max(1,
@@ -51,6 +64,7 @@ public abstract class PagedReportDocumentBuilder : ReportDocumentBuilder
             (int)((ContentHeight - CompactHeaderHeight - TableHeaderHeight - FooterHeight) / LineHeight));
 
         var pageSplits = ReportPagination.Split(LineCount, linesOnFirstPage, linesOnLaterPages);
+        pageSplits = ReportPagination.AvoidTrailingHeaderOrphans(pageSplits, IsPageBreakSensitive);
         var document = new FixedDocument();
 
         for (var i = 0; i < pageSplits.Count; i++)
@@ -119,8 +133,12 @@ public abstract class PagedReportDocumentBuilder : ReportDocumentBuilder
 
         for (var i = 0; i < count; i++)
         {
-            var cells = BuildLineCells(startIndex + i);
-            container.Children.Add(BuildTableRow(Columns, isHeader: false, AlternatingRowBackground(i), cells));
+            var lineIndex = startIndex + i;
+            var cells = BuildLineCells(lineIndex);
+            var isMarker = IsGroupMarkerRow(lineIndex);
+            container.Children.Add(BuildTableRow(
+                Columns, isHeader: isMarker, isMarker ? Brushes.Transparent : AlternatingRowBackground(i), cells,
+                rowHeight: LineHeight));
         }
 
         return container;

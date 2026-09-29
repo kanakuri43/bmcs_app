@@ -1,17 +1,27 @@
 using bmcs_app.Application.Billing;
+using bmcs_app.Domain.Calculations;
+using bmcs_app.Domain.Entities;
 using bmcs_app.Domain.Enums;
+using bmcs_app.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using SalesEntity = bmcs_app.Domain.Entities.Sales;
 
 namespace bmcs_app.Application.Tests.Billing;
 
 /// <summary>
-/// 請求書の印刷データ取得（TODO.md 10-5）の結合テスト。開発用ライブDB（172.16.3.171）に対して
-/// 実行する。読み取り専用（保存しない）のため、専用のテスト得意先を新設せず、既存のseedデータ
-/// （`scripts/seed_dev_data.sql`）に対する回帰検知テストとして実装する
-/// （`CustomerLedgerQueryServiceTests`と同じ方針）。
+/// 請求書の印刷データ取得（TODO.md 10-5、12-D）の結合テスト。開発用ライブDB（172.16.3.171）に対して
+/// 実行する。既存のテストは読み取り専用（保存しない）のため専用のテスト得意先を新設せず、既存の
+/// seedデータ（`scripts/seed_dev_data.sql`）に対する回帰検知テストとして実装している
+/// （`CustomerLedgerQueryServiceTests`と同じ方針）。親子請求（請求集約）のテストのみ、seedデータに
+/// 集約シナリオが無いため`BillingClosingServiceTests`と同じ「専用のテスト得意先で締めた後、
+/// finallyで物理削除する」方式を使う（`closing_day = 18`、他のBillingテストクラスと重複しない値）。
 /// </summary>
 public class InvoiceServiceTests(DevDatabaseFixture fixture) : IClassFixture<DevDatabaseFixture>
 {
+    private const byte TestClosingDay = 18;
+
+
     [Fact]
     public async Task 請求単位の請求書は税率別内訳の金額がヘッダーの確定値と一致し税率ラベルを明細行から拝借する()
     {
@@ -81,6 +91,113 @@ public class InvoiceServiceTests(DevDatabaseFixture fixture) : IClassFixture<Dev
         Assert.Null(data);
     }
 
+    [Fact]
+    public async Task 請求集約先の請求書は請求集約元の明細も得意先コード順に含む()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<BmcsDbContext>();
+        var closingService = scope.ServiceProvider.GetRequiredService<BillingClosingService>();
+        var invoiceService = Resolve(scope);
+
+        const string root = "__TSTINV1";
+        const string child = "__TSTINV1C";
+        await InsertCustomerAsync(dbContext, root, salesEmployeeCode: "101");
+        await InsertCustomerAsync(dbContext, child, billingCustomerCode: root, salesEmployeeCode: "101");
+
+        var slipRoot = "__TSTINV_AGGR";
+        var slipChild = "__TSTINV_AGGC";
+        dbContext.Sales.Add(NewSalesLine(root, slipRoot, 1, new DateOnly(2025, 7, 1), quantity: 5m, unitPrice: 1000m, productCode: "1001"));
+        dbContext.Sales.Add(NewSalesLine(child, slipChild, 1, new DateOnly(2025, 7, 1), quantity: 3m, unitPrice: 1000m, productCode: "1001"));
+        await dbContext.SaveChangesAsync();
+
+        try
+        {
+            var confirmed = await closingService.ConfirmAsync(TestClosingDay, new DateOnly(2025, 7, 18));
+            var billingNumber = Assert.Single(confirmed, r => r.CustomerCode == root).BillingNumber!;
+
+            var data = await invoiceService.GetByNumberAsync(billingNumber);
+
+            Assert.NotNull(data);
+            Assert.Equal(root, data!.CustomerCode);
+            Assert.Equal(2, data.Lines.Count);
+            // 得意先コード順（"__TSTINV1" < "__TSTINV1C"）に整列されていることを確認する
+            // （InvoiceReportRowBuilderが見出し行・小計行を組み立てるための前提）。
+            Assert.Equal(root, data.Lines[0].CustomerCode);
+            Assert.Equal(slipRoot, data.Lines[0].SalesSlipNumber);
+            Assert.Equal(child, data.Lines[1].CustomerCode);
+            Assert.Equal(slipChild, data.Lines[1].SalesSlipNumber);
+        }
+        finally
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.sales WHERE sales_slip_number = {slipRoot}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.sales WHERE sales_slip_number = {slipChild}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.billings WHERE customer_code = {root}");
+            // 自己参照FK（billing_customer_code）のため請求集約元(child)を請求集約先(root)より先に削除する。
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.customers WHERE customer_code = {child}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.customers WHERE customer_code = {root}");
+        }
+    }
+
     private static InvoiceService Resolve(AsyncServiceScope scope)
         => scope.ServiceProvider.GetRequiredService<InvoiceService>();
+
+    private static async Task InsertCustomerAsync(
+        BmcsDbContext dbContext, string customerCode, string? billingCustomerCode = null,
+        string salesEmployeeCode = "EMP001")
+    {
+        var now = DateTime.Now;
+        dbContext.Customers.Add(new Customer
+        {
+            CustomerCode = customerCode,
+            CustomerName = "テスト用得意先",
+            SalesEmployeeCode = salesEmployeeCode,
+            ClosingDay = TestClosingDay,
+            TaxUnit = TaxUnit.Invoice,
+            RoundingType = RoundingType.Floor,
+            BillingCustomerCode = billingCustomerCode ?? customerCode,
+            PrintRepresentativeFlag = false,
+            CreatedBy = "TEST",
+            CreatedAt = now,
+            UpdatedBy = "TEST",
+            UpdatedAt = now,
+        });
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static SalesEntity NewSalesLine(
+        string customerCode, string slipNumber, short lineNumber, DateOnly slipDate, decimal quantity,
+        decimal unitPrice, string productCode = "PRD001")
+    {
+        var amount = ConsumptionTaxCalculator.CalculateLineAmount(quantity, unitPrice, RoundingType.Floor);
+        var now = DateTime.Now;
+
+        return new SalesEntity
+        {
+            SalesSlipNumber = slipNumber,
+            LineNumber = lineNumber,
+            SlipDate = slipDate,
+            CustomerCode = customerCode,
+            TaxUnit = TaxUnit.Invoice,
+            CustomerName = "テスト用得意先",
+            SlipType = SlipType.Sales,
+            ProductCode = productCode,
+            ProductName = "テスト用商品",
+            Quantity = quantity,
+            UnitPrice = unitPrice,
+            Amount = amount,
+            CostPrice = 700m,
+            TaxCategory = TaxCategory.Standard,
+            TaxRate = 10m,
+            SlipTaxAmount = null,
+            DeliveryNoteIssueCount = 0,
+            BillingStatus = BillingLinkStatus.Unbilled,
+            SettlementStatus = SettlementStatus.Unsettled,
+            SettledAmount = 0m,
+            BillingNumber = null,
+            CreatedBy = "TEST",
+            CreatedAt = now,
+            UpdatedBy = "TEST",
+            UpdatedAt = now,
+        };
+    }
 }
