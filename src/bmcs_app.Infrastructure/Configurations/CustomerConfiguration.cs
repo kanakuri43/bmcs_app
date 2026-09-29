@@ -22,9 +22,15 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(e => e.FaxNumber).HasMaxLength(20).IsUnicode(false);
         builder.Property(e => e.ContactPersonName).HasMaxLength(40);
         builder.Property(e => e.SalesEmployeeCode).HasMaxLength(10).IsUnicode(false);
+        builder.Property(e => e.BillingCustomerCode).HasMaxLength(10).IsUnicode(false);
 
         builder.Property(e => e.TaxUnit).HasConversion<byte>();
         builder.Property(e => e.RoundingType).HasConversion<byte>();
+
+        // IsBillingRoot は DB の永続化計算列 is_billing_root に対応するが、EF にはマップしない
+        // （INSERT時に書き込もうとして失敗するため。アプリ側は BillingCustomerCode == CustomerCode
+        // で同じ判定ができる）。billing_parent_root_flag（常に1の定数計算列）も同様にマップしない。
+        builder.Ignore(e => e.IsBillingRoot);
 
         // CK_customers_tax_unit_closing_day 等の CHECK 制約は DB 側（Phase 1-5）で
         // 既に強制済みのため、EF Core 側では再定義しない（マイグレーションを使わない方針）。
@@ -41,6 +47,12 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             .WithMany()
             .HasForeignKey(e => e.SalesEmployeeCode)
             .OnDelete(DeleteBehavior.NoAction);
+
+        // 請求集約先の自己参照複合FK（FK_customers_billing_customer、
+        // scripts/020_add_billing_customer_code.sql）は billing_parent_root_flag
+        // という定数の計算列を含むため EF Core では表現できない。DB側のみで強制する。
+        // 帰結として、請求集約先と請求集約元を同一 SaveChanges で同時に新規作成する
+        // ことはできない（得意先マスタ画面は1件ずつ保存するため実害はない）。
 
         builder.ConfigureAuditColumns();
     }

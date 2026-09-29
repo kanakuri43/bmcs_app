@@ -101,6 +101,7 @@ public class DetailInvoiceQueryServiceTests(DevDatabaseFixture fixture) : IClass
             ClosingDay = 0,
             TaxUnit = TaxUnit.Line,
             RoundingType = RoundingType.Floor,
+            BillingCustomerCode = customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,

@@ -36,4 +36,16 @@ public class Customer : AuditableEntity
     public required RoundingType RoundingType { get; set; }
 
     public required bool PrintRepresentativeFlag { get; set; }
+
+    /// <summary>
+    /// 請求得意先コード。自分自身のコードと一致すれば単独で請求（請求集約先）、
+    /// 異なれば売上がこのコードの得意先（請求集約先）に集約される（請求集約元）。
+    /// 確定済み請求（billings）に取り込まれた売上が1件でもある得意先は変更不可
+    /// （docs/database-schema.md 1-1節）。
+    /// </summary>
+    public required string BillingCustomerCode { get; set; }
+
+    /// <summary>この得意先が請求集約先（または単独）かどうか。<c>BillingCustomerCode == CustomerCode</c> と同値。
+    /// DB側の計算列 <c>is_billing_root</c> と対応するが、EFにはマップしない（アプリ側で同じ判定ができるため）。</summary>
+    public bool IsBillingRoot => BillingCustomerCode == CustomerCode;
 }

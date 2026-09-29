@@ -576,6 +576,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             ClosingDay = taxUnit == TaxUnit.Line ? (byte)0 : (byte)15,
             TaxUnit = taxUnit,
             RoundingType = RoundingType.Floor,
+            BillingCustomerCode = customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,

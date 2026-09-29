@@ -367,6 +367,7 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
             ClosingDay = TestClosingDay,
             TaxUnit = taxUnit,
             RoundingType = roundingType,
+            BillingCustomerCode = customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,

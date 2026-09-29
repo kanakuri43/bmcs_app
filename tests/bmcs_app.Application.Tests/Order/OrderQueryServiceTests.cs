@@ -113,6 +113,7 @@ public class OrderQueryServiceTests(DevDatabaseFixture fixture) : IClassFixture<
             ClosingDay = 20,
             TaxUnit = TaxUnit.Invoice,
             RoundingType = RoundingType.Floor,
+            BillingCustomerCode = customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,

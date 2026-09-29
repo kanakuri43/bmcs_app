@@ -826,6 +826,7 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             ClosingDay = taxUnit == TaxUnit.Line ? (byte)0 : (byte)15,
             TaxUnit = taxUnit,
             RoundingType = RoundingType.Floor,
+            BillingCustomerCode = customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,

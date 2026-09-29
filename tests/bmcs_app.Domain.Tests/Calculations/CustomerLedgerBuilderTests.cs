@@ -358,6 +358,7 @@ public class CustomerLedgerBuilderTests
         ClosingDay = taxUnit == TaxUnit.Line ? (byte)0 : (byte)20,
         TaxUnit = taxUnit,
         RoundingType = roundingType,
+        BillingCustomerCode = code,
         PrintRepresentativeFlag = false,
         CreatedBy = "TEST",
         CreatedAt = DateTime.Now,

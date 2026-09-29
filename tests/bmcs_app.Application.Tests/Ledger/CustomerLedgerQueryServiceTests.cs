@@ -230,6 +230,7 @@ public class CustomerLedgerQueryServiceTests(DevDatabaseFixture fixture) : IClas
             ClosingDay = taxUnit == TaxUnit.Line ? (byte)0 : (byte)20,
             TaxUnit = taxUnit,
             RoundingType = roundingType,
+            BillingCustomerCode = customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,

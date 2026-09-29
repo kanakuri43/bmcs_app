@@ -232,6 +232,7 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
             ClosingDay = 0,
             TaxUnit = TaxUnit.Line,
             RoundingType = RoundingType.Floor,
+            BillingCustomerCode = testCustomerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,

@@ -247,6 +247,7 @@ public class DeliveryNoteServiceTests(DevDatabaseFixture fixture) : IClassFixtur
             ClosingDay = taxUnit == TaxUnit.Line ? (byte)0 : (byte)20,
             TaxUnit = taxUnit,
             RoundingType = RoundingType.RoundHalfUp,
+            BillingCustomerCode = customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,

@@ -24,6 +24,10 @@ public partial class CustomerSearchDialogViewModel(CustomerService customerServi
     /// <summary>設定すると、この税区分の得意先のみを検索対象にする（未設定なら全件）。</summary>
     public TaxUnit? RequiredTaxUnit { get; set; }
 
+    /// <summary>true を設定すると、請求集約先（自分自身に請求得意先コードを設定している得意先）のみに
+    /// 絞り込む。得意先マスタ画面の「請求得意先コード」欄からの呼び出しで使う（2026-09-29確定）。</summary>
+    public bool BillingRootOnly { get; set; }
+
     [ObservableProperty]
     public partial string SearchKeyword { get; set; } = string.Empty;
 
@@ -34,9 +38,17 @@ public partial class CustomerSearchDialogViewModel(CustomerService customerServi
     private Task LoadAsync() => RunBusyAsync(async () =>
     {
         var customers = await customerService.GetCustomersAsync();
-        _allCustomers = RequiredTaxUnit is null
-            ? customers
-            : customers.Where(c => c.TaxUnit == RequiredTaxUnit).ToList();
+        if (RequiredTaxUnit is not null)
+        {
+            customers = customers.Where(c => c.TaxUnit == RequiredTaxUnit).ToList();
+        }
+
+        if (BillingRootOnly)
+        {
+            customers = customers.Where(c => c.IsBillingRoot).ToList();
+        }
+
+        _allCustomers = customers;
         ApplyFilter();
     });
 

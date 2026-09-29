@@ -75,6 +75,25 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
     [ObservableProperty]
     public partial bool PrintRepresentativeFlag { get; set; }
 
+    /// <summary>
+    /// 請求得意先コード（親子請求・請求集約、2026-09-29確定）。空欄は「自分自身＝単独で請求」を意味する。
+    /// 他の得意先コードを入力すると、その得意先（請求集約先）に売上が集約される。
+    /// </summary>
+    [ObservableProperty]
+    public partial string BillingCustomerCodeText { get; set; } = string.Empty;
+
+    /// <summary>請求得意先コード欄に入力されたコードの得意先名（照会結果の表示専用）。</summary>
+    [ObservableProperty]
+    public partial string BillingCustomerName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 請求得意先コードの編集可否（業務ルール7）。新規登録時は常に可、更新時は
+    /// 確定済み請求に取り込まれた売上の有無等をサービスに問い合わせて決める
+    /// （closing_day/tax_unit/rounding_typeとは異なり新規登録時限定ではない）。
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsBillingCustomerEditable { get; set; } = true;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsClosingTypeEditable))]
     public partial bool IsNew { get; set; } = true;
@@ -97,14 +116,14 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
 
     /// <summary>コード欄で Space を押したときに検索モーダルを開く。</summary>
     [RelayCommand]
-    private void OpenCustomerSearch()
+    private Task OpenCustomerSearchAsync() => RunBusyAsync(async () =>
     {
         var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>();
         if (customer is not null)
         {
-            ApplyCustomer(customer);
+            await ApplyCustomerAsync(customer);
         }
-    }
+    });
 
     /// <summary>コード欄で Enter を押したときに、入力済みコードで直接読み込む。</summary>
     [RelayCommand]
@@ -126,10 +145,39 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
             return;
         }
 
-        ApplyCustomer(customer);
+        await ApplyCustomerAsync(customer);
     });
 
-    private void ApplyCustomer(Customer customer)
+    /// <summary>請求得意先コード欄で Space を押したときに検索モーダルを開く（請求集約先のみ表示）。</summary>
+    [RelayCommand]
+    private Task OpenBillingCustomerSearchAsync() => RunBusyAsync(async () =>
+    {
+        var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>(
+            vm => vm.BillingRootOnly = true);
+        if (customer is not null)
+        {
+            BillingCustomerCodeText = customer.CustomerCode;
+            BillingCustomerName = customer.CustomerName;
+        }
+    });
+
+    /// <summary>請求得意先コード欄で Enter を押したときに、入力済みコードの得意先名を照会する。</summary>
+    [RelayCommand]
+    private Task LookupBillingCustomerByCodeAsync() => RunBusyAsync(RefreshBillingCustomerNameAsync);
+
+    private async Task RefreshBillingCustomerNameAsync()
+    {
+        if (string.IsNullOrWhiteSpace(BillingCustomerCodeText))
+        {
+            BillingCustomerName = string.Empty;
+            return;
+        }
+
+        var billingCustomer = await customerService.GetByCodeAsync(BillingCustomerCodeText);
+        BillingCustomerName = billingCustomer?.CustomerName ?? "（該当なし）";
+    }
+
+    private async Task ApplyCustomerAsync(Customer customer)
     {
         CustomerCode = customer.CustomerCode;
         CustomerName = customer.CustomerName;
@@ -156,6 +204,10 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
             ClosingDayText = customer.ClosingDay.ToString();
             ClosingTaxUnit = customer.TaxUnit;
         }
+
+        BillingCustomerCodeText = customer.IsBillingRoot ? string.Empty : customer.BillingCustomerCode;
+        await RefreshBillingCustomerNameAsync();
+        IsBillingCustomerEditable = await customerService.CanChangeBillingCustomerAsync(customer.CustomerCode);
 
         _loadedRowVersion = customer.RowVersion;
         IsNew = false;
@@ -196,6 +248,8 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
             taxUnit = ClosingTaxUnit;
         }
 
+        var billingCustomerCode = string.IsNullOrWhiteSpace(BillingCustomerCodeText) ? CustomerCode : BillingCustomerCodeText;
+
         var customer = new Customer
         {
             CustomerCode = CustomerCode,
@@ -212,6 +266,7 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
             TaxUnit = taxUnit,
             RoundingType = RoundingType,
             PrintRepresentativeFlag = PrintRepresentativeFlag,
+            BillingCustomerCode = billingCustomerCode,
             RowVersion = _loadedRowVersion,
             CreatedBy = string.Empty,
             CreatedAt = default,
@@ -270,6 +325,7 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
             TaxUnit = TaxUnit.Line,
             RoundingType = RoundingType,
             PrintRepresentativeFlag = PrintRepresentativeFlag,
+            BillingCustomerCode = CustomerCode,
             RowVersion = _loadedRowVersion,
             CreatedBy = string.Empty,
             CreatedAt = default,
@@ -314,6 +370,9 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
         ClosingTaxUnit = TaxUnit.Invoice;
         RoundingType = RoundingType.RoundHalfUp;
         PrintRepresentativeFlag = false;
+        BillingCustomerCodeText = string.Empty;
+        BillingCustomerName = string.Empty;
+        IsBillingCustomerEditable = true;
         _loadedRowVersion = null;
     }
 

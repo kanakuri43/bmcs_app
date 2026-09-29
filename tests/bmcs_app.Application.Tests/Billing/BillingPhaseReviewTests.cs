@@ -316,6 +316,7 @@ public class BillingPhaseReviewTests(DevDatabaseFixture fixture) : IClassFixture
             ClosingDay = closingDay,
             TaxUnit = taxUnit,
             RoundingType = roundingType,
+            BillingCustomerCode = customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,

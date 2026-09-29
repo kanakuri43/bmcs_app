@@ -47,7 +47,7 @@ DELETE FROM dbo.sales WHERE sales_slip_number IN (N'SALINV001', N'SALINV002', N'
 DELETE FROM dbo.billings WHERE billing_number IN (N'BIL_INV001', N'BIL_INV002', N'BIL_SLP001');
 DELETE FROM dbo.orders WHERE order_slip_number IN (N'ORD001', N'ORD002', N'ORD003', N'ORD004');
 DELETE FROM dbo.monthly_closings WHERE closing_date IN ('2026-01-31', '2026-02-28');
-DELETE FROM dbo.customers WHERE customer_code IN (N'CUS001', N'CUS002', N'CUS003');
+DELETE FROM dbo.customers WHERE customer_code IN (N'CUS001', N'CUS002', N'CUS003', N'CUS004');
 DELETE FROM dbo.products WHERE product_code IN (N'PRD001', N'PRD002', N'PRD003');
 DELETE FROM dbo.bank_accounts WHERE bank_account_code IN (N'BNK001');
 DELETE FROM dbo.company_infos WHERE company_info_id = 1;
@@ -67,19 +67,30 @@ GO
 
 -- 得意先: 税単位3種（Invoice/Slip/Line）を1つずつ網羅
 -- CK_customers_tax_unit_closing_day の相互制約（tax_unit=3 ⇔ closing_day=0）を満たす。
+-- CUS004 は親子請求（請求集約）の確認用サンプル。CUS001 を請求集約先（billing_customer_code）
+-- に指定し、closing_day/tax_unit/rounding_type を CUS001 と一致させている
+-- （docs/database-schema.md 1-1節・scripts/020_add_billing_customer_code.sql）。
 INSERT INTO dbo.customers
     (customer_code, customer_name, customer_name_kana, postal_code, address1, contact_person_name,
      sales_employee_code, closing_day, tax_unit, rounding_type, print_representative_flag,
+     billing_customer_code,
      created_by, created_at, updated_by, updated_at)
 VALUES
     (N'CUS001', N'株式会社山田商事', N'ﾔﾏﾀﾞｼｮｳｼﾞ', N'100-0001', N'東京都千代田区1-1-1', N'山田太郎',
      N'EMP001', 20, 1, 1, 0,
+     N'CUS001',
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'CUS002', N'鈴木工業株式会社', N'ｽｽﾞｷｺｳｷﾞｮｳ', N'150-0001', N'東京都渋谷区2-2-2', N'鈴木花子',
      N'EMP001', 99, 2, 2, 0,
+     N'CUS002',
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'CUS003', N'石山市立石山小学校', N'ｲｼﾔﾏｼﾘﾂｲｼﾔﾏｼｮｳｶﾞｯｺｳ', N'400-0001', N'山梨県甲府市3-3-3', N'佐藤先生',
      N'EMP002', 0, 3, 3, 1,
+     N'CUS003',
+     N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    (N'CUS004', N'株式会社山田商事　大阪支店', N'ﾔﾏﾀﾞｼｮｳｼﾞ ｵｵｻｶｼﾃﾝ', N'530-0001', N'大阪府大阪市北区4-4-4', N'山田次郎',
+     N'EMP001', 20, 1, 1, 0,
+     N'CUS001',
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 

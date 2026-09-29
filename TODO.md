@@ -196,7 +196,7 @@ M-2（採番規則）・M-3（単価決定）・C-6（訂正・取消方式）�
 
 | 完了 | # | タスク | 推奨モデル | 前提 | 完了条件 |
 |---|---|---|---|---|---|
-| [ ] | 9-1 | 月次締め処理（**得意先ごと**の暦月末売掛残高を`monthly_closing`に確定保存。`tax_unit=1`の未確定区間は税額を仮計算。担当者別売上・粗利は都度集計） | Sonnet | 8-1, C-7 | 集計値が元帳の残高と一致する |
+| [ ] | 9-1 | 月次締め処理（**得意先ごと**の暦月末売掛残高を`monthly_closing`に確定保存。`tax_unit=1`の未確定区間は税額を仮計算。担当者別売上・粗利は都度集計）。**【Phase 12申し送り】親子請求（請求集約）は月次締めの対象外。請求集約せず`customer_code`（請求集約元）ごとに個別集計する方針で実装してよい（`docs/database-schema.md` 2.16節）** | Sonnet | 8-1, C-7 | 集計値が元帳の残高と一致する |
 | [ ] | 9-2 | 確定後のロック（`customer_code`＋該当年月の伝票日付を持つ売上・入金、または確定済み`billing`に集計済みの売上を編集不可にする。導出方式） | Sonnet | 1-4 | 確定後に該当得意先・該当年月の伝票が編集できない |
 | [ ] | 9-3 | 締め解除（管理者権限のみ。`billing`と同じ非破壊方式）。**9-1／9-2とは別画面（別ウィンドウ）として実装する（C-8決定）** | Sonnet | C-8, 9-2 | 権限のない社員コードでは解除できない |
 
@@ -228,6 +228,21 @@ DBへの書き込みを伴う点は `tests/bmcs_app.Application.Tests`（16章�
 | [ ] | 11-3 | 業務フロー別シナリオテストの実装（例: 受注入力→売上確定、売上入力の税区分3パターン、返品・値引、請求締め→入金消込、明細請求書発行→明細入金）。対象フェーズが実装済みのものから順に追加していく | Sonnet | 11-1, 11-2, 各対象フェーズ | 各シナリオがUI操作のみで実行でき、実行後のDB状態が期待値と一致する |
 | [ ] | 11-4 | 実行手順の確立（ローカルでの実行コマンド、実行前提条件＝開発用DB接続・アプリの多重起動禁止、CI組み込みの要否判断） | Sonnet | 11-1 | 手順どおりに実行して毎回同じ結果になる（テスト間の副作用が残らない） |
 | [ ] | 11-5 | フェーズレビュー（カバーしている業務フローの棚卸し、抜けている画面・シナリオの洗い出し） | Sonnet | 11-1〜11-4 | 主要業務フロー（受注〜入金〜元帳）がUI経由で回帰確認できる状態になっている |
+
+---
+
+## Phase 12: 親子請求（請求集約）
+
+各地に支店を持つ会社の各支店（請求集約元）の売上を本社（請求集約先）に一括請求する機能。DB・得意先マスタ・請求締め・締め解除・消込・入金入力・得意先元帳・請求書帳票の8領域にまたがるため段階実装とする。用語・確定した業務ルール・8領域すべての設計方針は `docs/design_document.md` 28章・`docs/database-schema.md` 1-1節に確定済み。**12-Bは12-Cに依存しない**（請求集約元が1件も無ければグループは常に単独になるため、12-Bを先に入れても既存の単独得意先の挙動は変わらない）。
+
+| 完了 | # | タスク | 推奨モデル | 前提 | 完了条件 |
+|---|---|---|---|---|---|
+| [x] | 12-A | 設計資料の確定・DBスキーマ変更・得意先マスタ（`billing_customer_code`の追加、計算列を使った複合自己参照FK・CHECK制約、`CustomerService`のリンク検証・変更可否判定、得意先マスタ画面） | Opus | 設計確定済み | **2026-09-29実装。** `docs/database-schema.md` 1-1節・2.1節、`docs/product-spec.md`、`docs/design_document.md` 28章、`docs/report-spec.md` 2-2-1節に設計方針を確定。`scripts/020_add_billing_customer_code.sql`で`billing_customer_code`＋計算列`is_billing_root`／`billing_parent_root_flag`（PERSISTED）＋複合自己参照FK`FK_customers_billing_customer`＋CHECK`CK_customers_billing_customer_tax_unit`を追加し、開発用ライブDBへSQLCMDで適用。孫（3段階層）・締め日不一致・税区分不一致・端数区分不一致・都度得意先の請求集約元指定の5パターンをSQLで直接INSERTし拒否されることを確認済み（確認用データは後片付け済み）。`Customer`エンティティに`BillingCustomerCode`（required）・`IsBillingRoot`を追加（EFには計算列をマップしない）。`BillingAggregationValidator`（Domain純粋関数）＋`CustomerService`（リンク検証・業務ルール7の変更可否判定・`DeactivateAsync`のガード）＋`CustomerMasterViewModel`／`CustomerMasterWindow.xaml`（請求得意先コード欄、Space検索・Enter照会、`IsBillingCustomerEditable`）＋`CustomerSearchDialogViewModel`（`BillingRootOnly`フィルタ）を実装。単体テスト`BillingAggregationValidatorTests`（8件）・結合テスト`CustomerServiceTests`（9件、新規`Master/`フォルダ、外側トランザクション＋Rollback方式）を追加、全件green。既存テストへの回帰なし（Domain 289件all green。Application は開発用DBのseedデータ乖離による既存失敗125件を除き全green、TODO.md X-6時点と同数）。`dotnet run`でアプリ起動しメインウィンドウ表示・例外なしを確認。請求締め・消込・入金入力・元帳・帳票（Phase 12-B〜E）は次セッション以降 |
+| [ ] | 12-B | 日付制限・消込のスコープ拡張（`BillingClosedDateService`が請求集約先を解決してから`billings`を見るよう修正、`SettlementService.RecalculateForCustomerAsync`を請求集約グループスコープへ拡張・改称、入金入力で請求集約元を拒否） | Sonnet | 12-A | 請求集約元の売上は請求集約先の確定済み請求期間より前の日付で登録できない。請求集約元の売上は請求集約先の入金で消し込まれる。請求集約元を指定した入金登録は業務例外になる |
+| [ ] | 12-C | 請求締め・締め解除（`BillingClosingService`の締め対象を請求集約先のみに絞り売上・入金抽出をグループへ拡張、`BillingReleaseService`の再計算スコープ対応） | Sonnet | 12-B | 請求集約元の売上が請求集約先の請求データに合算して締められ、請求集約元には請求データが作られない。締め解除で請求集約元の売上も未請求・未消込へ戻る |
+| [ ] | 12-D | 請求書帳票（`InvoiceDocumentBuilder`で請求集約元ごとの見出し行・小計行、`ReportPagination`の改ページ対応） | Sonnet | 12-C | 請求集約先の請求書に請求集約元ごとの内訳が明記され、単独得意先の請求書は既存と同一のレイアウトのまま |
+| [ ] | 12-E | 得意先元帳（`CustomerLedgerBuilder`に取引履歴のみモード追加、請求集約先はグループ売上を含めて残高計算） | Sonnet | 12-B | 請求集約先の元帳残高は請求集約元の売上を含んで正しく計算される。請求集約元の元帳は取引履歴のみで残高を表示しない |
+| [ ] | 12-F | ドキュメント整備（実装で判明した内容を`docs/`へ反映） | Sonnet | 各タスク完了時 | 資料と実装が乖離していない |
 
 ---
 
