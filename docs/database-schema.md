@@ -169,6 +169,8 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `rounding_type` | `tinyint` | × | `1`＝切捨／`2`＝四捨五入／`3`＝切上 |
 | `print_representative_flag` | `bit` | × | 請求書への代表者印字の要否 |
 | `billing_customer_code` | `varchar(10)` | × | **請求得意先コード**（2026-09-29追加、`scripts/020_add_billing_customer_code.sql`）。自分自身を指せば単独で請求、他の得意先を指せばその得意先を**請求集約先**として売上を集約する。詳細は1-1節・`docs/design_document.md` の親子請求（請求集約）章を参照 |
+| `bank_account_code1` | `varchar(10)` | ○ | **振込先口座1**（2026-09-29追加、`scripts/021_add_customer_bank_accounts.sql`。FK → `bank_accounts`）。請求書・明細請求書の自社名の下に印字する。空欄なら印字しない |
+| `bank_account_code2` | `varchar(10)` | ○ | **振込先口座2**（同上）。`bank_account_code1` と同一の口座は指定できない（`CK_customers_bank_account_distinct`） |
 | `is_billing_root`（計算列） | `bit` | × | `billing_customer_code = customer_code` なら`1`（＝**請求集約先**または単独）、異なれば`0`（＝**請求集約元**）。`PERSISTED` の永続化計算列。**EFエンティティにはマップしない**（アプリからは`BillingCustomerCode == CustomerCode`で同じ判定ができるため） |
 | `billing_parent_root_flag`（計算列） | `bit` | × | 常に`1`の定数の永続化計算列。下記の複合FKで「参照先は必ず請求集約先自身」を強制するために存在する（CHECK制約は他行を参照できないため、この强制はFKでしか表現できない）。**EFエンティティにはマップしない** |
 
@@ -183,6 +185,7 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `CK_customer_rounding_type` | `rounding_type IN (1, 2, 3)` | |
 | `CK_customer_closing_day` | `closing_day BETWEEN 0 AND 31 OR closing_day = 99` | |
 | `CK_customers_billing_customer_tax_unit` | `billing_customer_code = customer_code OR tax_unit IN (1, 2)` | **都度得意先（`tax_unit=3`）は請求集約元になれない。** 複合FK（下記）だけでは「都度得意先どうしの請求集約」を防げないため、この CHECK が唯一の防壁になる |
+| `CK_customers_bank_account_distinct` | `bank_account_code1 IS NULL OR bank_account_code2 IS NULL OR bank_account_code1 <> bank_account_code2` | 振込先口座1・2に同一口座を重複指定できないようにする（2026-09-29追加） |
 
 **`UNIQUE (customer_code, tax_unit)`（`UQ_customer_code_tax_unit`）を持つ**（`scripts/010_unify_tax_unit_tables.sql`）。`sales`/`receipts`/`billings` から `(customer_code, tax_unit)` の複合FKで参照させ、伝票の税単位が得意先マスタの税区分と一致することをDBで強制するための一意インデックス。`customer_code` は既にPKで一意なのでこの制約自体が既存データを弾くことはない。
 
@@ -291,12 +294,11 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `account_type` | `tinyint` | × | `1`＝普通／`2`＝当座 |
 | `account_number` | `varchar(10)` | × | |
 | `account_holder_name` | `nvarchar(60)` | × | 口座名義 |
-| `is_print_on_invoice` | `bit` | × | 請求書・明細請求書に印字する口座かどうか |
-| `display_order` | `smallint` | × | 表示順 |
+| `display_order` | `smallint` | × | 表示順（銀行マスタ画面の一覧順） |
 
 **CHECK 制約**: `CK_bank_account_type` … `account_type IN (1, 2)`
 
-**このテーブルの用途は推測にもとづく。** 設計資料の「銀行マスタ」には用途の記載がないため、**自社の入金口座マスタ**（入金入力で入金先口座を選ぶ／請求書に振込先を印字する）と解釈した。全銀協の金融機関コードマスタである可能性も残るため、`docs/design_document.md` の確認事項に記録した。
+**このテーブルの用途は確定した（2026-09-29）: 自社の振込先口座マスタ。** 得意先マスタ（2.1節）の `bank_account_code1`／`bank_account_code2` から最大2件紐づけて、請求書・明細請求書に得意先ごとに印字する（`docs/report-spec.md` 2-2節）。従来あった `is_print_on_invoice`（全社共通でフッターに印字する口座を選ぶフラグ）は、この得意先単位の紐づけ方式に完全に置き換えたため `scripts/021_add_customer_bank_accounts.sql` で削除した。
 
 ---
 
@@ -802,6 +804,5 @@ M-2 本体（採番規則そのもの）は未確定のままだが、実装の�
 | M-4 原価の取得元 | **2026-09-10 業務確認済み（確定）。** 仕入機能がスコープ外のため、商品マスタの `standard_cost_price` を転記する | 仕入機能を実装する際に最終仕入原価・移動平均等へ再検討 |
 | M-11 リアルタイム残高 | 都度集計（残高キャッシュ列を持たない） | 性能不足なら残高キャッシュ列を追加 |
 | 得意先の支払条件・与信限度額 | 項目を作っていない（設計資料に記載がないため） | `customers` への `ALTER TABLE` で追加 |
-| 銀行マスタの用途 | 自社の入金口座マスタと解釈（`bank_accounts`） | 金融機関コードマスタだった場合は構造が変わる |
 
-上位2つ（支払条件・銀行マスタの用途）は `docs/design_document.md` の確認事項にも記載している。
+支払条件・与信限度額は `docs/design_document.md` の確認事項にも記載している。銀行マスタ（`bank_accounts`）の用途は自社の振込先口座マスタとして2026-09-29に確定した（2.6節）。

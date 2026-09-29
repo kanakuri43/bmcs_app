@@ -19,8 +19,9 @@ namespace bmcs_app.Application.Billing;
 /// 発行元となる得意先マスタの<c>print_representative_flag</c>。宛名を書き換えても
 /// この値は変わらない（`docs/product-spec.md`共通業務ルール3）。
 /// </param>
-/// <param name="PrintBankAccounts">
-/// <c>bank_account.is_print_on_invoice</c>が真の口座（<c>display_order</c>順）。
+/// <param name="BillingBankAccounts">
+/// 発行元の得意先に紐づいた振込先口座（<c>customers.bank_account_code1</c>／
+/// <c>bank_account_code2</c>、0〜2件、スロット順。論理削除済みの口座は除外する）。
 /// </param>
 public sealed record DetailInvoiceData(
     string DetailInvoiceNumber,
@@ -32,7 +33,7 @@ public sealed record DetailInvoiceData(
     string? CustomerAddress2,
     CompanyInfo Company,
     bool PrintRepresentative,
-    IReadOnlyList<BankAccount> PrintBankAccounts,
+    IReadOnlyList<BankAccount> BillingBankAccounts,
     IReadOnlyList<DetailInvoiceLine> Lines,
     IReadOnlyList<TaxRateBucket> TaxBreakdowns,
     decimal TaxExcludedTotal,

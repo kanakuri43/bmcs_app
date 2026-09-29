@@ -23,6 +23,8 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(e => e.ContactPersonName).HasMaxLength(40);
         builder.Property(e => e.SalesEmployeeCode).HasMaxLength(10).IsUnicode(false);
         builder.Property(e => e.BillingCustomerCode).HasMaxLength(10).IsUnicode(false);
+        builder.Property(e => e.BankAccountCode1).HasMaxLength(10).IsUnicode(false);
+        builder.Property(e => e.BankAccountCode2).HasMaxLength(10).IsUnicode(false);
 
         builder.Property(e => e.TaxUnit).HasConversion<byte>();
         builder.Property(e => e.RoundingType).HasConversion<byte>();
@@ -46,6 +48,16 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.HasOne<Employee>()
             .WithMany()
             .HasForeignKey(e => e.SalesEmployeeCode)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        builder.HasOne<BankAccount>()
+            .WithMany()
+            .HasForeignKey(e => e.BankAccountCode1)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        builder.HasOne<BankAccount>()
+            .WithMany()
+            .HasForeignKey(e => e.BankAccountCode2)
             .OnDelete(DeleteBehavior.NoAction);
 
         // 請求集約先の自己参照複合FK（FK_customers_billing_customer、

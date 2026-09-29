@@ -157,6 +157,46 @@
                               IsChecked="{Binding PrintRepresentativeFlag}" Margin="0,0,0,8" />
                 </Grid>
 
+                <TextBlock Text="請求書の振込先口座（最大2件）" FontWeight="Bold" Margin="0,16,0,8" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="振込先口座1" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBox Text="{Binding BankAccountCode1Text, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="空欄＝印字しない（SPACEで検索）"
+                                 ToolTip="請求書の自社名の下に印字する振込先口座。空欄なら印字しない"
+                                 Width="160">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Space"  Command="{Binding OpenBankAccount1SearchCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding LookupBankAccount1ByCodeCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <TextBlock Text="{Binding BankAccount1Label}" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="Gray" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="振込先口座2" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBox Text="{Binding BankAccountCode2Text, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="空欄＝印字しない（SPACEで検索）"
+                                 ToolTip="請求書の自社名の下に印字する振込先口座。空欄なら印字しない"
+                                 Width="160">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Space"  Command="{Binding OpenBankAccount2SearchCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding LookupBankAccount2ByCodeCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <TextBlock Text="{Binding BankAccount2Label}" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="Gray" />
+                    </StackPanel>
+                </Grid>
+
                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                     <Button Content="新規" Command="{Binding NewCustomerCommand}" Padding="16,6" Margin="0,0,12,0" />
                     <Button Content="保存" Command="{Binding SaveCommand}" Padding="16,6" Margin="0,0,12,0" />

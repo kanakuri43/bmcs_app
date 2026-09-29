@@ -38,9 +38,6 @@ public partial class BankAccountMasterViewModel(BankAccountService bankAccountSe
     [ObservableProperty]
     public partial string AccountHolderName { get; set; } = string.Empty;
 
-    [ObservableProperty]
-    public partial bool IsPrintOnInvoice { get; set; }
-
     /// <summary>表示順。文字列で保持し保存時に数値として検証する（社員マスタの権限レベルと同じ方式）。</summary>
     [ObservableProperty]
     public partial string DisplayOrderText { get; set; } = string.Empty;
@@ -103,7 +100,6 @@ public partial class BankAccountMasterViewModel(BankAccountService bankAccountSe
         AccountType = bankAccount.AccountType;
         AccountNumber = bankAccount.AccountNumber;
         AccountHolderName = bankAccount.AccountHolderName;
-        IsPrintOnInvoice = bankAccount.IsPrintOnInvoice;
         DisplayOrderText = bankAccount.DisplayOrder.ToString();
 
         _loadedRowVersion = bankAccount.RowVersion;
@@ -148,7 +144,6 @@ public partial class BankAccountMasterViewModel(BankAccountService bankAccountSe
             AccountType = AccountType,
             AccountNumber = AccountNumber,
             AccountHolderName = AccountHolderName,
-            IsPrintOnInvoice = IsPrintOnInvoice,
             DisplayOrder = displayOrder,
             RowVersion = _loadedRowVersion,
             CreatedBy = string.Empty,
@@ -208,7 +203,6 @@ public partial class BankAccountMasterViewModel(BankAccountService bankAccountSe
             AccountType = AccountType,
             AccountNumber = AccountNumber,
             AccountHolderName = AccountHolderName,
-            IsPrintOnInvoice = IsPrintOnInvoice,
             DisplayOrder = short.TryParse(DisplayOrderText, out var displayOrder) ? displayOrder : (short)0,
             RowVersion = _loadedRowVersion,
             CreatedBy = string.Empty,
@@ -245,7 +239,6 @@ public partial class BankAccountMasterViewModel(BankAccountService bankAccountSe
         AccountType = BankAccountType.Ordinary;
         AccountNumber = string.Empty;
         AccountHolderName = string.Empty;
-        IsPrintOnInvoice = false;
         DisplayOrderText = string.Empty;
         _loadedRowVersion = null;
     }

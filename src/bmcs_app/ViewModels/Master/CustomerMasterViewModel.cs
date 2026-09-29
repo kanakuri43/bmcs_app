@@ -15,7 +15,8 @@ namespace bmcs_app.ViewModels.Master;
 /// コード欄で Space を押して検索モーダル（<see cref="CustomerSearchDialog"/>）を呼び出して対象を選ぶ
 /// （受注入力・売上入力画面と同じ SPACEで検索／Enter読込のパターンに揃える）。
 /// </summary>
-public partial class CustomerMasterViewModel(CustomerService customerService, WindowService windowService) : ViewModelBase
+public partial class CustomerMasterViewModel(
+    CustomerService customerService, BankAccountService bankAccountService, WindowService windowService) : ViewModelBase
 {
     [ObservableProperty]
     public partial string CustomerCode { get; set; } = string.Empty;
@@ -74,6 +75,22 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
 
     [ObservableProperty]
     public partial bool PrintRepresentativeFlag { get; set; }
+
+    /// <summary>請求書に印字する振込先口座1（<c>bank_accounts</c>）のコード。空欄＝紐づけなし。</summary>
+    [ObservableProperty]
+    public partial string BankAccountCode1Text { get; set; } = string.Empty;
+
+    /// <summary>振込先口座1欄に入力されたコードの銀行名等（照会結果の表示専用）。</summary>
+    [ObservableProperty]
+    public partial string BankAccount1Label { get; set; } = string.Empty;
+
+    /// <summary>請求書に印字する振込先口座2（<c>bank_accounts</c>）のコード。空欄＝紐づけなし。</summary>
+    [ObservableProperty]
+    public partial string BankAccountCode2Text { get; set; } = string.Empty;
+
+    /// <summary>振込先口座2欄に入力されたコードの銀行名等（照会結果の表示専用）。</summary>
+    [ObservableProperty]
+    public partial string BankAccount2Label { get; set; } = string.Empty;
 
     /// <summary>
     /// 請求得意先コード（親子請求・請求集約、2026-09-29確定）。空欄は「自分自身＝単独で請求」を意味する。
@@ -177,6 +194,65 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
         BillingCustomerName = billingCustomer?.CustomerName ?? "（該当なし）";
     }
 
+    /// <summary>振込先口座1欄で Space を押したときに検索モーダルを開く。</summary>
+    [RelayCommand]
+    private Task OpenBankAccount1SearchAsync() => RunBusyAsync(async () =>
+    {
+        var bankAccount = windowService.ShowDialog<BankAccountMasterSearchDialog, BankAccountMasterSearchDialogViewModel, BankAccount>();
+        if (bankAccount is not null)
+        {
+            BankAccountCode1Text = bankAccount.BankAccountCode;
+            BankAccount1Label = FormatBankAccountLabel(bankAccount);
+        }
+    });
+
+    /// <summary>振込先口座1欄で Enter を押したときに、入力済みコードの銀行名等を照会する。</summary>
+    [RelayCommand]
+    private Task LookupBankAccount1ByCodeAsync() => RunBusyAsync(RefreshBankAccount1LabelAsync);
+
+    private async Task RefreshBankAccount1LabelAsync()
+    {
+        if (string.IsNullOrWhiteSpace(BankAccountCode1Text))
+        {
+            BankAccount1Label = string.Empty;
+            return;
+        }
+
+        var bankAccount = await bankAccountService.GetByCodeAsync(BankAccountCode1Text);
+        BankAccount1Label = bankAccount is null ? "（該当なし）" : FormatBankAccountLabel(bankAccount);
+    }
+
+    /// <summary>振込先口座2欄で Space を押したときに検索モーダルを開く。</summary>
+    [RelayCommand]
+    private Task OpenBankAccount2SearchAsync() => RunBusyAsync(async () =>
+    {
+        var bankAccount = windowService.ShowDialog<BankAccountMasterSearchDialog, BankAccountMasterSearchDialogViewModel, BankAccount>();
+        if (bankAccount is not null)
+        {
+            BankAccountCode2Text = bankAccount.BankAccountCode;
+            BankAccount2Label = FormatBankAccountLabel(bankAccount);
+        }
+    });
+
+    /// <summary>振込先口座2欄で Enter を押したときに、入力済みコードの銀行名等を照会する。</summary>
+    [RelayCommand]
+    private Task LookupBankAccount2ByCodeAsync() => RunBusyAsync(RefreshBankAccount2LabelAsync);
+
+    private async Task RefreshBankAccount2LabelAsync()
+    {
+        if (string.IsNullOrWhiteSpace(BankAccountCode2Text))
+        {
+            BankAccount2Label = string.Empty;
+            return;
+        }
+
+        var bankAccount = await bankAccountService.GetByCodeAsync(BankAccountCode2Text);
+        BankAccount2Label = bankAccount is null ? "（該当なし）" : FormatBankAccountLabel(bankAccount);
+    }
+
+    private static string FormatBankAccountLabel(BankAccount bankAccount)
+        => $"{bankAccount.BankName}　{bankAccount.BranchName}支店";
+
     private async Task ApplyCustomerAsync(Customer customer)
     {
         CustomerCode = customer.CustomerCode;
@@ -208,6 +284,11 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
         BillingCustomerCodeText = customer.IsBillingRoot ? string.Empty : customer.BillingCustomerCode;
         await RefreshBillingCustomerNameAsync();
         IsBillingCustomerEditable = await customerService.CanChangeBillingCustomerAsync(customer.CustomerCode);
+
+        BankAccountCode1Text = customer.BankAccountCode1 ?? string.Empty;
+        await RefreshBankAccount1LabelAsync();
+        BankAccountCode2Text = customer.BankAccountCode2 ?? string.Empty;
+        await RefreshBankAccount2LabelAsync();
 
         _loadedRowVersion = customer.RowVersion;
         IsNew = false;
@@ -262,6 +343,8 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
             FaxNumber = NullIfEmpty(FaxNumber),
             ContactPersonName = NullIfEmpty(ContactPersonName),
             SalesEmployeeCode = NullIfEmpty(SalesEmployeeCode),
+            BankAccountCode1 = NullIfEmpty(BankAccountCode1Text),
+            BankAccountCode2 = NullIfEmpty(BankAccountCode2Text),
             ClosingDay = closingDay,
             TaxUnit = taxUnit,
             RoundingType = RoundingType,
@@ -373,6 +456,10 @@ public partial class CustomerMasterViewModel(CustomerService customerService, Wi
         BillingCustomerCodeText = string.Empty;
         BillingCustomerName = string.Empty;
         IsBillingCustomerEditable = true;
+        BankAccountCode1Text = string.Empty;
+        BankAccount1Label = string.Empty;
+        BankAccountCode2Text = string.Empty;
+        BankAccount2Label = string.Empty;
         _loadedRowVersion = null;
     }
 

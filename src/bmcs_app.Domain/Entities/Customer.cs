@@ -27,6 +27,12 @@ public class Customer : AuditableEntity
     /// <summary>自社の営業担当社員コード。月次締めの担当者別集計キー。</summary>
     public string? SalesEmployeeCode { get; set; }
 
+    /// <summary>請求書に印字する振込先口座1（bank_accounts）。0〜2件、空欄可。</summary>
+    public string? BankAccountCode1 { get; set; }
+
+    /// <summary>請求書に印字する振込先口座2（bank_accounts）。0〜2件、空欄可。</summary>
+    public string? BankAccountCode2 { get; set; }
+
     /// <summary>0＝都度・明細／1〜31＝締め日／99＝末日締め。登録後は変更不可。</summary>
     public required byte ClosingDay { get; set; }
 

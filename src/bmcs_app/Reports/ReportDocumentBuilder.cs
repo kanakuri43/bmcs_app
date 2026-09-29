@@ -226,27 +226,55 @@ public abstract class ReportDocumentBuilder
     }
 
     /// <summary>
-    /// 振込先口座ブロック（請求書・明細請求書用。<c>bank_account.is_print_on_invoice</c>が
-    /// 真の口座を<c>display_order</c>順に表示する。TODO.md 10-5）。
+    /// 振込先口座ボックス（<see cref="BuildBillingBankAccountsBox"/>）の高さの見積り
+    /// （見出し1行＋4行＋Border/Padding/Margin）。<see cref="PagedReportDocumentBuilder.FullHeaderHeight"/>
+    /// の算出に使う。安全側（実際より大きい値）に見積る。過大見積りは1ページの明細行数が
+    /// 減るだけで安全だが、過小見積りは最終ページで本文とフッターが重なる原因になるため
+    /// （<see cref="PagedReportDocumentBuilder.Build"/>参照）。
     /// </summary>
-    protected static FrameworkElement BuildBankAccountsBlock(IReadOnlyList<BankAccount> accounts)
+    protected const double BillingBankAccountsBoxHeightEstimate = 100.0;
+
+    /// <summary>
+    /// 振込先口座ボックス（請求書・明細請求書用。発行者情報ボックス（<see cref="BuildCompanyInfoBox"/>）
+    /// の直下に独立した枠として置く）。得意先マスタに紐づけた口座（最大2件、
+    /// <c>customers.bank_account_code1</c>／<c>bank_account_code2</c>）をスロット順に印字する。
+    /// 紐づけが0〜1件でも常に「見出し1行＋4行」の固定行数で組み立てることで、得意先によって
+    /// 明細の開始位置がずれないようにする（2026-09-29確定）。行数を固定にしているため、
+    /// 高さを明示指定する必要はない（内容量に関わらず自然な高さが常に一定になる）。
+    /// </summary>
+    protected static FrameworkElement BuildBillingBankAccountsBox(IReadOnlyList<BankAccount> accounts)
     {
-        var panel = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
-        if (accounts.Count == 0)
-        {
-            return panel;
-        }
+        var panel = new StackPanel();
+        panel.Children.Add(Tb("お振込先", 8, FontWeights.Bold));
 
-        panel.Children.Add(Tb("お振込先", 9, FontWeights.Bold));
-        foreach (var account in accounts)
+        for (var slot = 0; slot < 2; slot++)
         {
+            var account = slot < accounts.Count ? accounts[slot] : null;
+            if (account is null)
+            {
+                panel.Children.Add(Tb("　", 8));
+                panel.Children.Add(Tb("　", 8));
+                continue;
+            }
+
             var typeLabel = account.AccountType == BankAccountType.Checking ? "当座" : "普通";
-            panel.Children.Add(Tb(
-                $"{account.BankName}　{account.BranchName}支店　{typeLabel}　{account.AccountNumber}　{account.AccountHolderName}",
-                9));
+            var bankLine = Tb($"{account.BankName}　{account.BranchName}支店", 8);
+            bankLine.TextTrimming = TextTrimming.CharacterEllipsis;
+            panel.Children.Add(bankLine);
+
+            var numberLine = Tb($"　{typeLabel}　{account.AccountNumber}　{account.AccountHolderName}", 8);
+            numberLine.TextTrimming = TextTrimming.CharacterEllipsis;
+            panel.Children.Add(numberLine);
         }
 
-        return panel;
+        return new Border
+        {
+            BorderBrush = Brushes.Black,
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(6, 4, 6, 4),
+            Margin = new Thickness(0, 4, 0, 0),
+            Child = panel,
+        };
     }
 
     protected static FrameworkElement BuildBreakdownRow(TaxRateBucket bucket, double fontSize = 9)

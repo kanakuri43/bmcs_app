@@ -111,9 +111,9 @@ GO
 -- 銀行口座
 INSERT INTO dbo.bank_accounts
     (bank_account_code, bank_name, branch_name, account_type, account_number, account_holder_name,
-     is_print_on_invoice, display_order, created_by, created_at, updated_by, updated_at)
+     display_order, created_by, created_at, updated_by, updated_at)
 VALUES
-    (N'BNK001', N'石山銀行', N'本店', 1, N'1234567', N'ｲｼﾔﾏｼｮｳﾃﾝ', 1, 1,
+    (N'BNK001', N'石山銀行', N'本店', 1, N'1234567', N'ｲｼﾔﾏｼｮｳﾃﾝ', 1,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 

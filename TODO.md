@@ -246,6 +246,16 @@ DBへの書き込みを伴う点は `tests/bmcs_app.Application.Tests`（16章�
 
 ---
 
+## Phase 13: 請求書の振込先口座（得意先ごとの紐づけ）
+
+得意先マスタに最大2つの銀行口座（`bank_accounts`）を紐づけ、請求書・明細請求書の自社名（発行者情報ボックス）の直下に印字する。従来の全社共通フラグ方式（`bank_accounts.is_print_on_invoice`）は完全に廃止し、得意先単位の紐づけ方式へ置き換えた。紐づけが0〜1件でも印字位置の高さを固定し、得意先によってレイアウトがずれないようにする。設計方針は `docs/report-spec.md` 2-2節・`docs/database-schema.md` 2.1節・2.6節・`docs/design_document.md` 23-7節参照。
+
+| 完了 | # | タスク | 推奨モデル | 前提 | 完了条件 |
+|---|---|---|---|---|---|
+| [x] | 13-1 | DBスキーマ・Domain・Application・帳票・得意先マスタ画面の実装 | Sonnet | 設計確定済み | **2026-09-29実装。** `scripts/021_add_customer_bank_accounts.sql`で`customers`に`bank_account_code1`／`bank_account_code2`（NULL許容varchar(10)、FK 2本、重複禁止CHECK）を追加、`bank_accounts.is_print_on_invoice`を削除し、開発用ライブDBへSQLCMDで適用済み（適用前後でスキーマを`sys.columns`等で確認）。`Customer`エンティティに2プロパティ追加、`BankAccount`から`IsPrintOnInvoice`を削除。`CustomerService.UpdateAsync`は値が変わったときのみ`ValidateBankAccountLinksAsync`（重複・実在チェック）を実行し手動コピーする方式（`BillingCustomerCode`と同じ方針。既存の紐づけをそのまま保存し直す分には、紐づけ先が後から無効化されていても拒否しない）。`BankAccountService.DeactivateAsync`に、得意先から紐づけられている口座は無効化できないガードを追加。`InvoiceService`／`DetailInvoiceService`は得意先の`BankAccountCode1/2`からスロット順に口座を解決する方式に変更（`InvoiceData`／`DetailInvoiceData`の`PrintBankAccounts`を`BillingBankAccounts`に改称）。`ReportDocumentBuilder.BuildBillingBankAccountsBox`（発行者情報ボックス直下の独立枠。紐づけ0〜1件でも「見出し1行＋4行」の固定行数で組み立てるため高さの明示指定は不要）で旧`BuildBankAccountsBlock`（全社共通フッター印字）を置き換え、`FullHeaderHeight`に`BillingBankAccountsBoxHeightEstimate`（100.0、安全側の見積り）を加算（`FooterHeight`は据え置き。過大なヘッダー見積りは行数減のみで安全、過小なフッター見積りが重なりの原因になるため）。`CustomerMasterViewModel`／`Window`に振込先口座1・2欄（`BillingCustomerCodeText`と同じSpace検索・Enter照会パターン、既存の`BankAccountMasterSearchDialog`を再利用）を追加、`BankAccountMasterViewModel`／`Window`から印字フラグのUIを削除。`docs/database-schema.md`・`docs/design_document.md`・`docs/report-spec.md`を更新。`dotnet build`成功、`dotnet test tests/bmcs_app.Domain.Tests`（301件all green）、`dotnet test tests/bmcs_app.Application.Tests`（既知のseedデータ乖離による失敗127件のみ、Phase 12-E時点と同数＝新規回帰なし。`CustomerServiceTests`9件は全green）を確認。**実機確認（ユーザー、2026-09-30）**: 得意先マスタで振込先口座2件を紐づけ、請求書を印刷プレビューし、発行者情報ボックスの直下に「お振込先」枠が正しく表示されることを確認済み（2口座・単一ページのケースのみ）。0件・1件のケースでの高さの一致、複数ページ時の改ページ境界の目視確認は未実施 |
+
+---
+
 ## 横断タスク
 
 | 完了 | # | タスク | 推奨モデル | 前提 | 完了条件 |

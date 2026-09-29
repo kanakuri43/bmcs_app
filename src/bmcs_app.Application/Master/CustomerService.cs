@@ -50,6 +50,7 @@ public class CustomerService(
         }
 
         await ValidateBillingAggregationLinkAsync(customer, cancellationToken);
+        await ValidateBankAccountLinksAsync(customer, cancellationToken);
 
         var employeeCode = currentEmployeeContext.EmployeeCode;
         var now = DateTime.Now;
@@ -99,6 +100,16 @@ public class CustomerService(
 
             await ValidateBillingAggregationLinkAsync(customer, cancellationToken);
             current.BillingCustomerCode = customer.BillingCustomerCode;
+        }
+
+        if (current.BankAccountCode1 != customer.BankAccountCode1 || current.BankAccountCode2 != customer.BankAccountCode2)
+        {
+            // 変更した場合のみ検証する（BillingCustomerCode と同じ方針）。既存の紐づけを
+            // そのまま保存し直すだけなら、紐づけ先の口座が後から無効化されていても拒否しない
+            // （帳票側は無効化済みの口座を印字対象から除外するだけで、保存自体は妨げない）。
+            await ValidateBankAccountLinksAsync(customer, cancellationToken);
+            current.BankAccountCode1 = customer.BankAccountCode1;
+            current.BankAccountCode2 = customer.BankAccountCode2;
         }
 
         current.CustomerName = customer.CustomerName;
@@ -227,6 +238,41 @@ public class CustomerService(
         if (reason is not null)
         {
             throw new CustomerValidationException(reason);
+        }
+    }
+
+    /// <summary>
+    /// 請求書へ印字する振込先口座（最大2件）の紐づけを検証する（2026-09-29確定）。
+    /// 同一口座の二重紐づけ・存在しない口座・論理削除済みの口座を拒否する
+    /// （DBのFK/CHECK制約の生の例外が画面にそのまま出ないようにする）。
+    /// </summary>
+    private async Task ValidateBankAccountLinksAsync(Customer candidate, CancellationToken cancellationToken)
+    {
+        var codes = new[] { candidate.BankAccountCode1, candidate.BankAccountCode2 }
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Select(code => code!)
+            .ToList();
+        if (codes.Count == 0)
+        {
+            return;
+        }
+
+        if (codes.Count != codes.Distinct().Count())
+        {
+            throw new CustomerValidationException("振込先口座1と口座2に同じ口座を指定することはできません。");
+        }
+
+        var validCodes = await dbContext.BankAccounts
+            .AsNoTracking()
+            .Where(b => codes.Contains(b.BankAccountCode) && !b.IsDeleted)
+            .Select(b => b.BankAccountCode)
+            .ToListAsync(cancellationToken);
+
+        var missing = codes.Except(validCodes).ToList();
+        if (missing.Count > 0)
+        {
+            throw new CustomerValidationException(
+                $"振込先口座が見つかりません。BankAccountCode={string.Join(", ", missing)}");
         }
     }
 

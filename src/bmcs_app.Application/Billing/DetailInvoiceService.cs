@@ -97,11 +97,7 @@ public class DetailInvoiceService(
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw new DetailInvoiceException("自社情報が登録されていません。マスタ管理＞自社情報から登録してください。");
 
-        var bankAccounts = await dbContext.BankAccounts
-            .AsNoTracking()
-            .Where(b => b.IsPrintOnInvoice && !b.IsDeleted)
-            .OrderBy(b => b.DisplayOrder)
-            .ToListAsync(cancellationToken);
+        var bankAccounts = await ResolveBillingBankAccountsAsync(customer, cancellationToken);
 
         var summary = new TaxSummary(
             header.StandardRateTaxableAmount, header.StandardRateTaxAmount,
@@ -120,7 +116,7 @@ public class DetailInvoiceService(
             CustomerAddress2: customer?.Address2,
             Company: company,
             PrintRepresentative: customer?.PrintRepresentativeFlag ?? false,
-            PrintBankAccounts: bankAccounts,
+            BillingBankAccounts: bankAccounts,
             Lines: view.Lines.Select(ToDetailInvoiceLine).ToList(),
             TaxBreakdowns: taxBreakdowns,
             TaxExcludedTotal: header.SalesAmount,
@@ -368,6 +364,33 @@ public class DetailInvoiceService(
             detailInvoiceNumber, links.Count);
 
         return header;
+    }
+
+    /// <summary>
+    /// 得意先マスタに紐づいた振込先口座を、スロット順（口座1→口座2）で解決する
+    /// （TODO.md 10-5。論理削除済みの口座・得意先が見つからない場合は空リスト）。
+    /// </summary>
+    private async Task<IReadOnlyList<BankAccount>> ResolveBillingBankAccountsAsync(
+        Customer? customer, CancellationToken cancellationToken)
+    {
+        var codes = new[] { customer?.BankAccountCode1, customer?.BankAccountCode2 }
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Select(code => code!)
+            .ToList();
+        if (codes.Count == 0)
+        {
+            return [];
+        }
+
+        var accounts = await dbContext.BankAccounts
+            .AsNoTracking()
+            .Where(b => codes.Contains(b.BankAccountCode) && !b.IsDeleted)
+            .ToDictionaryAsync(b => b.BankAccountCode, cancellationToken);
+
+        return codes
+            .Where(accounts.ContainsKey)
+            .Select(code => accounts[code])
+            .ToList();
     }
 
     /// <summary>

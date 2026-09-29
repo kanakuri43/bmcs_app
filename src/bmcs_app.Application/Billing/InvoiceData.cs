@@ -18,8 +18,10 @@ namespace bmcs_app.Application.Billing;
 /// <param name="PrintRepresentative">
 /// 発行元となる得意先マスタの<c>print_representative_flag</c>。
 /// </param>
-/// <param name="PrintBankAccounts">
-/// <c>bank_account.is_print_on_invoice</c>が真の口座（<c>display_order</c>順）。
+/// <param name="BillingBankAccounts">
+/// 発行元の得意先（請求集約先。<see cref="CustomerCode"/>）に紐づいた振込先口座
+/// （<c>customers.bank_account_code1</c>／<c>bank_account_code2</c>、0〜2件、スロット順。
+/// 論理削除済みの口座は除外する）。
 /// </param>
 /// <param name="CustomerCode">
 /// <c>billing.customer_code</c>（請求データは請求集約先にしか作られないため、この値は常に
@@ -37,7 +39,7 @@ public sealed record InvoiceData(
     string? CustomerAddress2,
     CompanyInfo Company,
     bool PrintRepresentative,
-    IReadOnlyList<BankAccount> PrintBankAccounts,
+    IReadOnlyList<BankAccount> BillingBankAccounts,
     decimal PreviousBalance,
     decimal ReceiptAmount,
     decimal SalesAmount,

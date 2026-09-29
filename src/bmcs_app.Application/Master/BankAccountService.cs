@@ -66,7 +66,6 @@ public class BankAccountService(
         current.AccountType = bankAccount.AccountType;
         current.AccountNumber = bankAccount.AccountNumber;
         current.AccountHolderName = bankAccount.AccountHolderName;
-        current.IsPrintOnInvoice = bankAccount.IsPrintOnInvoice;
         current.DisplayOrder = bankAccount.DisplayOrder;
         current.UpdatedBy = currentEmployeeContext.EmployeeCode;
         current.UpdatedAt = DateTime.Now;
@@ -93,6 +92,17 @@ public class BankAccountService(
         if (!current.RowVersion!.SequenceEqual(bankAccount.RowVersion!))
         {
             throw new BankAccountConcurrencyException("他のユーザーが更新しました。再読み込みしてください。");
+        }
+
+        var isLinkedToCustomer = await dbContext.Customers
+            .AsNoTracking()
+            .AnyAsync(c => !c.IsDeleted
+                && (c.BankAccountCode1 == current.BankAccountCode || c.BankAccountCode2 == current.BankAccountCode),
+                cancellationToken);
+        if (isLinkedToCustomer)
+        {
+            throw new BankAccountValidationException(
+                "この口座を振込先に指定している得意先があるため無効化できません。先に得意先マスタの指定を外してください。");
         }
 
         current.IsDeleted = true;

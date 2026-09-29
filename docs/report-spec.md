@@ -161,9 +161,9 @@ M-10で決定した方式を、以下の構成で実装した。詳細は`docs/a
 - **帳票基盤の共通化**: 10-3のコメントどおり「2枚目の帳票を書いた時点で共通部分の不足が判明したら
   基底へ引き上げる」を実行した。`ReportDocumentBuilder`（基底）に`BuildCustomerBlock`
   （宛先ブロック）・`BuildCompanyInfoBox`（発行者情報ボックス。代表者印字の有無を引数で切替）・
-  `BuildBankAccountsBlock`（振込先口座ブロック）・`BuildBreakdownRow`／`BuildLabelValue`／
-  `BuildTotalRow`を`protected`として引き上げ、`DeliveryNoteDocumentBuilder`もこれらを使うよう
-  移行した（表示内容は変えていない）。
+  `BuildBillingBankAccountsBox`（振込先口座ボックス。2026-09-29、下記「振込先」参照）・
+  `BuildBreakdownRow`／`BuildLabelValue`／`BuildTotalRow`を`protected`として引き上げ、
+  `DeliveryNoteDocumentBuilder`もこれらを使うよう移行した（表示内容は変えていない）。
 - **明細の粒度**: 請求書・明細請求書とも売上明細行ごと（品目別）に印字する。どちらも複数の
   売上伝票にまたがるため、納品書には無い「伝票No.」列を明細テーブルに持つ。
 - **税率別内訳の「適用税率」表示（設計判断）**: `billings`／`detail_invoices`は税種別区分ごとの
@@ -188,7 +188,27 @@ M-10で決定した方式を、以下の構成で実装した。詳細は`docs/a
   「代表者　○○○○」＋押印用の空欄枠を追加する（自社情報マスタは代表者名のみ保持し印影画像は
   持たないため）。宛名（明細請求書の`addressee_name`）を書き換えても、この値は得意先マスタの
   設定に従う（`docs/product-spec.md`共通業務ルール3）。
-- **振込先**: `bank_account.is_print_on_invoice`が真の口座を`display_order`順にフッターへ表示する。
+- **振込先（2026-09-29改訂）**: 全社共通で`bank_account.is_print_on_invoice`が真の口座を
+  `display_order`順にフッターへ表示する方式は廃止した。**発行元の得意先（請求書は請求集約先。
+  `billing.customer_code`）の得意先マスタ`bank_account_code1`／`bank_account_code2`に紐づく
+  口座を、発行者情報ボックスの直下・独立した枠**（同じ220px幅の右カラム内）に印字する
+  （`BuildBillingBankAccountsBox`）。「お振込先」見出し＋1口座あたり2行（1行目＝銀行名＋支店、
+  2行目＝種別＋口座番号＋口座名義）。**紐づけが0件・1件でも常に「見出し1行＋4行」の固定行数で
+  組み立て**、得意先によって帳票のレイアウトがずれないようにする。得意先ごとに使い分けたいという
+  業務要件により、全社共通フラグ方式から得意先単位の紐づけ方式へ完全移行した
+  （`bank_accounts.is_print_on_invoice`列は`scripts/021_add_customer_bank_accounts.sql`で削除）。
+  納品書には印字しない（従来どおり）。
+
+  **改ページへの影響**: 発行者情報ボックスの直下に枠を追加した分、
+  `PagedReportDocumentBuilder.FullHeaderHeight`（`InvoiceDocumentBuilder.cs`／
+  `DetailInvoiceDocumentBuilder.cs`）に`ReportDocumentBuilder.BillingBankAccountsBoxHeightEstimate`
+  （100.0、安全側の見積り）を加算した。`PagedReportDocumentBuilder.Build`の計算式
+  （`ContentHeight - FullHeaderHeight - TableHeaderHeight - FooterHeight`）より、
+  **ヘッダー高さの過大見積りは1ページの明細行数が減るだけで安全だが、フッター高さの過小見積りは
+  最終ページで本文とフッターが重なる**ため、高さを見積る際はヘッダー側に余裕を持たせる。
+  旧`BuildBankAccountsBlock`をフッターから撤去した分（口座件数によって可変だった）は
+  `FooterHeight`を変更せず据え置いた（安全側）。1ページ目に入る明細行数が請求書・明細請求書とも
+  数行減る（見積りの詳細は実装時のコミットを参照）。
 - **印刷履歴**: 記録しない（`billings`／`detail_invoices`にDDL変更なし）。納品書と異なり
   「（再発行）」表示も行わない。
 - **印刷導線**:

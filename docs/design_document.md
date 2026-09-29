@@ -43,7 +43,6 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
   3. 「内税明細単位」の得意先（＝都度得意先）の明細請求書で、明細ごとに算出した税額の合計を印字してよいか。
   現行の他システム・既存帳票でどう運用しているかも確認材料とする。業務ルール側の記述は [`docs/product-spec.md`](product-spec.md) の共通業務ルール9を参照。
 
-- **銀行マスタの用途**: マスタ管理の対象に「銀行」があるが、用途の記載がない。Phase 1-1 では**自社の入金口座マスタ**（入金入力で入金先口座を選ぶ／請求書に振込先を印字する）と解釈して `bank_accounts` を定義した。全銀協の金融機関コードマスタ（得意先の振込元を記録する用途）である可能性も残るため、実際の運用を確認したい。
 - **得意先マスタの支払条件・与信限度額の要否**: 締め得意先には支払条件（例: 20日締め翌月末払い）が必要になることが多いが、設計資料に記載がない。Phase 1-1 では推測を避けて項目を作っていない。必要であれば `ALTER TABLE` で追加する（属性の追加は後続フェーズで可能）。与信限度額の管理を行うかも併せて確認したい。
 
 これらは実装着手前にユーザーへの確認が必要。
@@ -1882,9 +1881,9 @@ TODO.md 10-2（納品書一括発行）に着手しようとしたところ、�
   `Specification`／`UnitName`を追加（印刷に必要なため。既存の画面バインディングには影響しない）。
 - **Presentation** (`Reports/`): `InvoiceDocumentBuilder`／`DetailInvoiceDocumentBuilder`
   （新規）。`ReportDocumentBuilder`（基底）に`BuildCustomerBlock`／`BuildCompanyInfoBox`
-  （代表者印字対応）／`BuildBankAccountsBlock`／`BuildBreakdownRow`／`BuildLabelValue`／
-  `BuildTotalRow`を引き上げ、`DeliveryNoteDocumentBuilder`もこれらを使うよう移行
-  （表示内容は変えていない）。
+  （代表者印字対応）／`BuildBillingBankAccountsBox`（2026-09-29、旧`BuildBankAccountsBlock`を
+  置き換え。23-7節参照）／`BuildBreakdownRow`／`BuildLabelValue`／`BuildTotalRow`を引き上げ、
+  `DeliveryNoteDocumentBuilder`もこれらを使うよう移行（表示内容は変えていない）。
 - **配線**: `DetailInvoiceIssueViewModel.PrintCommand`（発行済み読込時のみ有効）＋発行直後の
   確認ダイアログ。`BillingClosingViewModel.PrintCommand`（`SelectedResult`が確定済みの
   行のみ有効）。
@@ -1912,6 +1911,14 @@ TODO.md 10-2（納品書一括発行）に着手しようとしたところ、�
   追加する（22-5節から持ち越し）。
 - 納品書を適格請求書として扱うかは税理士確認待ちのまま（`docs/design_document.md` 2章の
   【要確認】は閉じていない）。
+- **2026-09-29追記**: 請求書の振込先を得意先ごとに使い分けたいという業務要件が確定し、
+  「銀行マスタの用途」（2章の【確認事項】）が解消された。`bank_accounts`は自社の振込先口座
+  マスタであり、得意先マスタ`bank_account_code1`／`bank_account_code2`（最大2件、
+  `scripts/021_add_customer_bank_accounts.sql`）から紐づけて請求書・明細請求書へ印字する。
+  全社共通で印字対象を選ぶ`is_print_on_invoice`フラグ方式は廃止した（列自体を削除）。
+  帳票側は発行者情報ボックスの直下に固定行数（見出し1行＋4行）の枠を追加し、紐づけ0〜1件でも
+  高さがずれないようにした。改ページ用の高さ見積り（`FullHeaderHeight`）調整の詳細は
+  `docs/report-spec.md` 2-2節を参照。
 
 ## 24. 受注の訂正（Phase 4-6、2026-09-16実装）
 

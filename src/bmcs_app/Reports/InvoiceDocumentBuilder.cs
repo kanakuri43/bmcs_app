@@ -57,7 +57,9 @@ public sealed class InvoiceDocumentBuilder(InvoiceData data) : PagedReportDocume
 
     // 集約時は続紙ヘッダーに「請求集約元: N社」の1行が増える分だけフルヘッダーの高さを増やす
     // （可変にし忘れると最終ページでフッターが本文と重なる。docs/report-spec.md 2-2-1節）。
-    protected override double FullHeaderHeight => IsAggregated ? 358.0 : 340.0;
+    // 発行者情報ボックス直下に追加した振込先口座ボックス分を加算する
+    // （BillingBankAccountsBoxHeightEstimate、2026-09-29、振込先の得意先単位印字対応）。
+    protected override double FullHeaderHeight => (IsAggregated ? 358.0 : 340.0) + BillingBankAccountsBoxHeightEstimate;
     protected override double CompactHeaderHeight => 34.0;
     protected override double FooterHeight => 220.0;
     protected override int LineCount => _rows.Count;
@@ -163,9 +165,11 @@ public sealed class InvoiceDocumentBuilder(InvoiceData data) : PagedReportDocume
         Grid.SetColumn(leftPanel, 0);
         grid.Children.Add(leftPanel);
 
-        var box = BuildCompanyInfoBox(data.Company, data.PrintRepresentative);
-        Grid.SetColumn(box, 1);
-        grid.Children.Add(box);
+        var rightPanel = new StackPanel();
+        rightPanel.Children.Add(BuildCompanyInfoBox(data.Company, data.PrintRepresentative));
+        rightPanel.Children.Add(BuildBillingBankAccountsBox(data.BillingBankAccounts));
+        Grid.SetColumn(rightPanel, 1);
+        grid.Children.Add(rightPanel);
 
         return grid;
     }
@@ -245,8 +249,6 @@ public sealed class InvoiceDocumentBuilder(InvoiceData data) : PagedReportDocume
             reducedNote.Foreground = Brushes.Gray;
             panel.Children.Add(reducedNote);
         }
-
-        panel.Children.Add(BuildBankAccountsBlock(data.PrintBankAccounts));
 
         return panel;
     }

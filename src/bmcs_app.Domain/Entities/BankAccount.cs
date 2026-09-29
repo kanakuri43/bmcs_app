@@ -2,7 +2,11 @@ using bmcs_app.Domain.Enums;
 
 namespace bmcs_app.Domain.Entities;
 
-/// <summary>銀行口座マスタ（bank_account）。自社の入金口座マスタとして解釈している（用途は要確認）。</summary>
+/// <summary>
+/// 銀行口座マスタ（bank_account）。自社の振込先口座マスタ。得意先マスタから
+/// 最大2件（<see cref="Customer.BankAccountCode1"/>／<see cref="Customer.BankAccountCode2"/>）
+/// 紐づけて請求書へ印字する（得意先ごとに使い分ける。2026-09-29確定）。
+/// </summary>
 public class BankAccount : AuditableEntity
 {
     public required string BankAccountCode { get; set; }
@@ -16,9 +20,6 @@ public class BankAccount : AuditableEntity
     public required string AccountNumber { get; set; }
 
     public required string AccountHolderName { get; set; }
-
-    /// <summary>請求書・明細請求書に印字する口座かどうか。</summary>
-    public required bool IsPrintOnInvoice { get; set; }
 
     public required short DisplayOrder { get; set; }
 }
