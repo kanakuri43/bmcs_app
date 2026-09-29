@@ -1522,6 +1522,8 @@ SELECT COUNT(*) FROM dbo.sales WHERE is_deleted = 0 AND settlement_status <> (
 
 ## 21. 得意先元帳・現在残高（Phase 8-1／8-2、2026-09-15実装）
 
+> **2026-09-29追記**: 親子請求（請求集約）Phase E で`CustomerLedgerBuilder`／`CustomerLedgerQueryService`／画面に取引履歴のみモード・グループスコープ拡張を追加した。本章の設計（D-1〜D-5）はそのまま維持されており、Phase E は「請求集約先には呼び出し元がグループ全体の`Sales`／`Receipts`を渡す」「請求集約元は本章の計算を素通りしてSales行のみを返す」という分岐を追加しただけ。詳細は28-9節、申し送り事項の追加（R8）は21-4節参照。
+
 ### 21-1. スコープ
 
 TODO.md 8-1の文面は「元帳データのマージ実装」（サービス層）のみだが、ユーザー指示が画面
@@ -1585,6 +1587,7 @@ TODO.md 8-1の文面は「元帳データのマージ実装」（サービス層
 | R5 | `scripts/seed_dev_data.sql`の`monthly_closings`（2026-01/02分）は売上・入金の実データ（2026-07/08分）と月が重ならないため、Phase 9-1実装時にはseedデータの作り直しが必要になる見込み |
 | R6 | Phase 9-1は`CustomerLedgerQueryService.GetAsync(code, 月初, 月末)`の結果を`monthly_closings`の各列にそのまま詰めるだけで済む（`OpeningBalance`/`SalesTotal`/`TaxTotal`/`ReceiptTotal`/`ClosingBalance`が`previous_balance`/`sales_amount`/`tax_amount`/`receipt_amount`/`closing_balance`と1:1対応）。ただし税率別内訳5カラムは`CustomerLedgerResult`に含めていないため、9-1で追加が必要 |
 | R7 | 性能の逃げ道（本タスクでは未実装）: `GetAsync`に`historyFrom`のような引数を足し、それ以前を`monthly_closings`の確定残高で置き換える拡張が考えられる。M-11「性能問題が出た場合に残高キャッシュ列を追加する」に沿う |
+| R8 | **Phase E（2026-09-29実装）でR6の前提が請求集約元に対して崩れた**。請求集約元の`GetAsync`は取引履歴のみモード（`IsTransactionHistoryOnly`）を返し、`OpeningBalance`/`TaxTotal`/`ReceiptTotal`/`ClosingBalance`が常に0になる（残高・繰越を管理しないため。28-2節#6）。一方28-2節#9はPhase 9-1が請求集約元ごとに個別集計する方針を求めており、その個別集計は「請求集約元自身の売上のみの金額」であって「請求集約元の元帳の残高」ではない。Phase 9-1実装時は請求集約元に対して`GetAsync`をR6のとおり1:1で流用せず、`SalesTotal`（＝取引履歴のみモードでも実値）のみを使うか、別途得意先単位の売上集計を用意すること |
 
 ### 21-5. seedデータでの手計算検証（完了条件の直接証跡）
 
@@ -2219,7 +2222,7 @@ M-14「振込手数料差額は手入力のみ、自動計算・自動補正提�
 
 用語は**「請求集約先」（他の得意先の分もまとめて請求される得意先）／「請求集約元」（請求が他の得意先に集約される得意先）**とし、「親得意先」「子得意先」は使わない。既存の `sub_customer_id`（学校のクラス・先生等の宛名を都度書き換える仕組み。C-9・2026-09-10で「子得意先マスタは作らない」と確定済み）とは別概念であり、C-9の決定を覆すものではない（`docs/database-schema.md` 1章・`docs/product-spec.md` 共通業務ルール3参照）。
 
-機能全体はDB・得意先マスタ・請求締め・締め解除・消込・入金入力・得意先元帳・請求書帳票の8領域にまたがる。**段階実装とし、Phase Aで設計資料の確定とDBスキーマ変更・得意先マスタ画面、Phase Bで日付制限・消込のグループスコープ拡張・入金入力のガード、Phase Cで請求締め・締め解除のグループスコープ拡張、Phase Dで請求書帳票の請求集約元ごとの内訳表示を実装済み。** 得意先元帳（Phase E、28-4節）は次セッション以降に回すが、設計方針は本章で確定済み。
+機能全体はDB・得意先マスタ・請求締め・締め解除・消込・入金入力・得意先元帳・請求書帳票の8領域にまたがる。**段階実装とし、Phase Aで設計資料の確定とDBスキーマ変更・得意先マスタ画面、Phase Bで日付制限・消込のグループスコープ拡張・入金入力のガード、Phase Cで請求締め・締め解除のグループスコープ拡張、Phase Dで請求書帳票の請求集約元ごとの内訳表示、Phase Eで得意先元帳のグループスコープ拡張・取引履歴のみモードを実装済み。** 残るドキュメント整備（Phase F、TODO.md 12-F）のみ。
 
 ### 28-2. 確定した業務ルール（2026-09-29ユーザー確認済み）
 
@@ -2250,7 +2253,7 @@ DB制約の具体的な実現方式（計算列を使った複合自己参照FK�
 | 入金入力 | `ReceiptEntryService.GetClosingCustomerAsync`で請求集約元を業務例外で拒否 | B |
 | 請求締め | `BillingClosingService`の締め対象ループを請求集約先のみに絞り、売上・入金の抽出をグループ集合に広げる | C |
 | 締め解除 | `BillingReleaseService`の再計算呼び出しを消込のグループスコープ拡張に合わせる | C |
-| 得意先元帳 | `CustomerLedgerBuilder`に「取引履歴のみ」モードを追加。請求集約先では未締め区間の仮計算税もグループ売上＋請求集約先の端数区分で計算し、締め処理の結果と一致し続けるようにする | E |
+| 得意先元帳 | `CustomerLedgerBuilder`に「取引履歴のみ」モードを追加。請求集約先では未締め区間の仮計算税もグループ売上＋請求集約先の端数区分で計算し、締め処理の結果と一致し続けるようにする | **E（実装済み）** |
 | 請求書帳票 | `InvoiceDocumentBuilder`で明細を「見出し行・明細行・小計行」に平坦化。**集約していない請求書は明細のみとし、既存の単独得意先の帳票をバイト単位で不変に保つ** | D |
 
 **修正不要と確認済み（根拠）**:
@@ -2261,12 +2264,14 @@ DB制約の具体的な実現方式（計算列を使った複合自己参照FK�
 - 商品単価履歴（`ProductHistoryQueryService`）: 請求集約元ごとの購買実績を見るのが正しいため`customer_code`スコープのまま
 - 月次締め（Phase 9、未実装）: 28-2節#9のとおり請求集約元ごとに個別集計する方針で設計すればよい
 
-### 28-4. 実装順序と依存関係（Phase B〜F、未実装）
+**Phase E で追加で判明した既知の穴（`receipts`）**: `CustomerService.HasBillingChangeLockAsync`（28-7節参照）は請求済み売上・確定済み`billings`・有効な請求集約元の3点しか見ず、`receipts`の有無を見ない。そのため過去に単独で入金（前受金・締め解除後の入金残）を受けた得意先を後から請求集約元へ変更できる。この入金は消込（`SettlementService`、Phase B）・請求締め（`BillingClosingService`、Phase C）ではすでにグループ全体の分として扱われるため、**得意先元帳だけがこの穴の影響を直接受ける**（グループ展開しないと請求集約先の残高が`billing.current_billing_amount`と一致しなくなる）。Phase E で`Receipts`をグループ展開して解消した（28-9節）。
+
+### 28-4. 実装順序と依存関係（Phase A〜E実装済み、Fのみ残）
 
 ```
-A（DB・マスタ、本タスク）──┬─ B（日付制限・消込）──┬─ C（締め・解除）─ E（元帳）
-                          │                        └─ D（帳票、Cの後が実データ確認しやすい）
-                          └────────────────────────── F（ドキュメント、随時）
+A（DB・マスタ）──┬─ B（日付制限・消込）──┬─ C（締め・解除）─ E（元帳）
+                 │                        └─ D（帳票、Cの後が実データ確認しやすい）
+                 └────────────────────────── F（ドキュメント、随時）
 ```
 
 **Bは Cに依存しない。** 請求集約元が1件も存在しなければグループは常に単独（自分自身のみ）になるため、Bを先に入れても既存の単独得意先の挙動は変化しない。日付制限の不備（28-3節）を早期に解消する観点からも、A→Bの順で先行させるのが安全。
@@ -2317,3 +2322,23 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 - `InvoiceDocumentBuilder`（Presentation）: `InvoiceReportRowBuilder`で組み立てた表示行に基づいて`LineCount`／`BuildLineCells`／`IsGroupMarkerRow`／`IsPageBreakSensitive`を実装。集約時のみフルヘッダーに「請求集約元: N社」の1行を追加し`FullHeaderHeight`を+18.0。
 
 **テスト**: `tests/bmcs_app.Domain.Tests/Calculations/InvoiceReportRowBuilderTests.cs`（新規、5件）・`ReportPaginationTests.cs`に5件追加。`tests/bmcs_app.Application.Tests/Billing/InvoiceServiceTests.cs`に1件追加（請求集約先・請求集約元それぞれの売上を`BillingClosingService.ConfirmAsync`で実際に合算締めしたうえで`InvoiceService.GetByNumberAsync`を呼び、明細が得意先コード順に両得意先分含まれることを確認する結合テスト）。全体テスト（Domain 299件全green／Application は開発用DBのseedデータ乖離による既知の失敗125件を除き全green、Phase 12-C時点と同数）。WPFの`FixedDocument`描画自体（見出し行・小計行の見た目、改ページ時の孤立防止の実際の表示）を検証する自動テストはこの環境に無いため未実施（Phase 10-3〜10-5と同様の既知の限界）。実機確認は`dotnet run`でのアプリ起動まで。
+
+### 28-9. Phase E の実装詳細（得意先元帳のグループスコープ拡張・取引履歴のみモード）
+
+**2026-09-29実装。** DBスキーマ変更なし。
+
+**Domain（`CustomerLedgerBuilder`）**: `Build`の先頭で`!input.Customer.IsBillingRoot`（請求集約元）なら新設の`BuildTransactionHistoryOnly`へ分岐する。既存の`AddSalesEntries`のみを呼び、消費税行・入金行・前月繰越行・残高累積を一切行わず、`SalesTotal`のみ実値で他（`OpeningBalance`／`TaxTotal`／`ReceiptTotal`／`ClosingBalance`）を0にした`CustomerLedgerResult`（`IsTransactionHistoryOnly = true`）を返す。**請求集約先（従来どおりの経路）はビルダー側の計算ロジックを一切改修していない**。このクラスは`Customer.CustomerCode`をどこでも参照せず`TaxUnit`／`RoundingType`しか見ないため、呼び出し元（`CustomerLedgerQueryService`）がグループ全体（自身＋全請求集約元）の`Sales`／`Receipts`を渡すだけで、`ProvisionalTaxAsOf`が28-3節の要件（グループ売上＋請求集約先の端数区分で仮計算し締め処理の結果と一致し続ける）を自動的に満たす。`SortKey`の構成要素（売上PK・`billing_number`）が全社一意であることは28-6／28-7と同じ根拠。時系列表としての読みやすさを優先し、請求書帳票（28-8）とは対照的に`SortKey`へ得意先コードは追加していない（同日行を得意先ごとにまとめると残高が日付順に読めなくなるため）。
+
+`CustomerLedgerEntry`に`CustomerCode`／`CustomerName`（売上・入金行のスナップショット列から設定）を追加し、グループ内のどの得意先の伝票かを行単位で識別できるようにした。`CustomerLedgerResult.IsBalanced`は`IsTransactionHistoryOnly`のとき常にtrueへ短絡させる（取引履歴のみモードは検算式の対象外）。
+
+**Application（`CustomerLedgerQueryService`）**: `customer.IsBillingRoot`かつ`TaxUnit != Line`（都度得意先は請求集約に一切参加できないためグループ解決自体を省略。`SettlementService`が`TaxUnit.Line`を`RecalculateDetailAsync`へ分岐して同クエリを避けるのと同じ理由）のとき、`Sales`と`Receipts`の両方をグループへ広げる。グループ解決・`Contains`/等値比較の分岐は`SettlementService.RecalculateClosingAsync`・`BillingClosingService`と同じイディオム。
+
+**`Receipts`もグループ展開する（当初の設計を修正した箇所）**: 業務ルール#4「入金は請求集約先にだけ入る」は入力時のガードに過ぎない。`CustomerService.HasBillingChangeLockAsync`は請求済み売上・確定済み`billings`・有効な請求集約元の3点しか見ず`receipts`を見ないため、過去に単独で入金（前受金・締め解除後の入金残）を受けた得意先が後から請求集約元へ変更されるケースがあり得る（28-7節で判明済みの穴）。この入金は消込・請求締めではグループ全体の分として扱われるため、元帳だけ単独スコープのままだと請求集約先の残高が`billing.current_billing_amount`と一致しなくなり、かつ請求集約元の元帳は取引履歴のみで入金を出さないため、その入金がどの元帳にも現れなくなる。
+
+`Billings`の照会は対象得意先自身のコードのまま変更していない。根拠は`HasBillingChangeLockAsync`が請求集約元自身のコードに確定済み`billings`が存在する状態を防いでいること（請求済み売上があればリンク自体が拒否され、単独得意先は常に請求集約先なので確定済み`billings`があればリンクが拒否される）。
+
+`GetBalanceAsOfAsync`は請求集約元に対して`null`を返す（`result.IsTransactionHistoryOnly`を見て判定）。残高0円と区別するため（戻り値は元々`decimal?`で、唯一の呼び出し元`CustomerLedgerViewModel`が`?? 0m`で受けている）。
+
+**Presentation（元帳画面）**: `CustomerLedgerViewModel`に`IsTransactionHistoryOnly`・その反転の`IsBalanceVisible`・案内文`AggregationNotice`を追加。請求集約元では`GetBalanceAsOfAsync`の呼び出しをスキップし、「「{得意先名}」は請求集約元です。請求・消費税・残高は請求集約先「{コード}」に集約されています。この画面には売上（税抜）のみを表示します。」を表示する（入金入力画面の既存の拒否メッセージと同じくコードのみを出す作法に合わせた）。`CustomerLedgerLineViewModel`に`CustomerLabel`（得意先欄）・`BalanceDisplay`（取引履歴のみモードでは`null`を返し残高欄を空欄にする。`Entry.Balance`が非nullableのため専用コンバーターを作らない既存慣行に従いViewModel側でnullableにした）を追加。XAMLは「得意先」列を常時表示で追加（`GridViewColumn`に`Visibility`がなく条件付き非表示は割に合わないため。ユーザー確認済み）、残高列のバインドを`BalanceDisplay`に差し替え、現在残高・前月繰越・消費税計・入金額計・残高の各表示を`IsBalanceVisible`でまとめて非表示にする。
+
+**テスト**: `tests/bmcs_app.Domain.Tests/Calculations/CustomerLedgerBuilderTests.cs`に2件追加（請求集約先の元帳がグループ内の請求集約元の売上・入金を合算し個別丸めとは異なる値になることの証明、請求集約元の元帳が取引履歴のみで残高・繰越・税・入金を持たないこと）。`tests/bmcs_app.Application.Tests/Ledger/CustomerLedgerQueryServiceTests.cs`に2件追加（請求集約先の`GetAsync`がグループ展開されること、請求集約元の`GetAsync`が取引履歴のみを返し`GetBalanceAsOfAsync`が`null`を返すこと）。全体テスト（Domain 301件全green／Applicationは開発用DBのseedデータ乖離による既知の失敗127件を除き全green、Phase 12-D時点の125件から2件増加。**増加分はいずれも本タスクで追加した2件の新規テストが既存の`products`／`bank_accounts`マスタ乖離という既知の原因でFK違反になったものであり、新規のロジック不具合ではない**。実際にproducts/bank_accountsに実在するコードへ一時的に差し替えて実行し、両テストがグループ合算・取引履歴のみモードとも正しく振る舞うことを確認済み（差し替えはコミットしていない）。開発用ライブDBには請求集約ペアのマスタ行が既に存在する（`1001`＝請求集約先 ← `1005`＝請求集約元、両者とも伝票は0件）ことをSQLCMDで確認済み。実機確認は`dotnet run`でのアプリ起動まで（UI Automationはこのセッションでは未実施）。

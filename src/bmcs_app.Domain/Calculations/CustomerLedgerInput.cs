@@ -34,10 +34,18 @@ public sealed record CustomerLedgerInput(
 
 /// <summary>
 /// <see cref="CustomerLedgerBuilder.Build"/> の出力。<see cref="Entries"/> の先頭は前月繰越行。
+/// ただし <see cref="IsTransactionHistoryOnly"/> が true（請求集約元。TODO.md 12-E）の場合は
+/// 繰越行を持たず、<see cref="Entries"/> は売上行のみになる。
 /// </summary>
 /// <param name="SalesTotal">期間内の売上額計（返品・値引を含む純額。消費税は含まない）。</param>
 /// <param name="ReceiptTotal">
 /// 期間内の入金額計。エントリから直接積み上げる（前月繰越との差分から逆算する方式は採用しない）。
+/// </param>
+/// <param name="IsTransactionHistoryOnly">
+/// 請求集約元（<c>!Customer.IsBillingRoot</c>）の取引履歴のみモード（TODO.md 12-E、
+/// docs/design_document.md 28-2節 #6）。true のとき <see cref="OpeningBalance"/>／
+/// <see cref="TaxTotal"/>／<see cref="ReceiptTotal"/>／<see cref="ClosingBalance"/> はすべて 0
+/// （残高・繰越を持たない。入金・請求・売掛残高は請求集約先に集約されるため）。
 /// </param>
 public sealed record CustomerLedgerResult(
     IReadOnlyList<CustomerLedgerEntry> Entries,
@@ -45,9 +53,13 @@ public sealed record CustomerLedgerResult(
     decimal SalesTotal,
     decimal TaxTotal,
     decimal ReceiptTotal,
-    decimal ClosingBalance)
+    decimal ClosingBalance,
+    bool IsTransactionHistoryOnly = false)
 {
-    /// <summary>検算用。常に true になること（単体テストで assert する）。</summary>
+    /// <summary>
+    /// 検算用。常に true になること（単体テストで assert する）。取引履歴のみモードは
+    /// 残高・繰越を計算しない（<see cref="IsTransactionHistoryOnly"/>）ため式の対象外とする。
+    /// </summary>
     public bool IsBalanced
-        => ClosingBalance == OpeningBalance + SalesTotal + TaxTotal - ReceiptTotal;
+        => IsTransactionHistoryOnly || ClosingBalance == OpeningBalance + SalesTotal + TaxTotal - ReceiptTotal;
 }

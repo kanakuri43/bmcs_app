@@ -299,6 +299,83 @@ public class CustomerLedgerBuilderTests
         Assert.Equal(1_000m, receiptRow.ReceiptAmount);
     }
 
+    // ---- Phase 12-E: 請求集約（親子請求） ----
+
+    [Fact]
+    public void 請求集約先の元帳はグループ内の請求集約元の売上_入金を合算しグループ全体で1回だけ丸めて各行の得意先を保持する()
+    {
+        var root = NewCustomer("CUS_AGR1", TaxUnit.Invoice, RoundingType.Floor);
+        var child = NewCustomer("CUS_AGR1C", TaxUnit.Invoice, RoundingType.Floor, billingCustomerCode: root.CustomerCode);
+
+        // 得意先ごとに個別に丸めると floor(100.5)+floor(100.5)=100+100=200円になるが、
+        // グループとして合算(2,010円)してから1回だけ丸めると floor(201.0)=201円になる差で、
+        // 「得意先ごとの個別計算ではなくグループ合算で計算されること」を検証する
+        // （28-6/28-7の丸め検証と同じ手法。呼び出し元がグループ展開したSalesLinesを渡す前提）。
+        var sales = new[]
+        {
+            NewSales("SALAGR1", 1, new DateOnly(2026, 7, 1), root, 1_005m),
+            NewSales("SALAGR2", 1, new DateOnly(2026, 7, 1), child, 1_005m),
+        };
+
+        // 請求集約元名義に残った入金（得意先マスタのリンク変更判定 HasBillingChangeLockAsync が
+        // receipts の有無を見ないため発生し得るケース。docs/design_document.md 28-7章）も、
+        // 呼び出し元（CustomerLedgerQueryService）がグループ展開して渡す前提でここに含める。
+        var receipts = new[]
+        {
+            NewReceipt("RCPAGR1", 1, new DateOnly(2026, 7, 5), child, CashMethod, 500m),
+        };
+
+        var input = new CustomerLedgerInput(
+            root, PeriodFrom, PeriodTo, sales, [], receipts, [], [], TestDepositMethods);
+
+        var result = CustomerLedgerBuilder.Build(input);
+
+        Assert.False(result.IsTransactionHistoryOnly);
+        Assert.Equal(2_010m, result.SalesTotal);
+        Assert.Equal(201m, result.TaxTotal);
+        Assert.Equal(500m, result.ReceiptTotal);
+        Assert.Equal(2_010m + 201m - 500m, result.ClosingBalance);
+        Assert.True(result.IsBalanced);
+
+        var salesEntries = result.Entries.Where(e => e.Kind == LedgerEntryKind.Sales).ToList();
+        Assert.Contains(salesEntries, e => e.CustomerCode == root.CustomerCode && e.CustomerName == root.CustomerName);
+        Assert.Contains(salesEntries, e => e.CustomerCode == child.CustomerCode && e.CustomerName == child.CustomerName);
+
+        var receiptEntry = Assert.Single(result.Entries, e => e.Kind == LedgerEntryKind.Receipt);
+        Assert.Equal(child.CustomerCode, receiptEntry.CustomerCode);
+    }
+
+    [Fact]
+    public void 請求集約元の元帳は取引履歴のみで残高_繰越_税_入金を持たない()
+    {
+        var root = NewCustomer("CUS_AGR2", TaxUnit.Invoice, RoundingType.Floor);
+        var child = NewCustomer("CUS_AGR2C", TaxUnit.Invoice, RoundingType.Floor, billingCustomerCode: root.CustomerCode);
+
+        var sales = new[]
+        {
+            NewSales("SALAGR3", 1, new DateOnly(2026, 7, 10), child, 4_000m),
+            NewSales("SALAGR4", 1, new DateOnly(2026, 8, 5), child, 1_000m),
+        };
+
+        // 請求集約元は自身の売上のみを渡す（CustomerLedgerQueryServiceがグループ展開しない
+        // スコープそのもの）。Billings/Receiptsを渡しても取引履歴のみモードでは一切参照しない。
+        var input = new CustomerLedgerInput(
+            child, PeriodFrom, PeriodTo, sales, [], [], [], [], TestDepositMethods);
+
+        var result = CustomerLedgerBuilder.Build(input);
+
+        Assert.True(result.IsTransactionHistoryOnly);
+        Assert.Equal(0m, result.OpeningBalance);
+        Assert.Equal(0m, result.TaxTotal);
+        Assert.Equal(0m, result.ReceiptTotal);
+        Assert.Equal(0m, result.ClosingBalance);
+        Assert.Equal(5_000m, result.SalesTotal);
+        Assert.True(result.IsBalanced);
+
+        Assert.All(result.Entries, e => Assert.Equal(LedgerEntryKind.Sales, e.Kind));
+        Assert.DoesNotContain(result.Entries, e => e.Kind == LedgerEntryKind.OpeningBalance);
+    }
+
     // ---- 汎用の境界値テスト ----
 
     [Fact]
@@ -351,14 +428,15 @@ public class CustomerLedgerBuilderTests
 
     // ---- テストデータ組み立て用ヘルパー ----
 
-    private static Customer NewCustomer(string code, TaxUnit taxUnit, RoundingType roundingType) => new()
+    private static Customer NewCustomer(
+        string code, TaxUnit taxUnit, RoundingType roundingType, string? billingCustomerCode = null) => new()
     {
         CustomerCode = code,
         CustomerName = $"テスト得意先{code}",
         ClosingDay = taxUnit == TaxUnit.Line ? (byte)0 : (byte)20,
         TaxUnit = taxUnit,
         RoundingType = roundingType,
-        BillingCustomerCode = code,
+        BillingCustomerCode = billingCustomerCode ?? code,
         PrintRepresentativeFlag = false,
         CreatedBy = "TEST",
         CreatedAt = DateTime.Now,

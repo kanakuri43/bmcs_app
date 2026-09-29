@@ -26,6 +26,8 @@ public class CustomerLedgerQueryServiceTests(DevDatabaseFixture fixture) : IClas
     private const string CustomerInvoice = "__TSTLED1"; // 請求単位
     private const string CustomerSlip = "__TSTLED2"; // 伝票単位
     private const string CustomerLine = "__TSTLED3"; // 内税明細単位（都度得意先）
+    private const string CustomerAggRoot = "__TSTLED4"; // 請求集約先
+    private const string CustomerAggChild = "__TSTLED4C"; // 請求集約元
 
     [Fact]
     public async Task 請求単位の得意先の残高推移が実DB経由でも手計算と一致する()
@@ -184,6 +186,80 @@ public class CustomerLedgerQueryServiceTests(DevDatabaseFixture fixture) : IClas
         }
     }
 
+    /// <summary>
+    /// Phase 12-E: 請求集約先の元帳はグループ内の請求集約元の売上・入金を合算する。
+    /// 請求集約元名義に残った入金（HasBillingChangeLockAsyncがreceiptsを見ないため発生し得る。
+    /// docs/design_document.md 28-7章）も含めて残高が正しくなることを検証する。
+    /// </summary>
+    [Fact]
+    public async Task 請求集約先のGetAsyncはグループ内の請求集約元の売上_入金を合算する()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            await InsertCustomerAsync(dbContext, CustomerAggRoot, TaxUnit.Invoice, RoundingType.Floor);
+            await InsertCustomerAsync(dbContext, CustomerAggChild, TaxUnit.Invoice, RoundingType.Floor, CustomerAggRoot);
+
+            await InsertSalesAsync(dbContext,
+                NewClosingSales(CustomerAggRoot, TaxUnit.Invoice, "__TSTLEDSAL4R", 1, new DateOnly(2026, 7, 15), 10_000m, billingNumber: null),
+                NewClosingSales(CustomerAggChild, TaxUnit.Invoice, "__TSTLEDSAL4C", 1, new DateOnly(2026, 7, 16), 5_000m, billingNumber: null));
+
+            await InsertReceiptAsync(dbContext,
+                NewReceipt(CustomerAggChild, TaxUnit.Invoice, "__TSTLEDRCP4C", 1, new DateOnly(2026, 7, 20), 3_000m));
+
+            var result = await service.GetAsync(CustomerAggRoot, PeriodFrom, PeriodTo);
+
+            Assert.NotNull(result);
+            Assert.False(result.IsTransactionHistoryOnly);
+            Assert.Equal(15_000m, result.SalesTotal);
+            Assert.Equal(3_000m, result.ReceiptTotal);
+            // 未締め区間の仮計算税: グループ合算15,000円×10%を切捨→1,500円。
+            Assert.Equal(1_500m, result.TaxTotal);
+            Assert.Equal(15_000m + 1_500m - 3_000m, result.ClosingBalance);
+            Assert.True(result.IsBalanced);
+            Assert.Contains(result.Entries, e => e.SalesSlipNumber == "__TSTLEDSAL4C");
+            Assert.Contains(result.Entries, e => e.ReceiptSlipNumber == "__TSTLEDRCP4C");
+        }
+        finally
+        {
+            await transaction.RollbackAsync();
+        }
+    }
+
+    /// <summary>Phase 12-E: 請求集約元は取引履歴のみを返し、現在残高もnullになる。</summary>
+    [Fact]
+    public async Task 請求集約元のGetAsyncは取引履歴のみを返しGetBalanceAsOfAsyncはnullを返す()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            await InsertCustomerAsync(dbContext, CustomerAggRoot, TaxUnit.Invoice, RoundingType.Floor);
+            await InsertCustomerAsync(dbContext, CustomerAggChild, TaxUnit.Invoice, RoundingType.Floor, CustomerAggRoot);
+
+            await InsertSalesAsync(dbContext,
+                NewClosingSales(CustomerAggChild, TaxUnit.Invoice, "__TSTLEDSAL4C2", 1, new DateOnly(2026, 7, 18), 2_000m, billingNumber: null));
+
+            var result = await service.GetAsync(CustomerAggChild, PeriodFrom, PeriodTo);
+
+            Assert.NotNull(result);
+            Assert.True(result.IsTransactionHistoryOnly);
+            Assert.Equal(0m, result.ClosingBalance);
+            Assert.Equal(2_000m, result.SalesTotal);
+            Assert.All(result.Entries, e => Assert.Equal(LedgerEntryKind.Sales, e.Kind));
+
+            var balance = await service.GetBalanceAsOfAsync(CustomerAggChild, PeriodTo);
+            Assert.Null(balance);
+        }
+        finally
+        {
+            await transaction.RollbackAsync();
+        }
+    }
+
     [Fact]
     public async Task 存在しない得意先はnullを返す()
     {
@@ -220,7 +296,9 @@ public class CustomerLedgerQueryServiceTests(DevDatabaseFixture fixture) : IClas
         scope.ServiceProvider.GetRequiredService<BmcsDbContext>(),
         scope.ServiceProvider.GetRequiredService<CustomerLedgerQueryService>());
 
-    private static Task InsertCustomerAsync(BmcsDbContext dbContext, string customerCode, TaxUnit taxUnit, RoundingType roundingType)
+    private static Task InsertCustomerAsync(
+        BmcsDbContext dbContext, string customerCode, TaxUnit taxUnit, RoundingType roundingType,
+        string? billingCustomerCode = null)
     {
         var now = DateTime.Now;
         dbContext.Customers.Add(new CustomerEntity
@@ -230,7 +308,7 @@ public class CustomerLedgerQueryServiceTests(DevDatabaseFixture fixture) : IClas
             ClosingDay = taxUnit == TaxUnit.Line ? (byte)0 : (byte)20,
             TaxUnit = taxUnit,
             RoundingType = roundingType,
-            BillingCustomerCode = customerCode,
+            BillingCustomerCode = billingCustomerCode ?? customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,

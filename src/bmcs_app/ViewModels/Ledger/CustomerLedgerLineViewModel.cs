@@ -9,9 +9,27 @@ namespace bmcs_app.ViewModels.Ledger;
 /// 作らない既存慣行と同じ）。本クラスは区分・商品名欄など、複数のプロパティを組み合わせないと
 /// 表せない日本語ラベルだけを組み立てる。
 /// </summary>
-public sealed class CustomerLedgerLineViewModel(CustomerLedgerEntry entry)
+/// <param name="entry">元帳の1行。</param>
+/// <param name="isTransactionHistoryOnly">
+/// 請求集約元の取引履歴のみモード（TODO.md 12-E）。true のとき <see cref="BalanceDisplay"/> を
+/// 空欄にする（残高・繰越を表示しない。docs/design_document.md 28-2節 #6）。
+/// </param>
+public sealed class CustomerLedgerLineViewModel(CustomerLedgerEntry entry, bool isTransactionHistoryOnly = false)
 {
     public CustomerLedgerEntry Entry { get; } = entry;
+
+    /// <summary>
+    /// 得意先欄。請求集約先の元帳ではグループ内の複数得意先の伝票が混在するため、
+    /// どの得意先の伝票かを表示する（売上・入金行以外は空欄）。
+    /// </summary>
+    public string CustomerLabel => Entry.CustomerCode is { } code ? $"{code} {Entry.CustomerName}" : string.Empty;
+
+    /// <summary>
+    /// 残高欄。取引履歴のみモード（<see cref="Entry"/> の残高は常に 0）では表示しない
+    /// （<see cref="Entry.Balance"/> は非nullableのため、専用コンバーターを作らない既存慣行に
+    /// 従い ViewModel 側で nullable にする）。
+    /// </summary>
+    public decimal? BalanceDisplay => isTransactionHistoryOnly ? null : Entry.Balance;
 
     /// <summary>
     /// 区分。売上系（<see cref="LedgerEntryKind.Sales"/>）は <see cref="Domain.Entities.Sales.SlipType"/>

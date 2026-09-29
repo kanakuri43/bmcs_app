@@ -38,6 +38,12 @@ namespace bmcs_app.ViewModels.Ledger;
 /// 明細入金画面を <see cref="Services.WindowService.Show{TWindow, TViewModel}"/> の <c>configure</c>
 /// 経由で読み取り専用（プレビュー）表示する。印刷（Phase 10、元帳自体の帳票プレビュー）は
 /// 別物で本タスクのスコープ外（ボタンは枠のみ用意し無効化する）。
+///
+/// 請求集約元（TODO.md 12-E、docs/design_document.md 28-2節 #6）は取引履歴のみモードになる
+/// （<see cref="IsTransactionHistoryOnly"/>）。残高・繰越・現在残高は表示せず（<see cref="IsBalanceVisible"/>）、
+/// 案内文（<see cref="AggregationNotice"/>）で請求集約先を案内する。請求集約先は従来どおりの
+/// 表示だが、グループ内の請求集約元の伝票も含めて合算表示する（<see cref="CustomerLedgerQueryService"/>
+/// がグループ展開して渡す）。
 /// </summary>
 public partial class CustomerLedgerViewModel(
     CustomerLedgerQueryService ledgerQueryService,
@@ -85,6 +91,18 @@ public partial class CustomerLedgerViewModel(
 
     [ObservableProperty]
     public partial decimal ClosingBalance { get; set; }
+
+    /// <summary>請求集約元の取引履歴のみモード（TODO.md 12-E）。</summary>
+    [ObservableProperty]
+    public partial bool IsTransactionHistoryOnly { get; set; }
+
+    /// <summary>残高・繰越関連の表示切り替え用（<see cref="IsTransactionHistoryOnly"/> の反転）。</summary>
+    [ObservableProperty]
+    public partial bool IsBalanceVisible { get; set; } = true;
+
+    /// <summary>請求集約元のとき表示する案内文（docs/design_document.md 28-2節 #6）。</summary>
+    [ObservableProperty]
+    public partial string AggregationNotice { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = "得意先を指定してください（条件を変更すると自動的に表示します）。";
@@ -183,10 +201,16 @@ public partial class CustomerLedgerViewModel(
             return;
         }
 
+        IsTransactionHistoryOnly = result.IsTransactionHistoryOnly;
+        IsBalanceVisible = !result.IsTransactionHistoryOnly;
+        AggregationNotice = result.IsTransactionHistoryOnly
+            ? $"「{_customer.CustomerName}」は請求集約元です。請求・消費税・残高は請求集約先「{_customer.BillingCustomerCode}」に集約されています。この画面には売上（税抜）のみを表示します。"
+            : string.Empty;
+
         Lines.Clear();
         foreach (var entry in result.Entries)
         {
-            Lines.Add(new CustomerLedgerLineViewModel(entry));
+            Lines.Add(new CustomerLedgerLineViewModel(entry, result.IsTransactionHistoryOnly));
         }
 
         OpeningBalance = result.OpeningBalance;
@@ -195,8 +219,16 @@ public partial class CustomerLedgerViewModel(
         ReceiptTotal = result.ReceiptTotal;
         ClosingBalance = result.ClosingBalance;
 
-        // 表示のたびに本日時点の残高も再計算する（都度集計。M-11）。
-        await RefreshCurrentBalanceAsync(_customer.CustomerCode);
+        // 表示のたびに本日時点の残高も再計算する（都度集計。M-11）。取引履歴のみモード
+        // （請求集約元）は残高を管理しないため呼ばない（GetBalanceAsOfAsyncはnullを返す）。
+        if (!result.IsTransactionHistoryOnly)
+        {
+            await RefreshCurrentBalanceAsync(_customer.CustomerCode);
+        }
+        else
+        {
+            CurrentBalance = 0m;
+        }
 
         StatusMessage = $"{Lines.Count}行を表示しました。";
     }
@@ -209,6 +241,9 @@ public partial class CustomerLedgerViewModel(
         ReceiptTotal = 0m;
         ClosingBalance = 0m;
         CurrentBalance = 0m;
+        IsTransactionHistoryOnly = false;
+        IsBalanceVisible = true;
+        AggregationNotice = string.Empty;
     }
 
     private static string BuildTaxUnitDisplay(Customer customer) => customer.TaxUnit switch

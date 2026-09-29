@@ -61,6 +61,16 @@ public sealed record CustomerLedgerEntry
 
     // ---- 共通 ----
 
+    /// <summary>
+    /// この行（売上・入金）を記録した得意先。請求集約先の元帳ではグループ内の複数得意先の
+    /// 行が混在するため、どの得意先の伝票かを画面で識別できるように設定する
+    /// （<c>Sales</c>／<c>Receipt</c>の<c>CustomerCode</c>スナップショット列から取得。TODO.md 12-E）。
+    /// </summary>
+    public string? CustomerCode { get; init; }
+
+    /// <summary><see cref="CustomerCode"/> と同じ行に設定する名称スナップショット。</summary>
+    public string? CustomerName { get; init; }
+
     /// <summary>この行の時点の残高（税込）。<see cref="CustomerLedgerBuilder"/> が時系列に累積して設定する。</summary>
     public decimal Balance { get; init; }
 

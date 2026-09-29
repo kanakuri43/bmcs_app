@@ -52,10 +52,14 @@
                            Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
 
                 <!-- 現在残高（TODO.md 8-2）。検索期間とは独立に、得意先確定時と表示(F5)実行時に
-                     都度計算する（残高キャッシュ列は持たない。M-11）。 -->
-                <TextBlock Text="現在残高" VerticalAlignment="Center" Margin="0,0,4,0" FontWeight="Bold" />
-                <TextBlock Text="{Binding CurrentBalance, StringFormat={}{0:N0}}" VerticalAlignment="Center"
-                           Margin="0,0,24,0" FontWeight="Bold" Foreground="{DynamicResource MahApps.Brushes.Accent}" />
+                     都度計算する（残高キャッシュ列は持たない。M-11）。請求集約元（取引履歴のみ
+                     モード、TODO.md 12-E）は残高を管理しないため非表示にする。 -->
+                <StackPanel Orientation="Horizontal"
+                            Visibility="{Binding IsBalanceVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="現在残高" VerticalAlignment="Center" Margin="0,0,4,0" FontWeight="Bold" />
+                    <TextBlock Text="{Binding CurrentBalance, StringFormat={}{0:N0}}" VerticalAlignment="Center"
+                               Margin="0,0,24,0" FontWeight="Bold" Foreground="{DynamicResource MahApps.Brushes.Accent}" />
+                </StackPanel>
 
                 <TextBlock Text="期間" VerticalAlignment="Center" Margin="0,0,8,0" />
                 <DatePicker Width="120" Margin="0,0,4,0"
@@ -69,6 +73,11 @@
                 <Button Content="印刷" Padding="12,6" IsEnabled="False"
                         ToolTip="帳票基盤・得意先元帳印刷（Phase 10、未実装）" />
             </StackPanel>
+
+            <!-- 請求集約元の案内文（取引履歴のみモード、TODO.md 12-E）。 -->
+            <TextBlock Text="{Binding AggregationNotice}" Margin="0,8,0,0" FontWeight="SemiBold"
+                       Foreground="{DynamicResource MahApps.Brushes.Accent}"
+                       Visibility="{Binding IsTransactionHistoryOnly, Converter={StaticResource BooleanToVisibilityConverter}}" />
         </StackPanel>
 
         <!-- ===== 明細 ===== -->
@@ -80,6 +89,9 @@
                 <GridView>
                     <GridViewColumn Header="区分" Width="60" DisplayMemberBinding="{Binding KindLabel}" />
                     <GridViewColumn Header="伝票日付" Width="90" DisplayMemberBinding="{Binding Entry.EntryDate, StringFormat={}{0:yyyy/MM/dd}}" />
+                    <!-- 請求集約先の元帳はグループ内の複数得意先の伝票が混在するため、どの得意先の
+                         伝票かを表示する（TODO.md 12-E）。売上・入金行以外は空欄。 -->
+                    <GridViewColumn Header="得意先" Width="140" DisplayMemberBinding="{Binding CustomerLabel}" />
                     <GridViewColumn Header="伝票No" Width="110" DisplayMemberBinding="{Binding Entry.SalesSlipNumber}" />
                     <GridViewColumn Header="行" Width="36" DisplayMemberBinding="{Binding Entry.SalesLineNumber}" />
                     <GridViewColumn Header="商品コード" Width="80" DisplayMemberBinding="{Binding Entry.ProductCode}" />
@@ -125,7 +137,9 @@
                     <GridViewColumn Header="残高" Width="100">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Entry.Balance, StringFormat={}{0:N0}}" HorizontalAlignment="Right" FontWeight="SemiBold" />
+                                <!-- 取引履歴のみモード（請求集約元、TODO.md 12-E）は残高を表示しない
+                                     （BalanceDisplayがnullを返し空欄になる）。 -->
+                                <TextBlock Text="{Binding BalanceDisplay, StringFormat={}{0:N0}}" HorizontalAlignment="Right" FontWeight="SemiBold" />
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
@@ -139,21 +153,29 @@
                 BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
                 BorderThickness="0,1,0,0">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock Text="前月繰越" VerticalAlignment="Center" Margin="0,0,4,0" />
-                <TextBlock Text="{Binding OpeningBalance, StringFormat={}{0:N0}}" VerticalAlignment="Center" Margin="0,0,20,0" />
+                <!-- 前月繰越・消費税計・入金額計・残高は請求集約元（取引履歴のみモード、TODO.md 12-E）
+                     では管理しないため非表示にする。売上額計は常に表示する（税抜）。 -->
+                <StackPanel Orientation="Horizontal"
+                            Visibility="{Binding IsBalanceVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="前月繰越" VerticalAlignment="Center" Margin="0,0,4,0" />
+                    <TextBlock Text="{Binding OpeningBalance, StringFormat={}{0:N0}}" VerticalAlignment="Center" Margin="0,0,20,0" />
+                </StackPanel>
 
                 <TextBlock Text="売上額計" VerticalAlignment="Center" Margin="0,0,4,0" />
                 <TextBlock Text="{Binding SalesTotal, StringFormat={}{0:N0}}" VerticalAlignment="Center" Margin="0,0,20,0" />
 
-                <TextBlock Text="消費税計" VerticalAlignment="Center" Margin="0,0,4,0" />
-                <TextBlock Text="{Binding TaxTotal, StringFormat={}{0:N0}}" VerticalAlignment="Center" Margin="0,0,20,0" />
+                <StackPanel Orientation="Horizontal"
+                            Visibility="{Binding IsBalanceVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="消費税計" VerticalAlignment="Center" Margin="0,0,4,0" />
+                    <TextBlock Text="{Binding TaxTotal, StringFormat={}{0:N0}}" VerticalAlignment="Center" Margin="0,0,20,0" />
 
-                <TextBlock Text="入金額計" VerticalAlignment="Center" Margin="0,0,4,0" />
-                <TextBlock Text="{Binding ReceiptTotal, StringFormat={}{0:N0}}" VerticalAlignment="Center" Margin="0,0,20,0" />
+                    <TextBlock Text="入金額計" VerticalAlignment="Center" Margin="0,0,4,0" />
+                    <TextBlock Text="{Binding ReceiptTotal, StringFormat={}{0:N0}}" VerticalAlignment="Center" Margin="0,0,20,0" />
 
-                <TextBlock Text="残高" VerticalAlignment="Center" Margin="0,0,4,0" FontWeight="Bold" FontSize="16" />
-                <TextBlock Text="{Binding ClosingBalance, StringFormat={}{0:N0}}" VerticalAlignment="Center"
-                           FontWeight="Bold" FontSize="16" Foreground="{DynamicResource MahApps.Brushes.Accent}" />
+                    <TextBlock Text="残高" VerticalAlignment="Center" Margin="0,0,4,0" FontWeight="Bold" FontSize="16" />
+                    <TextBlock Text="{Binding ClosingBalance, StringFormat={}{0:N0}}" VerticalAlignment="Center"
+                               FontWeight="Bold" FontSize="16" Foreground="{DynamicResource MahApps.Brushes.Accent}" />
+                </StackPanel>
             </StackPanel>
         </Border>
 

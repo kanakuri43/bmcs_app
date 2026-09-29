@@ -19,6 +19,11 @@ namespace bmcs_app.Domain.Calculations;
 ///
 /// 繰越は全期間積み上げで算出する（<c>monthly_closing</c> / <c>billing.previous_balance</c> を
 /// 起点に使わない。M-11「都度集計する・残高キャッシュ列は持たない」と整合させるため。D-4）。
+///
+/// 請求集約元（<c>!Customer.IsBillingRoot</c>）は取引履歴のみモードへ分岐する（<see cref="BuildTransactionHistoryOnly"/>、
+/// TODO.md 12-E）。請求集約先はこのクラスの通常経路のまま無改修で、呼び出し元がグループ全体の
+/// <c>Sales</c>／<c>Receipts</c>を渡すだけで残高がグループ合算になる（<c>Customer.CustomerCode</c>は
+/// このクラスのどこでも参照しないため）。docs/design_document.md 28章参照。
 /// </summary>
 public static class CustomerLedgerBuilder
 {
@@ -32,6 +37,11 @@ public static class CustomerLedgerBuilder
         if (input.PeriodFrom > input.PeriodTo)
         {
             throw new ArgumentException("期間の開始日は終了日以前にしてください。", nameof(input));
+        }
+
+        if (!input.Customer.IsBillingRoot)
+        {
+            return BuildTransactionHistoryOnly(input);
         }
 
         var customer = input.Customer;
@@ -99,6 +109,34 @@ public static class CustomerLedgerBuilder
     }
 
     /// <summary>
+    /// 請求集約元（<c>!Customer.IsBillingRoot</c>）の取引履歴のみモード（TODO.md 12-E、
+    /// docs/design_document.md 28-2節 #6）。売掛残高・請求・入金は請求集約先に集約されるため、
+    /// この得意先自身の売上行のみを組み立てて返す（消費税行・入金行・前月繰越行・残高累積は行わない）。
+    /// 請求集約元は必ず締め得意先（<see cref="TaxUnit.Invoice"/>／<see cref="TaxUnit.Slip"/>。
+    /// 業務ルール・DB CHECK制約）なので、<see cref="AddSalesEntries"/> 内の
+    /// <see cref="TaxUnit.Line"/> 用の消込証跡ペアリングには到達しない。
+    /// </summary>
+    private static CustomerLedgerResult BuildTransactionHistoryOnly(CustomerLedgerInput input)
+    {
+        var entries = new List<SortableEntry>();
+        AddSalesEntries(entries, input, input.Customer, EmptyDepositMethodNamesByCode);
+        entries.Sort((a, b) => a.Key.CompareTo(b.Key));
+
+        var periodEntries = entries
+            .Where(e => e.Key.Date >= input.PeriodFrom && e.Key.Date <= input.PeriodTo)
+            .Select(e => e.Entry)
+            .ToList();
+
+        var salesTotal = periodEntries
+            .Where(e => e.Kind == LedgerEntryKind.Sales)
+            .Sum(e => e.DebitAmount ?? 0m);
+
+        return new CustomerLedgerResult(
+            periodEntries, OpeningBalance: 0m, salesTotal, TaxTotal: 0m, ReceiptTotal: 0m, ClosingBalance: 0m,
+            IsTransactionHistoryOnly: true);
+    }
+
+    /// <summary>
     /// <see cref="TaxUnit.Invoice"/> の未締め区間（<c>billing_number IS NULL</c> かつ
     /// <c>slip_date &lt;= asOf</c>）の消費税を仮計算する。6-1 の <c>BillingClosingService</c> と
     /// 同じ「未請求の全行を1グループとして税率ごとに1回丸める」方式
@@ -147,6 +185,8 @@ public static class CustomerLedgerBuilder
                     SalesLineNumber = sales.LineNumber,
                     ProductCode = sales.ProductCode,
                     ProductName = sales.ProductName,
+                    CustomerCode = sales.CustomerCode,
+                    CustomerName = sales.CustomerName,
                     TaxCategory = sales.TaxCategory,
                     TaxRate = sales.TaxRate,
                     Quantity = sales.Quantity,
@@ -283,6 +323,8 @@ public static class CustomerLedgerBuilder
                     DepositMethodName = depositMethodNameByCode.GetValueOrDefault(line.DepositMethodCode),
                     ReceiptAmount = line.Amount,
                     Remarks = line.LineRemarks,
+                    CustomerCode = line.CustomerCode,
+                    CustomerName = line.CustomerName,
                 }));
         }
     }
@@ -298,6 +340,9 @@ public static class CustomerLedgerBuilder
 
     private static readonly IReadOnlyDictionary<(string, short), IReadOnlyList<DetailReceipt>> EmptyTrace
         = new Dictionary<(string, short), IReadOnlyList<DetailReceipt>>();
+
+    private static readonly IReadOnlyDictionary<string, string> EmptyDepositMethodNamesByCode
+        = new Dictionary<string, string>();
 
     /// <summary>時系列の並び順キー。同日は 売上 → 消費税 → 入金 の順（KindOrder）。</summary>
     private readonly record struct SortKey(DateOnly Date, int KindOrder, string GroupNumber, int SubOrder, int PairOrder)
