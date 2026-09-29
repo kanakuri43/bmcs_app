@@ -2211,7 +2211,7 @@ M-14「振込手数料差額は手入力のみ、自動計算・自動補正提�
 
 ---
 
-## 28. 親子請求（請求集約）の設計（2026-09-29確定、Phase A・B実装済み）
+## 28. 親子請求（請求集約）の設計（2026-09-29確定、Phase A・B・C実装済み）
 
 ### 28-1. 背景・スコープ
 
@@ -2219,7 +2219,7 @@ M-14「振込手数料差額は手入力のみ、自動計算・自動補正提�
 
 用語は**「請求集約先」（他の得意先の分もまとめて請求される得意先）／「請求集約元」（請求が他の得意先に集約される得意先）**とし、「親得意先」「子得意先」は使わない。既存の `sub_customer_id`（学校のクラス・先生等の宛名を都度書き換える仕組み。C-9・2026-09-10で「子得意先マスタは作らない」と確定済み）とは別概念であり、C-9の決定を覆すものではない（`docs/database-schema.md` 1章・`docs/product-spec.md` 共通業務ルール3参照）。
 
-機能全体はDB・得意先マスタ・請求締め・締め解除・消込・入金入力・得意先元帳・請求書帳票の8領域にまたがる。**段階実装とし、Phase Aで設計資料の確定とDBスキーマ変更・得意先マスタ画面を実装済み、Phase Bで日付制限・消込のグループスコープ拡張・入金入力のガードを実装済み。** 請求締め以降（Phase C〜E、28-4節）は次セッション以降に回すが、設計方針は本章で確定済み。
+機能全体はDB・得意先マスタ・請求締め・締め解除・消込・入金入力・得意先元帳・請求書帳票の8領域にまたがる。**段階実装とし、Phase Aで設計資料の確定とDBスキーマ変更・得意先マスタ画面、Phase Bで日付制限・消込のグループスコープ拡張・入金入力のガード、Phase Cで請求締め・締め解除のグループスコープ拡張を実装済み。** 帳票・得意先元帳（Phase D〜E、28-4節）は次セッション以降に回すが、設計方針は本章で確定済み。
 
 ### 28-2. 確定した業務ルール（2026-09-29ユーザー確認済み）
 
@@ -2292,3 +2292,15 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 **入金入力（`ReceiptEntryService`／`ReceiptEntryViewModel`）**: 業務ルール4（入金は請求集約先にだけ入る）を`GetClosingCustomerAsync`（Application）と`ApplyCustomerAsync`（Presentation）の両方に実装。既存の都度得意先拒否と同じ「ViewModelの事前チェック＋サービスのthrow」の二重化に倣った（ViewModelにエラー表示の共通ヘルパーが無く、事前チェックを欠くと検索モーダル経由の入力がfire-and-forgetで例外を握り潰すため）。
 
 **テスト**: `tests/bmcs_app.Application.Tests/Receipt/SettlementServiceTests.cs`に4件追加（請求集約先・請求集約元の混在グループでの消込・古い順配分・返品行・未請求売上の各シナリオ）。`tests/bmcs_app.Application.Tests/Sales/SalesServiceBillingClosedDateTests.cs`・`tests/bmcs_app.Application.Tests/Receipt/ReceiptEntryServiceTests.cs`に1件ずつ追加。`SettlementPhaseReviewTests`は全得意先ループを`BillingCustomerCode`で`Distinct()`に変更（グループ単位の重複再計算を避けるため）。開発用ライブDBの`products`／`bank_accounts`マスタが既存の結合テストヘルパーが想定するテストデータ（`PRD001`／`BNK001`等）と乖離しているため、新規テストのみ実データに存在するコード（`1001`／`1`）を使う任意パラメータを既存ヘルパーに追加した（既定値は変更せず既存テストに影響なし）。
+
+### 28-7. Phase C の実装詳細（請求締め・締め解除のグループスコープ拡張）
+
+**2026-09-29実装。** DBスキーマ変更なし。
+
+**請求締め（`BillingClosingService`）**: `BuildCandidatesAsync`の`customers`クエリに`c.BillingCustomerCode == c.CustomerCode`を追加し、請求集約先（または単独得意先）だけが締め対象の候補になるようにした。実装前は請求集約元も「1得意先＝1候補＝1`billing`」としてそのまま処理され、**請求集約元が自分自身の`billing`を単独で確定してしまう**という業務ルール3違反があった。`BuildCandidateAsync`では、対象が請求集約先であることが確定した時点でPhase 12-Bの`SettlementService`と同じパターンでグループの得意先コード集合を解決し、`salesQuery`と`receiptQuery`の両方をそのグループへ広げる（単独得意先ならインデックスを保つため等値比較のまま、2件以上なら`Contains`に分岐）。`latestConfirmed`／`previousBalance`（`billings`照会）は対象得意先自身のコードのままでよい（`billings`は請求集約先にしか作られないため、対象がすでに請求集約先であればこれ以上広げる必要も広げてはいけない理由もない）。`CalculateTaxSummary`（`ConsumptionTaxCalculator`呼び出し）は無改修（`TaxUnit.Slip`の`GroupBy(SalesSlipNumber)`は伝票番号が全社一意で1伝票=1得意先のため、グループ内の複数得意先の行が混ざっても伝票ごとの税額再計算は汚染されない）。
+
+`receiptQuery`も広げた理由: `CustomerService.HasBillingChangeLockAsync`は確定済み`billings`・売上への紐付け・有効な請求集約元の存在だけを見て請求得意先コードの変更可否を判定し、**`receipts`の有無は見ない**。したがって、ある得意先が過去に単独で入金（前受金・締め解除後の入金残など）を受けた後に他の得意先の請求集約元へ変更されるケースがあり得る。この場合、その得意先自身のコードに紐づく`receipts`が残ったまま請求集約元になり、`receiptQuery`を広げていなければこの入金額が請求額の算定から漏れ、`SettlementService`（グループ全体を見る）と食い違う。既存データを直接救う対策ではない（`HasBillingChangeLockAsync`に`receipts`チェックを追加する案は見送った。将来、新規に請求集約元へ変更する入り口対策として検討の余地はある）が、`BillingClosingService`側を広域化しておけば、この状態が既に発生していても請求額は正しく算定される。
+
+**締め解除（`BillingReleaseService`）は改修不要と確認済み**。対象抽出は`billing_date`のみで絞るため、上記の修正後は自動的に請求集約先のみが対象になる。売上の紐付け解除クエリは`billing_number`の所属だけで判定し`customer_code`で一切絞っていないため、請求集約元の売上行も無改修で正しく拾われて未請求へ戻る。消込再計算はPhase 12-Bで実装済みの`SettlementService.RecalculateForBillingGroupAsync`を対象`billing`のCustomerCode（＝請求集約先）ごとに呼ぶだけで、グループ解決がそのまま請求集約元の消込キャッシュも巻き戻す。
+
+**テスト**: `tests/bmcs_app.Application.Tests/Billing/BillingClosingServiceTests.cs`に2件追加。1件は請求集約先・請求集約元それぞれに105円の売上を登録し、個別に丸めると10+10=20円になるはずの税額が、グループとして合算（210円）してから1回だけ丸めることで21円になることを確認する（グループ合算が丸め前に行われている証明）。もう1件は請求集約元名義に残存する入金が請求集約先の`ReceiptAmount`に合算される回帰テスト。`tests/bmcs_app.Application.Tests/Billing/BillingReleaseServiceTests.cs`に1件追加（請求集約先・請求集約元双方の売上を消込完了済み状態にしてから締め解除し、両方が未請求・未消込に戻ることを確認）。

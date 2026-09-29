@@ -147,10 +147,14 @@ public class BillingClosingService(
     {
         var closingYearMonth = $"{closingDate.Year:D4}{closingDate.Month:D2}";
 
+        // 請求集約元（billing_customer_codeが自分自身と異なる得意先）は候補にしない。
+        // 請求データ（billings）は請求集約先にだけ作る（docs/design_document.md 28章、Phase 12-C）。
+        // 請求集約元の売上・入金は、下記BuildCandidateAsyncが請求集約先の候補にまとめて取り込む。
         var customers = await dbContext.Customers
             .AsNoTracking()
             .Where(c => !c.IsDeleted && c.ClosingDay == closingDay
-                && (c.TaxUnit == TaxUnit.Invoice || c.TaxUnit == TaxUnit.Slip))
+                && (c.TaxUnit == TaxUnit.Invoice || c.TaxUnit == TaxUnit.Slip)
+                && c.BillingCustomerCode == c.CustomerCode)
             .OrderBy(c => c.CustomerCode)
             .ToListAsync(cancellationToken);
 
@@ -196,8 +200,21 @@ public class BillingClosingService(
 
         var receiptPeriodStart = latestConfirmed?.BillingDate;
 
-        var salesQuery = dbContext.Sales
-            .Where(s => !s.IsDeleted && s.CustomerCode == customer.CustomerCode
+        // 対象は customer（請求集約先）1件ではなく、その請求集約グループ（請求集約先＋全請求集約元）
+        // 全体。請求集約元の売上・入金は自分自身のcustomer_codeで記録されるため、ここで得意先集合へ
+        // 広げないと請求集約元の分が請求額に反映されない（Phase 12-C。docs/design_document.md 28章）。
+        // billings照会（latestConfirmed／previousBalance、上記）はcustomer.CustomerCodeのままでよい
+        // （billingsは請求集約先にしか作られないため）。
+        var groupCodes = await dbContext.Customers
+            .AsNoTracking()
+            .Where(c => c.BillingCustomerCode == customer.CustomerCode)
+            .Select(c => c.CustomerCode)
+            .ToListAsync(cancellationToken);
+
+        var salesQuery = groupCodes.Count == 1
+            ? dbContext.Sales.Where(s => !s.IsDeleted && s.CustomerCode == groupCodes[0]
+                && s.BillingNumber == null && s.SlipDate <= closingDate)
+            : dbContext.Sales.Where(s => !s.IsDeleted && groupCodes.Contains(s.CustomerCode)
                 && s.BillingNumber == null && s.SlipDate <= closingDate);
         if (!tracking)
         {
@@ -208,9 +225,11 @@ public class BillingClosingService(
             .OrderBy(s => s.SalesSlipNumber).ThenBy(s => s.LineNumber)
             .ToListAsync(cancellationToken);
 
-        var receiptQuery = dbContext.Receipts
-            .AsNoTracking()
-            .Where(r => !r.IsDeleted && r.CustomerCode == customer.CustomerCode && r.ReceiptDate <= closingDate);
+        var receiptQuery = groupCodes.Count == 1
+            ? dbContext.Receipts.AsNoTracking()
+                .Where(r => !r.IsDeleted && r.CustomerCode == groupCodes[0] && r.ReceiptDate <= closingDate)
+            : dbContext.Receipts.AsNoTracking()
+                .Where(r => !r.IsDeleted && groupCodes.Contains(r.CustomerCode) && r.ReceiptDate <= closingDate);
         if (receiptPeriodStart is not null)
         {
             receiptQuery = receiptQuery.Where(r => r.ReceiptDate > receiptPeriodStart.Value);
@@ -222,7 +241,7 @@ public class BillingClosingService(
         // （docs/design_document.md 17章、2026-09-15改訂）。
         var receiptAmount = receiptLines.Sum(r => r.Amount);
 
-        var taxSummary = CalculateTaxSummary(customer, salesLines);
+        var taxSummary = CalculateTaxSummary(customer, salesLines, groupCodes);
 
         if (salesLines.Count == 0 && receiptAmount == 0m && previousBalance == 0m)
         {
@@ -241,7 +260,8 @@ public class BillingClosingService(
     /// 伝票単位の得意先で、再計算した伝票税額の合計が保存済み<c>slip_tax_amount</c>の合計と
     /// 一致しない場合（端数区分は登録後不変のため、本来一致するはずのデータ異常）。
     /// </exception>
-    private static TaxSummary CalculateTaxSummary(Customer customer, List<SalesEntity> salesLines)
+    private static TaxSummary CalculateTaxSummary(
+        Customer customer, List<SalesEntity> salesLines, IReadOnlyList<string> groupCodes)
     {
         if (customer.TaxUnit == TaxUnit.Invoice)
         {
@@ -261,8 +281,8 @@ public class BillingClosingService(
         if (storedTax != summary.TaxAmount)
         {
             throw new BillingClosingException(
-                $"伝票単位の税額が保存値と一致しません。CustomerCode={customer.CustomerCode} " +
-                $"再計算={summary.TaxAmount} 保存値={storedTax}");
+                $"伝票単位の税額が保存値と一致しません。請求集約先={customer.CustomerCode} " +
+                $"対象得意先={string.Join(",", groupCodes)} 再計算={summary.TaxAmount} 保存値={storedTax}");
         }
 
         return summary;

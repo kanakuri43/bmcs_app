@@ -351,23 +351,126 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
         }
     }
 
+    [Fact]
+    public async Task 請求集約元の売上は請求集約先の請求データに合算され請求集約元には請求データが作られない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+
+        const string root = "__TSTCLS3";
+        const string child = "__TSTCLS3C";
+        await InsertCustomerAsync(dbContext, root, TaxUnit.Invoice, RoundingType.Floor, salesEmployeeCode: "101");
+        await InsertCustomerAsync(dbContext, child, TaxUnit.Invoice, RoundingType.Floor, billingCustomerCode: root, salesEmployeeCode: "101");
+
+        var slipRoot = "__TSTBIL_AGGR";
+        var slipChild = "__TSTBIL_AGGC";
+        var lines = new[]
+        {
+            // 個別に丸めると10.5→10が2件で20円だが、請求集約グループとして合算(210円)してから
+            // 1回だけ丸めると21円になる。グループ合算が丸め前に行われていることの証明。
+            NewSalesLine(root, TaxUnit.Invoice, slipRoot, 1, new DateOnly(2025, 7, 1),
+                SlipType.Sales, TaxCategory.Standard, 10m, quantity: 1m, unitPrice: 105m, RoundingType.Floor,
+                productCode: "1001"),
+            NewSalesLine(child, TaxUnit.Invoice, slipChild, 1, new DateOnly(2025, 7, 1),
+                SlipType.Sales, TaxCategory.Standard, 10m, quantity: 1m, unitPrice: 105m, RoundingType.Floor,
+                productCode: "1001"),
+        };
+        dbContext.Sales.AddRange(lines);
+        await dbContext.SaveChangesAsync();
+
+        try
+        {
+            var results = await service.ConfirmAsync(TestClosingDay, new DateOnly(2025, 7, 15));
+
+            Assert.DoesNotContain(results, r => r.CustomerCode == child);
+            var target = Assert.Single(results, r => r.CustomerCode == root);
+            Assert.Null(target.SkipReason);
+            Assert.NotNull(target.BillingNumber);
+            Assert.Equal(210m, target.SalesAmount);
+            Assert.Equal(21m, target.TaxAmount);
+
+            var childBillingCount = await dbContext.Billings.AsNoTracking()
+                .CountAsync(b => b.CustomerCode == child);
+            Assert.Equal(0, childBillingCount);
+
+            var persistedRoot = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == slipRoot);
+            var persistedChild = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == slipChild);
+            Assert.Equal(target.BillingNumber, persistedRoot.BillingNumber);
+            Assert.Equal(target.BillingNumber, persistedChild.BillingNumber);
+            Assert.Equal(BillingLinkStatus.Billed, persistedChild.BillingStatus);
+        }
+        finally
+        {
+            // sales行(FK_sales_customers)を先に消してから、自己参照FK（billing_customer_code）のため
+            // 請求集約元(child)を請求集約先(root)より先に削除する。
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.sales WHERE sales_slip_number = {slipRoot}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.sales WHERE sales_slip_number = {slipChild}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.billings WHERE customer_code = {child}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.customers WHERE customer_code = {child}");
+            await CleanupAsync(dbContext, root, []);
+        }
+    }
+
+    [Fact]
+    public async Task 請求集約元名義の残存入金も請求集約先の請求額に合算される()
+    {
+        // CustomerService.HasBillingChangeLockAsyncはreceiptsの有無を見ないため、請求集約元自身の
+        // コードに入金（前受金等）が残ったまま請求集約元へ変更されるケースがあり得る。この場合でも
+        // BillingClosingServiceがグループ全体のreceiptsを見て請求額に合算することを確認する回帰テスト。
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+
+        const string root = "__TSTCLS4";
+        const string child = "__TSTCLS4C";
+        await InsertCustomerAsync(dbContext, root, TaxUnit.Invoice, RoundingType.Floor, salesEmployeeCode: "101");
+        await InsertCustomerAsync(dbContext, child, TaxUnit.Invoice, RoundingType.Floor, billingCustomerCode: root, salesEmployeeCode: "101");
+
+        var receiptSlip = "__TSTBIL_AGGRCP";
+        dbContext.Receipts.Add(NewReceiptLine(
+            child, TaxUnit.Invoice, receiptSlip, 1, new DateOnly(2025, 7, 5), 500m, bankAccountCode: "1"));
+        await dbContext.SaveChangesAsync();
+
+        try
+        {
+            var results = await service.ConfirmAsync(TestClosingDay, new DateOnly(2025, 7, 15));
+            var target = Assert.Single(results, r => r.CustomerCode == root);
+
+            Assert.Null(target.SkipReason);
+            Assert.Equal(500m, target.ReceiptAmount);
+            Assert.Equal(-500m, target.CurrentBillingAmount);
+        }
+        finally
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.receipts WHERE receipt_slip_number = {receiptSlip}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.customers WHERE customer_code = {child}");
+            await CleanupAsync(dbContext, root, []);
+        }
+    }
+
     private static (BmcsDbContext DbContext, BillingClosingService Service) Resolve(AsyncServiceScope scope) => (
         scope.ServiceProvider.GetRequiredService<BmcsDbContext>(),
         scope.ServiceProvider.GetRequiredService<BillingClosingService>());
 
     private static async Task InsertCustomerAsync(
-        BmcsDbContext dbContext, string customerCode, TaxUnit taxUnit, RoundingType roundingType)
+        BmcsDbContext dbContext, string customerCode, TaxUnit taxUnit, RoundingType roundingType,
+        string? billingCustomerCode = null, string salesEmployeeCode = "EMP001")
     {
         var now = DateTime.Now;
         dbContext.Customers.Add(new Customer
         {
             CustomerCode = customerCode,
             CustomerName = "テスト用得意先",
-            SalesEmployeeCode = "EMP001",
+            SalesEmployeeCode = salesEmployeeCode,
             ClosingDay = TestClosingDay,
             TaxUnit = taxUnit,
             RoundingType = roundingType,
-            BillingCustomerCode = customerCode,
+            BillingCustomerCode = billingCustomerCode ?? customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,
@@ -380,7 +483,7 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
     private static SalesEntity NewSalesLine(
         string customerCode, TaxUnit taxUnit, string slipNumber, short lineNumber, DateOnly slipDate,
         SlipType slipType, TaxCategory taxCategory, decimal taxRate, decimal quantity, decimal unitPrice,
-        RoundingType roundingType)
+        RoundingType roundingType, string productCode = "PRD001")
     {
         var amount = ConsumptionTaxCalculator.CalculateLineAmount(quantity, unitPrice, roundingType);
         var now = DateTime.Now;
@@ -394,7 +497,7 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
             TaxUnit = taxUnit,
             CustomerName = "テスト用得意先",
             SlipType = slipType,
-            ProductCode = "PRD001",
+            ProductCode = productCode,
             ProductName = "テスト用商品",
             Quantity = quantity,
             UnitPrice = unitPrice,
@@ -435,7 +538,7 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
 
     private static ReceiptEntity NewReceiptLine(
         string customerCode, TaxUnit taxUnit, string receiptSlipNumber, short lineNumber,
-        DateOnly receiptDate, decimal amount)
+        DateOnly receiptDate, decimal amount, string bankAccountCode = "BNK001")
     {
         var now = DateTime.Now;
         return new ReceiptEntity
@@ -447,7 +550,7 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
             TaxUnit = taxUnit,
             CustomerName = "テスト用得意先",
             DepositMethodCode = "TRANSFER",
-            BankAccountCode = "BNK001",
+            BankAccountCode = bankAccountCode,
             Amount = amount,
             AllocationStatus = AllocationStatus.Unallocated,
             CreatedBy = "TEST",

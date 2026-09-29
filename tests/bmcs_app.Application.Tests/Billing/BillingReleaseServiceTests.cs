@@ -290,24 +290,87 @@ public class BillingReleaseServiceTests(DevDatabaseFixture fixture) : IClassFixt
         }
     }
 
+    [Fact]
+    public async Task 親子請求の請求を締め解除すると請求集約元の売上も未請求未消込へ戻る()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, closingService, releaseService) = Resolve(scope);
+
+        const string root = "__TSTREL3";
+        const string child = "__TSTREL3C";
+        await InsertCustomerAsync(dbContext, root, salesEmployeeCode: "101");
+        await InsertCustomerAsync(dbContext, child, billingCustomerCode: root, salesEmployeeCode: "101");
+
+        var slipRoot = "__TSTREL_AGGR";
+        var slipChild = "__TSTREL_AGGC";
+        dbContext.Sales.Add(NewSalesLine(
+            root, slipRoot, 1, new DateOnly(2025, 7, 1), quantity: 5m, unitPrice: 1000m, productCode: "1001"));
+        dbContext.Sales.Add(NewSalesLine(
+            child, slipChild, 1, new DateOnly(2025, 7, 1), quantity: 3m, unitPrice: 1000m, productCode: "1001"));
+        await dbContext.SaveChangesAsync();
+
+        try
+        {
+            await closingService.ConfirmAsync(TestClosingDay, new DateOnly(2025, 7, 16));
+
+            // 実際の入金を経ずに、両者とも消込完了済みの状態を直接再現する（既存の
+            // 「締め解除すると解除対象の売上行の消込状態も未消込へ戻る」テストと同じ簡略化）。
+            var rootLine = await dbContext.Sales.SingleAsync(s => s.SalesSlipNumber == slipRoot);
+            rootLine.SettlementStatus = SettlementStatus.FullySettled;
+            rootLine.SettledAmount = rootLine.Amount;
+            var childLine = await dbContext.Sales.SingleAsync(s => s.SalesSlipNumber == slipChild);
+            childLine.SettlementStatus = SettlementStatus.FullySettled;
+            childLine.SettledAmount = childLine.Amount;
+            await dbContext.SaveChangesAsync();
+
+            await releaseService.ReleaseByBillingDateAsync(new DateOnly(2025, 7, 16));
+
+            var persistedRoot = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == slipRoot);
+            var persistedChild = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == slipChild);
+            foreach (var persisted in new[] { persistedRoot, persistedChild })
+            {
+                Assert.Null(persisted.BillingNumber);
+                Assert.Equal(BillingLinkStatus.Unbilled, persisted.BillingStatus);
+                Assert.Equal(SettlementStatus.Unsettled, persisted.SettlementStatus);
+                Assert.Equal(0m, persisted.SettledAmount);
+            }
+        }
+        finally
+        {
+            // sales行(FK_sales_customers)を先に消してから、自己参照FK（billing_customer_code）のため
+            // 請求集約元(child)を請求集約先(root)より先に削除する。
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.sales WHERE sales_slip_number = {slipRoot}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.sales WHERE sales_slip_number = {slipChild}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.billings WHERE customer_code = {child}");
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.customers WHERE customer_code = {child}");
+            await CleanupAsync(dbContext, [root], []);
+        }
+    }
+
     private static (BmcsDbContext DbContext, BillingClosingService ClosingService, BillingReleaseService ReleaseService) Resolve(
         AsyncServiceScope scope) => (
         scope.ServiceProvider.GetRequiredService<BmcsDbContext>(),
         scope.ServiceProvider.GetRequiredService<BillingClosingService>(),
         scope.ServiceProvider.GetRequiredService<BillingReleaseService>());
 
-    private static async Task InsertCustomerAsync(BmcsDbContext dbContext, string customerCode, byte closingDay = TestClosingDay)
+    private static async Task InsertCustomerAsync(
+        BmcsDbContext dbContext, string customerCode, byte closingDay = TestClosingDay,
+        string? billingCustomerCode = null, string salesEmployeeCode = "EMP001")
     {
         var now = DateTime.Now;
         dbContext.Customers.Add(new Customer
         {
             CustomerCode = customerCode,
             CustomerName = "テスト用得意先",
-            SalesEmployeeCode = "EMP001",
+            SalesEmployeeCode = salesEmployeeCode,
             ClosingDay = closingDay,
             TaxUnit = TaxUnit.Invoice,
             RoundingType = RoundingType.Floor,
-            BillingCustomerCode = customerCode,
+            BillingCustomerCode = billingCustomerCode ?? customerCode,
             PrintRepresentativeFlag = false,
             CreatedBy = "TEST",
             CreatedAt = now,
@@ -318,7 +381,8 @@ public class BillingReleaseServiceTests(DevDatabaseFixture fixture) : IClassFixt
     }
 
     private static SalesEntity NewSalesLine(
-        string customerCode, string slipNumber, short lineNumber, DateOnly slipDate, decimal quantity, decimal unitPrice)
+        string customerCode, string slipNumber, short lineNumber, DateOnly slipDate, decimal quantity,
+        decimal unitPrice, string productCode = "PRD001")
     {
         var amount = ConsumptionTaxCalculator.CalculateLineAmount(quantity, unitPrice, RoundingType.Floor);
         var now = DateTime.Now;
@@ -332,7 +396,7 @@ public class BillingReleaseServiceTests(DevDatabaseFixture fixture) : IClassFixt
             TaxUnit = TaxUnit.Invoice,
             CustomerName = "テスト用得意先",
             SlipType = SlipType.Sales,
-            ProductCode = "PRD001",
+            ProductCode = productCode,
             ProductName = "テスト用商品",
             Quantity = quantity,
             UnitPrice = unitPrice,
