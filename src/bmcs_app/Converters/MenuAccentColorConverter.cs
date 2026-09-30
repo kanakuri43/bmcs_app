@@ -29,14 +29,17 @@ public class MenuAccentColorConverter : IValueConverter
     {
         var colors = new[]
         {
-            Color.FromRgb(0x90, 0x66, 0xFF), // パープル
-            Color.FromRgb(0x5F, 0x97, 0xF6), // ブルー
-            Color.FromRgb(0x26, 0xC3, 0xB6), // ターコイズ
-            Color.FromRgb(0xFF, 0xA0, 0x5B), // オレンジ
-            Color.FromRgb(0xF2, 0x73, 0x94), // コーラルピンク
-            Color.FromRgb(0x5F, 0xC3, 0x94), // ミントグリーン
+            Color.FromRgb(0xE0, 0x59, 0x7C), // 1. コーラルレッド
+            Color.FromRgb(0xE0, 0x6C, 0x53), // 2. サーモン
+            Color.FromRgb(0xDC, 0x7E, 0x3E), // 3. オレンジ
+            Color.FromRgb(0xB7, 0x99, 0x36), // 4. ゴールド
+            Color.FromRgb(0x87, 0xA4, 0x4A), // 5. ライムグリーン
+            Color.FromRgb(0x4F, 0xA1, 0x78), // 6. グリーン
+            Color.FromRgb(0x28, 0xA0, 0x96), // 7. ターコイズ
+            Color.FromRgb(0x34, 0x97, 0xB4), // 8. シアンブルー
+            Color.FromRgb(0x53, 0x83, 0xDE), // 9. ブルー
+            Color.FromRgb(0x84, 0x5E, 0xEA), // 10. パープル
         };
-
         var brushes = new Brush[colors.Length];
         for (var i = 0; i < colors.Length; i++)
         {
