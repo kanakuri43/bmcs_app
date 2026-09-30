@@ -118,13 +118,13 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 |---|---|---|
 | **Domain** | エンティティ（EF Core の POCO を兼ねる）、enum、消費税・端数処理の計算、状態判定のロジック | DB アクセス、UI、DI、ファイル I/O。**副作用を持つコードを置かない** |
 | **Infrastructure** | `DbContext`、Fluent API のマッピング設定、接続文字列の解決、ストアドプロシージャ呼び出し、端末ローカル設定ファイルの読み書き | 業務ルール（どの売上が請求対象か等）、WPF 依存のコード |
-| **Application** | ユースケース（伝票登録、請求締め、入金消込…）、**トランザクション境界**、複数テーブルにまたがる整合更新、業務操作の権限チェック、**帳票のデータ取得**（WPF 型を含まないプレーンな DTO を返す） | 画面の状態、`Window` や `Visibility` などの UI 概念 |
+| **Application** | ユースケース（伝票登録、請求締め、入金消込…）、**トランザクション境界**、複数テーブルにまたがる整合更新、**帳票のデータ取得**（WPF 型を含まないプレーンな DTO を返す） | 画面の状態、`Window` や `Visibility` などの UI 概念 |
 | **Presentation** | View（XAML）、ViewModel（画面状態・入力書式・コマンド）、DI 構成、ウィンドウ管理、**帳票のレンダリング・印刷・PDF出力・プレビュー**（`src/bmcs_app/Reports/`） | 業務ルール、SQL、`DbContext` の直接操作 |
 
 補足:
 
 - **Domain のエンティティを EF Core の POCO として兼用する。** 別途 DTO を作って詰め替えることはしない（差し替えを見据えた抽象化を行わない方針に沿う）。
-- **業務操作の権限チェックは Application 層に置く。** メニューの出し分け（Presentation）だけに頼ると、画面を直接開かれた場合に守られないため。権限マトリクスのテーブルは作らず、レベル比較を直接書く。比較を書く場所は Application 層のユースケース内とする。
+- **権限の制御はメニュー単位のみ。** `MenuTreeBuilder` が社員の権限レベルでメニューを出し分け、画面内・サービス内には権限判定を持たない。権限差が出る操作（請求締め解除・月次締め解除）は別画面（別メニュー項目）に分ける（`docs/decisions.md`）。
 - **ViewModel は業務ルールを判断しない。** 「この売上は訂正できるか」の判定は Application 層に問い合わせ、ViewModel はその結果でボタンの有効・無効を切り替えるだけにする。
 - **帳票の層配置**: 帳票の方式（`FixedDocument`/`FixedPage`/`PrintQueue`）は `docs/report-spec.md` が正。方式が WPF に依存するため、`Infrastructure`（`net10.0`、WPF なし）には置けない。`Infrastructure` を `net10.0-windows`＋`UseWPF` にすると、これを参照する `Application` 層とテスト2プロジェクト（`Domain.Tests`／`Application.Tests`）まで推移的に WPF 依存になってしまうため採らない。**帳票のデータ取得（DB読込・税額の組み立て等）は各業務領域フォルダ（10章の規約）の Application サービスが担い、WPF 型を含まないプレーンな DTO（例: `DeliveryNoteData`）を返す。レンダリング（`FixedDocument` の組み立て）・印刷・PDF出力・プレビューは Presentation 層の `src/bmcs_app/Reports/`にまとめて置く**（`Views/`・`ViewModels/`とは別の技術的フォルダ。`Services/`・`Behaviors/`・`Converters/`と同じ位置づけ）。
 
