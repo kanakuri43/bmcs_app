@@ -1,8 +1,8 @@
 # bmcs_app CLAUDE.md
 
-> このファイルは `石山初期設計/CLAUDE.md.draft` および `石山初期設計/resources/` 配下の画面仕様書一式を統合して作成した。画面ごとの詳細・未解決の不明点は更新頻度が低いため `docs/design_document.md` に、DB設計方針は `docs/database-schema.md` に分離した。実装着手前に必ずそちらを確認・確定させること。
+> このファイルは概要と作業ルールのみを持つ。各領域の詳細は下の Docs map の該当ドキュメントを正とする。実装着手前に、該当ドキュメントを必ず確認すること。
 >
-> 画面番号（`SCR-xxx`等）を使わない方針の詳細は `docs/design_document.md` を参照（D-2・2026-09-10、記載箇所をそちらに一本化）。画面は名称で参照する。
+> 画面は名称で参照し、画面番号（`SCR-xxx`等）は使わない。
 
 ---
 
@@ -51,6 +51,9 @@
 - [`docs/design_document.md`](docs/design_document.md) — 画面ごとの要点一覧、および未解決の不明点・要確認事項（DB以外）
 - [`docs/database-schema.md`](docs/database-schema.md) — データベースに関する情報（設計方針・未確定のテーブル/カラム定義等）
 - [`docs/report-spec.md`](docs/report-spec.md) — 帳票エンジンの選定方針、各帳票のレイアウト要件
+- [`docs/decisions.md`](docs/decisions.md) — 非自明な意思決定とその理由（不採用案の理由、罠、性能・制約）
+
+docs は現在の仕様だけを書く。日付・決定ID・Phase番号・`TODO.md` 項番・経緯は書かず、「なぜそうしたか」は `docs/decisions.md` に書く。
 
 ## Overview of the Workflow
 
@@ -69,6 +72,4 @@ flowchart TD
 - 締め得意先は売上入力の時点ではまだ請求書を発行しない。
 - 都度得意先は売上入力時に即時請求書を出す場合と、後でまとめて明細請求書発行する場合の両方の想定がある。
 
-補助機能（共通検索モーダル・データ横断検索・メインメニュー・マスタ管理等）の一覧は `docs/design_document.md` の画面一覧を正とする（D-5・2026-09-10、重複列挙を削除）。認証方式の詳細は `docs/product-spec.md` 共通業務ルール8を参照（D-1）。
-
-実装着手前に必ず確認すること。
+補助機能（共通検索モーダル・データ横断検索・メインメニュー・マスタ管理等）の一覧は `docs/design_document.md` の画面一覧を正とする。認証方式の詳細は `docs/product-spec.md` 共通業務ルール8を参照。
