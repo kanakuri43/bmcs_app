@@ -145,18 +145,25 @@ public static class CustomerLedgerBuilder
     /// <see cref="TaxUnit.Line"/> は常に 0。
     /// </summary>
     public static decimal ProvisionalTaxAsOf(Customer customer, IReadOnlyList<Sales> salesLines, DateOnly asOf)
+        => ProvisionalTaxBucketsAsOf(customer, salesLines, asOf).Sum(b => b.TaxAmount);
+
+    /// <summary>
+    /// <see cref="ProvisionalTaxAsOf"/> の税率別内訳版（月次締めの税率別カラム用。TODO.md 9-1）。
+    /// <see cref="TaxUnit.Invoice"/> 以外は空。
+    /// </summary>
+    public static IReadOnlyList<TaxRateBucket> ProvisionalTaxBucketsAsOf(
+        Customer customer, IReadOnlyList<Sales> salesLines, DateOnly asOf)
     {
         if (customer.TaxUnit != TaxUnit.Invoice)
         {
-            return 0m;
+            return [];
         }
 
         var unbilledLines = salesLines
             .Where(s => s.BillingNumber is null && s.SlipDate <= asOf)
             .Select(s => new TaxLine(s.TaxCategory, s.TaxRate, s.Amount));
 
-        return ConsumptionTaxCalculator.CalculateExternalTaxBuckets(unbilledLines, customer.RoundingType)
-            .Sum(b => b.TaxAmount);
+        return ConsumptionTaxCalculator.CalculateExternalTaxBuckets(unbilledLines, customer.RoundingType);
     }
 
     private static void AddSalesEntries(

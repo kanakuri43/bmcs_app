@@ -1,3 +1,4 @@
+using bmcs_app.Application.Closing;
 using bmcs_app.Application.Common;
 using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Enums;
@@ -46,6 +47,7 @@ public class DetailReceiptEntryService(
     BmcsDbContext dbContext,
     SettlementService settlementService,
     SlipNumberService slipNumberService,
+    MonthlyClosedService monthlyClosedService,
     ICurrentEmployeeContext currentEmployeeContext,
     ILogger<DetailReceiptEntryService> logger)
 {
@@ -114,6 +116,12 @@ public class DetailReceiptEntryService(
         }
 
         var depositMethods = await ValidateLineFieldsAsync(lines, cancellationToken);
+
+        var monthlyClosedReason = await monthlyClosedService.CheckEntryAsync(customerCode, receiptDate, "入金日付", cancellationToken);
+        if (monthlyClosedReason is not null)
+        {
+            throw new DetailReceiptEntryException(monthlyClosedReason);
+        }
 
         var salesKeys = lines
             .Where(l => l.TargetType == DetailReceiptTargetType.SalesLine)
@@ -298,16 +306,8 @@ public class DetailReceiptEntryService(
     {
         var customerCode = lines[0].CustomerCode;
         var receiptDate = lines[0].ReceiptDate;
-        var monthEndDate = new DateOnly(
-            receiptDate.Year, receiptDate.Month, DateTime.DaysInMonth(receiptDate.Year, receiptDate.Month));
 
-        var monthlyClosingConfirmed = await dbContext.MonthlyClosings
-            .AsNoTracking()
-            .AnyAsync(
-                m => m.CustomerCode == customerCode
-                    && m.ClosingDate == monthEndDate
-                    && m.ClosingStatus == ClosingStatus.Confirmed,
-                cancellationToken);
+        var monthlyClosingConfirmed = await monthlyClosedService.IsClosedAsync(customerCode, receiptDate, cancellationToken);
 
         return monthlyClosingConfirmed
             ? new SalesEditLock(true, "月次締め済みのため訂正・取消できません。")

@@ -1,5 +1,5 @@
+using bmcs_app.Application.Closing;
 using bmcs_app.Domain.Calculations;
-using bmcs_app.Domain.Enums;
 using bmcs_app.Infrastructure;
 using SalesEntity = bmcs_app.Domain.Entities.Sales;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +13,7 @@ namespace bmcs_app.Application.Sales;
 /// ViewModel は業務ルールを判断せず、本サービスの結果をそのまま表示するだけにする
 /// （docs/architecture.md 5章）。
 /// </summary>
-public class SalesEditLockService(BmcsDbContext dbContext)
+public class SalesEditLockService(BmcsDbContext dbContext, MonthlyClosedService monthlyClosedService)
 {
     /// <summary><paramref name="lines"/> は同一伝票の明細行（1件以上）であること。</summary>
     public async Task<SalesEditLock> EvaluateAsync(
@@ -21,15 +21,8 @@ public class SalesEditLockService(BmcsDbContext dbContext)
     {
         var customerCode = lines[0].CustomerCode;
         var slipDate = lines[0].SlipDate;
-        var monthEndDate = new DateOnly(slipDate.Year, slipDate.Month, DateTime.DaysInMonth(slipDate.Year, slipDate.Month));
 
-        var monthlyClosingConfirmed = await dbContext.MonthlyClosings
-            .AsNoTracking()
-            .AnyAsync(
-                m => m.CustomerCode == customerCode
-                    && m.ClosingDate == monthEndDate
-                    && m.ClosingStatus == ClosingStatus.Confirmed,
-                cancellationToken);
+        var monthlyClosingConfirmed = await monthlyClosedService.IsClosedAsync(customerCode, slipDate, cancellationToken);
 
         var slipNumber = lines[0].SalesSlipNumber;
         var lineNumbers = lines.Select(l => l.LineNumber).ToList();

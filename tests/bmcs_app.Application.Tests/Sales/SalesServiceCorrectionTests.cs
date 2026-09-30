@@ -427,18 +427,47 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
         await using var scope = fixture.Services.CreateAsyncScope();
         var (dbContext, salesService, _) = Resolve(scope);
 
-        // CUS001は2026-01-31分が確定済み（seed_dev_data.sql）。その年月内の伝票日付で登録する。
-        var createLine = NewSalesLine(quantity: 1m, slipDate: new DateOnly(2026, 1, 15));
+        // 実際の業務順序どおり、未締めの年月（2026-08）に登録してから月次締めを確定させる。
+        // 締め済みの年月への新規登録自体は9-2で拒否されるようになったため、締めを先に入れられない。
+        var createLine = NewSalesLine(quantity: 1m, slipDate: new DateOnly(2026, 8, 15));
         string? salesSlipNumber = null;
+        var closingDate = new DateOnly(2026, 8, 31);
         try
         {
             salesSlipNumber = await salesService.CreateAsync([createLine], RoundingType.Floor);
+
+            var now = DateTime.Now;
+            dbContext.MonthlyClosings.Add(new MonthlyClosing
+            {
+                ClosingDate = closingDate,
+                CustomerCode = CustomerCode,
+                TaxUnit = TaxUnit.Invoice,
+                CustomerName = "株式会社山田商事",
+                PreviousBalance = 0m,
+                SalesAmount = 0m,
+                ReceiptAmount = 0m,
+                TaxAmount = 0m,
+                ClosingBalance = 0m,
+                StandardRateTaxableAmount = 0m,
+                StandardRateTaxAmount = 0m,
+                ReducedRateTaxableAmount = 0m,
+                ReducedRateTaxAmount = 0m,
+                TaxExemptAmount = 0m,
+                ClosingStatus = ClosingStatus.Confirmed,
+                ConfirmedAt = now,
+                ConfirmedBy = "TEST",
+                CreatedBy = "TEST",
+                CreatedAt = now,
+                UpdatedBy = "TEST",
+                UpdatedAt = now,
+            });
+            await dbContext.SaveChangesAsync();
 
             var loadedLineNumbers = await dbContext.Sales
                 .Where(s => s.SalesSlipNumber == salesSlipNumber)
                 .Select(s => s.LineNumber)
                 .ToListAsync();
-            var updated = NewSalesLine(quantity: 2m, slipDate: new DateOnly(2026, 1, 20));
+            var updated = NewSalesLine(quantity: 2m, slipDate: new DateOnly(2026, 8, 20));
             updated.LineNumber = loadedLineNumbers[0];
 
             await Assert.ThrowsAsync<SalesOperationException>(
@@ -446,6 +475,8 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
         }
         finally
         {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.monthly_closings WHERE closing_date = {closingDate} AND customer_code = {CustomerCode}");
             await CleanupAsync(dbContext, salesSlipNumber, orderSlipNumber: null);
         }
     }

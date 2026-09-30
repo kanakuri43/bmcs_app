@@ -656,10 +656,10 @@ OR
 | `customer_code` | `varchar(10)` | PK | FK（`customer_code`, `tax_unit`の複合）→ `customers` |
 | `tax_unit` | `tinyint` | × | 集計時点の得意先税区分のスナップショット |
 | `customer_name` | `nvarchar(60)` | × | スナップショット |
-| `previous_balance` | `decimal(15,2)` | × | 前月末売掛残高（＝前月の本テーブルの`closing_balance`） |
+| `previous_balance` | `decimal(15,2)` | × | 前月末売掛残高（＝前月の本テーブルの`closing_balance`。前月の確定行が無ければ元帳の月初残高。請求集約元の行は0） |
 | `sales_amount` | `decimal(15,2)` | × | 当月（暦月）売上金額 |
 | `receipt_amount` | `decimal(15,2)` | × | 当月（暦月）入金金額 |
-| `tax_amount` | `decimal(15,2)` | × | 消費税額。`tax_unit=1`の未確定区間（次回請求締めをまだ通っていない伝票）は仮計算した値（1章参照） |
+| `tax_amount` | `decimal(15,2)` | × | 消費税額。`tax_unit=1`の未確定区間（次回請求締めをまだ通っていない伝票）は仮計算した値（1章参照）。実装は`closing_balance − previous_balance − sales_amount + receipt_amount`で逆算し、前月の仮計算税が確定値に置き換わったずれを吸収する（`design_document.md` 29章）。請求集約元の行は0 |
 | `closing_balance` | `decimal(15,2)` | × | 当月末売掛残高（`previous_balance + sales_amount + tax_amount - receipt_amount`） |
 | `standard_rate_taxable_amount` / `standard_rate_tax_amount` | `decimal(15,2)` | × | 税率別内訳: 標準税率（`tax_category=1`）の対価額・消費税額 |
 | `reduced_rate_taxable_amount` / `reduced_rate_tax_amount` | `decimal(15,2)` | × | 軽減税率（`tax_category=2`）の対価額・消費税額 |
@@ -686,6 +686,7 @@ OR
 ```
 sales の編集不可 ⇔
   (customer_code, slip_dateの年月) に一致する monthly_closing レコードが存在し closing_status = 1（確定）
+  （customer_code は売上の得意先、またはその請求集約先。請求集約先の行はグループ全体を含むため。9-2）
   OR
   billing_number IS NOT NULL（＝紐づく billing.billing_status = 確定）
   OR

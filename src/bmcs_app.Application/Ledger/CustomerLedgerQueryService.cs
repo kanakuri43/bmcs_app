@@ -22,6 +22,18 @@ public class CustomerLedgerQueryService(BmcsDbContext dbContext)
     public async Task<CustomerLedgerResult?> GetAsync(
         string customerCode, DateOnly periodFrom, DateOnly periodTo, CancellationToken cancellationToken = default)
     {
+        var input = await GetInputAsync(customerCode, periodFrom, periodTo, cancellationToken);
+        return input is null ? null : CustomerLedgerBuilder.Build(input);
+    }
+
+    /// <summary>
+    /// <see cref="GetAsync"/> の入力（全期間の売上・入金・請求）だけを組み立てて返す。月次締め
+    /// （<c>MonthlyClosingService</c>）が元帳の結果と同じ入力から税率別内訳も計算するために公開している。
+    /// 得意先が存在しなければ null。
+    /// </summary>
+    public async Task<CustomerLedgerInput?> GetInputAsync(
+        string customerCode, DateOnly periodFrom, DateOnly periodTo, CancellationToken cancellationToken = default)
+    {
         var customer = await dbContext.Customers.AsNoTracking()
             .FirstOrDefaultAsync(c => c.CustomerCode == customerCode, cancellationToken);
         if (customer is null)
@@ -102,11 +114,9 @@ public class CustomerLedgerQueryService(BmcsDbContext dbContext)
         // （Customer と同じ方針。このクラスの doc comment 参照）。
         var depositMethods = await dbContext.DepositMethods.AsNoTracking().ToListAsync(cancellationToken);
 
-        var input = new CustomerLedgerInput(
+        return new CustomerLedgerInput(
             customer, periodFrom, periodTo, salesLines, confirmedBillings, receiptLines, detailReceiptLines,
             invoiceLinks, depositMethods);
-
-        return CustomerLedgerBuilder.Build(input);
     }
 
     /// <summary>

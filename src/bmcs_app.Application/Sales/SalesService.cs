@@ -1,4 +1,5 @@
 using bmcs_app.Application.Billing;
+using bmcs_app.Application.Closing;
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Order;
 using bmcs_app.Application.Receipt;
@@ -22,6 +23,7 @@ public class SalesService(
     OrderStatusService orderStatusService,
     SalesEditLockService salesEditLockService,
     BillingClosedDateService billingClosedDateService,
+    MonthlyClosedService monthlyClosedService,
     SettlementService settlementService,
     ICurrentEmployeeContext currentEmployeeContext,
     ILogger<SalesService> logger)
@@ -57,6 +59,13 @@ public class SalesService(
         if (!dateCheck.IsAllowed)
         {
             throw new SalesOperationException(dateCheck.Reason!);
+        }
+
+        var monthlyClosedReason = await monthlyClosedService.CheckEntryAsync(
+            lines[0].CustomerCode, lines[0].SlipDate, "売上日付", cancellationToken);
+        if (monthlyClosedReason is not null)
+        {
+            throw new SalesOperationException(monthlyClosedReason);
         }
 
         var employeeCode = currentEmployeeContext.EmployeeCode;

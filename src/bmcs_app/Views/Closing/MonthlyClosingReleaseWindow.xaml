@@ -1,0 +1,79 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Closing.MonthlyClosingReleaseWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:beh="clr-namespace:bmcs_app.Behaviors"
+                 Title="bmcs_app - 月次締め解除処理"
+                 Height="640" Width="980"
+                 WindowStartupLocation="CenterScreen"
+                 WindowTransitionsEnabled="False">
+    <!--
+        TODO.md 9-3。指定した年月の確定済みmonthly_closingsをまとめて解除済にする（非破壊）。
+        月次締め処理（MonthlyClosingWindow）とは別画面とする（C-8・2026-09-10確定）。
+        入力は集計年月のみで、対象を一覧表示してから一括で解除する（プレビューはボタンを持たず
+        条件変更時に自動再取得する）。対象の中に解除できないものが1件でもあれば解除実行を
+        無効化する（All-or-nothing）。権限はメニュー単位の判定のみ（管理者専用メニュー）。
+    -->
+    <mah:MetroWindow.InputBindings>
+        <KeyBinding Key="F8" Command="{Binding ReleaseCommand}" />
+    </mah:MetroWindow.InputBindings>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" /> <!-- 条件 -->
+            <RowDefinition Height="*" />    <!-- 一覧 -->
+            <RowDefinition Height="Auto" /> <!-- 合計 -->
+            <RowDefinition Height="Auto" /> <!-- StatusBar -->
+        </Grid.RowDefinitions>
+
+        <!-- ===== 条件 ===== -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="集計年月" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox Width="140" Margin="0,0,16,0"
+                      beh:FocusBehavior.IsInitialFocus="True"
+                      ItemsSource="{Binding MonthOptions}"
+                      SelectedItem="{Binding SelectedMonth}"
+                      DisplayMemberPath="Display" />
+            <Button Content="解除実行 (F8)" Command="{Binding ReleaseCommand}" Padding="16,6" />
+        </StackPanel>
+
+        <!-- ===== 一覧 ===== -->
+        <ListView Grid.Row="1" ItemsSource="{Binding Results}">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="得意先コード" Width="90" DisplayMemberBinding="{Binding CustomerCode}" />
+                    <GridViewColumn Header="得意先名" Width="170" DisplayMemberBinding="{Binding CustomerName}" />
+                    <GridViewColumn Header="税区分" Width="80">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding TaxUnit, Converter={StaticResource EnumDisplayConverter}}" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="前月残高" Width="100" DisplayMemberBinding="{Binding PreviousBalance, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="入金額" Width="100" DisplayMemberBinding="{Binding ReceiptAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="売上額" Width="100" DisplayMemberBinding="{Binding SalesAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="消費税" Width="90" DisplayMemberBinding="{Binding TaxAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="当月残高" Width="100" DisplayMemberBinding="{Binding ClosingBalance, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="確定日時" Width="130" DisplayMemberBinding="{Binding ConfirmedAt, StringFormat={}{0:yyyy/MM/dd HH:mm}}" />
+                    <GridViewColumn Header="備考" Width="260" DisplayMemberBinding="{Binding BlockReason}" />
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <!-- ===== 合計 ===== -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
+            <TextBlock Text="対象の当月残高 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBlock Text="{Binding TotalClosingBalance, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" />
+            <TextBlock Text="処理中..." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="OrangeRed"
+                       Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </StackPanel>
+
+        <!-- ===== StatusBar ===== -->
+        <StatusBar Grid.Row="3">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" />
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</mah:MetroWindow>

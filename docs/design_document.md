@@ -1598,13 +1598,13 @@ TODO.md 8-1の文面は「元帳データのマージ実装」（サービス層
 | # | 内容 |
 |---|---|
 | R1 | `BillingReleaseService`は締め解除時に`sales.billing_number`をNULLに戻すが`receipt_allocations`は触らないため、解除済み`billings`を指す充当行が残留しうる。元帳は`receipt_allocations`を参照しない設計のため影響なし（観測事実として記録） |
-| R2 | 元帳の残高と`billing.current_billing_amount`の一致は「遡及入力が無い」前提でのみ成立する。締め後に過去日付の**新規**売上・入金を登録することはC-6の編集ロック（既存行の編集のみ対象）では防げない。元帳は常に実データからの都度集計なので**元帳が正、`billings`は締め時点のスナップショット**であり、この不一致を検出して例外を投げてはならない（正常な業務オペレーションで起こりうる）。**請求締め分は25章「ジャーナル系の日付制限」（2026-09-16実装）で新規登録・日付変更自体を禁止する形で解消済み。月次締め分はPhase 9-1実装時に改めて考慮すること（25-2参照）** |
+| R2 | 元帳の残高と`billing.current_billing_amount`の一致は「遡及入力が無い」前提でのみ成立する。締め後に過去日付の**新規**売上・入金を登録することはC-6の編集ロック（既存行の編集のみ対象）では防げない。元帳は常に実データからの都度集計なので**元帳が正、`billings`は締め時点のスナップショット**であり、この不一致を検出して例外を投げてはならない（正常な業務オペレーションで起こりうる）。**請求締め分は25章「ジャーナル系の日付制限」（2026-09-16実装）で新規登録・日付変更自体を禁止する形で解消済み。月次締め分はPhase 9-1実装時に改めて考慮すること（25-2参照）**。**月次締め分はPhase 9-2で解消（2026-09-30、29章）** |
 | R3 | Phase 7-3（振込手数料差額の入力）実装時、`fee_adjustment_amount`が非ゼロになると元帳の残高に残渣が残りうる。`billing.receipt_amount`も`Σ receipt.Amount`（手数料を含まない）なので両者は一致し元帳固有の問題ではないが、「手数料差額を残高からどう落とすか」の業務判断が7-3で必要になる |
 | R4 | 1伝票の明細行が請求済・未請求に分かれると`tax_unit=2`の`slip_tax_amount`（伝票単位の値）が実態とずれうるが、締め時に`BillingClosingService.CalculateTaxSummary`が検出して例外を投げるため、元帳側に独自の整合チェックは入れていない（元帳は照会画面であり業務ルール違反の検出責務は6-1側） |
 | R5 | `scripts/seed_dev_data.sql`の`monthly_closings`（2026-01/02分）は売上・入金の実データ（2026-07/08分）と月が重ならないため、Phase 9-1実装時にはseedデータの作り直しが必要になる見込み |
-| R6 | Phase 9-1は`CustomerLedgerQueryService.GetAsync(code, 月初, 月末)`の結果を`monthly_closings`の各列にそのまま詰めるだけで済む（`OpeningBalance`/`SalesTotal`/`TaxTotal`/`ReceiptTotal`/`ClosingBalance`が`previous_balance`/`sales_amount`/`tax_amount`/`receipt_amount`/`closing_balance`と1:1対応）。ただし税率別内訳5カラムは`CustomerLedgerResult`に含めていないため、9-1で追加が必要 |
+| R6 | Phase 9-1は`CustomerLedgerQueryService.GetAsync(code, 月初, 月末)`の結果を`monthly_closings`の各列にそのまま詰めるだけで済む（`OpeningBalance`/`SalesTotal`/`TaxTotal`/`ReceiptTotal`/`ClosingBalance`が`previous_balance`/`sales_amount`/`tax_amount`/`receipt_amount`/`closing_balance`と1:1対応）。ただし税率別内訳5カラムは`CustomerLedgerResult`に含めていないため、9-1で追加が必要。**Phase 9-1で対応済み（2026-09-30、29章）**。ただし消費税額は`OpeningBalance`ではなく前月確定行の当月残高を起点に逆算するため、`TaxTotal`の1:1流用ではない。税率別内訳5列は`MonthlyClosingCalculator`が別途計算する |
 | R7 | 性能の逃げ道（本タスクでは未実装）: `GetAsync`に`historyFrom`のような引数を足し、それ以前を`monthly_closings`の確定残高で置き換える拡張が考えられる。M-11「性能問題が出た場合に残高キャッシュ列を追加する」に沿う |
-| R8 | **Phase E（2026-09-29実装）でR6の前提が請求集約元に対して崩れた**。請求集約元の`GetAsync`は取引履歴のみモード（`IsTransactionHistoryOnly`）を返し、`OpeningBalance`/`TaxTotal`/`ReceiptTotal`/`ClosingBalance`が常に0になる（残高・繰越を管理しないため。28-2節#6）。一方28-2節#9はPhase 9-1が請求集約元ごとに個別集計する方針を求めており、その個別集計は「請求集約元自身の売上のみの金額」であって「請求集約元の元帳の残高」ではない。Phase 9-1実装時は請求集約元に対して`GetAsync`をR6のとおり1:1で流用せず、`SalesTotal`（＝取引履歴のみモードでも実値）のみを使うか、別途得意先単位の売上集計を用意すること |
+| R8 | **Phase E（2026-09-29実装）でR6の前提が請求集約元に対して崩れた**。請求集約元の`GetAsync`は取引履歴のみモード（`IsTransactionHistoryOnly`）を返し、`OpeningBalance`/`TaxTotal`/`ReceiptTotal`/`ClosingBalance`が常に0になる（残高・繰越を管理しないため。28-2節#6）。一方28-2節#9はPhase 9-1が請求集約元ごとに個別集計する方針を求めており、その個別集計は「請求集約元自身の売上のみの金額」であって「請求集約元の元帳の残高」ではない。Phase 9-1実装時は請求集約元に対して`GetAsync`をR6のとおり1:1で流用せず、`SalesTotal`（＝取引履歴のみモードでも実値）のみを使うか、別途得意先単位の売上集計を用意すること。**Phase 9-1で対応済み（2026-09-30、29章）**: 請求集約元の行は自社売上と税率別対価額のみ、その他は0 |
 
 ### 21-5. seedデータでの手計算検証（完了条件の直接証跡）
 
@@ -2091,9 +2091,9 @@ IsEditable}"`（`IsEditable => !IsEditLocked`）で読取専用にする。受�
 - **対象画面は売上入力・入金入力の2画面のみ。** 明細入金（都度得意先専用）・受注入力は対象外。
 - **都度得意先（`tax_unit=3`）は制限しない。** `billings`を1件も持たないため、税単位で分岐せずとも
   自動的に無制限になる（後述）。
-- **月次締め（`monthly_closings`）は対象外。** Phase 9未実装であることに加え、月次締めは得意先×
-  暦月の任意集合であり許可日が連続にならないため、`DatePicker.DisplayDateStart`（単一の最小日付）
-  という設計と相性が悪い。Phase 9-1実装時に、月次締め分の登録制限をどう表現するか改めて設計する。
+- **月次締め（`monthly_closings`）は本章の対象外。** 月次締めは得意先×暦月の任意集合であり許可日が
+  連続にならないため、`DatePicker.DisplayDateStart`（単一の最小日付）という設計と相性が悪い。
+  **Phase 9-2で、保存時のApplication層検証として別途実装した（29章）。**
 
 ### 25-3. 判定ルール: `BillingClosedDateEvaluator`
 
@@ -2155,7 +2155,7 @@ DBアクセスは`src/bmcs_app.Application/Billing/BillingClosedDateService.cs`�
 
 ### 25-7. 申し送り
 
-- 21-4章のR2は請求締め分について本章で解消した。月次締め分は25-2のとおりPhase 9-1へ再申し送り。
+- 21-4章のR2は請求締め分について本章で解消した。月次締め分はPhase 9-2で解消した（29章）。
 
 ---
 
@@ -2369,3 +2369,78 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 **Presentation（元帳画面）**: `CustomerLedgerViewModel`に`IsTransactionHistoryOnly`・その反転の`IsBalanceVisible`・案内文`AggregationNotice`を追加。請求集約元では`GetBalanceAsOfAsync`の呼び出しをスキップし、「「{得意先名}」は請求集約元です。請求・消費税・残高は請求集約先「{コード}」に集約されています。この画面には売上（税抜）のみを表示します。」を表示する（入金入力画面の既存の拒否メッセージと同じくコードのみを出す作法に合わせた）。`CustomerLedgerLineViewModel`に`CustomerLabel`（得意先欄）・`BalanceDisplay`（取引履歴のみモードでは`null`を返し残高欄を空欄にする。`Entry.Balance`が非nullableのため専用コンバーターを作らない既存慣行に従いViewModel側でnullableにした）を追加。XAMLは「得意先」列を常時表示で追加（`GridViewColumn`に`Visibility`がなく条件付き非表示は割に合わないため。ユーザー確認済み）、残高列のバインドを`BalanceDisplay`に差し替え、現在残高・前月繰越・消費税計・入金額計・残高の各表示を`IsBalanceVisible`でまとめて非表示にする。
 
 **テスト**: `tests/bmcs_app.Domain.Tests/Calculations/CustomerLedgerBuilderTests.cs`に2件追加（請求集約先の元帳がグループ内の請求集約元の売上・入金を合算し個別丸めとは異なる値になることの証明、請求集約元の元帳が取引履歴のみで残高・繰越・税・入金を持たないこと）。`tests/bmcs_app.Application.Tests/Ledger/CustomerLedgerQueryServiceTests.cs`に2件追加（請求集約先の`GetAsync`がグループ展開されること、請求集約元の`GetAsync`が取引履歴のみを返し`GetBalanceAsOfAsync`が`null`を返すこと）。全体テスト（Domain 301件全green／Applicationは開発用DBのseedデータ乖離による既知の失敗127件を除き全green、Phase 12-D時点の125件から2件増加。**増加分はいずれも本タスクで追加した2件の新規テストが既存の`products`／`bank_accounts`マスタ乖離という既知の原因でFK違反になったものであり、新規のロジック不具合ではない**。実際にproducts/bank_accountsに実在するコードへ一時的に差し替えて実行し、両テストがグループ合算・取引履歴のみモードとも正しく振る舞うことを確認済み（差し替えはコミットしていない）。開発用ライブDBには請求集約ペアのマスタ行が既に存在する（`1001`＝請求集約先 ← `1005`＝請求集約元、両者とも伝票は0件）ことをSQLCMDで確認済み。実機確認は`dotnet run`でのアプリ起動まで（UI Automationはこのセッションでは未実施）。
+
+## 29. 月次締め処理（Phase 9-1、2026-09-30実装）
+
+全得意先の暦月末売掛残高を`monthly_closings`に確定保存する画面・処理。画面の骨組みは請求締め処理（9章）と同じ。違いは次の2点（ユーザー指示）。
+
+- 締め日のコンボボックスは持たない（全得意先が対象）。
+- 請求日の代わりに「集計年月」（暦月）を選ぶ。ComboBoxで当月から過去24か月までを選べ、既定値は前月。年月は日付ではないため、X-5の「日付欄はDatePickerに統一」の対象外とした。
+
+一覧は選んだ年月の確定済み`monthly_closings`（解除済みを除く）。年月を変えると自動で再取得する。締め確定（F10）は実行前に確認ダイアログを挟む。帳票が無いため印刷ボタンは持たない。
+
+### 金額の決め方（2026-09-30ユーザー確認）
+
+計算は`MonthlyClosingCalculator`（Domain純粋関数）、入力は元帳（`CustomerLedgerQueryService.GetInputAsync`）と共通。
+
+| 項目 | 値 |
+|---|---|
+| 当月残高 | 元帳の月末残高（`CustomerLedgerResult.ClosingBalance`）そのまま。完了条件「集計値が元帳の残高と一致する」はこれで満たす |
+| 前月残高 | 前月の確定行の当月残高。確定行が無ければ元帳の月初残高 |
+| 売上額・入金額 | 元帳の`SalesTotal`・`ReceiptTotal` |
+| 消費税額 | `当月残高 − 前月残高 − 売上額 + 入金額`で逆算する |
+
+`tax_unit=1`（請求単位）では、前月に仮計算した税が請求締め後に確定値へ置き換わり、前月行の当月残高と「元帳を今計算し直した月初残高」が食い違うことがある（`database-schema.md` 2.16節の「確定した行の税額は都度再計算しても異なる値になり得る」）。「前月残高＝前月行の当月残高」の連続性を優先し、そのずれを消費税額で吸収する。確定した時点では元帳の月末残高と完全に一致する。
+
+- **請求集約先**: 元帳の値（グループ合算）をそのまま入れる。
+- **請求集約元**: 自社の売上額と税率別の対価額だけを入れ、前月残高・入金額・消費税額・当月残高・税率別の税額は0にする（21章 R8の方針）。この行は残高の計算式が成り立たず、行を合計すると売上が請求集約先の行と二重に数えられる。集計に使うときは請求集約元の行を除くこと。
+- **`tax_unit=3`（内税・都度得意先）**: 売上額は税抜額（`Amount − TaxAmount`）、消費税額は内税額の合計。売上＋消費税が税込額になる。
+- **税率別内訳5列**: 対価額は当月売上を税種別区分ごとに合計する。税額は`tax_unit=2`が当月の伝票を伝票ごとに再計算した合計（保存済みの`slip_tax_amount`と一致しなければ`MonthlyClosingException`）、`tax_unit=1`が「当月の請求日を持つ確定済み請求の税額＋仮計算税の当月増分」。上記の逆算で吸収したずれは内訳に配分しないため、**内訳の税額合計が消費税額と一致しないことがある**。
+
+### 対象外・スキップ・上書き
+
+- 「前月残高・売上・入金・当月残高がすべて0」の得意先は締めない。
+- 当月が確定済み、より後の年月が確定済み、前月が解除済み、のいずれかの得意先は飛ばす（理由を画面に表示）。
+- 当月の行が解除済みの場合、主キー（`closing_date`, `customer_code`）が同じため新しい行を作れない。既存行を今回の集計値で上書きして確定に戻し、解除日時・解除者をクリアする（ログに件数を残す）。
+- 担当者別の売上・粗利の集計は今回の対象外（別タスクとしてTODO.mdに追加）。
+
+### 実装
+
+- Domain: `MonthlyClosingCalculator`。`CustomerLedgerBuilder`に`ProvisionalTaxBucketsAsOf`（税率別版）を追加し、`ProvisionalTaxAsOf`はその合計を返す形にした。
+- Application（`Closing/`）: `MonthlyClosingService.ConfirmAsync(year, month)`、`MonthlyClosingQueryService.GetByMonthAsync`。`CustomerLedgerQueryService.GetInputAsync`を`GetAsync`から切り出して公開した。`ConfirmAsync`は独自にトランザクションを開き、追跡中の`MonthlyClosing`を最初と最後に破棄する（画面のスコープは複数回の確定をまたぐため、古い状態値を持ち越さない）。
+- Presentation: `MonthlyClosingWindow`／`MonthlyClosingViewModel`。メニューは`MNU_MONTHLY`（月次）→`MNU_MONTHLY_CLOSE`（月次締め処理、権限レベル1、`monthly_closing`）を`scripts/014_seed_menu_structure.sql`に追加した。同スクリプトが旧テーブル名`dbo.menu`のままだった（019で`menus`に改名済み）ため、あわせて`dbo.menus`に直した。
+- テスト: `MonthlyClosingServiceTests`（結合7件。2020年1〜2月のみ締め、後始末でその月の`monthly_closings`を全件削除する）。
+
+### 29-2. 確定後のロック（Phase 9-2、2026-09-30実装）
+
+9-1で`monthly_closings`に行ができたことで、既存行の編集ロック（`SalesEditLockService`・`ReceiptEntryService.EvaluateEditLockAsync`・`DetailReceiptEntryService.EvaluateEditLockAsync`）は実データで効く。9-2では次の2点の穴を塞いだ（ユーザー確認済み）。
+
+**判定ルール（`MonthlyClosedService.IsClosedAsync`に集約）**: 得意先Cの日付Dは、`monthly_closings`に「`closing_date`＝Dの月末日、`closing_status`＝確定、`customer_code`がCまたはCの請求集約先（`customers.billing_customer_code`）」の行があれば月次締め済み。解除済みは含めない。3か所の編集ロックの月次判定はこのクラスに置き換えた。
+
+1. **新規登録・日付変更の禁止（保存時にApplication層で検証）**
+   - 対象: `SalesService.CreateAsync`（`SalesOperationException`）、`ReceiptEntryService.SaveNewAsync`（`ReceiptEntryException`）、`DetailReceiptEntryService.SaveNewAsync`（`DetailReceiptEntryException`）。25章の請求締めの日付検証の隣に`MonthlyClosedService.CheckEntryAsync`を差し込んだ。
+   - 訂正による日付変更は、訂正後の状態で編集ロックを再評価する既存処理（`SalesService.UpdateAsync`・`ReceiptEntryService.UpdateAsync`・`DetailReceiptEntryService.UpdateAsync`）が同じ判定を使うので、追加の検証は不要。
+   - 画面側の`DisplayDateStart`による制限は付けない（締め済みの月が飛び飛びになるため。25-2・25-5と同じ理由）。締め済みの月を選んで保存するとエラーメッセージで知らせる。
+2. **請求集約先の行でもロックする**: 請求集約先の月次行はグループ全体（請求集約元の売上・入金）を含むため、請求集約元に自分の月次行が無くても、請求集約先が確定済みなら請求集約元の売上・入金も登録・訂正・取消できない。9-1の設計資料（2.16節）の「`customer_code`＋年月」に「請求集約先の行」を足した拡張。
+
+テスト: `MonthlyClosedLockTests`（結合6件。2020年の月のみ使用、得意先コードで後始末）。`SalesServiceCorrectionTests`の「月次締め確定済みの年月への訂正は拒否される」は、締め済みの月への新規登録が拒否されるようになったため、未締めの月に登録してから月次締めの行を入れる順序（実際の業務順序）に直した（ルールは緩めていない）。
+
+### 29-3. 月次締め解除（Phase 9-3、2026-09-30実装）
+
+指定した年月の確定済み`monthly_closings`を全得意先まとめて解除済にする画面・処理。月次締め処理（9-1）とは別ウィンドウ（C-8）。構成は締め解除処理（請求。16章）と同じ。
+
+- **権限はメニュー単位の判定のみ（C-8）。** 「月次締め解除処理」（`MNU_MONTHLY_RELEASE`、`monthly_release`）を権限レベル9（管理者）で登録した。一般社員（レベル1）にはメニューが表示されず画面を開けない。画面内・サービス内には権限判定を持たない（請求の締め解除処理と同じ方式）。
+- **入力は集計年月のみ。** 画面表示時・年月変更時に自動で対象一覧（確定済みの行）を取得し、解除実行（F8）のみ明示操作にする。実行前に確認ダイアログを挟む。
+- **All-or-nothing。** 対象のうち1件でも解除できないものがあれば、何も更新せず全体を中止する。一覧の備考欄に理由を出し、1件でもあれば解除実行を無効にする。
+- **解除できない条件**: その得意先に、より後の年月の確定済み行がある。解除すると、後の月の前月残高（前月確定行の当月残高。29章）とのつながりが切れるため。新しい月から順に解除する運用になる（請求の「締め順序の逆転」と同型）。
+- **非破壊。** `closing_status`を解除済にし、`released_at`／`released_by`・`updated_by`／`updated_at`を設定する。物理削除しない。他のテーブルは更新しない。編集ロックは導出方式なので、解除すると29-2の判定から外れ、その月の伝票を再び登録・訂正・取消できる。
+- **再確定**は月次締め処理（9-1）が解除済みの行を上書きして確定に戻す（この画面に再確定の機能は置かない）。
+
+実装: `MonthlyClosingReleaseService`（`PreviewAsync`／`ReleaseAsync`。`MonthlyClosingException`を再利用）、`MonthlyClosingReleaseWindow`／`MonthlyClosingReleaseViewModel`。テスト: `MonthlyClosingReleaseServiceTests`（結合3件。2020年1〜2月のみ使用、後始末でその月の`monthly_closings`を全件削除）。権限レベルによるメニューの出し分けは既存の`MenuTreeBuilderTests`で担保している。
+
+### 申し送り
+
+- 月次締め解除後は29-2の判定から外れ、再び登録・訂正・取消できる。
+- 得意先1件だけを解除する機能は持たない（年月単位の一括のみ）。必要になった場合は別途設計する。
+- 都度得意先（明細入金・売上）も月次締めの対象なので、判定は税単位で分岐しない。
+- 受注入力は月次締めの対象外（受注は請求・消込・残高の対象外。C-6）。

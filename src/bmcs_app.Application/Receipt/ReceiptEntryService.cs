@@ -1,4 +1,5 @@
 using bmcs_app.Application.Billing;
+using bmcs_app.Application.Closing;
 using bmcs_app.Application.Common;
 using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Enums;
@@ -42,6 +43,7 @@ public class ReceiptEntryService(
     SettlementService settlementService,
     SlipNumberService slipNumberService,
     BillingClosedDateService billingClosedDateService,
+    MonthlyClosedService monthlyClosedService,
     ICurrentEmployeeContext currentEmployeeContext,
     ILogger<ReceiptEntryService> logger)
 {
@@ -87,6 +89,12 @@ public class ReceiptEntryService(
         if (!dateCheck.IsAllowed)
         {
             throw new ReceiptEntryException(dateCheck.Reason!);
+        }
+
+        var monthlyClosedReason = await monthlyClosedService.CheckEntryAsync(customerCode, receiptDate, "入金日付", cancellationToken);
+        if (monthlyClosedReason is not null)
+        {
+            throw new ReceiptEntryException(monthlyClosedReason);
         }
 
         var receiptAmount = lines.Sum(l => l.Amount);
@@ -183,7 +191,7 @@ public class ReceiptEntryService(
     /// <summary>
     /// 対象の`receipt`行が訂正・取消不可かどうかを判定する（TODO.md 7-5）。
     /// ①月次締め: 得意先・伝票日付の年月に対応する確定済み<c>monthly_closing</c>が存在する
-    /// （Phase 9未実装のため現状は常に false だが、実装時に自動的に効くようクエリだけ用意しておく）。
+    /// （請求集約先の行が確定済みの場合も含む。判定は<c>MonthlyClosedService</c>に集約）。
     /// ②請求締めスナップショット: 伝票日付が、その得意先の確定済み<c>billing</c>のうち最新の
     /// <c>billing_date</c>以前（＝いずれかの確定済み請求の集計期間に含まれる）。
     /// このクラスの doc comment を参照（なぜ充当完了・請求への充当自体をロック条件にしないか）。
@@ -193,16 +201,8 @@ public class ReceiptEntryService(
     {
         var customerCode = lines[0].CustomerCode;
         var receiptDate = lines[0].ReceiptDate;
-        var monthEndDate = new DateOnly(
-            receiptDate.Year, receiptDate.Month, DateTime.DaysInMonth(receiptDate.Year, receiptDate.Month));
 
-        var monthlyClosingConfirmed = await dbContext.MonthlyClosings
-            .AsNoTracking()
-            .AnyAsync(
-                m => m.CustomerCode == customerCode
-                    && m.ClosingDate == monthEndDate
-                    && m.ClosingStatus == ClosingStatus.Confirmed,
-                cancellationToken);
+        var monthlyClosingConfirmed = await monthlyClosedService.IsClosedAsync(customerCode, receiptDate, cancellationToken);
         if (monthlyClosingConfirmed)
         {
             return new SalesEditLock(true, "月次締め済みのため訂正・取消できません。");
