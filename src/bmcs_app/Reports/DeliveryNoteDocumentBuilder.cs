@@ -304,7 +304,8 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
 
         if (data.Lines.Any(l => l.TaxCategory == TaxCategory.Reduced))
         {
-            var reducedNote = Tb("※ は軽減税率（8%）対象商品です", 9);
+            var reducedRate = data.Lines.First(l => l.TaxCategory == TaxCategory.Reduced).TaxRate;
+            var reducedNote = Tb($"※ は軽減税率（{reducedRate:0.##}%）対象商品です", 9);
             reducedNote.Margin = new Thickness(0, 0, 0, 4);
             reducedNote.Foreground = Brushes.Gray;
             panel.Children.Add(reducedNote);

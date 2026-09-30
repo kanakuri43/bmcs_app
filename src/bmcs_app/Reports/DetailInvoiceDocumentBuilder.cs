@@ -163,7 +163,8 @@ public sealed class DetailInvoiceDocumentBuilder(DetailInvoiceData data) : Paged
 
         if (data.Lines.Any(l => l.TaxCategory == TaxCategory.Reduced))
         {
-            var reducedNote = Tb("※ は軽減税率（8%）対象商品です", 7);
+            var reducedRate = data.Lines.First(l => l.TaxCategory == TaxCategory.Reduced).TaxRate;
+            var reducedNote = Tb($"※ は軽減税率（{reducedRate:0.##}%）対象商品です", 7);
             reducedNote.Margin = new Thickness(0, 8, 0, 0);
             reducedNote.Foreground = Brushes.Gray;
             panel.Children.Add(reducedNote);

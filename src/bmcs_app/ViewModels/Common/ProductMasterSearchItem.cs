@@ -34,8 +34,8 @@ public sealed record ProductMasterSearchItem(
 
     internal static string TaxCategoryDisplayOf(TaxCategory taxCategory) => taxCategory switch
     {
-        TaxCategory.Standard => "課税10%",
-        TaxCategory.Reduced => "軽減8%",
+        TaxCategory.Standard => "通常税率",
+        TaxCategory.Reduced => "軽減税率",
         TaxCategory.TaxExempt => "非課税",
         _ => taxCategory.ToString(),
     };
