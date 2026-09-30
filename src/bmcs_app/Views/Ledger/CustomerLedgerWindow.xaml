@@ -4,7 +4,7 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="bmcs_app - 得意先元帳"
-                 Height="760" Width="1400"
+                 Height="760" Width="1600"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
@@ -58,16 +58,6 @@
                          Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                 <TextBlock Text="{Binding TaxUnitDisplay}" VerticalAlignment="Center" Margin="0,0,24,0"
                            Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-
-                <!-- 現在残高（TODO.md 8-2）。検索期間とは独立に、得意先確定時と表示(F5)実行時に
-                     都度計算する（残高キャッシュ列は持たない。M-11）。請求集約元（取引履歴のみ
-                     モード、TODO.md 12-E）は残高を管理しないため非表示にする。 -->
-                <StackPanel Orientation="Horizontal"
-                            Visibility="{Binding IsBalanceVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <TextBlock Text="現在残高" VerticalAlignment="Center" Margin="0,0,4,0" FontWeight="Bold" />
-                    <TextBlock Text="{Binding CurrentBalance, StringFormat={}{0:N0}}" VerticalAlignment="Center"
-                               Margin="0,0,24,0" FontWeight="Bold" Foreground="{DynamicResource MahApps.Brushes.Accent}" />
-                </StackPanel>
 
                 <TextBlock Text="期間" VerticalAlignment="Center" Margin="0,0,8,0" />
                 <DatePicker Width="120" Margin="0,0,4,0"
@@ -169,6 +159,15 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <!-- 前月繰越・消費税計・入金額計・残高は請求集約元（取引履歴のみモード、TODO.md 12-E）
                      では管理しないため非表示にする。売上額計は常に表示する（税抜）。 -->
+                <!-- 現在残高（TODO.md 8-2）。検索期間とは独立に、得意先確定時と表示(F5)実行時に
+                     都度計算する（残高キャッシュ列は持たない。M-11）。 -->
+                <StackPanel Orientation="Horizontal"
+                            Visibility="{Binding IsBalanceVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="現在残高" VerticalAlignment="Center" Margin="0,0,4,0" FontWeight="Bold" />
+                    <TextBlock Text="{Binding CurrentBalance, StringFormat={}{0:N0}}" VerticalAlignment="Center"
+                               Margin="0,0,32,0" FontWeight="Bold" Foreground="{DynamicResource MahApps.Brushes.Accent}" />
+                </StackPanel>
+
                 <StackPanel Orientation="Horizontal"
                             Visibility="{Binding IsBalanceVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <TextBlock Text="前月繰越" VerticalAlignment="Center" Margin="0,0,4,0" />
@@ -186,7 +185,7 @@
                     <TextBlock Text="入金額計" VerticalAlignment="Center" Margin="0,0,4,0" />
                     <TextBlock Text="{Binding ReceiptTotal, StringFormat={}{0:N0}}" VerticalAlignment="Center" Margin="0,0,20,0" />
 
-                    <TextBlock Text="残高" VerticalAlignment="Center" Margin="0,0,4,0" FontWeight="Bold" FontSize="16" />
+                    <TextBlock Text="期間残高" VerticalAlignment="Center" Margin="0,0,4,0" FontWeight="Bold" FontSize="16" />
                     <TextBlock Text="{Binding ClosingBalance, StringFormat={}{0:N0}}" VerticalAlignment="Center"
                                FontWeight="Bold" FontSize="16" Foreground="{DynamicResource MahApps.Brushes.Accent}" />
                 </StackPanel>
