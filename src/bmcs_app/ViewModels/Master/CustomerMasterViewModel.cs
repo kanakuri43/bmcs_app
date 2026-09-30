@@ -139,6 +139,7 @@ public partial class CustomerMasterViewModel(
         if (customer is not null)
         {
             await ApplyCustomerAsync(customer);
+            RequestFocus("Name");
         }
     });
 
@@ -175,6 +176,7 @@ public partial class CustomerMasterViewModel(
         {
             BillingCustomerCodeText = customer.CustomerCode;
             BillingCustomerName = customer.CustomerName;
+            RequestFocus(IsClosingTypeEditable ? "RoundingType" : "PrintRepresentative");
         }
     });
 
@@ -203,6 +205,7 @@ public partial class CustomerMasterViewModel(
         {
             BankAccountCode1Text = bankAccount.BankAccountCode;
             BankAccount1Label = FormatBankAccountLabel(bankAccount);
+            RequestFocus("BankAccount2");
         }
     });
 
@@ -231,6 +234,7 @@ public partial class CustomerMasterViewModel(
         {
             BankAccountCode2Text = bankAccount.BankAccountCode;
             BankAccount2Label = FormatBankAccountLabel(bankAccount);
+            RequestFocus("NewButton");
         }
     });
 

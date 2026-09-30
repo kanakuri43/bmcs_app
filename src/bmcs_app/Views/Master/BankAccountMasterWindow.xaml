@@ -39,7 +39,7 @@
                     </TextBox>
 
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="銀行名" Margin="0,0,12,8" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BankName}" Margin="0,0,0,8" />
+                    <TextBox Grid.Row="1" Grid.Column="1" beh:FocusBehavior.FocusKey="Name" Text="{Binding BankName}" Margin="0,0,0,8" />
 
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="支店名" Margin="0,0,12,8" VerticalAlignment="Center" />
                     <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding BranchName}" Margin="0,0,0,8" />

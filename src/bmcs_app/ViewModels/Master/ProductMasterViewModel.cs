@@ -71,6 +71,7 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
         if (product is not null)
         {
             ApplyProduct(product);
+            RequestFocus("Name");
         }
     }
 

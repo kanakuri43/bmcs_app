@@ -53,6 +53,7 @@ public partial class EmployeeMasterViewModel(EmployeeService employeeService, Wi
         if (employee is not null)
         {
             ApplyEmployee(employee);
+            RequestFocus("Name");
         }
     }
 

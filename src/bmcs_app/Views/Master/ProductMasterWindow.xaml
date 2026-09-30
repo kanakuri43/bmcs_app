@@ -39,7 +39,7 @@
                     </TextBox>
 
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="商品名" Margin="0,0,12,8" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ProductName}" Margin="0,0,0,8" />
+                    <TextBox Grid.Row="1" Grid.Column="1" beh:FocusBehavior.FocusKey="Name" Text="{Binding ProductName}" Margin="0,0,0,8" />
 
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="カナ" Margin="0,0,12,8" VerticalAlignment="Center" />
                     <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ProductNameKana}" Margin="0,0,0,8" />

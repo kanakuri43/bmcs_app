@@ -66,6 +66,7 @@ public partial class BankAccountMasterViewModel(BankAccountService bankAccountSe
         if (bankAccount is not null)
         {
             ApplyBankAccount(bankAccount);
+            RequestFocus("Name");
         }
     }
 

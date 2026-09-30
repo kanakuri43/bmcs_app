@@ -56,6 +56,7 @@ public partial class DepositMethodMasterViewModel(DepositMethodService depositMe
         if (depositMethod is not null)
         {
             ApplyDepositMethod(depositMethod);
+            RequestFocus("Name");
         }
     }
 
