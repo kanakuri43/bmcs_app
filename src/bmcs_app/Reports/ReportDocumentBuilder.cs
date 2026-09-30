@@ -227,18 +227,18 @@ public abstract class ReportDocumentBuilder
 
     /// <summary>
     /// 振込先口座ボックス（<see cref="BuildBillingBankAccountsBox"/>）の高さの見積り
-    /// （見出し1行＋4行＋Border/Padding/Margin）。<see cref="PagedReportDocumentBuilder.FullHeaderHeight"/>
+    /// （見出し1行＋2行＋Border/Padding/Margin）。<see cref="PagedReportDocumentBuilder.FullHeaderHeight"/>
     /// の算出に使う。安全側（実際より大きい値）に見積る。過大見積りは1ページの明細行数が
     /// 減るだけで安全だが、過小見積りは最終ページで本文とフッターが重なる原因になるため
     /// （<see cref="PagedReportDocumentBuilder.Build"/>参照）。
     /// </summary>
-    protected const double BillingBankAccountsBoxHeightEstimate = 100.0;
+    protected const double BillingBankAccountsBoxHeightEstimate = 70.0;
 
     /// <summary>
     /// 振込先口座ボックス（請求書・明細請求書用。発行者情報ボックス（<see cref="BuildCompanyInfoBox"/>）
     /// の直下に独立した枠として置く）。得意先マスタに紐づけた口座（最大2件、
     /// <c>customers.bank_account_code1</c>／<c>bank_account_code2</c>）をスロット順に印字する。
-    /// 紐づけが0〜1件でも常に「見出し1行＋4行」の固定行数で組み立てることで、得意先によって
+    /// 1口座1行（口座名義は印字しない）。紐づけが0〜1件でも常に「見出し1行＋2行」の固定行数で組み立てることで、得意先によって
     /// 明細の開始位置がずれないようにする（2026-09-29確定）。行数を固定にしているため、
     /// 高さを明示指定する必要はない（内容量に関わらず自然な高さが常に一定になる）。
     /// </summary>
@@ -253,18 +253,13 @@ public abstract class ReportDocumentBuilder
             if (account is null)
             {
                 panel.Children.Add(Tb("　", 8));
-                panel.Children.Add(Tb("　", 8));
                 continue;
             }
 
             var typeLabel = account.AccountType == BankAccountType.Checking ? "当座" : "普通";
-            var bankLine = Tb($"{account.BankName}　{account.BranchName}支店", 8);
-            bankLine.TextTrimming = TextTrimming.CharacterEllipsis;
-            panel.Children.Add(bankLine);
-
-            var numberLine = Tb($"　{typeLabel}　{account.AccountNumber}　{account.AccountHolderName}", 8);
-            numberLine.TextTrimming = TextTrimming.CharacterEllipsis;
-            panel.Children.Add(numberLine);
+            var line = Tb($"{account.BankName}　{account.BranchName}支店　{typeLabel}　{account.AccountNumber}", 8);
+            line.TextTrimming = TextTrimming.CharacterEllipsis;
+            panel.Children.Add(line);
         }
 
         return new Border
