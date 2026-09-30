@@ -18,8 +18,8 @@
 bmcs_app.sln
 Directory.Build.props
 src/
- ├─ bmcs_app/                  … Presentation (WPF, exe)。ViewModels/Views を Order/Sales/Receipt/Billing/Menu/Master/Common で分割
- ├─ bmcs_app.Application/      … 業務処理層（ユースケース、トランザクション境界）。Order/Sales/Receipt/Billing/Master/Common
+ ├─ bmcs_app/                  … Presentation (WPF, exe)。ViewModels/Views を Order/Sales/Receipt/Billing/Closing/Ledger/Menu/Master/Common で分割
+ ├─ bmcs_app.Application/      … 業務処理層（ユースケース、トランザクション境界）。Order/Sales/Receipt/Billing/Closing/Ledger/Master/Common
  ├─ bmcs_app.Infrastructure/   … データアクセス層（EF Core DbContext, Configurations/）
  └─ bmcs_app.Domain/           … ドメイン層（エンティティ, enum, Calculations/, Numbering/）
 tests/
@@ -29,7 +29,10 @@ scripts/                       … DDL（001, 002, ... 連番。適用済みは�
 docs/                          … 設計文書（下記）
 ```
 
-**進捗（2026-09-17時点）**: Phase 0〜8（得意先元帳）・10（帳票：納品書・請求書・明細請求書）が完了。7-3（振込手数料差額の入力）のみユーザー指示で保留中。Phase 9（月次締め）・11（FlaUI）は未着手。
+**進捗（2026-09-30時点）**: Phase 0〜10・12（親子請求）に加え、**Phase 9（月次締め 9-1〜9-3）が完了**（コミット bd4370d）。7-3（振込手数料差額の入力）のみユーザー指示で保留中。9-4（担当者別売上・粗利の集計、保存せず都度集計）・11（FlaUI）は未着手。
+- 月次締め（Phase 9、詳細は`docs/design_document.md` 29章）: `Application/Closing/`に`MonthlyClosingService`（確定。全得意先を暦月単位、独自トランザクション）・`MonthlyClosingReleaseService`（解除。年月単位一括・非破壊・All-or-nothing）・`MonthlyClosingQueryService`（一覧）・`MonthlyClosedService`（月次締め済み判定の集約。編集ロックと新規登録の禁止の両方が使う）。計算は`Domain/Calculations/MonthlyClosingCalculator`（当月残高＝元帳の月末残高、前月残高＝前月確定行の当月残高（無ければ元帳の月初残高）、消費税額＝逆算で差を吸収。請求集約元の行は自社売上と税率別対価額のみ）。画面は`Views|ViewModels/Closing/`（`MonthlyClosingWindow`、`MonthlyClosingReleaseWindow`）。元帳の入力組み立ては`CustomerLedgerQueryService.GetInputAsync`に切り出し済み。
+- 月次締め済みの判定＝`monthly_closings`に「月末日一致・確定・`customer_code`が売上の得意先またはその請求集約先」の行がある（請求集約先の行でも請求集約元の伝票をロック）。締め済みの月への売上・入金（締め入金・明細入金）の新規登録も保存時に拒否（9-2）。
+- 権限はメニュー単位のみ（C-8）。「月次締め解除処理」はレベル9のメニュー（`scripts/014_seed_menu_structure.sql`、テーブル名は`menus`）。
 - 得意先元帳（Phase 8）: 得意先・期間のいずれかを変更すると自動的に再表示する（`CustomerLedgerViewModel`。2026-09-17、専用の「表示」ボタンは撤去。F5キーは手動再表示用に残す）。
 - 帳票基盤（Phase 10）は`src/bmcs_app/Reports/`配下。`ReportDocumentBuilder`（A4寸法・`Tb`/`HLine`・宛先ブロック・明細1行描画等の描画プリミティブ、抽象メンバー無し）と、改ページを伴う単一フロー帳票（請求書`InvoiceDocumentBuilder`・明細請求書`DetailInvoiceDocumentBuilder`）用のテンプレートメソッドを持つ`PagedReportDocumentBuilder`（`ReportDocumentBuilder`を継承、`Build()`と単一フロー用抽象メンバーを持つ）に分割されている（2026-09-17）。納品書`DeliveryNoteDocumentBuilder`は改ページの考え方が異なる（ミシン目入りA4に「納品書（控）」「請求書」「納品書」を3段複写で印字。1セクション6行固定）ため`ReportDocumentBuilder`を直接継承し、自前で`Build()`を実装する。
 詳細な残タスクは`TODO.md`を参照（各Phaseの完了行に実装の要点が詳しく記録されている）。

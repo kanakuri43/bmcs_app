@@ -22,6 +22,12 @@ sqlcmdは `go-sqlcmd`（v1.9.0系）。認証情報は `src/bmcs_app/appsettings
 - テスト後の残留データ確認（`__`接頭辞のテスト用customer_codeが残っていないか）:
   `sqlcmd -S 172.16.3.171 -d bmcs_db -U sa -P '<password>' -C -Q "SELECT COUNT(*) FROM dbo.customers WHERE customer_code LIKE '\_\_TST%' ESCAPE '\'"`
 
+**開発DB・環境の落とし穴（2026-09-30確認）**
+- 開発DBは独自データ運用で、`seed_dev_data.sql`のマスタ（EMP001・PRD001・CUS001・BNK001等）が存在しない（社員101〜103、商品1001〜、得意先1001等、銀行口座1・2、入金方法CASH/TRANSFER等）。そのため既存の結合テストは約127件が外部キー違反で**変更前から失敗**する（変更前後で失敗の顔ぶれを比較して回帰確認する）。新規の結合テストは実在するマスタ（商品`1001`・入金方法`TRANSFER`・銀行口座`1`・営業担当社員はNULL）を使い、`__TST*`得意先を作って後始末で物理削除する。実データが無い2020年等の月だけを対象にすると、全得意先を対象にするサービス（月次締め）でも既存データに触れない。
+- テーブル名は複数形（019で改名済み。`dbo.menus`・`dbo.monthly_closings`・`dbo.receipts`等）。`scripts/014_seed_menu_structure.sql`は再実行安全（menusを全件削除して再投入）。
+- **Bashツールは日本語を含むパスの`cd`直後のheredocや`ls`が文字化けで失敗することがある**（`cd C:/Users/User3292/source/repos/石山商店/bmcs_app && ...`のように`&&`でつなぐと動く場合もある）。ファイル作成は`Write`ツール、編集は`Edit`か`python`（`open(..., encoding='utf-8')`）を使う。日本語を含むファイル名でなくても、日本語のテストメソッド名に全角の`・`は使えない（C#識別子エラー）。
+- go-sqlcmd に `-f 65001` は無い。パスワードは `-P` で渡す。
+
 **注意**: `scripts/001_*.sql` 等の適用済みDDLファイルは絶対に改変しない。スキーマ変更は必ず新しい連番ファイルを追加する（`docs/database-schema.md` 3章）。
 
 ## Git
