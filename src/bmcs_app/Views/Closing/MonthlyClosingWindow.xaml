@@ -12,10 +12,11 @@
         構成は請求締め処理画面と同じ。違いは、締め日のコンボボックスがないことと、
         請求日の代わりに集計年月（暦月）を選ぶことの2点。
         一覧は選んだ年月の確定済み月次締め（解除済みを除く）。未確定の年月は0件になる。
-        帳票がないため印刷ボタンは持たない。
+        売掛金残高一覧表は、請求締め処理と違って行選択を持たず、表示中の年月の一覧を全件印刷する（F11）。
     -->
     <mah:MetroWindow.InputBindings>
         <KeyBinding Key="F10" Command="{Binding ConfirmCommand}" />
+        <KeyBinding Key="F11" Command="{Binding PrintCommand}" />
     </mah:MetroWindow.InputBindings>
 
     <Grid Margin="16">
@@ -61,12 +62,25 @@
         </ListView>
 
         <!-- ===== 合計 ===== -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
-            <TextBlock Text="当月残高 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <TextBlock Text="{Binding TotalClosingBalance, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" />
-            <TextBlock Text="処理中..." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="OrangeRed"
-                       Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
-        </StackPanel>
+        <Grid Grid.Row="2" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <TextBlock Text="当月残高 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Text="{Binding TotalClosingBalance, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" />
+                <TextBlock Text="処理中..." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="OrangeRed"
+                           Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </StackPanel>
+
+            <Button Grid.Column="1"
+                    Content="売掛金残高一覧表を印刷 (F11)"
+                    Command="{Binding PrintCommand}"
+                    ToolTip="表示中の年月の売掛金残高一覧表を全件印刷します（F11）"
+                    Padding="12,6" />
+        </Grid>
 
         <!-- ===== StatusBar ===== -->
         <StatusBar Grid.Row="3">

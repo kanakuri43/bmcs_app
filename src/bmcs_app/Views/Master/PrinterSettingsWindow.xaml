@@ -3,7 +3,7 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  Title="プリンタ設定"
-                 Height="300" Width="520"
+                 Height="350" Width="520"
                  ResizeMode="CanMinimize"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
@@ -13,6 +13,7 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -36,7 +37,12 @@
                   ItemsSource="{Binding Printers}"
                   SelectedItem="{Binding LineInvoicePrinter}" />
 
-        <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+        <TextBlock Grid.Row="3" Grid.Column="0" Text="売掛金残高一覧表" Margin="0,0,16,12" VerticalAlignment="Center" />
+        <ComboBox Grid.Row="3" Grid.Column="1" Margin="0,0,0,12"
+                  ItemsSource="{Binding Printers}"
+                  SelectedItem="{Binding ReceivablesBalancePrinter}" />
+
+        <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
             <TextBlock Text="処理中..."
                        VerticalAlignment="Center"
                        Foreground="OrangeRed"
@@ -45,6 +51,6 @@
             <Button Content="保存" Command="{Binding SaveCommand}" Padding="16,6" />
         </StackPanel>
 
-        <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="Gray" />
+        <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="Gray" />
     </Grid>
 </mah:MetroWindow>

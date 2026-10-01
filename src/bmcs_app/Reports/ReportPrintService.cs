@@ -6,12 +6,13 @@ using Microsoft.Extensions.Logging;
 
 namespace bmcs_app.Reports;
 
-/// <summary>帳票種別。<see cref="PrinterSettings"/>（TODO.md 2-6）の3項目に一致させる。</summary>
+/// <summary>帳票種別。<see cref="PrinterSettings"/>（TODO.md 2-6）の項目に一致させる。</summary>
 public enum ReportKind
 {
     DeliveryNote,
     Invoice,
     DetailInvoice,
+    ReceivablesBalance,
 }
 
 /// <summary>印刷・PDF出力の結果。呼び出し元（ViewModel）が <c>StatusMessage</c> に表示する。</summary>
@@ -107,6 +108,7 @@ public class ReportPrintService(PrinterSettingsService printerSettingsService, I
             ReportKind.DeliveryNote => settings.DeliverySlipPrinter,
             ReportKind.Invoice => settings.InvoicePrinter,
             ReportKind.DetailInvoice => settings.LineInvoicePrinter,
+            ReportKind.ReceivablesBalance => settings.ReceivablesBalancePrinter,
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "未対応の帳票種別です。"),
         };
     }
