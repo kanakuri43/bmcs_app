@@ -24,6 +24,12 @@ public class EmployeeService(
             .AsNoTracking()
             .SingleOrDefaultAsync(e => e.EmployeeCode == employeeCode, cancellationToken);
 
+    /// <summary>有効（未無効化）な社員だけを返す。伝票の担当者を新たに入力するときに使う。</summary>
+    public Task<Employee?> GetActiveByCodeAsync(string employeeCode, CancellationToken cancellationToken = default)
+        => dbContext.Employees
+            .AsNoTracking()
+            .SingleOrDefaultAsync(e => e.EmployeeCode == employeeCode && !e.IsDeleted, cancellationToken);
+
     public async Task<Employee> CreateAsync(Employee employee, CancellationToken cancellationToken = default)
     {
         var exists = await dbContext.Employees

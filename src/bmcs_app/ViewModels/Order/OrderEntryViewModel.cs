@@ -20,7 +20,7 @@ namespace bmcs_app.ViewModels.Order;
 /// 新規登録に加え、既存受注の読み込み・直接修正・中止（F8）を扱う（TODO.md 4-6で訂正保存を追加。
 /// 4-4で先行実装した <see cref="OrderStatusService.CancelSlipAsync"/> の画面配線は5-3で追加済み）。
 /// 直接修正できるのは未売上（<see cref="OrderStatus.NotSold"/>）の伝票のみ（<see cref="OrderEditLockEvaluator"/>）。
-/// 担当者・前後移動は、このプロジェクトのスキーマ／機能にまだ存在しないため、枠のみ用意し無効化している
+/// 前後移動は、このプロジェクトの機能にまだ存在しないため、枠のみ用意し無効化している
 /// （詳細は docs/design_document.md）。
 /// </summary>
 public partial class OrderEntryViewModel(
@@ -58,7 +58,7 @@ public partial class OrderEntryViewModel(
     /// <summary>
     /// 得意先マスタに設定された自社の営業担当名（<see cref="Customer.SalesEmployeeCode"/>）。
     /// 右上ステータス欄に「担当：〇〇〇〇」として表示する。未設定・該当社員なしの場合は空欄。
-    /// 伝票（<see cref="OrderSlip"/>）自体の担当者列とは別概念（下記 <see cref="EmployeeCode"/> 参照）。
+    /// 伝票（<see cref="OrderSlip"/>）自体の担当者（下記 <see cref="EmployeeCode"/>）とは別概念。
     /// </summary>
     [ObservableProperty]
     public partial string SalesRepName { get; set; } = string.Empty;
@@ -76,8 +76,8 @@ public partial class OrderEntryViewModel(
     public partial string OrderSlipNumberDisplay { get; set; } = string.Empty;
 
     /// <summary>
-    /// 担当者コード・名称（枠のみ）。<see cref="OrderSlip"/> に担当者列がなく、
-    /// 社員マスタ画面（TODO.md 2-3）も未着手のため、値を持つだけで参照・更新する処理はない。
+    /// 担当者コード・名称。伝票自体の担当者（<see cref="OrderSlip.EmployeeCode"/>）で、任意項目。
+    /// 得意先選択時に得意先の営業担当（<see cref="Customer.SalesEmployeeCode"/>）が初期値として入るが、修正できる。
     /// </summary>
     [ObservableProperty]
     public partial string EmployeeCode { get; set; } = string.Empty;
@@ -141,6 +141,8 @@ public partial class OrderEntryViewModel(
     private bool CanSave => _loadedOrderSlipNumber is null ? !IsSaved : !IsEditLocked && !IsReloadRequired;
 
     private bool CanChangeCustomer => !IsCorrectionMode;
+
+    private bool CanEditEmployee => true;
 
     private bool CanDeleteSlip => _loadedOrderSlipNumber is not null && OrderStatus != OrderStatus.Cancelled;
 
@@ -225,7 +227,7 @@ public partial class OrderEntryViewModel(
             // すでに確定済みの得意先（得意先名を手入力で上書き済みの場合を含む。C-9）と同じコード
             // なら再取得しない。マスタを読み直すと上書きが失われるため。
             // ただしEnterでの通常のフォーカス送りは維持する（ApplyCustomerAsyncと同じ送り先）。
-            RequestFocus("SlipRemarks");
+            RequestFocus("EmployeeCode");
             return;
         }
 
@@ -252,6 +254,7 @@ public partial class OrderEntryViewModel(
             _ => customer.TaxUnit.ToString(),
         };
         SalesRepName = await ResolveSalesRepNameAsync(customer.SalesEmployeeCode);
+        await ApplyDefaultEmployeeAsync(customer.SalesEmployeeCode);
 
         foreach (var line in Lines)
         {
@@ -261,7 +264,7 @@ public partial class OrderEntryViewModel(
 
         RaiseTotalsChanged();
         StatusMessage = $"得意先: {customer.CustomerName}";
-        RequestFocus("SlipRemarks");
+        RequestFocus("EmployeeCode");
     }
 
     /// <summary>
@@ -277,6 +280,99 @@ public partial class OrderEntryViewModel(
 
         var employee = await employeeService.GetByCodeAsync(salesEmployeeCode);
         return employee?.EmployeeName ?? string.Empty;
+    }
+
+    // ── 伝票の担当者（得意先の営業担当とは別） ─────────────────────────────────
+    /// <summary>社員マスタで確定した担当者コード。画面の <see cref="EmployeeCode"/> 欄の文字と一致している間だけ有効。</summary>
+    private string? _confirmedEmployeeCode;
+
+    partial void OnEmployeeCodeChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            _confirmedEmployeeCode = null;
+            EmployeeName = string.Empty;
+        }
+        else if (value != _confirmedEmployeeCode)
+        {
+            EmployeeName = string.Empty;
+        }
+    }
+
+    private void ApplyEmployee(string? employeeCode, string? employeeName)
+    {
+        _confirmedEmployeeCode = string.IsNullOrWhiteSpace(employeeCode) ? null : employeeCode;
+        EmployeeCode = _confirmedEmployeeCode ?? string.Empty;
+        EmployeeName = _confirmedEmployeeCode is null ? string.Empty : employeeName ?? string.Empty;
+    }
+
+    /// <summary>得意先の営業担当を担当者の初期値にする。未設定・無効化済み・該当なしの場合は空にする。</summary>
+    private async Task ApplyDefaultEmployeeAsync(string? salesEmployeeCode)
+    {
+        var employee = string.IsNullOrWhiteSpace(salesEmployeeCode)
+            ? null
+            : await employeeService.GetActiveByCodeAsync(salesEmployeeCode);
+        ApplyEmployee(employee?.EmployeeCode, employee?.EmployeeName);
+    }
+
+    /// <summary>既存伝票の担当者を復元する。無効化された社員でも、保存済みの値はそのまま表示する。</summary>
+    private async Task RestoreEmployeeAsync(string? employeeCode)
+    {
+        var employee = string.IsNullOrWhiteSpace(employeeCode)
+            ? null
+            : await employeeService.GetByCodeAsync(employeeCode);
+        ApplyEmployee(employeeCode, employee?.EmployeeName);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanEditEmployee))]
+    private void OpenEmployeeSearch()
+    {
+        var employee = windowService.ShowDialog<EmployeeMasterSearchDialog, EmployeeMasterSearchDialogViewModel, Employee>();
+        if (employee is not null)
+        {
+            ApplyEmployee(employee.EmployeeCode, employee.EmployeeName);
+            RequestFocus("SlipRemarks");
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanEditEmployee))]
+    private async Task LookupEmployeeByCodeAsync()
+    {
+        if (string.IsNullOrWhiteSpace(EmployeeCode) || EmployeeCode == _confirmedEmployeeCode)
+        {
+            // 担当者は任意。空欄、または確定済みのコードのままEnterで摘要へ進む。
+            RequestFocus("SlipRemarks");
+            return;
+        }
+
+        var employee = await employeeService.GetActiveByCodeAsync(EmployeeCode.Trim());
+        if (employee is null)
+        {
+            StatusMessage = $"担当者コード「{EmployeeCode}」が見つかりません。";
+            return;
+        }
+
+        ApplyEmployee(employee.EmployeeCode, employee.EmployeeName);
+        RequestFocus("SlipRemarks");
+    }
+
+    /// <summary>保存前に、Enterで確定していない担当者コードを社員マスタで確定する。見つからなければ <c>false</c>。</summary>
+    private async Task<bool> EnsureEmployeeConfirmedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(EmployeeCode) || EmployeeCode == _confirmedEmployeeCode)
+        {
+            return true;
+        }
+
+        var employee = await employeeService.GetActiveByCodeAsync(EmployeeCode.Trim());
+        if (employee is null)
+        {
+            StatusMessage = $"担当者コード「{EmployeeCode}」が見つかりません。";
+            return false;
+        }
+
+        ApplyEmployee(employee.EmployeeCode, employee.EmployeeName);
+        return true;
     }
 
     // ── 明細行 ────────────────────────────────────────────────
@@ -496,6 +592,7 @@ public partial class OrderEntryViewModel(
         CustomerName = string.Empty;
         CustomerTaxUnitDisplay = string.Empty;
         SalesRepName = string.Empty;
+        ApplyEmployee(null, null);
         OrderDate = DateTime.Today;
         OrderSlipNumberDisplay = string.Empty;
         SlipRemarks = string.Empty;
@@ -545,6 +642,11 @@ public partial class OrderEntryViewModel(
         New();
         await ApplyCustomerAsync(customer);
         CustomerName = sourceLines[0].CustomerName;
+        if (!string.IsNullOrWhiteSpace(sourceLines[0].EmployeeCode)
+            && await employeeService.GetActiveByCodeAsync(sourceLines[0].EmployeeCode!) is { } sourceEmployee)
+        {
+            ApplyEmployee(sourceEmployee.EmployeeCode, sourceEmployee.EmployeeName);
+        }
 
         var orderDate = OrderDate is { } orderDateValue ? DateOnly.FromDateTime(orderDateValue) : DateOnly.FromDateTime(DateTime.Today);
         ClearLines();
@@ -657,6 +759,7 @@ public partial class OrderEntryViewModel(
                 _ => customer.TaxUnit.ToString(),
             };
             SalesRepName = await ResolveSalesRepNameAsync(customer.SalesEmployeeCode);
+            await RestoreEmployeeAsync(sourceLines[0].EmployeeCode);
             OrderDate = sourceLines[0].OrderDate.ToDateTime(TimeOnly.MinValue);
             OrderSlipNumberDisplay = orderSlipNumber;
             SlipRemarks = sourceLines[0].SlipRemarks ?? string.Empty;
@@ -728,6 +831,12 @@ public partial class OrderEntryViewModel(
         if (OrderDate is not { } orderDateValue)
         {
             StatusMessage = "受注日付を入力してください。";
+            return;
+        }
+
+        if (!await EnsureEmployeeConfirmedAsync())
+        {
+            RequestFocus("EmployeeCode");
             return;
         }
 
@@ -841,6 +950,7 @@ public partial class OrderEntryViewModel(
         SalesConfirmedQuantity = 0m,
         SlipRemarks = slipRemarks, // 伝票摘要は全行に複写する（docs/database-schema.md 1章）
         InternalRemarks = internalRemarks, // 社内摘要も同様に全行へ複写する
+        EmployeeCode = _confirmedEmployeeCode, // 担当者も伝票単位の値として全行へ複写する
         LineRemarks = string.IsNullOrWhiteSpace(line.LineRemarks) ? null : line.LineRemarks,
         CreatedBy = string.Empty, // OrderService が現在の社員コードで上書きする（新規のみ）
         CreatedAt = now,

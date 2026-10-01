@@ -239,6 +239,57 @@ public class OrderServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
     }
 
     [Fact]
+    public async Task 担当者は未設定から設定し直しても解除しても反映される()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            const string orderSlipNumber = "__TESTORDCORR11";
+            await InsertLineAsync(dbContext, NewLine(orderSlipNumber, orderQuantity: 10m, unitPrice: 1000m, lineNumber: 1));
+            await InsertLineAsync(dbContext, NewLine(orderSlipNumber, orderQuantity: 5m, unitPrice: 500m, lineNumber: 2));
+            Assert.All(await ReloadAllAsync(dbContext, orderSlipNumber), l => Assert.Null(l.EmployeeCode));
+
+            // 担当者を設定する（伝票単位の値として全行に同じ値が入る）
+            var withEmployee = new[]
+            {
+                NewLine(orderSlipNumber, orderQuantity: 10m, unitPrice: 1000m, lineNumber: 1),
+                NewLine(orderSlipNumber, orderQuantity: 5m, unitPrice: 500m, lineNumber: 2),
+            };
+            foreach (var line in withEmployee)
+            {
+                line.EmployeeCode = "101";
+            }
+
+            await service.UpdateAsync(orderSlipNumber, withEmployee, loadedLineNumbers: [1, 2]);
+            Assert.All(await ReloadAllAsync(dbContext, orderSlipNumber), l => Assert.Equal("101", l.EmployeeCode));
+
+            // 別の担当者へ変更する
+            foreach (var line in withEmployee)
+            {
+                line.EmployeeCode = "102";
+            }
+
+            await service.UpdateAsync(orderSlipNumber, withEmployee, loadedLineNumbers: [1, 2]);
+            Assert.All(await ReloadAllAsync(dbContext, orderSlipNumber), l => Assert.Equal("102", l.EmployeeCode));
+
+            // 担当者は任意。未設定（NULL）へ戻せる
+            foreach (var line in withEmployee)
+            {
+                line.EmployeeCode = null;
+            }
+
+            await service.UpdateAsync(orderSlipNumber, withEmployee, loadedLineNumbers: [1, 2]);
+            Assert.All(await ReloadAllAsync(dbContext, orderSlipNumber), l => Assert.Null(l.EmployeeCode));
+        }
+        finally
+        {
+            await transaction.RollbackAsync();
+        }
+    }
+
+    [Fact]
     public async Task 得意先コードは上書きされない()
     {
         await using var scope = fixture.Services.CreateAsyncScope();

@@ -85,4 +85,7 @@ public class Sales : AuditableEntity
 
     /// <summary>社内摘要。画面表示のみで帳票には印字しない。同一伝票の全行に同じ値が入る（伝票単位の値）。</summary>
     public string? InternalRemarks { get; set; }
+
+    /// <summary>担当者（社員コード）。得意先の営業担当とは別に、その伝票自体の担当者。任意。同一伝票の全行に同じ値が入る（伝票単位の値）。</summary>
+    public string? EmployeeCode { get; set; }
 }
