@@ -59,7 +59,7 @@
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="70" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="130" />
                         <ColumnDefinition Width="24" />
                         <ColumnDefinition Width="70" />
                         <ColumnDefinition Width="120" />
@@ -72,11 +72,9 @@
                              beh:FocusBehavior.IsInitialFocus="True"
                              IsReadOnly="{Binding IsPreviewMode}"
                              Text="{Binding DetailReceiptNumberQuery, UpdateSourceTrigger=PropertyChanged}"
-                             mah:TextBoxHelper.Watermark="自動採番（SPACEで検索、既存分はEnterで読込）"
+                             mah:TextBoxHelper.Watermark="自動採番（SPACEで検索）"
                              mah:TextBoxHelper.ClearTextButton="True"
                              MaxLength="20"
-                             HorizontalAlignment="Left"
-                             Width="240"
                              ToolTip="既存の明細入金No.を入力してEnterで読み込む（訂正・取消モード）。Spaceで検索モーダルを開く">
                         <TextBox.InputBindings>
                             <KeyBinding Key="Space"  Command="{Binding OpenDetailReceiptSearchCommand}" />
