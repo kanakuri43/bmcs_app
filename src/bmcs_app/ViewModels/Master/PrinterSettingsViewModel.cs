@@ -10,7 +10,7 @@ namespace bmcs_app.ViewModels.Master;
 
 /// <summary>
 /// プリンタ環境設定画面（TODO.md 2-6）。端末ローカルの bmcs_config.json に保存し、DBでは管理しない。
-/// 帳票種別（納品書・請求書・明細請求書）ごとに出力先プリンタを選択する。
+/// 帳票種別（納品書・請求書・明細請求書・売掛金残高一覧表）ごとに出力先プリンタを選択する。
 /// </summary>
 public partial class PrinterSettingsViewModel(PrinterSettingsService printerSettingsService) : ViewModelBase
 {
@@ -26,6 +26,9 @@ public partial class PrinterSettingsViewModel(PrinterSettingsService printerSett
 
     [ObservableProperty]
     public partial string LineInvoicePrinter { get; set; } = NoPrinterText;
+
+    [ObservableProperty]
+    public partial string ReceivablesBalancePrinter { get; set; } = NoPrinterText;
 
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
@@ -51,6 +54,7 @@ public partial class PrinterSettingsViewModel(PrinterSettingsService printerSett
         DeliverySlipPrinter = settings.DeliverySlipPrinter ?? NoPrinterText;
         InvoicePrinter = settings.InvoicePrinter ?? NoPrinterText;
         LineInvoicePrinter = settings.LineInvoicePrinter ?? NoPrinterText;
+        ReceivablesBalancePrinter = settings.ReceivablesBalancePrinter ?? NoPrinterText;
         StatusMessage = string.Empty;
 
         return Task.CompletedTask;
@@ -62,7 +66,8 @@ public partial class PrinterSettingsViewModel(PrinterSettingsService printerSett
         printerSettingsService.Save(new PrinterSettings(
             NullIfUnset(DeliverySlipPrinter),
             NullIfUnset(InvoicePrinter),
-            NullIfUnset(LineInvoicePrinter)));
+            NullIfUnset(LineInvoicePrinter),
+            NullIfUnset(ReceivablesBalancePrinter)));
 
         StatusMessage = "保存しました。";
     }

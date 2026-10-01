@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using bmcs_app.Application.Closing;
+using bmcs_app.Reports;
+using bmcs_app.Services;
 using bmcs_app.ViewModels.Common;
+using bmcs_app.Views.Common;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -12,10 +15,13 @@ namespace bmcs_app.ViewModels.Closing;
 /// 違いは「締め日のコンボボックスがない」「請求日の代わりに集計年月（暦月）を選ぶ」の2点。
 /// 一覧は選んだ年月の確定済み <c>monthly_closings</c>（解除済みを除く）で、年月を変えると自動で再取得する。
 /// 締め確定は全得意先を対象とし、実行前に確認ダイアログを挟む。
+/// 売掛金残高一覧表は、請求締め処理の印刷と違って行選択を持たず、表示中の年月の一覧を全件印刷する
+/// （<see cref="PrintCommand"/>）。
 /// </summary>
 public partial class MonthlyClosingViewModel(
     MonthlyClosingService monthlyClosingService,
-    MonthlyClosingQueryService monthlyClosingQueryService) : ViewModelBase
+    MonthlyClosingQueryService monthlyClosingQueryService,
+    WindowService windowService) : ViewModelBase
 {
     /// <summary>集計年月として選べる期間（当月から過去へ）。</summary>
     private const int SelectableMonthCount = 25;
@@ -145,6 +151,47 @@ public partial class MonthlyClosingViewModel(
         }
     });
 
+    /// <summary>一覧に1件以上あるときだけ印刷できる（0件の年月は未確定か、確定対象が無い）。</summary>
+    private bool CanPrint() => Results.Count > 0;
+
+    /// <summary>
+    /// 選んだ年月の売掛金残高一覧表を、一覧の全件でプレビューする。画面の一覧ではなく
+    /// 印刷用に取り直すのは、請求集約元の判定（得意先マスタ）を含むデータを使うため。
+    /// 印刷履歴は記録しない（<c>docs/report-spec.md</c> 2-2節の方針と同じ）。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanPrint))]
+    private async Task PrintAsync()
+    {
+        if (SelectedMonth is not { } month)
+        {
+            StatusMessage = "集計年月を選択してください。";
+            return;
+        }
+
+        ReceivablesBalanceReportData data;
+        try
+        {
+            data = await monthlyClosingQueryService.GetReceivablesBalanceReportAsync(month.Year, month.Month);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"印刷エラー: {ex.Message}";
+            return;
+        }
+
+        if (data.Rows.Count == 0)
+        {
+            StatusMessage = "この年月に確定済みの月次締めはありません。";
+            return;
+        }
+
+        windowService.ShowDialog<ReportPreviewDialog, ReportPreviewDialogViewModel, bool>(
+            vm => vm.Initialize(
+                ReportKind.ReceivablesBalance,
+                $"売掛金残高一覧表 {month.Display}",
+                () => new ReceivablesBalanceDocumentBuilder(data).Build()));
+    }
+
     private void ApplyResults(IReadOnlyList<MonthlyClosingListItem> results)
     {
         Results.Clear();
@@ -154,6 +201,7 @@ public partial class MonthlyClosingViewModel(
         }
 
         TotalClosingBalance = results.Sum(r => r.ClosingBalance);
+        PrintCommand.NotifyCanExecuteChanged();
     }
 }
 

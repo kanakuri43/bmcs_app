@@ -13,7 +13,8 @@ public class PrinterSettingsService
         return new PrinterSettings(
             config.DeliverySlipPrinter,
             config.InvoicePrinter,
-            config.LineInvoicePrinter);
+            config.LineInvoicePrinter,
+            config.ReceivablesBalancePrinter);
     }
 
     public void Save(PrinterSettings settings)
@@ -23,6 +24,7 @@ public class PrinterSettingsService
             DeliverySlipPrinter = settings.DeliverySlipPrinter,
             InvoicePrinter = settings.InvoicePrinter,
             LineInvoicePrinter = settings.LineInvoicePrinter,
+            ReceivablesBalancePrinter = settings.ReceivablesBalancePrinter,
         });
     }
 }

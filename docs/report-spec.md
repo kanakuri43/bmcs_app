@@ -12,6 +12,7 @@
 | 請求書 | 請求締め処理 | `Invoice`／`invoicePrinter` | 2-2 |
 | 明細請求書 | 明細請求書発行 | `DetailInvoice`／`lineInvoicePrinter` | 2-2 |
 | 得意先元帳 | 得意先元帳（画面表示） | 印刷の種類は未定義（レイアウト要件のみ） | 2-3 |
+| 売掛金残高一覧表 | 月次締め処理 | `ReceivablesBalance`／`receivablesBalancePrinter` | 2-4 |
 
 いずれもA4。PDF保存は Windows の「Microsoft Print to PDF」を使う。
 
@@ -78,8 +79,8 @@ QuestPDF等の外部帳票ライブラリは使わない。QuestPDFはCommunity 
     `PART_ContentHost`だけの`ScrollViewer`に絞り、印刷・PDF保存・閉じるは自前ボタンに
     一本化している。**プレビューは`ShowDialog`（モーダル）で開く**
     （`docs/architecture.md` 4章補足）。
-  - `ReportKind` enum（`DeliveryNote`/`Invoice`/`DetailInvoice`）は既存
-    `PrinterSettings`の3項目に一致させる。**得意先元帳用のプリンタ設定は存在しない。
+  - `ReportKind` enum（`DeliveryNote`/`Invoice`/`DetailInvoice`/`ReceivablesBalance`）は
+    `PrinterSettings`の4項目に一致させる。**得意先元帳用のプリンタ設定は存在しない。
     得意先元帳の帳票実装時に`PrinterSettingsConfig`・設定画面・enumへ追加する
     （先取りしない）。**
 
@@ -254,3 +255,15 @@ QuestPDF等の外部帳票ライブラリは使わない。QuestPDFはCommunity 
 
 得意先元帳は「前頁繰越／次頁繰越」を毎ページのフッターに
 出す必要があり、納品書・請求書・明細請求書の「最終ページのみフッター」という形は使えない。
+
+### 2-4. 売掛金残高一覧表
+
+月次締め処理画面（`design_document.md` 29-1）から印刷する。選んだ年月の確定済み`monthly_closings`（解除済みを除く）を、得意先コード順に**全件**並べる。行選択は持たない（請求書の再発行と違い、年月の一覧全体が1つの帳票になるため）。A4縦、`PagedReportDocumentBuilder`を継承する（`ReceivablesBalanceDocumentBuilder`）。印刷履歴は記録しない。
+
+- **列**: 得意先コード／得意先名／前月残高／入金額／売上額／消費税／当月残高（金額は`N0`、単位は円）。税区分・確定日時は印字しない。
+- **ヘッダー**: 1ページ目は「集計年月」「売掛金残高一覧表」「自社名・発行日」と集計期間（月初〜月末）。2ページ目以降は続紙ヘッダー（タイトル・年月・`n/m ページ`）。列見出しは各ページに繰り返す。
+- **フッター（最終ページのみ）**: 合計行（前月残高・入金額・売上額・消費税・当月残高、件数付き）。
+- **請求集約元の行**: 得意先名の先頭に「※」を付け、売上額だけを印字する（前月残高・入金額・消費税・当月残高は0で保存されているため空欄）。**合計からは除く**（売上が請求集約先の行と二重に数えられるため。`design_document.md` 29-1）。請求集約元の行があるときは、最終ページに「※ は請求集約元」の注記を出す。判定は`monthly_closings`にフラグが無いため、得意先マスタの`billing_customer_code`と`customer_code`の不一致で行う。
+- **自社情報**: 見出しに自社名を出すだけなので、未登録でも印刷を止めない（請求書・納品書と違い、登録番号を印字しない社内向けの帳票のため）。
+- **プリンタ設定**: `receivablesBalancePrinter`（プリンタ設定画面の「売掛金残高一覧表」）。未設定なら他の帳票と同じく印刷ダイアログにフォールバックする。
+- **データ取得**: `MonthlyClosingQueryService.GetReceivablesBalanceReportAsync`（Application）が`ReceivablesBalanceReportData`を返す。

@@ -4,4 +4,5 @@ namespace bmcs_app.Application.Common;
 public record PrinterSettings(
     string? DeliverySlipPrinter,
     string? InvoicePrinter,
-    string? LineInvoicePrinter);
+    string? LineInvoicePrinter,
+    string? ReceivablesBalancePrinter);

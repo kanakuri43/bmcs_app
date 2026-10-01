@@ -55,6 +55,7 @@ DBスキーマの変更を伴うリリースは、先に `scripts/` の新しい
 | `deliverySlipPrinter` | 納品書のプリンタ名 |
 | `invoicePrinter` | 請求書のプリンタ名 |
 | `lineInvoicePrinter` | 明細請求書のプリンタ名 |
+| `receivablesBalancePrinter` | 売掛金残高一覧表のプリンタ名 |
 
 - すべて文字列で、省略可。ファイルが無ければ全項目が未設定になる。
 - メインメニューの「プリンタ設定」画面が読み書きする。手で編集しなくてよい。
