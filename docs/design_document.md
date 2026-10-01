@@ -1410,7 +1410,7 @@ WPFの`KeyBinding`はコントロールが`IsEnabled=false`でも生き続ける
 ### 23-1. スコープ
 
 締め得意先向け「請求書」・都度得意先向け「明細請求書」の印刷を実装している。`ReportKind.Invoice`／
-`ReportKind.DetailInvoice`は帳票基盤（`PrinterSettings`の3項目に対応）に用意されている。
+`ReportKind.DetailInvoice`は帳票基盤（`PrinterSettings`の4項目に対応）に用意されている。
 
 適格請求書の記載事項（発行者の名称・登録番号／取引年月日／取引内容と軽減税率の付記／
 税率ごとに区分した対価の額と適用税率／税率ごとの消費税額／交付を受ける者の名称）は
