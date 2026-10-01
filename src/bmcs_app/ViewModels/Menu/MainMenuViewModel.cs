@@ -83,7 +83,7 @@ public partial class MainMenuViewModel(
             var items = category.Items
                 .Select(item => new MenuItemDisplayItem(item.MenuName, item.ScreenKey, i))
                 .ToList();
-            Categories.Add(new MenuCategoryDisplayItem(category.MenuName, i, items));
+            Categories.Add(new MenuCategoryDisplayItem(category.MenuName, i, items, category.IsDefaultExpanded));
         }
     });
 
@@ -152,7 +152,8 @@ public partial class MainMenuViewModel(
 }
 
 /// <summary>メニューのカテゴリ（親）の表示用。<see cref="ColorIndex"/> は表示順に応じた色分け用インデックス。</summary>
-public sealed record MenuCategoryDisplayItem(string MenuName, int ColorIndex, IReadOnlyList<MenuItemDisplayItem> Items);
+public sealed record MenuCategoryDisplayItem(
+    string MenuName, int ColorIndex, IReadOnlyList<MenuItemDisplayItem> Items, bool IsExpanded);
 
 /// <summary>メニュー項目（子・リーフ）の表示用。</summary>
 public sealed record MenuItemDisplayItem(string MenuName, string ScreenKey, int ColorIndex);

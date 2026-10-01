@@ -35,6 +35,25 @@ public class MenuTreeBuilderTests
     };
 
     [Fact]
+    public void カテゴリの初期展開状態が親の指定どおりに引き継がれる()
+    {
+        var closed = Category("CAT_CLOSED", 2);
+        closed.IsDefaultExpanded = false;
+        var menu = new List<Menu>
+        {
+            Category("CAT_OPEN", 1),
+            closed,
+            Item("ITEM_A", "CAT_OPEN", 1, requiredLevel: 1, screenKey: "a"),
+            Item("ITEM_B", "CAT_CLOSED", 1, requiredLevel: 1, screenKey: "b"),
+        };
+
+        var result = MenuTreeBuilder.Build(menu, permissionLevel: 1);
+
+        Assert.Equal(["CAT_OPEN", "CAT_CLOSED"], result.Select(c => c.MenuCode));
+        Assert.Equal([true, false], result.Select(c => c.IsDefaultExpanded));
+    }
+
+    [Fact]
     public void 権限レベルが足りない項目は表示されない()
     {
         var menu = new List<Menu>

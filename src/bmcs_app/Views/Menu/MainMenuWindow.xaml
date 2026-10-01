@@ -154,7 +154,7 @@
                         <Expander Style="{StaticResource AccordionSectionStyle}"
                                   Header="{Binding MenuName}"
                                   Tag="{Binding ColorIndex, Converter={StaticResource MenuAccentColorConverter}}"
-                                  IsExpanded="True">
+                                  IsExpanded="{Binding IsExpanded, Mode=OneTime}">
                             <ItemsControl ItemsSource="{Binding Items}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>

@@ -21,4 +21,9 @@ public class Menu : AuditableEntity
 
     /// <summary>起動する画面の識別子。親は NULL。</summary>
     public string? ScreenKey { get; set; }
+
+    /// <summary>
+    /// メインメニューでカテゴリ（親）を初期状態で開くか。親の行だけが参照し、子の行の値は使われない。
+    /// </summary>
+    public bool IsDefaultExpanded { get; set; } = true;
 }

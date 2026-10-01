@@ -17,6 +17,8 @@ public class MenuConfiguration : IEntityTypeConfiguration<Menu>
         builder.Property(e => e.MenuName).HasMaxLength(40);
         builder.Property(e => e.ScreenKey).HasMaxLength(40).IsUnicode(false);
 
+        // is_default_expanded は DB 側に DEFAULT 1 があるが、HasDefaultValue は付けない
+        // （付けると CLR 既定値と同じ値の扱いが曖昧になるため。行の投入は SQL で行いアプリは読むだけ）。
         builder.HasOne<Menu>()
             .WithMany()
             .HasForeignKey(e => e.ParentMenuCode)
