@@ -1831,7 +1831,9 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 - 締め日のコンボボックスは持たない（全得意先が対象）。
 - 請求日の代わりに「集計年月」（暦月）を選ぶ。ComboBoxで当月から過去24か月までを選べ、既定値は前月。年月は日付ではないため、「日付欄はDatePickerに統一」の対象外。
 
-一覧は選んだ年月の確定済み`monthly_closings`（解除済みを除く）。年月を変えると自動で再取得する。締め確定（F10）は実行前に確認ダイアログを挟む。帳票が無いため印刷ボタンは持たない。
+一覧は選んだ年月の確定済み`monthly_closings`（解除済みを除く）。年月を変えると自動で再取得する。締め確定（F10）は実行前に確認ダイアログを挟む。
+
+売掛金残高一覧表の印刷ボタン（F11）を合計行の右に置く。請求締め処理と違って行選択は無く、選んだ年月の一覧を全件印刷する（一覧が0件のときは無効）。レイアウトは`report-spec.md` 2-4。
 
 #### 金額の決め方
 
@@ -1861,6 +1863,7 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 
 - Domain: `MonthlyClosingCalculator`。`CustomerLedgerBuilder`の`ProvisionalTaxBucketsAsOf`は税率別の仮計算税を返し、`ProvisionalTaxAsOf`はその合計を返す。
 - Application（`Closing/`）: `MonthlyClosingService.ConfirmAsync(year, month)`、`MonthlyClosingQueryService.GetByMonthAsync`。`CustomerLedgerQueryService.GetInputAsync`は`GetAsync`から切り出して公開している。`ConfirmAsync`は独自にトランザクションを開き、追跡中の`MonthlyClosing`を最初と最後に破棄する（画面のスコープは複数回の確定をまたぐため、古い状態値を持ち越さない）。
+- 売掛金残高一覧表: `MonthlyClosingQueryService.GetReceivablesBalanceReportAsync`（請求集約元の判定を含む）、`ReceivablesBalanceDocumentBuilder`（`Reports/`）、`ReportKind.ReceivablesBalance`。
 - Presentation: `MonthlyClosingWindow`／`MonthlyClosingViewModel`。メニューは`MNU_MONTHLY`（月次）→`MNU_MONTHLY_CLOSE`（月次締め処理、権限レベル1、`monthly_closing`）（`scripts/014_seed_menu_structure.sql`）。
 
 ### 29-2. 確定後のロック
