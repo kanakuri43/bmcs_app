@@ -105,7 +105,7 @@
                     </Grid>
                 </StackPanel>
 
-                <TextBlock Text="請求集約（親子請求）" FontWeight="Bold" Margin="0,16,0,8" />
+                <TextBlock Text="請求集約" FontWeight="Bold" Margin="0,16,0,8" />
                 <Grid IsEnabled="{Binding IsBillingCustomerEditable}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
