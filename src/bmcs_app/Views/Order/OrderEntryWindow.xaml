@@ -12,7 +12,7 @@
     <!--
         TODO.md 4-3・5-3・4-6。旧プロトタイプ（bmcs_app.Order の OrderMainView.xaml）のレイアウトを
         再現する。既存受注の読み込み・直接修正（未売上のみ）・中止（F8）に対応する。
-        担当者・前後移動は、このプロジェクトのスキーマ／機能にまだ存在しないため、
+        前後移動は、このプロジェクトの機能にまだ存在しないため、
         枠のみ用意し無効化している（理由は docs/design_document.md）。
     -->
     <mah:MetroWindow.InputBindings>
@@ -165,8 +165,8 @@
                                  ToolTip="得意先コード検索後に自動入力される名称。学校のクラス・先生等の宛名を都度変更する場合は、ここを直接書き換える（子得意先マスタは持たない。C-9・2026-09-10確定）" />
                     </Grid>
 
-                    <!-- 行3: 担当者（枠のみ・使用不可。order_slip に担当者列がなく、社員マスタ画面も未着手） -->
-                    <Grid Margin="0,6,0,0" IsEnabled="False">
+                    <!-- 担当者（その伝票自体の担当者。得意先の営業担当を初期値に入れるが修正できる。任意） -->
+                    <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="58"  />
                             <ColumnDefinition Width="130" />
@@ -177,8 +177,16 @@
 
                         <TextBlock Grid.Column="0" Text="担当者" VerticalAlignment="Center" />
                         <TextBox Grid.Column="1"
-                                 Text="{Binding EmployeeCode}"
-                                 mah:TextBoxHelper.Watermark="（未実装）" />
+                                 beh:FocusBehavior.FocusKey="EmployeeCode"
+                                 IsReadOnly="{Binding IsEditLocked}"
+                                 Text="{Binding EmployeeCode, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="コード（SPACEで検索）"
+                                 ToolTip="得意先を選ぶと得意先の営業担当が入ります。伝票の担当者として修正できます（任意）">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Space"  Command="{Binding OpenEmployeeSearchCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding LookupEmployeeByCodeCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
                         <TextBox Grid.Column="3"
                                  Text="{Binding EmployeeName, Mode=OneWay}"
                                  IsReadOnly="True"

@@ -23,6 +23,7 @@ public class OrderSlipConfiguration : IEntityTypeConfiguration<OrderSlip>
         builder.Property(e => e.SlipRemarks).HasMaxLength(200);
         builder.Property(e => e.LineRemarks).HasMaxLength(100);
         builder.Property(e => e.InternalRemarks).HasMaxLength(200);
+        builder.Property(e => e.EmployeeCode).HasMaxLength(10).IsUnicode(false);
 
         builder.Property(e => e.OrderQuantity).HasPrecision(13, 3);
         builder.Property(e => e.UnitPrice).HasPrecision(15, 4);
@@ -36,6 +37,7 @@ public class OrderSlipConfiguration : IEntityTypeConfiguration<OrderSlip>
         builder.Property(e => e.OrderStatus).HasConversion<byte>();
 
         builder.HasOne<Customer>().WithMany().HasForeignKey(e => e.CustomerCode).OnDelete(DeleteBehavior.NoAction);
+        builder.HasOne<Employee>().WithMany().HasForeignKey(e => e.EmployeeCode).OnDelete(DeleteBehavior.NoAction);
         builder.HasOne<Product>().WithMany().HasForeignKey(e => e.ProductCode).OnDelete(DeleteBehavior.NoAction);
 
         builder.ConfigureAuditColumns();

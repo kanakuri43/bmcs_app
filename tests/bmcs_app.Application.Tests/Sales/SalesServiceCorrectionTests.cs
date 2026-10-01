@@ -82,6 +82,67 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
     }
 
     [Fact]
+    public async Task 担当者は全行に複写して保存され訂正で変更も解除もできる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, salesService, _) = Resolve(scope);
+
+        // 既存の NewSalesLine は開発DBに無い得意先・商品（CUS001/PRD001）を指すため、実在マスタ（1001/1003）へ差し替える。
+        var taxUnit = (await dbContext.Customers.AsNoTracking().SingleAsync(c => c.CustomerCode == "1001")).TaxUnit;
+        SalesEntity NewLine(short lineNumber, decimal quantity)
+        {
+            var line = NewSalesLine(quantity);
+            line.LineNumber = lineNumber;
+            line.CustomerCode = "1001";
+            line.TaxUnit = taxUnit;
+            line.ProductCode = "1003";
+            return line;
+        }
+
+        var first = NewLine(1, 1m);
+        var second = NewLine(2, 2m);
+        first.EmployeeCode = "101";
+        second.EmployeeCode = "101";
+        string? salesSlipNumber = null;
+        try
+        {
+            salesSlipNumber = await salesService.CreateAsync([first, second], RoundingType.Floor);
+
+            var persisted = await dbContext.Sales.AsNoTracking()
+                .Where(s => s.SalesSlipNumber == salesSlipNumber).OrderBy(s => s.LineNumber).ToListAsync();
+            Assert.Equal(2, persisted.Count);
+            Assert.All(persisted, l => Assert.Equal("101", l.EmployeeCode));
+
+            // 訂正で別の担当者へ変更する
+            var changed = new[] { NewLine(1, 1m), NewLine(2, 2m) };
+            changed[0].SalesSlipNumber = salesSlipNumber;
+            changed[1].SalesSlipNumber = salesSlipNumber;
+            foreach (var line in changed)
+            {
+                line.EmployeeCode = "102";
+            }
+
+            await salesService.UpdateAsync(salesSlipNumber, changed, RoundingType.Floor, loadedLineNumbers: [1, 2]);
+            persisted = await dbContext.Sales.AsNoTracking().Where(s => s.SalesSlipNumber == salesSlipNumber).ToListAsync();
+            Assert.All(persisted, l => Assert.Equal("102", l.EmployeeCode));
+
+            // 担当者は任意。解除（NULL）できる
+            foreach (var line in changed)
+            {
+                line.EmployeeCode = null;
+            }
+
+            await salesService.UpdateAsync(salesSlipNumber, changed, RoundingType.Floor, loadedLineNumbers: [1, 2]);
+            persisted = await dbContext.Sales.AsNoTracking().Where(s => s.SalesSlipNumber == salesSlipNumber).ToListAsync();
+            Assert.All(persisted, l => Assert.Null(l.EmployeeCode));
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, salesSlipNumber, orderSlipNumber: null);
+        }
+    }
+
+    [Fact]
     public async Task 返品行はマイナス数量マイナス金額で登録できる()
     {
         await using var scope = fixture.Services.CreateAsyncScope();

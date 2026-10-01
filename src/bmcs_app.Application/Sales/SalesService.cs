@@ -411,6 +411,7 @@ public class SalesService(
         current.SlipRemarks = incoming.SlipRemarks;
         current.LineRemarks = incoming.LineRemarks;
         current.InternalRemarks = incoming.InternalRemarks;
+        current.EmployeeCode = incoming.EmployeeCode;
         current.IsDeleted = false;
     }
 }

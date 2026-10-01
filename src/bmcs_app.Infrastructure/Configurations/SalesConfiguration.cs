@@ -30,6 +30,7 @@ public class SalesConfiguration : IEntityTypeConfiguration<Sales>
         builder.Property(e => e.SlipRemarks).HasMaxLength(200);
         builder.Property(e => e.LineRemarks).HasMaxLength(100);
         builder.Property(e => e.InternalRemarks).HasMaxLength(200);
+        builder.Property(e => e.EmployeeCode).HasMaxLength(10).IsUnicode(false);
 
         builder.Property(e => e.Quantity).HasPrecision(13, 3);
         builder.Property(e => e.UnitPrice).HasPrecision(15, 4);
@@ -52,6 +53,7 @@ public class SalesConfiguration : IEntityTypeConfiguration<Sales>
             .HasPrincipalKey(c => new { c.CustomerCode, c.TaxUnit })
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasOne<Product>().WithMany().HasForeignKey(e => e.ProductCode).OnDelete(DeleteBehavior.NoAction);
+        builder.HasOne<Employee>().WithMany().HasForeignKey(e => e.EmployeeCode).OnDelete(DeleteBehavior.NoAction);
         builder.HasOne<OrderSlip>().WithMany()
             .HasForeignKey(e => new { e.OrderSlipNumber, e.OrderLineNumber })
             .OnDelete(DeleteBehavior.NoAction);
