@@ -34,7 +34,8 @@ public static class MenuTreeBuilder
 
             if (visibleItems.Count > 0)
             {
-                categories.Add(new MenuCategoryNode(parent.MenuCode, parent.MenuName, visibleItems));
+                categories.Add(new MenuCategoryNode(
+                    parent.MenuCode, parent.MenuName, visibleItems, parent.IsDefaultExpanded));
             }
         }
 
@@ -42,6 +43,7 @@ public static class MenuTreeBuilder
     }
 }
 
-public sealed record MenuCategoryNode(string MenuCode, string MenuName, IReadOnlyList<MenuItemNode> Items);
+public sealed record MenuCategoryNode(
+    string MenuCode, string MenuName, IReadOnlyList<MenuItemNode> Items, bool IsDefaultExpanded);
 
 public sealed record MenuItemNode(string MenuCode, string MenuName, string ScreenKey);

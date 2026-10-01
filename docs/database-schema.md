@@ -314,6 +314,7 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `display_order` | `smallint` | × | 同一階層内の表示順 |
 | `required_permission_level` | `tinyint` | ○ | 最小必須権限。**子（末端の機能メニュー）のみ設定し、親は `NULL`** |
 | `screen_key` | `varchar(40)` | ○ | 起動する画面の識別子。親は `NULL` |
+| `is_default_expanded` | `bit` | × | メインメニューでカテゴリを初期状態で開くか（既定 `1`＝開く）。**親の行だけが参照し、子の行の値は使われない**。閉じたいカテゴリは `UPDATE dbo.menus SET is_default_expanded = 0 WHERE menu_code = '...'` で指定する |
 
 **CHECK 制約**: `CK_menus_leaf` … `(screen_key IS NULL AND required_permission_level IS NULL) OR (screen_key IS NOT NULL AND required_permission_level IS NOT NULL)`
 
