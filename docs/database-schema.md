@@ -127,6 +127,7 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 |---|---|---|
 | `detail_invoice_sales_lines`（連携） | `row_version` を持たない | 行の追加・削除しか発生せず、更新がないため |
 | `slip_number_sequences`（採番） | `row_version` を持たない | 採番は `UPDATE` の行ロックで直列化する。楽観的排他だと競合時にリトライが必要になり、採番の直列性と相性が悪い |
+| `detail_invoice_sales_lines`（連携） | `is_deleted` を持たない | 行の追加・削除しか発生せず、論理削除の対象にならないため |
 | `slip_number_sequences`（採番） | `is_deleted` を持たない | 伝票種別ごとに1行を永続保持するため |
 
 ---
@@ -674,7 +675,7 @@ OR
 
 | カラム | 型 | NULL | 内容 |
 |---|---|---|---|
-| `sequence_key` | `varchar(30)` | PK | 伝票種別。`orders` / `sales_slip` / `receipt_slip` / `detail_receipts` / `billings` / `detail_invoices` |
+| `sequence_key` | `varchar(30)` | PK | 伝票種別。`order_slip` / `sales_slip` / `receipt_slip` / `detail_receipt` / `billing` / `detail_invoice` |
 | `current_value` | `bigint` | × | 現在の採番値。次番は `current_value + 1` |
 
 **採番は伝票登録と同一トランザクション内で行う**（`docs/architecture.md` 6章）。別トランザクションで先に採番すると登録失敗時に欠番が出るため。`UPDATE` の行ロックで直列化するので、`row_version`（楽観的排他）は持たない。
@@ -749,6 +750,12 @@ OR
   - `003_create_closing_and_sequence_tables.sql` の `slip_number_sequences` 初期行 INSERT は `IF OBJECT_ID(...) IS NULL` の内側（テーブル作成時のみ実行）にある。**将来 `sequence_key` を追加するときは新しい連番SQLで INSERT すること。**
 - **コードとDBの乖離防止**: 仕様変更等でプログラムを修正する際は、対応するライブDB（開発用DB）のテーブル・ストアドプロシージャの変更もコード修正と同一の作業内でSQLCMDを用いて追従させる。乖離が疑われる場合は `sys.columns` / `sys.tables` を SQLCMD で照会し、エンティティ定義と突き合わせて確認する。起動時のスキーマ検証は行わない（起動が遅くなるため）。
 - **接続先の環境情報**: `docs/architecture.md` の「開発用データベース環境」を参照。
+- **適用済みスクリプトの記録**: 適用履歴テーブルは持たない。適用済みの判定は「適用済みファイルは改変しない」運用と、`sys.tables`／`sys.columns` の照会で行う。環境（開発・本番）ごとに、どこまで適用したかを運用担当が記録に残す（最後に適用した連番と日時）。
+- **適用方法**: `bmcs_db` を明示し、常に `sqlcmd ... -d bmcs_db -C -I -i scripts/NNN_xxx.sql` で適用する（`-I` はフィルタ付き一意インデックスに必要）。番号順に適用し、飛ばさない。手順は `docs/setup.md` 2章。
+- **失敗時の戻し方**: 各スクリプトは再実行しても壊れない作りにする。途中で失敗した場合は、原因を直して同じスクリプトを再実行する。適用前にバックアップを取り、バックアップからのリストアが最後の手段になる。適用済みファイルを書き換えて戻すことはしない（戻す変更も新しい連番ファイルで行う）。
+- **本番と開発の区別**: 開発用DBは共有のライブDBで、本番DBとは別のサーバ・別の接続文字列を使う。`014_seed_menu_structure.sql` は本番にも適用する。
+- **破壊的スクリプトの禁止**: `reset_test_data.sql`（得意先・商品・伝票等を全削除）と `seed_dev_data.sql`（開発用テストデータ投入）は**本番へ流さない**。実行前に、接続先サーバ・データベース名を必ず確認する。
+- **バックアップ・リストア**: 本番のDBサーバ・バックアップ運用は未決定。方針は、日次のフルバックアップ（`BACKUP DATABASE bmcs_db`）を世代管理し、DBサーバとは別の場所にも保管する。SQL Server Express は SQL Server Agent が無いため、Windows のタスクスケジューラ＋`sqlcmd` で実行する。Express は1DBあたり10GBが上限で、超える前にエディションを見直す。DDL の適用・データ補正の前には、その都度バックアップを取る。リストアは、利用者が全員アプリを終了してから行う。
 
 ---
 

@@ -22,7 +22,7 @@ tests/
  └─ bmcs_app.Application.Tests/ … Application・Infrastructure の結合テスト（16章参照）
 ```
 
-機能別にプロジェクトを分けない理由: 全11画面という規模に対して参照管理とビルド時間の負担が見合わないため。機能ごとに exe も分けない（4章参照）。
+機能別にプロジェクトを分けない理由: 十数画面という規模に対して参照管理とビルド時間の負担が見合わないため。機能ごとに exe も分けない（4章参照）。
 
 ## 2. 層間の依存方向
 
@@ -227,7 +227,7 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 
 ## 10. 命名・フォルダ規約
 
-機能フォルダ名は全層で統一する: `Order`（受注）/ `Sales`（売上）/ `Billing`（請求）/ `Receipt`（入金）/ `Ledger`（元帳）/ `Closing`（月次締め）/ `Master`（マスタ）/ `Search`（データ検索）/ `Common`（共通）
+機能フォルダ名は全層で統一する: `Order`（受注）/ `Sales`（売上）/ `Billing`（請求）/ `Receipt`（入金）/ `Ledger`（元帳）/ `Closing`（月次締め）/ `Master`（マスタ）/ `Search`（データ横断検索）/ `Common`（共通）
 
 | 層 | 規約 |
 |---|---|
@@ -241,7 +241,7 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 
 ### エンティティ・マッピングの実装方針
 
-- **PascalCase ↔ snake_case の変換は `EFCore.NamingConventions`（`UseSnakeCaseNamingConvention()`）に任せる。** 列ごとに `HasColumnName` を書かずに済む。ただし**数字を含む列名**（`address1`／`address2` 等）は自動変換が意図通りにならないため、該当プロパティのみ `HasColumnName` を明示する。
+- **PascalCase ↔ snake_case の変換は `EFCore.NamingConventions`（`UseSnakeCaseNamingConvention()`）に任せる。** 列ごとに `HasColumnName` を書かずに済む。数字を含む列名（`address1`／`address2` 等）も同じ規約に任せ、`HasColumnName` は書かない。
 - **テーブル名には `ToTable()` を必ず明示する。** DB のテーブル名は複数形の `snake_case`（`docs/database-schema.md` 2.0節）だが、`ToTable()` を省略すると DbSet プロパティ名からの命名変換に暗黙に追従してしまう。DDL を正としテーブル名の変更が DbSet 名の変更で意図せず連動しないようにするため、常に明示する。
 - **ナビゲーションプロパティは持たせない。** 得意先元帳はアプリ側 LINQ で複数テーブルをマージする方針であり、`Include()` によるナビゲーション経由の結合を使わないため。リポジトリを作らない方針と同様、使わない抽象化を先回りして作らない。
 - **ただし FK 関係は `HasOne<TPrincipal>().WithMany().HasForeignKey(...)` で登録する（ナビゲーションプロパティなしで）。** これを省略すると、複数エンティティを同一 `SaveChangesAsync()` で保存したときに EF Core が依存関係を解決できず、INSERT 文の順序が（観測した限りでは）テーブル名のアルファベット順になり、FK 制約違反を起こす。DB 側の FK 制約と対になる形で、全 FK 関係を登録する。
@@ -249,6 +249,7 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 - **`decimal` は `HasPrecision(p, s)` を必ず明示する。** 省略すると既定精度（18,2）になり、`decimal(15,4)` の単価カラム等で桁落ちする。
 - **`varchar`/`char` 列は `.IsUnicode(false)` を明示する。** 省略すると EF Core が `nvarchar` パラメータを送り、SQL Server 側で暗黙変換が発生してインデックスを使えなくなる（コード系カラムは PK/FK で全 JOIN に絡むため実害が大きい）。
 - **`date` 型は C# `DateOnly` にマッピングする。** EF Core 8+ のネイティブ対応。時刻成分を持たせないことでバグを防ぐ。
+- **名前空間 `bmcs_app.Application.Receipt` の配下では、`bmcs_app.Domain.Entities.Receipt` 型を裸で参照できない**（囲む名前空間が using で導入した型より優先されるため）。`ReceiptEntity` 等のエイリアスを使う。
 
 ## 11. MVVM の実装方針
 
@@ -381,7 +382,7 @@ MahApps.Metro を導入し、共通スタイルは `src/bmcs_app/Styles/`、書�
 - **接続文字列**: `src/bmcs_app` と同じパターン。`appsettings.Development.json.sample`
   （コミットする）を複製して `appsettings.Development.json`（`.gitignore` の既存パターンが
   深さを問わず一致するため自動的に除外される）を作り、`Password` を記入する。
-- **テスト分離**: 実キー（`orders` 等）の `current_value` は変更しない。
+- **テスト分離**: 実キー（`order_slip` 等）の `current_value` は変更しない。
   - 並列採番の重複・欠番なしを検証するテストのみ、`"__test_slip_number"` という
     業務キーと衝突しない使い捨てキーを使い、コミットする（変化することが検証対象のため）。
     フィクスチャが `InitializeAsync`/`DisposeAsync` で冪等に作成・削除する。
@@ -389,5 +390,13 @@ MahApps.Metro を導入し、共通スタイルは `src/bmcs_app/Styles/`、書�
     DBを無変化に保つ。
   - `DbContext` はスレッドセーフでない（8章）ため、並列実行するテストは
     タスクごとに独立したスコープ（＝独立した `DbContext`）を使う。
+  - 自前で `BeginTransactionAsync`→`SaveChangesAsync`→`CommitAsync` を行うユースケース
+    （新規登録・訂正・取消系のサービス）を呼ぶテストは、外側のトランザクションで包んで
+    `RollbackAsync` する方式が使えない（ネストした `BeginTransactionAsync` は EF Core が例外にする）。
+    この場合は使い捨てデータ（`__` 接頭辞のキー）をコミットし、`finally` で物理削除する。
+    トランザクションを開始しないメソッド（`SettlementService`）は、外側を包む方式が使える。
+  - 生SQL・`ExecuteUpdateAsync` で行を書き換えた後に同じ `DbContext` でユースケースを呼ぶ場合は、
+    追跡済みエンティティの rowversion が古いまま残り意図しない `DbUpdateConcurrencyException` に
+    なるため、間に `ChangeTracker.Clear()` を挟む。
 - **実行**: `dotnet test tests/bmcs_app.Application.Tests/bmcs_app.Application.Tests.csproj`
   （15章と同様プロジェクト単位を基本とする）。

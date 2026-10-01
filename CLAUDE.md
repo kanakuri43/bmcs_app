@@ -15,6 +15,11 @@
 - 確認するときは、**どの指示とどの指示が、どう両立しないのかを具体的に示し、取りうる選択肢を提示する。** 「矛盾しています」とだけ返して判断を丸投げしない。
 - ただし、**矛盾ではなく単なる曖昧さ**（複数の解釈がありうるが、どの解釈でも成立する）の場合は確認せずに進め、採用した解釈を明示する。曖昧さのたびに作業を止めない。
 - **git commit のメッセージは日本語で書く。**
+- **Git 運用**:
+  - ブランチは `main` を基準にし、作業は `main` から切った作業ブランチ（`feature/…`・`fix/…`・`docs/…`）で行う。`main` へ直接コミットするのは、文書の軽微な修正に限る。
+  - コミットは1つの目的につき1つ（機能追加・不具合修正・文書整備・スキーマ変更を混ぜない）。DDL は `scripts/` の新しい連番SQLとそれを使うコードを同じコミットに含める。
+  - 適用済みの連番SQLは改変しない。破壊的スクリプト（`reset_test_data.sql`・`seed_dev_data.sql`）を本番へ流さない。
+  - 改行コード・文字コードは `.gitattributes`・`.editorconfig` に従う（LF・UTF-8）。
 
 ---
 
@@ -46,11 +51,15 @@
 
 ## Docs map
 
-- [`docs/architecture.md`](docs/architecture.md) — プロジェクト構成、層間の依存方向、ターゲットフレームワーク、同時起動方針
-- [`docs/product-spec.md`](docs/product-spec.md) — 用語、業務フロー、UI/UX 方針
-- [`docs/design_document.md`](docs/design_document.md) — 画面ごとの要点一覧、および未解決の不明点・要確認事項（DB以外）
-- [`docs/database-schema.md`](docs/database-schema.md) — データベースに関する情報（設計方針・未確定のテーブル/カラム定義等）
-- [`docs/report-spec.md`](docs/report-spec.md) — 帳票エンジンの選定方針、各帳票のレイアウト要件
+- [`README.md`](README.md) — 概要と文書の入口
+- [`docs/setup.md`](docs/setup.md) — 開発環境の構築、DB作成・スクリプト適用、接続文字列、ビルド・起動・テスト
+- [`docs/operations.md`](docs/operations.md) — ログ、障害・競合の対処、データ補正の原則、締め解除の業務手順、期首・年度運用
+- [`docs/release.md`](docs/release.md) — publish、配布、端末の前提、本番の接続、`bmcs_config.json`
+- [`docs/architecture.md`](docs/architecture.md) — プロジェクト構成、層間の依存方向、層の責務、トランザクション・排他、EF Core・命名規約、MVVM・共通UI、テスト構成、開発用DB環境
+- [`docs/product-spec.md`](docs/product-spec.md) — 業務仕様の正（用語、UI/UX 方針、共通業務ルール〔認証を含む〕、請求集約、伝票の状態遷移）
+- [`docs/design_document.md`](docs/design_document.md) — 画面・機能ごとの設計（要点一覧と章別の実装方針）、および未解決の不明点・要確認事項（DB以外）
+- [`docs/database-schema.md`](docs/database-schema.md) — データベースに関する情報（設計方針、テーブル定義、命名規則、スキーマ変更・バックアップの運用、暫定運用中の項目）
+- [`docs/report-spec.md`](docs/report-spec.md) — 帳票エンジンの決定（印刷・PDF の経路を含む）、各帳票のレイアウト要件
 - [`docs/decisions.md`](docs/decisions.md) — 非自明な意思決定とその理由（不採用案の理由、罠、性能・制約）
 
 docs は現在の仕様だけを書く。日付・決定ID・Phase番号・`TODO.md` 項番・経緯は書かず、「なぜそうしたか」は `docs/decisions.md` に書く。

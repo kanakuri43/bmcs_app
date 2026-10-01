@@ -4,7 +4,37 @@
 >
 > 画面番号（`SCR-xxx`等）は正式な画面IDとして確定していないため、本資料では記載せず、画面は名称で参照する。
 
-> **画面レイアウトの参照元**: **画面のレイアウト（項目配置・操作性）は旧Delphi版を参照しない。** `C:\Users\User3292\source\repos\bmcs_app`（WPF プロトタイプ、`bmcs_app.Sales` 等）を参照する。
+## 目次
+
+- [1. やりたいことの要点（画面ごと）](#1-やりたいことの要点画面ごと)
+- [2. 不明点・要確認事項（実装前に確定が必要）](#2-不明点要確認事項実装前に確定が必要)
+- [3. 共通検索モーダルの実装確定事項](#3-共通検索モーダルの実装確定事項)
+- [4. 受注入力の明細行グリッド](#4-受注入力の明細行グリッド)
+- [5. 受注入力画面](#5-受注入力画面)
+- [6. 売上入力画面](#6-売上入力画面)
+- [7. 受注の状態遷移](#7-受注の状態遷移)
+- [8. 売上入力画面の拡張](#8-売上入力画面の拡張)
+- [9. 請求締め処理](#9-請求締め処理)
+- [10. 締め解除処理](#10-締め解除処理)
+- [11. 明細請求書発行](#11-明細請求書発行)
+- [12. 明細請求書の取消](#12-明細請求書の取消)
+- [13. 請求フェーズの構造上の制約](#13-請求フェーズの構造上の制約)
+- [14. メインメニュー画面](#14-メインメニュー画面)
+- [15. ジャーナル系画面の伝票No入力欄の挙動](#15-ジャーナル系画面の伝票no入力欄の挙動)
+- [16. 入金消込サービスの実装](#16-入金消込サービスの実装)
+- [17. 入金入力画面の実装](#17-入金入力画面の実装)
+- [18. 明細入金画面の実装](#18-明細入金画面の実装)
+- [19. 入金の取消・訂正の実装](#19-入金の取消訂正の実装)
+- [20. 消込キャッシュの整合性](#20-消込キャッシュの整合性)
+- [21. 得意先元帳・現在残高](#21-得意先元帳現在残高)
+- [22. 帳票基盤・納品書の実装](#22-帳票基盤納品書の実装)
+- [23. 請求書・明細請求書の実装](#23-請求書明細請求書の実装)
+- [24. 受注の訂正](#24-受注の訂正)
+- [25. ジャーナル系の日付制限](#25-ジャーナル系の日付制限)
+- [26. 受注入力の過去伝票複写](#26-受注入力の過去伝票複写)
+- [27. 入金方法マスタ](#27-入金方法マスタ)
+- [28. 親子請求（請求集約）の設計](#28-親子請求請求集約の設計)
+- [29. 月次締め処理](#29-月次締め処理)
 
 ---
 
@@ -17,21 +47,29 @@
 | 売上入力 | 都度売上・受注からの売上確定・返品/値引を扱い、納品書を発行。過去伝票の複写入力にも対応 |
 | 入金入力（締め） | 締め得意先の入金を登録し、古い請求から自動で消込。手数料差額の入力は別画面とし（手入力のみ。自動計算・自動補正提案は行わない）、その画面は保留中で未実装 |
 | 明細入金 | 都度得意先向け。売上伝票 or 明細請求書を指定してピンポイント消込 |
-| 請求締め | 締め対象得意先の期間内売上・入金を集計して請求データを確定し、請求書を一括発行 |
-| 請求締め解除 | 管理者権限のみ。確定済み請求データを解除済にし、売上の請求状態を未請求へ戻す。**請求締めとは別画面（別メニュー項目）とする**（画面内アクションではなく画面分離で権限差を表現する） |
+| 請求締め処理 | 締め対象得意先の期間内売上・入金を集計して請求データを確定し、請求書を一括発行 |
+| 締め解除処理 | 管理者権限のみ。確定済み請求データを解除済にし、売上の請求状態を未請求へ戻す。**請求締め処理とは別画面（別メニュー項目）とする**（画面内アクションではなく画面分離で権限差を表現する） |
 | 明細請求書発行 | 都度得意先の「未発行かつ未入金」の売上をまとめて選び、宛名を都度書き換えて1枚の請求書を発行 |
 | 得意先元帳 | 得意先ごとの売上・入金明細と残高推移を時系列表示。現時点のリアルタイム残高も常時表示。伝票プレビューは`readOnly`モードの売上/入金画面を再利用（プレビュー専用の別画面は用意しない。21-7章参照） |
-| 月次締め | 全得意先の月次売掛残高、担当者別売上・粗利を集計・確定（確定後はロックされ編集不可） |
-| 月次締め解除 | 管理者権限のみ。確定済み月次締めを解除済にする。**月次締めとは別画面（別メニュー項目）とする**（請求締め解除と同じ理由） |
-| データ検索 | 受注/売上/入金を横断的に検索し、納品書未発行の売上をまとめて一括発行 |
+| 月次締め処理 | 全得意先の月次売掛残高、担当者別売上・粗利を集計・確定（確定後はロックされ編集不可） |
+| 月次締め解除処理 | 管理者権限のみ。確定済み月次締めを解除済にする。**月次締め処理とは別画面（別メニュー項目）とする**（締め解除処理と同じ理由） |
+| データ横断検索 | 受注/売上/入金を横断的に検索し、納品書未発行の売上をまとめて一括発行 |
 | 共通検索モーダル | 得意先・商品の検索モーダル。商品検索は「マスタから」「過去の取引履歴から」の2軸、最大6件を伝票へ一括転記 |
-| マスタ管理 | 得意先・商品・銀行・**入金方法（27章）**・単価計算・社員・**自社情報（適格請求書発行事業者の登録番号等）**の各種マスタ管理、プリンタ設定（保存先はproduct-spec.md参照） |
+| マスタ管理 | 得意先・商品・銀行・**入金方法（27章）**・社員・**自社情報（適格請求書発行事業者の登録番号等）**の各種マスタ管理、プリンタ設定（保存先はproduct-spec.md参照） |
 
 ---
 
 ## 2. 不明点・要確認事項（実装前に確定が必要）
 
-DB設計に関する未確定事項は `docs/database-schema.md` を参照。以下はDB設計以外の不明点。
+**未解決事項の入口はこの章**。種類ごとの所在は次のとおり。
+
+| 種類 | 所在 |
+|---|---|
+| DB設計以外の不明点・要確認事項 | この章（下記） |
+| DB設計に影響する暫定運用中の項目（採番規則・単価決定・原価の取得元・残高・支払条件／与信限度額） | `docs/database-schema.md` 4章 |
+| 採用理由の記録が無い設計判断 | `docs/decisions.md` 末尾の「要確認（理由の記録が無い項目）」 |
+
+以下はDB設計以外の不明点。
 
 - **在庫・発注との連携インターフェース**: スコープ外だが「連携する部分は考慮」という方針のみ確定。実際にどのような形で連携するか（DB直接連携／API／ファイル連携等）、受注入力画面の「発注データへ回す」ボタンが具体的に何をすべきかは未定義。
 - **受注入力画面の店頭在庫数表示**: 在庫管理がスコープ外である一方、受注入力画面は「現時点の店頭在庫」の表示を前提としている。この情報をどこから取得するか（在庫システム連携が前提か、当面は非表示/固定値でよいか）は未確定。
@@ -62,7 +100,7 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
 
 - **単価の初期値転記**: 商品を選ぶと、得意先の税区分（`tax_unit`）に応じて商品マスタの外税単価／内税単価のどちらかが単価欄に入る。以後は手入力で上書きできる（`IUnitPriceCalculator`／`StandardUnitPriceCalculator`、`src/bmcs_app.Domain/Calculations/`。単価決定ロジックのみ、差し替え可能なインターフェースにしている）。商品検索モーダルのマスタ軸も同じ判定で単価列を表示し、単価列ヘッダ（「単価(税抜)」／「単価(税込)」）で転記元を明示する。
 - **明細行 ViewModel は受注・売上で共用する**: `src/bmcs_app/ViewModels/Common/SlipLineViewModel.cs` を受注入力・売上入力の両方から使う。専用画面ごとにコピーは作らない。
-- **レイアウト・キー操作**: 旧WPFプロトタイプ（`bmcs_app.Sales`）の明細行パターンを踏襲する。
+- **レイアウト・キー操作**: 受注入力と売上入力で共通の明細行パターンを使う。
   - 列幅（左から）: 行番号36 / 商品コード110 / 商品名可変 / 数量72 / 単価88 / 原価80 / 金額96 / 税率56 / 行摘要130 / 削除28。
   - 商品コード欄で `Space` → 商品検索モーダルを開く、`Enter` → 入力済みコードで直接引き当てる。
   - 原価・金額・税率は表示のみ（編集不可）。金額は `数量×単価` を得意先の端数区分で1円に丸めた値（`ConsumptionTaxCalculator.CalculateLineAmount`）。
@@ -72,11 +110,11 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
 
 ## 5. 受注入力画面
 
-旧WPFプロトタイプ（`bmcs_app.Order`／`OrderMainView.xaml`）のツールバー・ヘッダー・明細・フッター集計・StatusBarの構成をそのまま再現している。ただし旧プロトタイプが前提とする項目のうち、本プロジェクトの `orders` エンティティに列がない、または機能自体が未実装のものは、**枠（コントロール）だけ用意し `IsEnabled="False"` で使用不可にしている**（非表示にはしない）。
+ツールバー・ヘッダー・明細・フッター集計・StatusBarで構成する。この構成の項目のうち、`orders` エンティティに列がない、または機能自体が未実装のものは、**枠（コントロール）だけ用意し `IsEnabled="False"` で使用不可にしている**（非表示にはしない）。
 
 | 項目 | 状態 | 理由 |
 |---|---|---|
-| 受注日付・得意先（コード+名称、Space/Enter対応）・明細行・フッター集計・保存(F10)・新規(F3)・行追加(F2) | **実装済み** | `orders` に対応する列があり、既存の `ConsumptionTaxCalculator`／`IUnitPriceCalculator`／`SlipNumberService` を再利用できる |
+| 受注日付・得意先（コード+名称、Space/Enter対応）・明細行・フッター集計・保存(F10)・新規(F3) | **実装済み** | `orders` に対応する列があり、既存の `ConsumptionTaxCalculator`／`IUnitPriceCalculator`／`SlipNumberService` を再利用できる |
 | 受注No. | 新規入力時は採番前のため空欄（ウォーターマーク「自動採番（SPACEで検索）」）で、**採番は保存時にトランザクション内で1回だけ**行う。既存受注は、受注No.を入力して`Enter`で読み込むか、`Space`で伝票検索モーダル（8-0章）から選ぶ（読み込み・修正・複写は24章・26章） | 採番は保存時にトランザクション内で1回だけ行う方針（`docs/architecture.md` 6章）であり、画面を開いた時点や入力中に採番しない |
 | 得意先名の編集 | **実装済み**。得意先コード検索後、名称を直接書き換えられる（宛名の都度書き換え方式。`sub_customer_id`行を参照） | 学校のクラス・先生等の宛名の柔軟性を、子得意先マスタではなく名称欄の都度上書きで実現する |
 | 得意先名の編集（諸口得意先） | **未実装** | `Customer` に「諸口」相当のフラグがない |
@@ -85,8 +123,8 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
 | 行摘要（明細行摘要） | **実装済み** | `line_remarks` 列に保存する。`src/bmcs_app/Views/Common/SlipLineControl.xaml` の行摘要 TextBox は売上入力とも共用する |
 | 受注状態バッジ | **実装済み**。新規入力中は「未売上」、既存受注を読み込んだ場合は読込内容の受注状態（未売上／一部売上／売上完了／中止）を表示する | 状態遷移ロジックは`OrderStatusService`（7章）、既存受注の読み込みは8-1章・24章 |
 | 前の受注／次の受注（ナビゲーション） | **枠のみ・使用不可**（`CanExecute` を常に `false` にして無効化） | 既存受注の一覧・検索は伝票検索モーダルに統合済みのため、前後移動は実装しない |
-| 中止（F8） | **実装済み**。読み込んだ既存受注を`OrderStatusService.CancelSlipAsync`で伝票単位に中止する（7章）。物理削除はしない | 伝票は物理削除しない方針（取消は`is_deleted`または状態で表す）のため、旧プロトタイプの物理削除（F8）はそのままは持ち込めない。既存受注を読み込んでいて中止済みでない場合のみ有効 |
-| `sub_customer_id`（宛名） | **入力欄なし（確定）** | 旧プロトタイプにこの概念自体が存在しないため「再現」の対象外。学校のクラス・先生等の宛名柔軟性は`sub_customer_id`ではなく、得意先名称欄（`CustomerName`）の都度書き換え方式で実現する。`sub_customer_id`列自体は将来の別要件に備えて残すが、入力欄は作らず参照・更新する処理もない |
+| 中止（F8） | **実装済み**。読み込んだ既存受注を`OrderStatusService.CancelSlipAsync`で伝票単位に中止する（7章）。物理削除はしない | 伝票は物理削除しない方針（取消は`is_deleted`または状態で表す）のため、F8は物理削除ではなく中止として動作する。既存受注を読み込んでいて中止済みでない場合のみ有効 |
+| `sub_customer_id`（宛名） | **入力欄なし（確定）** | 画面項目として扱わない。学校のクラス・先生等の宛名柔軟性は`sub_customer_id`ではなく、得意先名称欄（`CustomerName`）の都度書き換え方式で実現する。`sub_customer_id`列自体は将来の別要件に備えて残すが、入力欄は作らず参照・更新する処理もない |
 
 実装ファイル: `src/bmcs_app.Application/Order/OrderService.cs`（新規登録ユースケース。採番と登録を同一トランザクションで行う）、`src/bmcs_app/ViewModels/Order/OrderEntryViewModel.cs`、`src/bmcs_app/Views/Order/OrderEntryWindow.xaml`。
 
@@ -98,18 +136,18 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
 
 ## 6. 売上入力画面
 
-受注入力画面（5章）と同じ構成で実装している。旧プロトタイプ（`bmcs_app.Sales`の`SalesMainView.xaml`）のレイアウトを再現しつつ、スキーマ上存在しないものは枠のみ用意し無効化している。都度売上の直接入力に加え、受注からの売上確定・返品値引・過去伝票の複写・訂正・取消を扱う（8章）。
+受注入力画面（5章）と同じ構成で実装している。スキーマ上存在しない項目は枠のみ用意し無効化している。都度売上の直接入力に加え、受注からの売上確定・返品値引・過去伝票の複写・訂正・取消を扱う（8章）。
 
 | 項目 | 状態 | 理由 |
 |---|---|---|
-| 売上日付・得意先（コード+名称、Space/Enter対応）・明細行・フッター集計・保存(F10)・新規(F3)・行追加(F2) | **実装済み** | `sales` に対応する列があり、既存の `ConsumptionTaxCalculator`／`IUnitPriceCalculator`／`SlipNumberService`／`SlipLineViewModel` を再利用できる |
+| 売上日付・得意先（コード+名称、Space/Enter対応）・明細行・フッター集計・保存(F10)・新規(F3) | **実装済み** | `sales` に対応する列があり、既存の `ConsumptionTaxCalculator`／`IUnitPriceCalculator`／`SlipNumberService`／`SlipLineViewModel` を再利用できる |
 | 得意先名称の上書き | **実装済み**（TwoWay、保存は`this.CustomerName`） | 宛名の都度書き換え方式。受注入力画面と同じ仕組み |
 | 受注No. | **実装済み**。`Space`で受注検索モーダル、`Return`で受注No.直接読込（8-1章） | `sales.order_slip_number`／`order_line_number`列で受注行に紐付ける |
-| 請求状態・消込状態の表示 | **実装済み**。新規入力中は固定表示「未請求」「未消込」、既存伝票を読み込んだ場合は実際の状態を表示 | 新規登録では`BillingStatus=Unbilled`／`SettlementStatus=Unsettled`が常に正しい。旧プロトタイプの「請求:{InvoicedAtText}／売掛:{ArAggregatedAtText}」に相当する枠を、本プロジェクトの状態カラムに読み替えた |
+| 請求状態・消込状態の表示 | **実装済み**。新規入力中は固定表示「未請求」「未消込」、既存伝票を読み込んだ場合は実際の状態を表示 | 新規登録では`BillingStatus=Unbilled`／`SettlementStatus=Unsettled`が常に正しい。請求状態・消込状態の枠は、伝票の状態カラム（`BillingStatus`／`SettlementStatus`）に対応させている |
 | 編集ロック（保存/取消の無効化） | **実装済み** | ロック判定は請求締め・月次締め・入金済み等に基づき、既存伝票の読み込み時に行う（8-4章）。新規伝票は定義上ロック対象外 |
 | 印刷（F11） | **実装済み**。既存伝票を読み込んでいる場合のみ有効（納品書）。新規保存の直後は発行確認ダイアログから印刷する | 帳票エンジンはWPF FixedDocument方式（`docs/report-spec.md`） |
 | 前の売上／次の売上（ナビゲーション） | **枠のみ・使用不可** | 既存売上の一覧・検索は伝票検索モーダルに統合済みのため、前後移動は実装しない（受注入力画面と同一理由） |
-| 取消（F8） | **実装済み**。読み込んだ既存売上を`SalesService.CancelSlipAsync`で取消す。編集ロック中は無効 | 伝票は物理削除しない方針のため、旧プロトタイプの物理削除は持ち込めない。取消は状態遷移として実装している（8-4章） |
+| 取消（F8） | **実装済み**。読み込んだ既存売上を`SalesService.CancelSlipAsync`で取消す。編集ロック中は無効 | 伝票は物理削除しない方針のため、物理削除は行わない。取消は状態遷移として実装している（8-4章） |
 | 担当者 | **枠のみ・使用不可** | `sales`に担当者列がない（社員マスタ画面は実装済み。受注入力画面と同一理由） |
 | 摘要・行摘要 | **実装済み** | `sales.slip_remarks`／`line_remarks`に保存する |
 
@@ -129,7 +167,7 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
 
 ## 7. 受注の状態遷移
 
-`order_slip.order_status`（未売上／一部売上／売上完了／中止）と`sales_confirmed_quantity`を更新する処理は、サービス層（`OrderStatusService`）が担う。売上登録・取消からの呼び出しは8-1章、受注入力画面の既存受注の読み込みと中止(F8)は5章・8章・24章を参照。
+`orders.order_status`（未売上／一部売上／売上完了／中止）と`sales_confirmed_quantity`を更新する処理は、サービス層（`OrderStatusService`）が担う。売上登録・取消からの呼び出しは8-1章、受注入力画面の既存受注の読み込みと中止(F8)は5章・8章・24章を参照。
 
 ### 決定事項
 
@@ -146,6 +184,7 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
 `ApplySalesQuantityDeltasAsync`は`SalesService`が売上登録・取消と同一トランザクション・同一`SaveChangesAsync`から呼ぶ（8-1章）。
 
 ---
+
 ## 8. 売上入力画面の拡張
 
 売上入力画面は「受注からの売上確定」「返品・値引」「過去伝票の複写」「既存伝票の訂正・取消」を扱う。
@@ -233,7 +272,7 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
   1. 明細行の集合を再取得し、読込時点の行番号集合と比較（`SlipConcurrencyGuard.EnsureLineSetUnchanged`）。
      不一致なら他ユーザーの行追加・削除とみなし`SlipConcurrencyException`。
   2. 訂正前の状態で編集ロック（下記4条件）を判定。該当すれば`SalesOperationException`。
-  3. 受注デルタを（旧数量→新数量の差分として）収集する。
+  3. 受注デルタを（訂正前数量→訂正後数量の差分として）収集する。
   4. 既存行は**ホワイトリスト方式**で上書き可能な列だけコピーする（伝票日付・得意先名・区分・
      商品・数量・単価・金額・原価・税種別・税率・受注リンク・摘要）。**得意先コード・税区分・
      請求/消込関連の状態カラム・監査列は対象外**（`BillingNumber`は`CreateAsync`だけが
@@ -264,11 +303,12 @@ DB設計に関する未確定事項は `docs/database-schema.md` を参照。以
 - 売上入力画面: 売上No.欄を入力可能とし（`Space`で検索モーダル、`Return`で直接読込）、
   請求状態・消込状態の表示は実際の値にバインドし、編集ロック中は保存・削除を無効化して
   理由をステータスバーに表示する。削除(F8)は`CancelSlipAsync`に配線される。
-  **前／次ナビゲーションは伝票検索モーダルで代替できるため実装しない**（旧プロトタイプの
-  一覧キャッシュ方式は踏襲しない）。担当者は枠のみで、値を持つだけで参照・更新する処理はない
+  **前／次ナビゲーションは伝票検索モーダルで代替できるため実装しない**（一覧を
+  キャッシュする方式は採らない）。担当者は枠のみで、値を持つだけで参照・更新する処理はない
   （`SalesEntity`に担当者列がないため）。
 
 ---
+
 ## 9. 請求締め処理
 
 締め得意先（`tax_unit`＝請求単位／伝票単位、`closing_day ≠ 0`）の期間内売上・入金を集計し、
@@ -318,7 +358,7 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 
 ### 9-4. 税額計算 ― 既存の`ConsumptionTaxCalculator`を税単位で使い分ける
 
-新しい計算ロジックは追加せず、5-1で用意済みのメソッドをそのまま使う。
+新しい計算ロジックは追加せず、既存のメソッドをそのまま使う。
 
 | `tax_unit` | 使うメソッド |
 |---|---|
@@ -331,7 +371,7 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 なので本来一致するはずであり、不一致はデータ異常を意味する。
 
 返品・値引行（`slip_type`＝2／3）はマイナス金額のままそのまま含める（`ConsumptionTaxCalculator`
-はマイナス対応済み。5-1）。
+はマイナス対応済み）。
 
 ### 9-5. 二重締め防止 ― アプリ側とDB側の二段構え
 
@@ -339,7 +379,7 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 を確認する。あればその得意先をスキップする（理由付きで結果に含める）。あわせて、より新しい
 `closing_year_month`の確定済み`billings`が既にある場合も拒否する（締め順序の逆転防止）。
 
-**DB側**: フィルタ付き一意インデックス`UQ_billing_customer_closing_ym_confirmed`
+**DB側**: フィルタ付き一意インデックス`UQ_billings_customer_closing_ym_confirmed`
 （`ON billing (customer_code, closing_year_month) WHERE billing_status = 1 AND is_deleted = 0`。
 `scripts/013_add_billing_confirmed_unique_index.sql`）。解除済み（`billing_status = 2`）は対象外
 なので、締め解除→再締めで新番号を採番する運用（10章）を壊さない。
@@ -355,7 +395,7 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 
 - `src/bmcs_app.Application/Billing/BillingClosingService.cs`が本体。得意先ごとの集計を
   1つのprivateメソッドに集約し、`PreviewAsync`（保存しない読み取り専用の事前確認）・
-  `ConfirmAsync`（同条件で再集計してから確定）の両方から呼ぶ（5-7と同じ「金額を出す経路を
+  `ConfirmAsync`（同条件で再集計してから確定）の両方から呼ぶ（「金額を出す経路を
   1本にする」方針）。`ConfirmAsync`はプレビュー結果を引数に取らない
   （プレビューと確定の間に他ユーザーが伝票を登録しても古い集計値で確定しないため）。
   `PreviewAsync`は請求締め処理画面からは呼ばれず、結合テストの検証でのみ使われる。
@@ -373,7 +413,7 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 請求データを請求日（`billing_date`）だけで抽出したもの。** 締め日区分は抽出条件に使わない
 （`billings`に締め日区分を保持する列が無いため）。抽出条件（`InvoiceService.GetByBillingDateAsync`）:
 `billing_date`一致・`billing_status = 1`（確定）・`is_deleted = 0`。解除済み(`billing_status = 2`)は
-表示しない（同一得意先に解除済みの旧番号と再締めした新番号が並び得るため、印刷対象の判別が
+表示しない（同一得意先に解除済みの請求番号と再締めした請求番号が並び得るため、印刷対象の判別が
 つかなくなることを避ける）。未確定の請求日を選んだときは1件も表示しない。
 
 確定前の集計プレビューは持たない。画面を開き直すと`BillingClosingService.PreviewAsync`は
@@ -446,6 +486,7 @@ F11／ボタン／行のダブルクリック・Enter（`RowActivationBehavior`�
 - 権限判定（管理者専用）は、メニュー単位（`scripts/014_seed_menu_structure.sql`で本画面を権限レベル9に設定。14-4）で行う。画面内アクション単位の権限チェックは持たない。
 
 ---
+
 ## 11. 明細請求書発行
 
 都度得意先（`tax_unit = 3` 内税明細単位）の未請求かつ消込完了でない売上明細行を数件選び、
@@ -465,15 +506,15 @@ F11／ボタン／行のダブルクリック・Enter（`RowActivationBehavior`�
 
 ### 11-2. 税額計算・二重請求防止
 
-税額計算には5-1の`ConsumptionTaxCalculator.CalculateInternalTaxPerLine`
+税額計算には`ConsumptionTaxCalculator.CalculateInternalTaxPerLine`
 （XMLコメントに「明細請求書用」と明記）を使う。返品行（`slip_type`=2）を含めても
-マイナス金額のまま計算に含まれ、5-1の符号対称な端数処理により元の売上の税額をちょうど打ち消す。
+マイナス金額のまま計算に含まれ、符号対称な端数処理により元の売上の税額をちょうど打ち消す。
 
 発行時は、再計算した明細行ごとの税額合計が保存済み`sales.tax_amount`の合計と一致することを
 検証する（9-4が伝票単位で行っている検証と対称。端数区分は登録後不変のため、本来一致するはず
 のデータ異常を検出する）。
 
-二重請求防止は`detail_invoice_sales_lines`のDB側UNIQUE制約（`UQ_detail_invoice_sales_line_sales_line`）
+二重請求防止は`detail_invoice_sales_lines`のDB側UNIQUE制約（`UQ_detail_invoice_sales_lines_sales_line`）
 とアプリ側の事前チェック（11-1の対象条件クエリを発行直前にトランザクション内で再実行）の二段構え。
 `detail_invoice_sales_lines`はrowversionを持たない（行の追加・削除のみで更新が無いテーブルのため）
 ので、この再確認とDB側のUNIQUE制約が排他制御の担保になる（`docs/architecture.md` 9章）。
@@ -506,8 +547,7 @@ F11／ボタン／行のダブルクリック・Enter（`RowActivationBehavior`�
   「登録後のリセット」）。
 - 削除 (F8) は明細請求書の取消（12章）、印刷 (F11) は明細請求書の印刷（23章）で、いずれも
   ツールバーとキーバインドから使える。
-- デモ（`bmcs_app.LineInvoice`）にあった前後の請求書ナビゲーション・登録件数表示・上書き保存
-  （Upsert）は採用しない。前項および「一覧を持たずコード直接入力」という既存画面の統一パターンを
+- 前後の請求書ナビゲーション・登録件数表示・上書き保存（Upsert）は持たない。前項および「一覧を持たずコード直接入力」という既存画面の統一パターンを
   優先するため。
 
 ---
@@ -515,7 +555,7 @@ F11／ボタン／行のダブルクリック・Enter（`RowActivationBehavior`�
 ## 12. 明細請求書の取消
 
 11章（発行）と対になる、明細請求書の取消。別画面にはせず、11章の画面（`DetailInvoiceIssueWindow`）
-の「削除 (F8)」に配線している。別画面分離を要求しているのは締め解除・月次締め解除
+の「削除 (F8)」に配線している。別画面分離を要求しているのは締め解除処理・月次締め解除処理
 （管理者権限のみの操作）に限られ、明細請求書の取消は対象に含まれないため。
 
 ### 12-1. 連携行は物理削除する
@@ -527,7 +567,7 @@ F11／ボタン／行のダブルクリック・Enter（`RowActivationBehavior`�
 
 連携行を削除すると、`DetailInvoiceService.BuildCandidateQuery`（11-1節）の
 「どの明細請求書にも連携していない」という条件が自動的に真に戻るため、対象の売上明細行は
-何もしなくても次回の候補に再び現れる。`UQ_detail_invoice_sales_line_sales_line`も解放される
+何もしなくても次回の候補に再び現れる。`UQ_detail_invoice_sales_lines_sales_line`も解放される
 ため、同じ行を新しい明細請求書へ再発行できる（取消後に同じ売上を再度請求できる）。
 副作用として、取消済みの明細請求書を`GetByNumberAsync`で読み込むと明細行は0件になる
 （連携行自体が残っていないため）。ヘッダーの確定金額（`SalesAmount`／`TaxAmount`／`TotalAmount`
@@ -542,7 +582,7 @@ F11／ボタン／行のダブルクリック・Enter（`RowActivationBehavior`�
 1. **連携先の売上明細行に消込済み（一部消込・消込完了のいずれか）の行が含まれる場合。**
    取消して未請求に戻すと、入金済みなのに未請求という業務上あり得ない状態になるため。
 2. **この明細請求書を指定した明細入金（`detail_receipt.target_type=2`）が存在する場合。**
-   取消すると入金の充当先が宙に浮くため（`FK_detail_receipt_detail_invoice`）。
+   取消すると入金の充当先が宙に浮くため（`FK_detail_receipts_detail_invoices`）。
 
 排他制御はヘッダーの`RowVersion`（`DetailInvoice : AuditableEntity`）に委ね、`SaveChangesAsync`の
 `DbUpdateConcurrencyException`を`DetailInvoiceException`へ変換する。複数明細行の伝票向けの
@@ -563,7 +603,7 @@ F11／ボタン／行のダブルクリック・Enter（`RowActivationBehavior`�
 
 ## 13. 請求フェーズの構造上の制約
 
-9〜12章（締め・解除・発行・取消）の機能間の組み合わせと、請求と売上訂正・取消（5-6・8章）の
+9〜12章（締め・解除・発行・取消）の機能間の組み合わせと、請求と売上訂正・取消（8章）の
 相互作用について、現在の構造と制約を整理する。
 
 ### 13-1. 締め請求と明細請求は構造的に分離している
@@ -573,7 +613,7 @@ F11／ボタン／行のダブルクリック・Enter（`RowActivationBehavior`�
 これをスナップショットする。`BillingClosingService.BuildCandidatesAsync`は
 `TaxUnit.Invoice || TaxUnit.Slip`の得意先のみを対象にし、`DetailInvoiceService.BuildCandidateQuery`
 は`TaxUnit.Line`のみを対象にするため、**同じ売上明細行が締め請求と明細請求の両方に載る経路は
-構造的に存在しない**。`CK_customer_tax_unit_closing_day`（内税明細単位⇔`closing_day=0`）により、
+構造的に存在しない**。`CK_customers_tax_unit_closing_day`（内税明細単位⇔`closing_day=0`）により、
 都度得意先が締め処理の対象得意先抽出条件（`closing_day`一致）に紛れ込むこともない。
 
 締め順序（9-5）と解除順序（10-1）は対称な判定で、前回残高チェーンが破綻しない。二重締めは
@@ -584,11 +624,11 @@ F11／ボタン／行のダブルクリック・Enter（`RowActivationBehavior`�
 ### 13-2. 売上の編集ロックは明細請求書発行済みを含む4条件
 
 売上の編集ロック（`SalesEditLockEvaluator`）の判定順は
-①請求締め（`billing_number`）→①'明細請求書発行済み→②月次締め→③消込完了
-（`docs/product-spec.md`共通業務ルール5・`docs/database-schema.md` 2.0節）。
-①'は、いずれかの明細行が`detail_invoice_sales_lines`に連携していることを指す。
+①請求締め（`billing_number`）→②明細請求書発行済み→③月次締め→④消込完了
+（`docs/product-spec.md`共通業務ルール5・`docs/database-schema.md` 1章）。
+②は、いずれかの明細行が`detail_invoice_sales_lines`に連携していることを指す。
 
-①'が必要なのは、`tax_unit=3`の`billing_number`が`CK_sales_billing_number_by_tax_unit`により
+②が必要なのは、`tax_unit=3`の`billing_number`が`CK_sales_billing_number_by_tax_unit`により
 常にNULLのため①が都度得意先には決して発火せず、明細請求書を発行済みでも売上入力画面から自由に
 訂正・取消できてしまうため。その場合は次の不整合が生じる。
 
@@ -607,7 +647,7 @@ DBアクセス（`detail_invoice_sales_lines`の存在確認）は`SalesEditLock
 `docs/architecture.md`は「`DbUpdateConcurrencyException`はApplication層で捕捉し、ViewModelに
 EF Coreの例外型を漏らさない」と規定している。`BillingClosingService.ConfirmAsync`は
 `DbUpdateException`（二重締めのユニーク制約違反）・`DbUpdateConcurrencyException`（rowversion競合）
-を`BillingClosingException`へ、`BillingReleaseService.ReleaseAsync`は
+を`BillingClosingException`へ、`BillingReleaseService.ReleaseByBillingDateAsync`は
 `DbUpdateConcurrencyException`を`BillingReleaseException`へ、`DetailInvoiceService`は
 `IssueAsync`／`CancelAsync`とも`DetailInvoiceException`へ変換する。3つの例外クラスは
 `(string message, Exception? inner = null)`のシグネチャで揃えている。
@@ -628,15 +668,16 @@ EF Coreの例外型を漏らさない」と規定している。`BillingClosingS
 **`sales.billing_status`とリンクの一致にDB側の防波堤は持たない。**
 `billing_status`（請求済／未請求）と実際の紐付け（`tax_unit`1/2は`billing_number`、
 `tax_unit=3`は`detail_invoice_sales_lines`の存在）の一致は、アプリのトランザクションだけが
-担保しており、DB側のCHECK制約は無い。二重請求側（`UQ_detail_invoice_sales_line_sales_line`）・
+担保しており、DB側のCHECK制約は無い。二重請求側（`UQ_detail_invoice_sales_lines_sales_line`）・
 二重締め側（`UQ_billings_customer_closing_ym_confirmed`）はDB側の最終防衛線を持つのと非対称だが、
 `tax_unit=3`側は連携テーブルの存在確認が必要でCHECK制約として書けないため、`tax_unit`1/2側だけ
 追加しても非対称が残る。このためDB制約は追加しない。
 
 ---
+
 ## 14. メインメニュー画面
 
-メインメニューは**リスト・アコーディオン型**で、ウィンドウは縦長（440×820、`MainMenuWindow.xaml`）。
+メインメニューは**リスト・アコーディオン型**で、ウィンドウは縦長（幅300、高さは作業領域に合わせる。`MainMenuWindow.xaml`）。
 表示内容はメニュー構成マスタ（`menus`）で決まる。
 
 ### 14-1. 前提: 起動時の社員コード
@@ -678,8 +719,8 @@ EF Coreの例外型を漏らさない」と規定している。`BillingClosingS
 メニューには実装済みの画面だけを登録し、画面を実装するたびに`scripts/014_seed_menu_structure.sql`へ
 追記する。現在の構成は、受注・売上（受注入力・売上入力）／請求（請求締め処理・締め解除処理・
 明細請求書発行）／入金（入金入力・明細入金）／元帳（得意先元帳）／月次（月次締め処理・月次締め解除
-処理）／マスタ管理（得意先・商品・社員・自社情報・銀行・入金方法・プリンタ設定）の16画面。
-データ検索は専用画面が未実装のためメニューに無い。
+処理）／マスタ管理（得意先・商品・社員・自社情報・銀行・入金方法・プリンタ設定）の各画面。
+データ横断検索は専用画面が未実装のためメニューに無い。
 
 権限レベルは、締め解除処理・月次締め解除処理（権限差を別画面として表現する対象）と
 社員マスタ・自社情報（機微な情報のため）を9（管理者専用）、それ以外を1（一般）とする。
@@ -702,7 +743,7 @@ EF Coreの例外型を漏らさない」と規定している。`BillingClosingS
 ためには変更しない。「Enterに対する`KeyBinding`を持つTextBoxでは譲る」というガードに
 CanExecute判定を足す案は、`[RelayCommand]`が生成する`AsyncRelayCommand`が既定で実行中
 `CanExecute()`がfalseを返すため、非同期Lookupの実行中にEnterを二度押すとフォーカスが勝手に
-飛ぶ誤爆が起き、しかもこのビヘイビアは14画面に適用済みで得意先コード欄・商品コード欄など無関係な
+飛ぶ誤爆が起き、しかもこのビヘイビアは多数の画面に適用済みで得意先コード欄・商品コード欄など無関係な
 欄にまで波及するため採らない。
 
 代わりに`ViewModelBase`の`FocusRequested`イベント（`RequestFocus(string focusKey)`）と、
@@ -777,7 +818,7 @@ CanExecute判定を足す案は、`[RelayCommand]`が生成する`AsyncRelayComm
 （`RecalculateDetailAsync`）に内部分岐する。
 
 `RecalculateForBillingGroupAsync`は入金入力・明細入金・入金の訂正・取消のほか、
-`BillingReleaseService.ReleaseAsync`（締め解除）と`SalesService.UpdateAsync`／`CancelSlipAsync`
+`BillingReleaseService.ReleaseByBillingDateAsync`（締め解除）と`SalesService.UpdateAsync`／`CancelSlipAsync`
 （売上の訂正・取消）の`SaveChangesAsync`後・`CommitAsync`前にも呼ばれる。締め解除では
 `sales.billing_number`が外れた行が充当先を失い未消込へ戻る。売上訂正・取消では、一部消込の行を
 金額を減らす方向へ訂正できる（編集ロック条件4は`FullySettled`のみが対象）ため、消込済金額が
@@ -850,10 +891,11 @@ namespace のメンバーを using 導入の型より優先して解決するた
   追加して確認する）。
 
 ---
+
 ## 17. 入金入力画面の実装
 
 締め得意先（請求単位／伝票単位）専用の新規登録画面。都度得意先の入金は明細入金画面
-が担う。画面レイアウト・操作方法は旧デモ`bmcs_app.Receipt`を参考にする。
+が担う。
 
 ### 17-2. 決定
 
@@ -862,8 +904,8 @@ namespace のメンバーを using 導入の型より優先して解決するた
 複数の支払手段（現金・振込・手形等）に分かれることがあり、**入金方法は行ごとに選べる必要が
 ある**。この業務実態に基づき、次の方針とする。
 
-1. **`receipts`の明細行は支払手段の内訳（入金方法＋金額＋行摘要）とする。** 旧デモ
-   `bmcs_app.Receipt`の明細行方式を採用する。入金先口座は行単位（入金方法マスタの
+1. **`receipts`の明細行は支払手段の内訳（入金方法＋金額＋行摘要）とする。**
+   入金先口座は行単位（入金方法マスタの
    `requires_bank_account`が立つ行のみ）、手形期日も行単位（`requires_bill_due_date`が立つ行のみ）
    で持つ。
 2. **請求への充当（`billing_number`／`allocated_amount`／`fee_adjustment_amount`）は
@@ -887,14 +929,12 @@ namespace のメンバーを using 導入の型より優先して解決するた
 `detail_receipts`テーブル・採番系列と組み合わせ、`detail_receipts`へ書き込む唯一の入口になる
 （`target_type=2`のデータはseed以外に生成経路が無い）。
 
-画面レイアウト・操作方法は旧デモ`bmcs_app.LineReceipt`を可能な限り再現する（項目に過不足が
-ある場合は本プロジェクトのスキーマを優先）。
 
 ### 18-1. 設計判断
 
 | # | 論点 | 決定 |
 |---|---|---|
-| 1 | 充当先の粒度 | 売上伝票タブ＝**売上明細行**単位（`target_type=1`）、明細請求書タブ＝**明細請求書まるごと1行**（`target_type=2`）。デモは請求書タブでも行単位だったが、`docs/database-schema.md` 2.11節のスキーマと、完了条件「売上伝票**または**明細請求書を指定した」に合わせてスキーマ側を採用する |
+| 1 | 充当先の粒度 | 売上伝票タブ＝**売上明細行**単位（`target_type=1`）、明細請求書タブ＝**明細請求書まるごと1行**（`target_type=2`）。行単位ではなく請求書単位とするのは、`docs/database-schema.md` 2.11節のスキーマと、完了条件「売上伝票**または**明細請求書を指定した」に合わせるため |
 | 2 | 明細行の金額 | **読み取り専用**（常に対象の全額または残額を充当）。手入力での減額はしない |
 | 3 | 手形期日 | **画面に持たない**。`detail_receipts`に`bill_due_date`列が無いため、入金方法の選択肢から手形（`requires_bill_due_date=1`）を除外する（18-2参照） |
 | 4 | 前受金 | **無し**。充当先がNULLの行は作らない（入金入力画面の前受・過入金行とは対照的） |
@@ -956,8 +996,7 @@ namespace のメンバーを using 導入の型より優先して解決するた
 - `DetailReceiptEntryViewModel`／`DetailReceiptLineViewModel`（Presentation/Receipt）:
   入金入力画面の明細行パターンと、明細請求書発行画面の候補→明細取込パターンを合成
 - `DetailReceiptEntryWindow.xaml`（Presentation/Receipt）: 左＝入金登録の明細行、右＝上段タブ
-  （売上伝票／明細請求書）＋下段の選択伝票明細（デモ`LineReceiptMainView`のレイアウトを
-  踏襲）。売上伝票タブは行単位で取込み、明細請求書タブは請求書単位（上段リストの行から
+  （売上伝票／明細請求書）＋下段の選択伝票明細。売上伝票タブは行単位で取込み、明細請求書タブは請求書単位（上段リストの行から
   まるごと取込み、下段は参考表示・読み取り専用）
 - メインメニューに「入金 > 明細入金」（`scripts/014_seed_menu_structure.sql`、
   `screen_key = detail_receipt_entry`、`menu_code = MNU_DETAIL_RECEIPT`。`varchar(20)`制約のため
@@ -1005,7 +1044,7 @@ EvaluateEditLockAsync`として各サービスの public メソッドに実装�
 （Minimal Impact）。
 
 請求締めスナップショットに抵触して訂正・取消できない場合は、締め解除してから操作する
-（`BillingReleaseService.ReleaseAsync`は最新の確定`billings`のみ解除可能という既存制約と整合する）。
+（`BillingReleaseService.ReleaseByBillingDateAsync`は最新の確定`billings`のみ解除可能という既存制約と整合する）。
 
 ### 19-3. 明細入金（detail_receipt）の訂正は充当先の追加を許さない
 
@@ -1071,7 +1110,7 @@ EvaluateEditLockAsync`として各サービスの public メソッドに実装�
 `BillingStatus.Confirmed`の`billings`のみを対象にする。したがって、訂正前に確定済み`billings`へ
 充当されていた`receipts`が、その後`billings`が締め解除された状態で訂正されると、
 再構築後の`receipt_allocations`はその`billings`を対象外にする（別の確定済み`billings`があれば
-そちらへ、無ければ前受行へ回る）。`BillingReleaseService.ReleaseAsync`が「解除では既存の
+そちらへ、無ければ前受行へ回る）。`BillingReleaseService.ReleaseByBillingDateAsync`が「解除では既存の
 `receipt_allocations`を付け替えない」と明言している既存方針（16章「既知の限界」）の自然な帰結であり、
 新たな防止策は設けない。
 
@@ -1180,9 +1219,7 @@ SELECT COUNT(*) FROM dbo.sales WHERE is_deleted = 0 AND settlement_status <> (
 
 ### 21-1. スコープ
 
-サービス層（元帳データのマージ）＋ViewModel＋View（画面）までを範囲とする。画面レイアウト・
-操作方法は旧デモ（`bmcs_app.CustomerLedger`）を可能な限り再現しつつ、項目に過不足がある場合は
-本プロジェクトを優先する。リアルタイム残高の常時表示は21-6、伝票プレビューは21-7を参照。
+サービス層（元帳データのマージ）＋ViewModel＋View（画面）までを範囲とする。リアルタイム残高の常時表示は21-6、伝票プレビューは21-7を参照。
 
 スコープ外は印刷・プレビュー（ボタンは枠のみ用意し`IsEnabled="False"`。得意先元帳の帳票は
 未実装。`docs/report-spec.md` 2-3節）。
@@ -1273,7 +1310,7 @@ DIスコープ・DbContextを持つだけである。求めるのは**「キャ�
 （本日時点の残高）を表示する。得意先確定時（`ApplyCustomerAsync`）と表示(F5)実行時
 （`SearchCommand`）の両方で`CustomerLedgerQueryService.GetBalanceAsOfAsync`
 （`GetAsync(code, asOf, asOf).ClosingBalance`と同値）を呼んで都度再計算する。期間From/Toを
-過去の月に変更しても「現在残高」自体は連動しない（デモの「前月繰越／今回」集計とは別の独立表示）。
+過去の月に変更しても「現在残高」自体は連動しない（「前月繰越／今回」集計とは別の独立表示）。
 
 ### 21-7. 伝票プレビュー
 
@@ -1367,6 +1404,7 @@ WPFの`KeyBinding`はコントロールが`IsEnabled=false`でも生き続ける
 未実装で、要件は`docs/report-spec.md` 2-3節、判断は`docs/decisions.md`に記載している。
 
 ---
+
 ## 23. 請求書・明細請求書の実装
 
 ### 23-1. スコープ
@@ -1448,7 +1486,7 @@ WPFの`KeyBinding`はコントロールが`IsEnabled=false`でも生き続ける
 
 ### 23-7. 申し送り
 
-- 得意先元帳（10-6）の帳票要件（毎ページ繰越フッター）と専用のプリンタ設定
+- 得意先元帳の帳票要件（毎ページ繰越フッター）と専用のプリンタ設定
   （`ReportKind`・`PrinterSettingsConfig`）は`docs/report-spec.md` 2-3節を参照。
   `ReportKind`に得意先元帳用の値は現在存在しない。
 - 納品書を適格請求書として扱うかは税理士確認待ち（`docs/design_document.md` 2章の
@@ -1509,9 +1547,9 @@ WPFの`KeyBinding`はコントロールが`IsEnabled=false`でも生き続ける
 - **`OrderQuantity >= SalesConfirmedQuantity`の検証を書かない。** 修正可能なのは未売上限定
   （`SalesConfirmedQuantity`は常に0）のため論理的に到達不能な条件になる。
 
-**ホワイトリスト14列**: `OrderDate, CustomerName, ProductCode, ProductName, Specification,
+**ホワイトリスト15列**: `OrderDate, CustomerName, ProductCode, ProductName, Specification,
 UnitName, OrderQuantity, UnitPrice, Amount, CostPrice, TaxCategory, TaxRate, SlipRemarks,
-LineRemarks`。除外: `CustomerCode`（得意先は変更不可）、`SubCustomerId`（UIが値を持たず常に
+LineRemarks, InternalRemarks`。除外: `CustomerCode`（得意先は変更不可）、`SubCustomerId`（UIが値を持たず常に
 null。将来値を持つようになったときに静かに消えるのを防ぐ）、`AllocatedQuantity`（在庫連携スコープ外）、
 `OrderStatus`／`SalesConfirmedQuantity`（所有者は`OrderStatusService`のみ）、監査列、
 `RowVersion`。既存行のコピー時に`IsDeleted = false`を明示設定する（下記24-5）。
@@ -1629,6 +1667,7 @@ DBアクセスは`src/bmcs_app.Application/Billing/BillingClosedDateService.cs`�
 最小日付へ補正し`StatusMessage`で通知する**。既存伝票の読込（訂正モード）
 では最小日付は表示用に設定するのみで、読込んだ日付は書き換えない。保存時にも同じ最小日付との
 比較を行い、二重防御とする。
+
 ---
 
 ## 26. 受注入力の過去伝票複写
@@ -1790,7 +1829,7 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 全得意先の暦月末売掛残高を`monthly_closings`に確定保存する画面・処理。画面の骨組みは請求締め処理（9章）と同じ。違いは次の2点。
 
 - 締め日のコンボボックスは持たない（全得意先が対象）。
-- 請求日の代わりに「集計年月」（暦月）を選ぶ。ComboBoxで当月から過去24か月までを選べ、既定値は前月。年月は日付ではないため、X-5の「日付欄はDatePickerに統一」の対象外。
+- 請求日の代わりに「集計年月」（暦月）を選ぶ。ComboBoxで当月から過去24か月までを選べ、既定値は前月。年月は日付ではないため、「日付欄はDatePickerに統一」の対象外。
 
 一覧は選んだ年月の確定済み`monthly_closings`（解除済みを除く）。年月を変えると自動で再取得する。締め確定（F10）は実行前に確認ダイアログを挟む。帳票が無いため印刷ボタンは持たない。
 
@@ -1808,7 +1847,7 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 `tax_unit=1`（請求単位）では、前月に仮計算した税が請求締め後に確定値へ置き換わり、前月行の当月残高と「元帳を今計算し直した月初残高」が食い違うことがある（`database-schema.md` 2.16節の「確定した行の税額は都度再計算しても異なる値になり得る」）。「前月残高＝前月行の当月残高」の連続性を優先し、そのずれを消費税額で吸収する。確定した時点では元帳の月末残高と完全に一致する。
 
 - **請求集約先**: 元帳の値（グループ合算）をそのまま入れる。
-- **請求集約元**: 自社の売上額と税率別の対価額だけを入れ、前月残高・入金額・消費税額・当月残高・税率別の税額は0にする（21章 R8の方針）。この行は残高の計算式が成り立たず、行を合計すると売上が請求集約先の行と二重に数えられる。集計に使うときは請求集約元の行を除くこと。
+- **請求集約元**: 自社の売上額と税率別の対価額だけを入れ、前月残高・入金額・消費税額・当月残高・税率別の税額は0にする。この行は残高の計算式が成り立たず、行を合計すると売上が請求集約先の行と二重に数えられる。集計に使うときは請求集約元の行を除くこと。
 - **`tax_unit=3`（内税・都度得意先）**: 売上額は税抜額（`Amount − TaxAmount`）、消費税額は内税額の合計。売上＋消費税が税込額になる。
 - **税率別内訳5列**: 対価額は当月売上を税種別区分ごとに合計する。税額は`tax_unit=2`が当月の伝票を伝票ごとに再計算した合計（保存済みの`slip_tax_amount`と一致しなければ`MonthlyClosingException`）、`tax_unit=1`が「当月の請求日を持つ確定済み請求の税額＋仮計算税の当月増分」。上記の逆算で吸収したずれは内訳に配分しないため、**内訳の税額合計が消費税額と一致しないことがある**。
 

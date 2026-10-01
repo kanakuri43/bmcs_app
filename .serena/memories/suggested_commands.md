@@ -1,8 +1,10 @@
 # よく使うコマンド（Windows / PowerShell or Git Bash）
 
+ビルド・起動・テスト・DB適用の正式な手順は `docs/setup.md`。ここは作業メモ。
+
 ## ビルド・実行
 - `dotnet build` — 全プロジェクトビルド（ルートで実行）。Nullable警告はエラーになるので注意。
-- `dotnet run --project src/bmcs_app` — WPFアプリ起動（想定。要確認）
+- `dotnet run --project src/bmcs_app [社員コード]` — WPFアプリ起動
 
 ## テスト
 - `dotnet test tests/bmcs_app.Domain.Tests` — DB不要の単体テスト（消費税計算・単価決定・税額分岐・伝票区分正規化・編集ロック判定・消込配分ロジック等）。

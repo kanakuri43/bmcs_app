@@ -1,0 +1,13 @@
+# 改行コード: リポジトリ内は LF に正規化する（core.autocrlf に依存しない）。
+* text=auto eol=lf
+
+# Visual Studio が CRLF を前提とするファイル
+*.sln text eol=crlf
+
+# バイナリ
+*.png binary
+*.jpg binary
+*.ico binary
+*.dll binary
+*.exe binary
+*.pdf binary
