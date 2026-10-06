@@ -586,6 +586,8 @@ public partial class OrderEntryViewModel(
         _customer = null;
         _loadedOrderSlipNumber = null;
         _loadedLineNumbers = [];
+        _isAtFirstSlip = false;
+        NotifySlipNavigationChanged();
         SaveCommand.NotifyCanExecuteChanged();
         DeleteSlipCommand.NotifyCanExecuteChanged();
         CustomerCode = string.Empty;
@@ -746,6 +748,8 @@ public partial class OrderEntryViewModel(
             _customer = customer;
             _loadedOrderSlipNumber = orderSlipNumber;
             _loadedLineNumbers = sourceLines.Select(l => l.LineNumber).ToList();
+            _isAtFirstSlip = await orderQueryService.GetPreviousSlipNumberAsync(orderSlipNumber) is null;
+            NotifySlipNavigationChanged();
             SaveCommand.NotifyCanExecuteChanged();
             DeleteSlipCommand.NotifyCanExecuteChanged();
 
@@ -991,14 +995,43 @@ public partial class OrderEntryViewModel(
         }
     });
 
-    /// <summary>既存受注の一覧・検索機能は伝票検索モーダルに統合済みのため、前後移動は当面実装しない。</summary>
-    [RelayCommand(CanExecute = nameof(CanUseUnimplementedFeature))]
-    private void PrevSlip()
+    // ── 前後移動（伝票番号順。新規状態は「最新伝票の次」の位置） ──────
+    /// <summary>表示中の伝票が先頭（これより前が無い）か。新規状態では常に <c>false</c>。</summary>
+    private bool _isAtFirstSlip;
+
+    private bool CanPrevSlip => !_isAtFirstSlip;
+
+    private bool CanNextSlip => _loadedOrderSlipNumber is not null;
+
+    private void NotifySlipNavigationChanged()
     {
+        PrevSlipCommand.NotifyCanExecuteChanged();
+        NextSlipCommand.NotifyCanExecuteChanged();
     }
 
-    [RelayCommand(CanExecute = nameof(CanUseUnimplementedFeature))]
-    private void NextSlip()
+    [RelayCommand(CanExecute = nameof(CanPrevSlip))]
+    private Task PrevSlipAsync() => RunBusyAsync(async () =>
     {
-    }
+        var prev = await orderQueryService.GetPreviousSlipNumberAsync(_loadedOrderSlipNumber);
+        if (prev is null)
+        {
+            StatusMessage = "前の受注はありません。";
+            return;
+        }
+
+        await LoadOrderForCorrectionAsync(prev);
+    });
+
+    [RelayCommand(CanExecute = nameof(CanNextSlip))]
+    private Task NextSlipAsync() => RunBusyAsync(async () =>
+    {
+        var next = await orderQueryService.GetNextSlipNumberAsync(_loadedOrderSlipNumber!);
+        if (next is null)
+        {
+            New(); // 最新伝票の次＝新規状態へ戻る
+            return;
+        }
+
+        await LoadOrderForCorrectionAsync(next);
+    });
 }

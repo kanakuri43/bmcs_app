@@ -38,10 +38,10 @@
                     ToolTip="新規受注を作成します (F3)" />
             <Separator />
             <Button Command="{Binding PrevSlipCommand}"
-                    ToolTip="前の受注（未実装）"
+                    ToolTip="前の受注（伝票番号順）"
                     Style="{StaticResource SlipPrevButtonStyle}" />
             <Button Command="{Binding NextSlipCommand}"
-                    ToolTip="次の受注（未実装）"
+                    ToolTip="次の受注（最新の次は新規）"
                     Style="{StaticResource SlipNextButtonStyle}" />
             <Separator />
             <Button Command="{Binding CopyFromPastSlipCommand}"

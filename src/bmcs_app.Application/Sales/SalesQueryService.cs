@@ -31,6 +31,35 @@ public class SalesQueryService(BmcsDbContext dbContext)
     }
 
     /// <summary>
+    /// 前後移動用。<paramref name="current"/> の直前の売上No.を返す（伝票番号順、論理削除除外）。
+    /// <paramref name="current"/> が <c>null</c> なら最新の売上No.。該当なしは <c>null</c>。
+    /// </summary>
+    public async Task<string?> GetPreviousSlipNumberAsync(
+        string? current, CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.Sales.AsNoTracking().Where(s => !s.IsDeleted);
+        if (current is not null)
+        {
+            query = query.Where(s => string.Compare(s.SalesSlipNumber, current) < 0);
+        }
+
+        return await query.OrderByDescending(s => s.SalesSlipNumber)
+            .Select(s => s.SalesSlipNumber)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary><paramref name="current"/> の直後の売上No.を返す。該当なし（＝最新）は <c>null</c>。</summary>
+    public async Task<string?> GetNextSlipNumberAsync(
+        string current, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Sales.AsNoTracking()
+            .Where(s => !s.IsDeleted && string.Compare(s.SalesSlipNumber, current) > 0)
+            .OrderBy(s => s.SalesSlipNumber)
+            .Select(s => s.SalesSlipNumber)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
     /// 伝票検索モーダル用。伝票番号・得意先コード・得意先名のいずれかにキーワードを含む
     /// 売上伝票を、伝票単位に集約したサマリで返す（新しい順）。
     /// </summary>

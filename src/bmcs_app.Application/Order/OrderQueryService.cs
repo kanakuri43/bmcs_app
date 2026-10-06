@@ -31,6 +31,35 @@ public class OrderQueryService(BmcsDbContext dbContext)
     }
 
     /// <summary>
+    /// 前後移動用。<paramref name="current"/> の直前の受注No.を返す（伝票番号順、論理削除除外）。
+    /// <paramref name="current"/> が <c>null</c> なら最新の受注No.。該当なしは <c>null</c>。
+    /// </summary>
+    public async Task<string?> GetPreviousSlipNumberAsync(
+        string? current, CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.OrderSlips.AsNoTracking().Where(o => !o.IsDeleted);
+        if (current is not null)
+        {
+            query = query.Where(o => string.Compare(o.OrderSlipNumber, current) < 0);
+        }
+
+        return await query.OrderByDescending(o => o.OrderSlipNumber)
+            .Select(o => o.OrderSlipNumber)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary><paramref name="current"/> の直後の受注No.を返す。該当なし（＝最新）は <c>null</c>。</summary>
+    public async Task<string?> GetNextSlipNumberAsync(
+        string current, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.OrderSlips.AsNoTracking()
+            .Where(o => !o.IsDeleted && string.Compare(o.OrderSlipNumber, current) > 0)
+            .OrderBy(o => o.OrderSlipNumber)
+            .Select(o => o.OrderSlipNumber)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
     /// 伝票検索モーダル用。伝票番号・得意先コード・得意先名のいずれかにキーワードを含む
     /// 受注伝票を、伝票単位に集約したサマリで返す（新しい順）。
     /// </summary>
