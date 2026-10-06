@@ -1,0 +1,48 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Master.MenuMasterWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 Title="メニュー構成マスタ"
+                 Height="560" Width="820"
+                 WindowStartupLocation="CenterScreen"
+                 WindowTransitionsEnabled="False">
+    <Grid Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <DataGrid Grid.Column="0" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}"
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                  HeadersVisibility="Column" CanUserAddRows="False" Margin="0,0,16,0">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="表示名" Binding="{Binding Label}" Width="*" />
+                <DataGridTextColumn Header="表示順" Binding="{Binding DisplayOrder}" Width="Auto" />
+                <DataGridTextColumn Header="必要権限" Binding="{Binding RequiredPermissionLevel}" Width="Auto" />
+                <DataGridTextColumn Header="画面キー" Binding="{Binding ScreenKey}" Width="Auto" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Column="1" Width="280">
+            <TextBlock Text="編集" FontWeight="Bold" Margin="0,0,0,8" />
+            <TextBlock Text="表示名" Margin="0,0,0,2" />
+            <TextBox Text="{Binding MenuName}" MaxLength="40" Margin="0,0,0,8" />
+            <TextBlock Text="表示順" Margin="0,0,0,2" />
+            <TextBox Text="{Binding DisplayOrderText}" Width="80" HorizontalAlignment="Left" Margin="0,0,0,8" />
+            <TextBlock Text="必要権限レベル（機能のみ。1＝一般、9＝管理者専用）" TextWrapping="Wrap" Margin="0,0,0,2" />
+            <TextBox Text="{Binding PermissionLevelText}" IsEnabled="{Binding IsChildSelected}"
+                     Width="80" HorizontalAlignment="Left" Margin="0,0,0,8" />
+            <CheckBox Content="初期状態で開く（分類のみ）" IsChecked="{Binding IsDefaultExpanded}"
+                      IsEnabled="{Binding IsParentSelected}" Margin="0,0,0,16" />
+
+            <StackPanel Orientation="Horizontal">
+                <Button Content="保存" Command="{Binding SaveCommand}" Padding="16,6" Margin="0,0,12,0" />
+                <TextBlock Text="処理中..." VerticalAlignment="Center" Foreground="OrangeRed"
+                           Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </StackPanel>
+            <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="Gray" />
+            <TextBlock Text="項目の追加・削除、画面キーと親子関係の変更は scripts/ のSQLで行います。"
+                       TextWrapping="Wrap" Margin="0,16,0,0" Foreground="Gray" />
+        </StackPanel>
+    </Grid>
+</mah:MetroWindow>

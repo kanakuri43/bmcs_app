@@ -4,8 +4,9 @@
 --
 -- scripts/seed_dev_data.sql の開発用テストデータとは異なり、これはメインメニュー画面が
 -- 実際に使う構成データそのものであり、開発・本番のどちらでも適用する。
--- 既存の menu 行を全件削除してから再投入する（再実行安全）。画面からの編集機能は持たないため、
--- 新しい画面を追加する・権限レベルを見直す場合は本スクリプトを直接書き換えて再適用する。
+-- 既存の menu 行を全件削除してから再投入する（再実行安全）。メニューマスタ管理画面からは
+-- 表示名・表示順・必要権限レベル・初期展開だけを編集できる（再適用すると画面での編集内容は本スクリプトの値に戻る）。
+-- 項目の追加・削除、遷移先（screen_key）・親子関係の変更は、本スクリプトを直接書き換えて再適用する。
 --
 -- 実装済みの画面のみを対象とする。未実装フェーズ（データ検索等）の
 -- 項目は、該当フェーズの実装時に本スクリプトへ追記する。
@@ -65,5 +66,6 @@ VALUES
     (N'MNU_COMPANY_INFO', N'MNU_MASTER', N'自社情報', 4, 9, N'company_info_settings', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'MNU_BANK_MASTER', N'MNU_MASTER', N'銀行マスタ', 5, 1, N'bank_account_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'MNU_DEPOSIT_METHOD', N'MNU_MASTER', N'入金方法マスタ', 6, 1, N'deposit_method_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    (N'MNU_PRINTER_SETTING', N'MNU_MASTER', N'プリンタ設定', 7, 1, N'printer_settings', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
+    (N'MNU_PRINTER_SETTING', N'MNU_MASTER', N'プリンタ設定', 7, 1, N'printer_settings', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    (N'MNU_MENU_MASTER', N'MNU_MASTER', N'メニューマスタ管理', 8, 9, N'menu_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO

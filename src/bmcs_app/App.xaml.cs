@@ -156,6 +156,9 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<CompanyInfoSettingsWindow>();
         builder.Services.AddScoped<CompanyInfoSettingsViewModel>();
 
+        builder.Services.AddScoped<MenuMasterWindow>();
+        builder.Services.AddScoped<MenuMasterViewModel>();
+
         builder.Services.AddScoped<BankAccountMasterWindow>();
         builder.Services.AddScoped<BankAccountMasterViewModel>();
 

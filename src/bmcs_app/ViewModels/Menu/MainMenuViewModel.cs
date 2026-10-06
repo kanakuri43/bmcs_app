@@ -135,6 +135,9 @@ public partial class MainMenuViewModel(
             case "company_info_settings":
                 windowService.Show<CompanyInfoSettingsWindow, CompanyInfoSettingsViewModel>();
                 break;
+            case "menu_master":
+                windowService.Show<MenuMasterWindow, MenuMasterViewModel>();
+                break;
             case "bank_account_master":
                 windowService.Show<BankAccountMasterWindow, BankAccountMasterViewModel>();
                 break;
