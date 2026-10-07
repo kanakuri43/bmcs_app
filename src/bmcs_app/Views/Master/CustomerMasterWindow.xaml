@@ -65,7 +65,18 @@
                     <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding ContactPersonName}" Margin="0,0,0,8" />
 
                     <TextBlock Grid.Row="9" Grid.Column="0" Text="営業担当社員コード" Margin="0,0,12,8" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="9" Grid.Column="1" Text="{Binding SalesEmployeeCode}" Margin="0,0,0,8" />
+                    <StackPanel Grid.Row="9" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBox Text="{Binding SalesEmployeeCode, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="空欄＝未設定（SPACEで検索）"
+                                 ToolTip="Spaceで社員検索モーダルを開く。Enterでコードから社員名を照会する"
+                                 Width="160">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Space"  Command="{Binding OpenSalesEmployeeSearchCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding LookupSalesEmployeeByCodeCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <TextBlock Text="{Binding SalesEmployeeName}" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="Gray" />
+                    </StackPanel>
                 </Grid>
 
                 <TextBlock Text="取引条件（登録後は変更不可）" FontWeight="Bold" Margin="0,16,0,8" />

@@ -16,7 +16,8 @@ namespace bmcs_app.ViewModels.Master;
 /// （受注入力・売上入力画面と同じ SPACEで検索／Enter読込のパターンに揃える）。
 /// </summary>
 public partial class CustomerMasterViewModel(
-    CustomerService customerService, BankAccountService bankAccountService, WindowService windowService) : ViewModelBase
+    CustomerService customerService, BankAccountService bankAccountService, EmployeeService employeeService,
+    WindowService windowService) : ViewModelBase
 {
     [ObservableProperty]
     public partial string CustomerCode { get; set; } = string.Empty;
@@ -47,6 +48,10 @@ public partial class CustomerMasterViewModel(
 
     [ObservableProperty]
     public partial string SalesEmployeeCode { get; set; } = string.Empty;
+
+    /// <summary>営業担当社員コード欄に入力されたコードの社員名（照会結果の表示専用）。</summary>
+    [ObservableProperty]
+    public partial string SalesEmployeeName { get; set; } = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsClosingTransaction))]
@@ -196,6 +201,35 @@ public partial class CustomerMasterViewModel(
         BillingCustomerName = billingCustomer?.CustomerName ?? "（該当なし）";
     }
 
+    /// <summary>営業担当社員コード欄で Space を押したときに検索モーダルを開く。</summary>
+    [RelayCommand]
+    private Task OpenSalesEmployeeSearchAsync() => RunBusyAsync(() =>
+    {
+        var employee = windowService.ShowDialog<EmployeeMasterSearchDialog, EmployeeMasterSearchDialogViewModel, Employee>();
+        if (employee is not null)
+        {
+            SalesEmployeeCode = employee.EmployeeCode;
+            SalesEmployeeName = employee.EmployeeName;
+        }
+        return Task.CompletedTask;
+    });
+
+    /// <summary>営業担当社員コード欄で Enter を押したときに、入力済みコードの社員名を照会する。</summary>
+    [RelayCommand]
+    private Task LookupSalesEmployeeByCodeAsync() => RunBusyAsync(RefreshSalesEmployeeNameAsync);
+
+    private async Task RefreshSalesEmployeeNameAsync()
+    {
+        if (string.IsNullOrWhiteSpace(SalesEmployeeCode))
+        {
+            SalesEmployeeName = string.Empty;
+            return;
+        }
+
+        var employee = await employeeService.GetByCodeAsync(SalesEmployeeCode);
+        SalesEmployeeName = employee?.EmployeeName ?? "（該当なし）";
+    }
+
     /// <summary>振込先口座1欄で Space を押したときに検索モーダルを開く。</summary>
     [RelayCommand]
     private Task OpenBankAccount1SearchAsync() => RunBusyAsync(async () =>
@@ -269,6 +303,7 @@ public partial class CustomerMasterViewModel(
         FaxNumber = customer.FaxNumber ?? string.Empty;
         ContactPersonName = customer.ContactPersonName ?? string.Empty;
         SalesEmployeeCode = customer.SalesEmployeeCode ?? string.Empty;
+        await RefreshSalesEmployeeNameAsync();
         RoundingType = customer.RoundingType;
         PrintRepresentativeFlag = customer.PrintRepresentativeFlag;
 
@@ -452,6 +487,7 @@ public partial class CustomerMasterViewModel(
         FaxNumber = string.Empty;
         ContactPersonName = string.Empty;
         SalesEmployeeCode = string.Empty;
+        SalesEmployeeName = string.Empty;
         TransactionType = TransactionType.OneOff;
         ClosingDayText = string.Empty;
         ClosingTaxUnit = TaxUnit.Invoice;
