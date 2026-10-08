@@ -99,6 +99,9 @@ public partial class MainMenuViewModel(
             case "sales_entry":
                 windowService.Show<SalesEntryWindow, SalesEntryViewModel>();
                 break;
+            case "copier_csv_import":
+                windowService.Show<CopierSalesImportWindow, CopierSalesImportViewModel>();
+                break;
             case "billing_closing":
                 windowService.Show<BillingClosingWindow, BillingClosingViewModel>();
                 break;

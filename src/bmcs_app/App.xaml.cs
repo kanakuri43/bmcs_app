@@ -207,6 +207,9 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<SalesEntryWindow>();
         builder.Services.AddScoped<SalesEntryViewModel>();
 
+        builder.Services.AddScoped<CopierSalesImportWindow>();
+        builder.Services.AddScoped<CopierSalesImportViewModel>();
+
         builder.Services.AddScoped<BillingClosingWindow>();
         builder.Services.AddScoped<BillingClosingViewModel>();
 
