@@ -53,6 +53,9 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        // コピー機売上CSV（Shift-JIS）を読むために必要。
+        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
         // DatePickerは FrameworkElement.Language 由来の
         // カルチャで表示書式（ShortDatePattern）を決める。既定は en-US のため、設定しないと
         // 「9/15/2026」表記になり docs/product-spec.md UI/UX「日付は yyyy/MM/dd 表記で統一」が
