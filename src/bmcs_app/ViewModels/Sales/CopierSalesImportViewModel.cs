@@ -177,6 +177,16 @@ public partial class CopierSalesImportViewModel(
         }
     }
 
+    /// <summary>処理中（<see cref="ViewModelBase.IsBusy"/>）が終わったとき取込実行の有効状態を再評価する。</summary>
+    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.PropertyName == nameof(IsBusy))
+        {
+            ImportCommand.NotifyCanExecuteChanged();
+        }
+    }
+
     private bool CanImport => !IsBusy && ProductError is null && Rows.Any(r => r.State == CopierRowState.Importable);
 
     [RelayCommand(CanExecute = nameof(CanImport))]
