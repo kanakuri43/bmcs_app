@@ -16,7 +16,7 @@ namespace bmcs_app.Application.Tests.Ledger;
 /// <summary>
 /// 得意先元帳の照会の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する。
 /// <see cref="SettlementServiceTests"/> と同じ「外側をトランザクションで包み、テストの最後に
-/// 必ずRollbackする」方式で seed データを一切破壊しない。
+/// 必ずRollbackする」方式で、各テストが自分で作ったデータだけを使い、DBには何も残さない。
 /// </summary>
 public class CustomerLedgerQueryServiceTests(DevDatabaseFixture fixture) : IClassFixture<DevDatabaseFixture>
 {
@@ -272,24 +272,74 @@ public class CustomerLedgerQueryServiceTests(DevDatabaseFixture fixture) : IClas
     }
 
     /// <summary>
-    /// scripts/seed_dev_data.sql の3得意先（CUS001/CUS002/CUS003）を読むだけの回帰検知テスト。
-    /// トランザクション不要（書き込みを行わない）。seed データが変わった場合はこのテストが
-    /// 落ちることで気づけるようにする。期待値は docs/design_document.md 21章の手計算による。
+    /// 税単位ごと（請求単位／伝票単位／内税明細単位）に、テスト内で作った売上・入金から
+    /// 元帳の期末残高を手計算した値と照合する（金額の手計算一致）。外側のトランザクションを
+    /// 必ずRollbackするため、DBには何も残らない。
     /// </summary>
     [Theory]
-    [InlineData("CUS001", 9_500)]
-    [InlineData("CUS002", 2_100)]
-    [InlineData("CUS003", 9_900)]
-    public async Task seedデータ3得意先の残高が手計算と一致する(string customerCode, decimal expectedClosingBalance)
+    [InlineData(TaxUnit.Invoice, 23_600)]
+    [InlineData(TaxUnit.Slip, 9_200)]
+    [InlineData(TaxUnit.Line, 8_300)]
+    public async Task 税単位別の得意先の残高が手計算と一致する(TaxUnit taxUnit, decimal expectedClosingBalance)
     {
         await using var scope = fixture.Services.CreateAsyncScope();
-        var service = scope.ServiceProvider.GetRequiredService<CustomerLedgerQueryService>();
+        var (dbContext, service) = Resolve(scope);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            string customerCode;
+            switch (taxUnit)
+            {
+                case TaxUnit.Invoice:
+                    // 確定済み請求(売上20,000+税2,000) + 未締め売上6,000(仮計算税600) - 入金5,000 = 23,600。
+                    customerCode = CustomerInvoice;
+                    await InsertCustomerAsync(dbContext, customerCode, TaxUnit.Invoice, RoundingType.Floor);
+                    await InsertBillingAsync(dbContext, "__TSTLEDBILX", customerCode, new DateOnly(2026, 7, 20), taxAmount: 2_000m);
+                    await InsertSalesAsync(dbContext,
+                        NewClosingSales(customerCode, TaxUnit.Invoice, "__TSTLEDSALX1", 1, new DateOnly(2026, 7, 15), 20_000m,
+                            billingNumber: "__TSTLEDBILX"),
+                        NewClosingSales(customerCode, TaxUnit.Invoice, "__TSTLEDSALX2", 1, new DateOnly(2026, 8, 10), 6_000m,
+                            billingNumber: null));
+                    await InsertReceiptAsync(dbContext,
+                        NewReceipt(customerCode, TaxUnit.Invoice, "__TSTLEDRCPX1", 1, new DateOnly(2026, 7, 25), 5_000m));
+                    break;
 
-        var result = await service.GetAsync(customerCode, PeriodFrom, PeriodTo);
+                case TaxUnit.Slip:
+                    // 伝票A(3,000+2,000, 税500) + 伝票B(7,000, 税700) - 入金4,000 = 9,200。
+                    customerCode = CustomerSlip;
+                    await InsertCustomerAsync(dbContext, customerCode, TaxUnit.Slip, RoundingType.RoundHalfUp);
+                    await InsertSalesAsync(dbContext,
+                        NewSlipTaxSales(customerCode, "__TSTLEDSALX3", 1, new DateOnly(2026, 7, 10), 3_000m, slipTaxAmount: 500m),
+                        NewSlipTaxSales(customerCode, "__TSTLEDSALX3", 2, new DateOnly(2026, 7, 10), 2_000m, slipTaxAmount: 500m),
+                        NewSlipTaxSales(customerCode, "__TSTLEDSALX4", 1, new DateOnly(2026, 8, 11), 7_000m, slipTaxAmount: 700m));
+                    await InsertReceiptAsync(dbContext,
+                        NewReceipt(customerCode, TaxUnit.Slip, "__TSTLEDRCPX2", 1, new DateOnly(2026, 7, 20), 4_000m));
+                    break;
 
-        Assert.NotNull(result);
-        Assert.Equal(expectedClosingBalance, result.ClosingBalance);
-        Assert.True(result.IsBalanced);
+                default:
+                    // 内税明細単位: 売上11,000 + 売上3,300（いずれも税込） - 明細入金6,000 = 8,300。
+                    customerCode = CustomerLine;
+                    await InsertCustomerAsync(dbContext, customerCode, TaxUnit.Line, RoundingType.Ceiling);
+                    await InsertSalesAsync(dbContext,
+                        NewLineSales(customerCode, "__TSTLEDSALX5", 1, new DateOnly(2026, 7, 20), 11_000m),
+                        NewLineSales(customerCode, "__TSTLEDSALX6", 1, new DateOnly(2026, 8, 12), 3_300m));
+                    await InsertDetailInvoiceAsync(dbContext, "__TSTLEDDIVX", customerCode);
+                    await InsertDetailInvoiceSalesLineAsync(dbContext, "__TSTLEDDIVX", "__TSTLEDSALX5", 1);
+                    await InsertDetailReceiptAsync(dbContext,
+                        NewInvoiceDetailReceipt(customerCode, "__TSTLEDDRCX", 1, new DateOnly(2026, 7, 22), 6_000m, "__TSTLEDDIVX"));
+                    break;
+            }
+
+            var result = await service.GetAsync(customerCode, PeriodFrom, PeriodTo);
+
+            Assert.NotNull(result);
+            Assert.Equal(expectedClosingBalance, result.ClosingBalance);
+            Assert.True(result.IsBalanced);
+        }
+        finally
+        {
+            await transaction.RollbackAsync();
+        }
     }
 
     private static (BmcsDbContext DbContext, CustomerLedgerQueryService Service) Resolve(AsyncServiceScope scope) => (
@@ -451,6 +501,14 @@ public class CustomerLedgerQueryServiceTests(DevDatabaseFixture fixture) : IClas
             UpdatedBy = "TEST",
             UpdatedAt = now,
         };
+    }
+
+    private static SalesEntity NewSlipTaxSales(
+        string customerCode, string slipNumber, short lineNumber, DateOnly slipDate, decimal amount, decimal slipTaxAmount)
+    {
+        var sales = NewClosingSales(customerCode, TaxUnit.Slip, slipNumber, lineNumber, slipDate, amount, billingNumber: null);
+        sales.SlipTaxAmount = slipTaxAmount;
+        return sales;
     }
 
     private static SalesEntity NewLineSales(

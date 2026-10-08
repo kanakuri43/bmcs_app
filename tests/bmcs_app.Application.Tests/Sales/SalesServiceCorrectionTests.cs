@@ -7,6 +7,7 @@ using bmcs_app.Domain.Enums;
 using bmcs_app.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using BillingEntity = bmcs_app.Domain.Entities.Billing;
 using SalesEntity = bmcs_app.Domain.Entities.Sales;
 
 namespace bmcs_app.Application.Tests.Sales;
@@ -417,15 +418,18 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
         await using var scope = fixture.Services.CreateAsyncScope();
         var (dbContext, salesService, _) = Resolve(scope);
 
+        // 売上が参照する確定済み請求データ（FK_sales_billings）をテスト内で用意する。
+        const string billingNumber = "__TSTBIL_SC1";
         var createLine = NewSalesLine(quantity: 1m);
         string? salesSlipNumber = null;
         try
         {
+            await InsertConfirmedBillingAsync(dbContext, billingNumber);
             salesSlipNumber = await salesService.CreateAsync([createLine], RoundingType.Floor);
 
             await dbContext.Sales
                 .Where(s => s.SalesSlipNumber == salesSlipNumber)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(s => s.BillingNumber, "BIL_INV001"));
+                .ExecuteUpdateAsync(setters => setters.SetProperty(s => s.BillingNumber, billingNumber));
 
             // ExecuteUpdateAsync はトラッカーを経由しないため、CreateAsync直後にトラッキングされた
             // インスタンス（rowversionが更新前のまま）をクリアし、以降のUpdateAsyncが実DBの
@@ -445,6 +449,8 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
         finally
         {
             await CleanupAsync(dbContext, salesSlipNumber, orderSlipNumber: null);
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.billings WHERE billing_number = {billingNumber}");
         }
     }
 
@@ -549,10 +555,14 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
         var (dbContext, salesService, _) = Resolve(scope);
 
         // 登録時は未締めの年月、訂正で確定済み年月（2026-01）へ動かそうとする。
+        // 確定済みの月次締めはテスト内で用意し、同じキーの行が既にあればそれを使い削除しない。
+        var closingDate = new DateOnly(2026, 1, 31);
         var createLine = NewSalesLine(quantity: 1m, slipDate: new DateOnly(2026, 8, 1));
         string? salesSlipNumber = null;
+        var closingInserted = false;
         try
         {
+            closingInserted = await InsertConfirmedMonthlyClosingAsync(dbContext, closingDate);
             salesSlipNumber = await salesService.CreateAsync([createLine], RoundingType.Floor);
 
             var loadedLineNumbers = await dbContext.Sales
@@ -567,6 +577,12 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
         }
         finally
         {
+            if (closingInserted)
+            {
+                await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                    $"DELETE FROM dbo.monthly_closings WHERE closing_date = {closingDate} AND customer_code = {CustomerCode}");
+            }
+
             await CleanupAsync(dbContext, salesSlipNumber, orderSlipNumber: null);
         }
     }
@@ -703,6 +719,75 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
             UpdatedAt = DateTime.Now,
         });
         await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task InsertConfirmedBillingAsync(BmcsDbContext dbContext, string billingNumber)
+    {
+        var now = DateTime.Now;
+        dbContext.Billings.Add(new BillingEntity
+        {
+            BillingNumber = billingNumber,
+            CustomerCode = CustomerCode,
+            TaxUnit = TaxUnit.Invoice,
+            CustomerName = "株式会社山田商事",
+            BillingDate = new DateOnly(2026, 8, 20),
+            ClosingYearMonth = "202608",
+            PreviousBalance = 0m,
+            ReceiptAmount = 0m,
+            SalesAmount = 0m,
+            TaxAmount = 0m,
+            CurrentBillingAmount = 0m,
+            StandardRateTaxableAmount = 0m,
+            StandardRateTaxAmount = 0m,
+            ReducedRateTaxableAmount = 0m,
+            ReducedRateTaxAmount = 0m,
+            TaxExemptAmount = 0m,
+            BillingStatus = BillingStatus.Confirmed,
+            ConfirmedAt = now,
+            ConfirmedBy = "TEST",
+            CreatedBy = "TEST",
+            CreatedAt = now,
+            UpdatedBy = "TEST",
+            UpdatedAt = now,
+        });
+        await dbContext.SaveChangesAsync();
+    }
+
+    /// <summary>確定済みの月次締めを登録する。同じキーの行が既にあれば何もせず false を返す（呼び出し側は削除しない）。</summary>
+    private static async Task<bool> InsertConfirmedMonthlyClosingAsync(BmcsDbContext dbContext, DateOnly closingDate)
+    {
+        if (await dbContext.MonthlyClosings.AnyAsync(m => m.ClosingDate == closingDate && m.CustomerCode == CustomerCode))
+        {
+            return false;
+        }
+
+        var now = DateTime.Now;
+        dbContext.MonthlyClosings.Add(new MonthlyClosing
+        {
+            ClosingDate = closingDate,
+            CustomerCode = CustomerCode,
+            TaxUnit = TaxUnit.Invoice,
+            CustomerName = "株式会社山田商事",
+            PreviousBalance = 0m,
+            SalesAmount = 0m,
+            ReceiptAmount = 0m,
+            TaxAmount = 0m,
+            ClosingBalance = 0m,
+            StandardRateTaxableAmount = 0m,
+            StandardRateTaxAmount = 0m,
+            ReducedRateTaxableAmount = 0m,
+            ReducedRateTaxAmount = 0m,
+            TaxExemptAmount = 0m,
+            ClosingStatus = ClosingStatus.Confirmed,
+            ConfirmedAt = now,
+            ConfirmedBy = "TEST",
+            CreatedBy = "TEST",
+            CreatedAt = now,
+            UpdatedBy = "TEST",
+            UpdatedAt = now,
+        });
+        await dbContext.SaveChangesAsync();
+        return true;
     }
 
     private static Task<OrderSlip> ReloadOrderAsync(BmcsDbContext dbContext, string orderSlipNumber) =>
