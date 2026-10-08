@@ -60,6 +60,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<OrderStatusService>();
         services.AddScoped<OrderQueryService>();
         services.AddScoped<SalesService>();
+        services.AddScoped<CopierSalesImportService>();
         services.AddScoped<SalesEditLockService>();
         services.AddScoped<SalesQueryService>();
         services.AddScoped<BillingClosingService>();

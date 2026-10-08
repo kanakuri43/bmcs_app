@@ -45,11 +45,13 @@ public class SalesService(
     /// <see cref="SlipType.Sales"/> の行のみ（返品・値引行を受注に紐付けることはできない）。
     /// </param>
     /// <param name="roundingType">得意先マスタの端数区分。税額計算に使う。</param>
+    /// <param name="beforeSave">採番後・SaveChangesAsync の直前に伝票番号を渡して呼ぶ。同一 DbContext に追加した連携行（コピー機取込履歴など）を売上と同一トランザクションで保存するために使う。</param>
     /// <exception cref="SalesOperationException">
     /// 返品・値引行が受注に紐付けられている場合、または伝票日付が請求締め済み期間（design_document.md 25章）の場合。
     /// </exception>
     public async Task<string> CreateAsync(
-        IReadOnlyList<SalesEntity> lines, RoundingType roundingType, CancellationToken cancellationToken = default)
+        IReadOnlyList<SalesEntity> lines, RoundingType roundingType, CancellationToken cancellationToken = default,
+        Action<string>? beforeSave = null)
     {
         ValidateOrderLinkRestrictedToSalesType(lines);
         ValidateQuantityAmountSignConsistency(lines);
@@ -95,6 +97,7 @@ public class SalesService(
         SalesTaxAmountAssigner.Assign(lines, roundingType);
 
         dbContext.Sales.AddRange(lines);
+        beforeSave?.Invoke(salesSlipNumber);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
