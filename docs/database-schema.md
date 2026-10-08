@@ -314,7 +314,6 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 |---|---|---|
 | `machine_no` | varchar(20) PK | 機番。CSVの「機番」と完全一致で引く |
 | `customer_code` | varchar(10) NOT NULL, FK→`customers` | 売上の得意先。1得意先に複数機番を紐づけられる |
-| `machine_model` | nvarchar(60) NULL | 機種名（参考表示。売上の摘要にはCSVの値を使う） |
 | `remarks` | nvarchar(100) NULL | 設置場所などのメモ |
 
 `copier_import_histories`: 二重取込の防止。連携テーブルとして `is_deleted`・`row_version` を持たない（2.0節の例外）。
