@@ -304,6 +304,32 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 
 ---
 
+### 2.6-2. `copier_machines`（コピー機マスタ）・`copier_import_histories`（コピー機売上取込履歴）
+
+コピー機売上CSV取込（`docs/design_document.md` 30章）が使う。
+
+`copier_machines`: CSVの「機番」から得意先を特定する変換マスタ。共通カラム（2.0節）を持つ。
+
+| カラム | 型 | 説明 |
+|---|---|---|
+| `machine_no` | varchar(20) PK | 機番。CSVの「機番」と完全一致で引く |
+| `customer_code` | varchar(10) NOT NULL, FK→`customers` | 売上の得意先。1得意先に複数機番を紐づけられる |
+| `machine_model` | nvarchar(60) NULL | 機種名（参考表示。売上の摘要にはCSVの値を使う） |
+| `remarks` | nvarchar(100) NULL | 設置場所などのメモ |
+
+`copier_import_histories`: 二重取込の防止。連携テーブルとして `is_deleted`・`row_version` を持たない（2.0節の例外）。
+
+| カラム | 型 | 説明 |
+|---|---|---|
+| `machine_no` | varchar(20), FK→`copier_machines` | 機番 |
+| `closing_date` | date | CSVの「締日」 |
+| `sales_slip_number` | varchar(20) NOT NULL | 作成した売上伝票番号（`sales` への論理参照。`sales` の主キーが複合のためFKは張らない） |
+| 監査列 | | `created_by`・`created_at`・`updated_by`・`updated_at` |
+
+主キーは `(machine_no, closing_date)`。同じ機番・締日は1件しか取り込めない。紐づく売上が取消済み（`sales.is_deleted`）の場合に限り再取込を許し、履歴行は新しい伝票番号で更新する。
+
+---
+
 ### 2.7. `menus`（メニュー構成マスタ）
 
 | カラム | 型 | NULL | 内容 |
