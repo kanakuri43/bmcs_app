@@ -233,7 +233,7 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 |---|---|
 | Presentation | `Views/{機能}/{画面名}Window.xaml`、`ViewModels/{機能}/{画面名}ViewModel.cs`。モーダルは `{名前}Dialog` |
 | Application | `{機能}/{ユースケース名}Service.cs` |
-| Domain | `Entities/`、`Enums/`、`Calculations/`（消費税計算など）、`Numbering/`（伝票番号の書式化） |
+| Domain | `Entities/`、`Enums/`、`Calculations/`（消費税計算など）、`Import/`（取込CSVの解析）、`Numbering/`（伝票番号の書式化） |
 | Infrastructure | `BmcsDbContext.cs`、`Configurations/{エンティティ名}Configuration.cs`、`StoredProcedures/`、`LocalSettings/`、`Numbering/`（採番の生SQL） |
 
 - C# のクラス名・プロパティ名は PascalCase、DB のテーブル名・カラム名は `snake_case`（`docs/database-schema.md`）。変換は Infrastructure 層のマッピング設定で行う。

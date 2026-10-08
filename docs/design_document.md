@@ -1945,7 +1945,7 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 
 ### 30-5. 実装構成
 
-- Domain: `CopierCsvParser`（純粋関数。行文字列→列名辞書、金額・日付の解析、摘要の組み立て）。
+- Domain: `Import/CopierCsvParser`（純粋関数。デコード済み全文→ヘッダーの列名辞書、金額・日付の解析、摘要の組み立て。必須列欠落はファイル全体のエラー、それ以外は行単位のエラー〔機番空・金額/締日不正・列数不足・摘要200字超過〕。空行は無視、各値はTrim）。Application: `Sales/CopierCsvFileReader`（Shift-JIS読込）。
 - Application: `CopierMachineService`（CRUD）、`CopierSalesImportService`（`PreviewAsync(rows)`＝機番解決・検証・取込済判定、`ImportAsync(previewRows)`＝1行ずつ `SalesService.CreateAsync` と履歴INSERT。履歴INSERTは売上と同一トランザクションで二重取込を防ぐ）。
 - Presentation: `CopierMachineMasterWindow/ViewModel`、`CopierSalesImportWindow/ViewModel`。
 - DB: `scripts/024_create_copier_machines.sql`（2テーブル）、`scripts/014_seed_menu_structure.sql` へメニュー2項目を追記、`MainMenuViewModel.OpenMenuItem` に2キーを追加、`App.xaml.cs` にDI登録。
