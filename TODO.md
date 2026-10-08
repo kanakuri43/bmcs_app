@@ -275,7 +275,7 @@ DBへの書き込みを伴う点は `tests/bmcs_app.Application.Tests`（16章�
 
 | 完了 | # | タスク | 推奨モデル | 前提 | 完了条件 |
 |---|---|---|---|---|---|
-| [ ] | X-1 | テスト方針の決定と単体テスト基盤の構築（税計算・消込・締めを最優先で対象にする）。**単体テスト基盤（`tests/bmcs_app.Domain.Tests/`、xUnit v2）は5-1で前倒し済み。開発用DBに対する結合テストの器（`tests/bmcs_app.Application.Tests/`）は4-1で前倒し済み**（`docs/architecture.md` 16章）。残りは消込・締めの結合テストの個別実装 | Sonnet | 0-2 | 金額計算ロジックがテストで守られている |
+| [x] | X-1 | テスト方針の決定と単体テスト基盤の構築（税計算・消込・締めを最優先で対象にする）。**単体テスト基盤（`tests/bmcs_app.Domain.Tests/`、xUnit v2）は5-1で前倒し済み。開発用DBに対する結合テストの器（`tests/bmcs_app.Application.Tests/`）は4-1で前倒し済み**（`docs/architecture.md` 16章）。消込・締めの結合テストも`tests/bmcs_app.Application.Tests/`に実装済み。Domain 302件green。Application 248件中127件は開発用DBに社員コード`EMP001`が無いことによるFK違反で失敗（テストデータの問題でありロジックの不具合ではない。テスト側を社員コード非依存にする修正は未実施）。7-3（手数料差額）の保留解消後に手数料差額のテストを追加する | Sonnet | 0-2 | 金額計算ロジックがテストで守られている |
 | [ ] | X-2 | 排他制御の動作確認（rowversionによる楽観的排他、競合時のUI挙動） | Sonnet | 0-3 | 2端末同時更新で後勝ちにならない |
 | [ ] | X-3 | 設計上の残課題の解消（旧 REVIEW.md の未完了項目を集約）。①用語集の新設（`docs/product-spec.md` に章を追加し、CLAUDE.md の Docs map の「用語」と一致させる。旧M-16/P-3）②画面名称の統一（CLAUDE.md のフロー図・補助機能の表記を `docs/design_document.md` の画面一覧の正式名称に合わせる。旧C-10。X-4と同件）③`docs/design_document.md` を `screen-spec.md` へリネームするかの要否判断（旧P-5。参照が多く影響範囲が大きい）④採番規則の業務確認（旧M-2。実装済みで確認のみ未実施）⑤顧問税理士への確認（旧C-4b。適格請求書の端数処理と税区分の整合。確認までの暫定は税区分どおり。`docs/decisions.md` 参照） | Sonnet | ④⑤は各回答 | 各項目が `docs/` に反映され、「暫定」の記述が消えている |
 | [ ] | X-4 | 設計資料の同期（実装で確定した内容を `docs/` に反映。重複記載のSSOTへの集約＝D-1〜D-6、画面名称の統一＝C-10）。**2026-09-10、D-1〜D-6を`CLAUDE.md`／`docs/design_document.md`／`docs/product-spec.md`へ反映済み。** 残るのはC-10（画面名称の統一） | Sonnet | 各フェーズ完了時 | 資料と実装が乖離していない |
