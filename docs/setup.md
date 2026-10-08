@@ -40,6 +40,8 @@ sqlcmd -S <サーバ> -U <ユーザー> -P <パスワード> -d bmcs_db -C -I -i
 
 どちらも `-I` を付けて実行する。
 
+`seed_dev_data.sql` は汎用商品 `COPYCHG` とコピー機マスタを投入しない。`reset_test_data.sql` の実行後も同様に無い。コピー機売上CSV取込を試すときは `docs/operations.md` 7.1節の手順で登録する（確認用データは作業後に削除する）。
+
 ---
 
 ## 3. 接続文字列
