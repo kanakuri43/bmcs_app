@@ -1908,7 +1908,7 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 
 ### 30-1. スコープ
 
-コピー機の売上データCSV（1行＝1台分の請求）を取り込み、1行につき売上1伝票（明細1行）を作成する。取込後に納品書を印字できる。受注は介さない。CSVの定義とサンプルはメーカー出力そのままで、列は**列名（ヘッダー）で引く**（列の並び替え・追加に強くするため）。取込に使う列は次の9つのみ。
+コピー機の売上データCSV（1行＝1台分の請求。基本料等の加算行が同一機番の別行で出ることがある）を取り込み、同一機番・同一締日の行を合算して1機番・1締日につき売上1伝票（明細1行）を作成する。取込後に納品書を印字できる。受注は介さない。CSVの定義とサンプルはメーカー出力そのままで、列は**列名（ヘッダー）で引く**（列の並び替え・追加に強くするため）。取込に使う列は次の9つのみ。
 
 | CSV列 | 用途 |
 |---|---|
@@ -1920,7 +1920,8 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 
 ### 30-2. 業務ルール
 
-- **CSV1行＝売上1伝票**（明細1行）。数量は1固定、単価は「ユーザー請求金額（機器合計）-税別」、金額＝単価。
+- **同一機番・同一締日は合算して1伝票**（明細1行）。数量は1固定、単価は「ユーザー請求金額（機器合計）-税別」（合算時は合計）、金額＝単価。納品書は1機番1枚。
+- **合算ルール**: 同一機番・同一締日の成功行を1件にまとめる。金額（税別）は合計、機種名・社外摘要・社内摘要・行番号は最初の行のもの（機種名が異なっても最初の行を採用しエラーにしない）。出力順は最初の出現順。行エラーの行は合算に含めずエラーのまま表示する。プレビューには合算した行数を表示する。
 - **得意先**: 機番→`copier_machines`→得意先コード。得意先名・税区分・端数区分は得意先マスタから取る。機番がマスタに無い行は取込不可（エラー）。
 - **社外摘要**（`slip_remarks`、200字）: `{機種名} モノ{CV} フル{CV} フルP{CV}`（CV＝ユーザ請求CVの3列。空欄は0）。上限超過はエラー。**社内摘要**（`internal_remarks`）: `機番`。
 - **伝票日付**: CSVの「締日」。請求締め済み・月次締め済みの期間に当たる行は取込不可（`SalesService.CreateAsync` の既存検証。画面でも事前に判定して表示する）。
@@ -1935,8 +1936,8 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 メニュー「受注・売上」配下に「コピー機売上CSV取込」（`screen_key=copier_csv_import`、権限1）を追加する。
 
 1. 「ファイル選択」（`OpenFileDialog`）でCSVを選ぶ。Shift-JISで読む（`CodePagesEncodingProvider` を起動時に登録）。ヘッダー必須の列名が欠けていればエラー。
-2. 読込結果をプレビューのDataGridに表示する（行番号・機番・得意先コード/名・締日・機種名・金額・状態）。状態は「取込可」「取込済」「エラー（理由）」「対象外（0円）」。取込可の行のみ取込対象。
-3. 「取込実行」で取込可の行を1行ずつ作成する。**1行＝1トランザクション（`CreateAsync` の既存の単位）で全件のAll-or-nothingにはしない。** 行ごとに成功・失敗を結果欄へ表示し、失敗行があっても他の行は登録済みになる（再取込時は取込済みとして除外される）。
+2. 読込結果をプレビューのDataGridに表示する（行番号・機番・得意先コード/名・締日・機種名・金額・合算行数・状態）。状態は「取込可」「取込済」「エラー（理由）」「対象外（0円）」。取込可の行のみ取込対象。
+3. 「取込実行」で取込可の行（合算後の1機番・1締日）を1件ずつ作成する。**1件＝1トランザクション（`CreateAsync` の既存の単位）で全件のAll-or-nothingにはしない。** 行ごとに成功・失敗を結果欄へ表示し、失敗行があっても他の行は登録済みになる（再取込時は取込済みとして除外される）。
 4. 完了後「納品書を印字しますか？」を確認し、Yesなら取込で作成した伝票をプレビューなしで連続印刷する（`DeliveryNoteService.GetAsync`→`DeliveryNoteDocumentBuilder`→`ReportPrintService.Print`→成功時 `MarkIssuedAsync`）。印字は失敗した伝票を除き、作成した全伝票が対象。
 
 ### 30-4. コピー機マスタ画面
@@ -1945,7 +1946,7 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 
 ### 30-5. 実装構成
 
-- Domain: `Import/CopierCsvParser`（純粋関数。デコード済み全文→ヘッダーの列名辞書、金額・日付の解析、摘要の組み立て。必須列欠落はファイル全体のエラー、それ以外は行単位のエラー〔機番空・金額/締日不正・列数不足・摘要200字超過〕。空行は無視、各値はTrim）。Application: `Sales/CopierCsvFileReader`（Shift-JIS読込）。
+- Domain: `Import/CopierCsvParser`（純粋関数。デコード済み全文→ヘッダーの列名辞書、金額・日付の解析、摘要の組み立て。必須列欠落はファイル全体のエラー、それ以外は行単位のエラー〔機番空・金額/締日不正・列数不足・摘要200字超過〕。空行は無視、各値はTrim。成功行は（機番・締日）で合算し、合算行数を `MergedLineCount` に持つ）。Application: `Sales/CopierCsvFileReader`（Shift-JIS読込）。
 - Application: `CopierMachineService`（CRUD）、`CopierSalesImportService`（`PreviewAsync(rows)`＝機番解決・検証・取込済判定、`ImportAsync(previewRows)`＝1行ずつ `SalesService.CreateAsync` と履歴INSERT。履歴INSERTは売上と同一トランザクションで二重取込を防ぐ）。
 - Presentation: `CopierMachineMasterWindow/ViewModel`、`CopierSalesImportWindow/ViewModel`。
 - DB: `scripts/024_create_copier_machines.sql`（2テーブル）、`scripts/014_seed_menu_structure.sql` へメニュー2項目を追記、`MainMenuViewModel.OpenMenuItem` に2キーを追加、`App.xaml.cs` にDI登録。
