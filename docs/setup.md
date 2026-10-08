@@ -36,7 +36,7 @@ sqlcmd -S <サーバ> -U <ユーザー> -P <パスワード> -d bmcs_db -C -I -i
 | スクリプト | 内容 | 注意 |
 |---|---|---|
 | `seed_dev_data.sql` | 開発・確認用のテストデータを投入（自身のデータのみ削除→再投入） | **本番へ流さない** |
-| `reset_test_data.sql` | 得意先・商品・伝票等を全削除し、採番を0に戻す（`company_infos`・`menus`・`tax_rates`・`deposit_methods` は残す） | **本番へ流さない** |
+| `reset_test_data.sql` | 得意先・商品・コピー機マスタ・伝票等を全削除し、採番を0に戻す（`company_infos`・`menus`・`tax_rates`・`deposit_methods` は残す） | **本番へ流さない** |
 
 どちらも `-I` を付けて実行する。
 
