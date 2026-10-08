@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace bmcs_app.Domain.Import;
 
-/// <summary>CSV1行の解析結果（成功）。</summary>
+/// <summary>1機番・1締日の解析結果（成功）。同一機番・同一締日の複数行は合算済みで、行番号・機種名・摘要は最初の行、金額は合計、<see cref="MergedLineCount"/> は合算した行数。</summary>
 public sealed record CopierCsvRow(
     int LineNumber,
     string MachineNo,
@@ -10,7 +10,8 @@ public sealed record CopierCsvRow(
     decimal AmountExcludingTax,
     DateOnly ClosingDate,
     string SlipRemarks,
-    string InternalRemarks);
+    string InternalRemarks,
+    int MergedLineCount = 1);
 
 /// <summary>CSV1行の解析結果。<see cref="Row"/> と <see cref="Error"/> のどちらか一方のみ非null。</summary>
 public sealed record CopierCsvLineResult(int LineNumber, CopierCsvRow? Row, string? Error);
@@ -86,7 +87,34 @@ public static class CopierCsvParser
 
             results.Add(new(no, new CopierCsvRow(no, machineNo, model, amount, closing, remarks, machineNo), null));
         }
-        return new(null, results);
+        return new(null, Merge(results));
+    }
+
+    /// <summary>成功行を（機番, 締日）で合算する。最初の出現位置に1件だけ残し、エラー行はそのまま返す。</summary>
+    private static List<CopierCsvLineResult> Merge(List<CopierCsvLineResult> results)
+    {
+        var merged = new List<CopierCsvLineResult>();
+        var firstAt = new Dictionary<(string, DateOnly), int>();
+        foreach (var l in results)
+        {
+            if (l.Row is not { } row) { merged.Add(l); continue; }
+            if (!firstAt.TryGetValue((row.MachineNo, row.ClosingDate), out var at))
+            {
+                firstAt[(row.MachineNo, row.ClosingDate)] = merged.Count;
+                merged.Add(l);
+                continue;
+            }
+            var first = merged[at].Row!;
+            merged[at] = merged[at] with
+            {
+                Row = first with
+                {
+                    AmountExcludingTax = first.AmountExcludingTax + row.AmountExcludingTax,
+                    MergedLineCount = first.MergedLineCount + 1,
+                },
+            };
+        }
+        return merged;
     }
 
     private static string Cv(string v) => v.Length == 0 ? "0" : v;

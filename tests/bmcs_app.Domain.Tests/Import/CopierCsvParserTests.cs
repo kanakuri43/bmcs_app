@@ -51,6 +51,56 @@ public class CopierCsvParserTests
     }
 
     [Fact]
+    public void SameMachineSameClosing_AreMerged()
+    {
+        var amt = "ユーザー請求金額（機器合計）-税別";
+        var r = CopierCsvParser.Parse(Csv(
+            Row(("機番", "260682"), (amt, "10646")),
+            Rows[1],
+            Row(("機番", "260682"), (amt, "900"), ("機種名（漢字）", "別機種"))));
+
+        Assert.Equal(2, r.Lines.Count);
+        var m = r.Lines[0].Row!;
+        Assert.Equal(2, r.Lines[0].LineNumber);
+        Assert.Equal(2, m.LineNumber);
+        Assert.Equal(11546m, m.AmountExcludingTax);
+        Assert.Equal(2, m.MergedLineCount);
+        Assert.Equal("ＭＰＣ６５０３ モノ16489 フル412 フルP1106", m.SlipRemarks);
+        Assert.Equal("ＭＰＣ６５０３", m.ModelName);
+        Assert.Equal(1, r.Lines[1].Row!.MergedLineCount);
+    }
+
+    [Fact]
+    public void SameMachineDifferentClosing_NotMerged()
+    {
+        var r = CopierCsvParser.Parse(Csv(Row(("機番", "1")), Row(("機番", "1"), ("締日", "20261020"))));
+        Assert.Equal(2, r.Lines.Count);
+        Assert.All(r.Lines, l => Assert.Equal(1, l.Row!.MergedLineCount));
+    }
+
+    [Fact]
+    public void ThreeLines_AreMerged()
+    {
+        var amt = "ユーザー請求金額（機器合計）-税別";
+        var r = CopierCsvParser.Parse(Csv(Row((amt, "1")), Row((amt, "2")), Row((amt, "3"))));
+        var m = Assert.Single(r.Lines).Row!;
+        Assert.Equal(6m, m.AmountExcludingTax);
+        Assert.Equal(3, m.MergedLineCount);
+    }
+
+    [Fact]
+    public void ErrorLine_IsNotMerged()
+    {
+        var amt = "ユーザー請求金額（機器合計）-税別";
+        var r = CopierCsvParser.Parse(Csv(Row((amt, "1")), Row((amt, "x")), Row((amt, "3"))));
+        Assert.Equal(2, r.Lines.Count);
+        Assert.Equal(4m, r.Lines[0].Row!.AmountExcludingTax);
+        Assert.Equal(2, r.Lines[0].Row!.MergedLineCount);
+        Assert.Equal(3, r.Lines[1].LineNumber);
+        Assert.Contains("金額", r.Lines[1].Error);
+    }
+
+    [Fact]
     public void MissingRequiredColumn_IsFileError()
     {
         var header = Header.Replace("締日,", "");
