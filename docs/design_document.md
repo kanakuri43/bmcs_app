@@ -1936,9 +1936,9 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 メニュー「受注・売上」配下に「コピー機売上CSV取込」（`screen_key=copier_csv_import`、権限1）を追加する。
 
 1. 「ファイル選択」（`OpenFileDialog`）でCSVを選ぶ。Shift-JISで読む（`CodePagesEncodingProvider` を起動時に登録）。ヘッダー必須の列名が欠けていればエラー。
-2. 読込結果をプレビューのDataGridに表示する（行番号・機番・得意先コード/名・締日・機種名・金額・合算行数・状態）。状態は「取込可」「取込済」「エラー（理由）」「対象外（0円）」。取込可の行のみ取込対象。
-3. 「取込実行」で取込可の行（合算後の1機番・1締日）を1件ずつ作成する。**1件＝1トランザクション（`CreateAsync` の既存の単位）で全件のAll-or-nothingにはしない。** 行ごとに成功・失敗を結果欄へ表示し、失敗行があっても他の行は登録済みになる（再取込時は取込済みとして除外される）。
-4. 完了後「納品書を印字しますか？」を確認し、Yesなら取込で作成した伝票をプレビューなしで連続印刷する（`DeliveryNoteService.GetAsync`→`DeliveryNoteDocumentBuilder`→`ReportPrintService.Print`→成功時 `MarkIssuedAsync`）。印字は失敗した伝票を除き、作成した全伝票が対象。
+2. 読込結果をプレビューのDataGridに表示する（行番号・機番・得意先コード/名・締日・機種名・金額・合算行数・状態）。状態は「取込可」「取込済」「エラー（理由）」「対象外（0円）」（色分け）。取込可の行のみ取込対象。ファイル全体のエラー・パーサーの行エラーも同じ一覧に理由つきで表示し、件数サマリ（取込可の件数・合計金額、取込済・エラー・対象外の件数）を出す。画面表示時に汎用商品を確認し、無い・無効なら警告を表示して「取込実行」を無効にする。
+3. 「取込実行」で取込可の行（合算後の1機番・1締日）を1件ずつ作成する。**1件＝1トランザクション（`CreateAsync` の既存の単位）で全件のAll-or-nothingにはしない。** 行ごとに成功（伝票番号）・失敗（理由）を結果欄へ表示し、失敗行があっても他の行は登録済みになる（再取込時は取込済みとして除外される）。実行前に確認ダイアログを出し、実行中は再実行できない。
+4. 完了後「納品書を印字しますか？」を確認し、Yesなら取込で作成した伝票をプレビューなしで連続印刷する（`DeliveryNoteService.GetAsync`→`DeliveryNoteDocumentBuilder`→`ReportPrintService.Print`→成功時 `MarkIssuedAsync`）。印字は失敗した伝票を除き、作成した全伝票が対象。プリンタは納品書の既存のプリンタ設定に従い（未設定・送信失敗時は `ReportPrintService.Print` が印刷ダイアログを出す）、1枚失敗しても続行して最後に成功・失敗件数を表示する。
 
 ### 30-4. コピー機マスタ画面
 
@@ -1948,7 +1948,7 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 
 - Domain: `Import/CopierCsvParser`（純粋関数。デコード済み全文→ヘッダーの列名辞書、金額・日付の解析、摘要の組み立て。必須列欠落はファイル全体のエラー、それ以外は行単位のエラー〔機番空・金額/締日不正・列数不足・摘要200字超過〕。空行は無視、各値はTrim。成功行は（機番・締日）で合算し、合算行数を `MergedLineCount` に持つ）。Application: `Sales/CopierCsvFileReader`（Shift-JIS読込）。
 - Application: `CopierMachineService`（CRUD）、`CopierSalesImportService`（`PreviewAsync(rows)`＝機番解決・検証・取込済判定、`ImportAsync(previewRows)`＝1行ずつ `SalesService.CreateAsync` と履歴INSERT。履歴INSERTは `SalesService.CreateAsync` の `beforeSave` コールバックで売上と同一のSaveChanges・トランザクションに載せ、二重取込を防ぐ。汎用商品の有無は `CheckProductAsync` で画面開始時に確認できる。履歴の主キー違反は「取込済」の失敗行として扱う）。
-- Presentation: `CopierMachineMasterWindow/ViewModel`、`CopierSalesImportWindow/ViewModel`。
+- Presentation: `CopierMachineMasterWindow/ViewModel`、`CopierSalesImportWindow/ViewModel`。取込画面は他画面と同じくウィンドウ単位のDIスコープ（`WindowService.Show`）で動く。`ImportAsync` が失敗行のあとに `ChangeTracker.Clear()` するため、DbContext を他画面と共有してはならない。
 - DB: `scripts/024_create_copier_machines.sql`（2テーブル）、`scripts/014_seed_menu_structure.sql` へメニュー2項目を追記、`MainMenuViewModel.OpenMenuItem` に2キーを追加、`App.xaml.cs` にDI登録。
 - テスト: Domain単体（パーサー）、Application結合（外側トランザクション＋Rollback方式。機番解決・税額・摘要・二重取込拒否・締め済み拒否）。実機確認で追加したデータは最後に削除する。
 
