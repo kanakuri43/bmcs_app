@@ -20,7 +20,7 @@
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="機番" Margin="0,0,12,8" VerticalAlignment="Center" />
@@ -51,11 +51,8 @@
                         <TextBlock Text="{Binding CustomerName}" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="Gray" />
                     </StackPanel>
 
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="機種名" Margin="0,0,12,8" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="2" Grid.Column="1" beh:FocusBehavior.FocusKey="Model" Text="{Binding MachineModel}" Margin="0,0,0,8" />
-
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="備考" Margin="0,0,12,8" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Remarks}" Margin="0,0,0,8" />
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="備考" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="2" Grid.Column="1" beh:FocusBehavior.FocusKey="Remarks" Text="{Binding Remarks}" Margin="0,0,0,8" />
                 </Grid>
 
                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">

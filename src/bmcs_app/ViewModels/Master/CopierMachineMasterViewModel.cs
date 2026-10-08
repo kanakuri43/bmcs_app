@@ -28,9 +28,6 @@ public partial class CopierMachineMasterViewModel(
     public partial string CustomerName { get; set; } = string.Empty;
 
     [ObservableProperty]
-    public partial string MachineModel { get; set; } = string.Empty;
-
-    [ObservableProperty]
     public partial string Remarks { get; set; } = string.Empty;
 
     [ObservableProperty]
@@ -88,7 +85,6 @@ public partial class CopierMachineMasterViewModel(
     {
         MachineNo = machine.MachineNo;
         CustomerCode = machine.CustomerCode;
-        MachineModel = machine.MachineModel ?? string.Empty;
         Remarks = machine.Remarks ?? string.Empty;
         _loadedRowVersion = machine.RowVersion;
         IsNew = false;
@@ -105,7 +101,7 @@ public partial class CopierMachineMasterViewModel(
         {
             CustomerCode = customer.CustomerCode;
             CustomerName = customer.CustomerName;
-            RequestFocus("Model");
+            RequestFocus("Remarks");
         }
     }
 
@@ -194,7 +190,6 @@ public partial class CopierMachineMasterViewModel(
     {
         MachineNo = MachineNo,
         CustomerCode = CustomerCode,
-        MachineModel = string.IsNullOrWhiteSpace(MachineModel) ? null : MachineModel,
         Remarks = string.IsNullOrWhiteSpace(Remarks) ? null : Remarks,
         RowVersion = _loadedRowVersion,
         CreatedBy = string.Empty,
@@ -208,7 +203,6 @@ public partial class CopierMachineMasterViewModel(
         MachineNo = string.Empty;
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
-        MachineModel = string.Empty;
         Remarks = string.Empty;
         _loadedRowVersion = null;
     }

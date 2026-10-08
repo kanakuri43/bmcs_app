@@ -61,7 +61,6 @@ public class CopierMachineService(
         }
 
         current.CustomerCode = machine.CustomerCode;
-        current.MachineModel = machine.MachineModel;
         current.Remarks = machine.Remarks;
         current.UpdatedBy = currentEmployeeContext.EmployeeCode;
         current.UpdatedAt = DateTime.Now;

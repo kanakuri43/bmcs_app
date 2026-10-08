@@ -19,11 +19,11 @@ public class CopierMachineServiceTests(DevDatabaseFixture fixture) : IClassFixtu
     {
         var service = sp.GetRequiredService<CopierMachineService>();
 
-        var created = await service.CreateAsync(NewMachine("__TCM01", ReferenceCustomer, "初期機種", null));
-        Assert.Equal("初期機種", (await service.GetByMachineNoAsync("__TCM01"))!.MachineModel);
+        var created = await service.CreateAsync(NewMachine("__TCM01", ReferenceCustomer, "初期備考", null));
+        Assert.Equal("初期備考", (await service.GetByMachineNoAsync("__TCM01"))!.Remarks);
 
         var updated = await service.UpdateAsync(NewMachine("__TCM01", ReferenceCustomer, "変更後", created.RowVersion));
-        Assert.Equal("変更後", updated.MachineModel);
+        Assert.Equal("変更後", updated.Remarks);
 
         var current = (await service.GetByMachineNoAsync("__TCM01"))!;
         await service.DeactivateAsync(NewMachine("__TCM01", ReferenceCustomer, "変更後", current.RowVersion));
@@ -81,7 +81,7 @@ public class CopierMachineServiceTests(DevDatabaseFixture fixture) : IClassFixtu
             () => service.UpdateAsync(NewMachine("__TCM06", ReferenceCustomer, "後負け", stale)));
         await Assert.ThrowsAsync<CopierMachineConcurrencyException>(
             () => service.DeactivateAsync(NewMachine("__TCM06", ReferenceCustomer, "後負け", stale)));
-        Assert.Equal("先勝ち", (await service.GetByMachineNoAsync("__TCM06"))!.MachineModel);
+        Assert.Equal("先勝ち", (await service.GetByMachineNoAsync("__TCM06"))!.Remarks);
     });
 
     [Fact]
@@ -121,11 +121,11 @@ public class CopierMachineServiceTests(DevDatabaseFixture fixture) : IClassFixtu
         }
     }
 
-    private static CopierMachine NewMachine(string machineNo, string customerCode, string? model, byte[]? rowVersion) => new()
+    private static CopierMachine NewMachine(string machineNo, string customerCode, string? remarks, byte[]? rowVersion) => new()
     {
         MachineNo = machineNo,
         CustomerCode = customerCode,
-        MachineModel = model,
+        Remarks = remarks,
         CreatedBy = "TEST", CreatedAt = DateTime.Now, UpdatedBy = "TEST", UpdatedAt = DateTime.Now,
         RowVersion = rowVersion,
     };

@@ -10,7 +10,5 @@ public class CopierMachine : AuditableEntity
 
     public required string CustomerCode { get; set; }
 
-    public string? MachineModel { get; set; }
-
     public string? Remarks { get; set; }
 }

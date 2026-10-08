@@ -14,7 +14,6 @@ public class CopierMachineConfiguration : IEntityTypeConfiguration<CopierMachine
 
         builder.Property(e => e.MachineNo).HasMaxLength(20).IsUnicode(false);
         builder.Property(e => e.CustomerCode).HasMaxLength(10).IsUnicode(false);
-        builder.Property(e => e.MachineModel).HasMaxLength(60);
         builder.Property(e => e.Remarks).HasMaxLength(100);
 
         builder.HasOne<Customer>().WithMany()

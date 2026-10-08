@@ -55,7 +55,6 @@ public partial class CopierMachineMasterSearchDialogViewModel(CopierMachineServi
     private static bool Matches(CopierMachine machine, string keyword) =>
         Contains(machine.MachineNo, keyword)
         || Contains(machine.CustomerCode, keyword)
-        || Contains(machine.MachineModel, keyword)
         || Contains(machine.Remarks, keyword);
 
     private static bool Contains(string? source, string keyword) =>

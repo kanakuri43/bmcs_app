@@ -20,7 +20,7 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="検索（機番・得意先コード・機種名・備考）" VerticalAlignment="Center" Margin="0,0,12,0" />
+            <TextBlock Text="検索（機番・得意先コード・備考）" VerticalAlignment="Center" Margin="0,0,12,0" />
             <TextBox x:Name="SearchKeywordTextBox" Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
                      Width="360" />
         </StackPanel>
@@ -32,7 +32,6 @@
                 <GridView>
                     <GridViewColumn Header="機番" Width="140" DisplayMemberBinding="{Binding MachineNo}" />
                     <GridViewColumn Header="得意先コード" Width="100" DisplayMemberBinding="{Binding CustomerCode}" />
-                    <GridViewColumn Header="機種名" Width="200" DisplayMemberBinding="{Binding MachineModel}" />
                     <GridViewColumn Header="備考" Width="180" DisplayMemberBinding="{Binding Remarks}" />
                 </GridView>
             </ListView.View>
