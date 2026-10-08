@@ -35,6 +35,7 @@ docs/                          … 設計文書（下記）
 - 権限はメニュー単位のみ（C-8）。「月次締め解除処理」はレベル9のメニュー（`scripts/014_seed_menu_structure.sql`、テーブル名は`menus`）。
 - 得意先元帳（Phase 8）: 得意先・期間のいずれかを変更すると自動的に再表示する（`CustomerLedgerViewModel`。2026-09-17、専用の「表示」ボタンは撤去。F5キーは手動再表示用に残す）。
 - 帳票基盤（Phase 10）は`src/bmcs_app/Reports/`配下。`ReportDocumentBuilder`（A4寸法・`Tb`/`HLine`・宛先ブロック・明細1行描画等の描画プリミティブ、抽象メンバー無し）と、改ページを伴う単一フロー帳票（請求書`InvoiceDocumentBuilder`・明細請求書`DetailInvoiceDocumentBuilder`）用のテンプレートメソッドを持つ`PagedReportDocumentBuilder`（`ReportDocumentBuilder`を継承、`Build()`と単一フロー用抽象メンバーを持つ）に分割されている（2026-09-17）。納品書`DeliveryNoteDocumentBuilder`は改ページの考え方が異なる（ミシン目入りA4に「納品書（控）」「請求書」「納品書」を3段複写で印字。1セクション6行固定）ため`ReportDocumentBuilder`を直接継承し、自前で`Build()`を実装する。
+- マスタ画面のコード入力欄は「SPACEで検索モーダル／Enterでコード照会（名称ラベル表示）」パターンで統一（`windowService.ShowDialog<TDialog, TDialogVM, TEntity>()`＋`*MasterSearchDialog`、`RunBusyAsync`）。得意先マスタの請求得意先・振込先口座1/2に加え、営業担当社員コードも`EmployeeMasterSearchDialog`で選択可（2026-10-08、`CustomerMasterViewModel`が`EmployeeService`を注入、ブランチ`feature/customer-sales-employee-search`・コミット089aaa9、main未マージ）。
 詳細な残タスクは`TODO.md`を参照（各Phaseの完了行に実装の要点が詳しく記録されている）。
 
 主なユースケースサービス（`src/bmcs_app.Application/`）:
