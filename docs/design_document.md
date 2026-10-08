@@ -1947,7 +1947,7 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 ### 30-5. 実装構成
 
 - Domain: `Import/CopierCsvParser`（純粋関数。デコード済み全文→ヘッダーの列名辞書、金額・日付の解析、摘要の組み立て。必須列欠落はファイル全体のエラー、それ以外は行単位のエラー〔機番空・金額/締日不正・列数不足・摘要200字超過〕。空行は無視、各値はTrim。成功行は（機番・締日）で合算し、合算行数を `MergedLineCount` に持つ）。Application: `Sales/CopierCsvFileReader`（Shift-JIS読込）。
-- Application: `CopierMachineService`（CRUD）、`CopierSalesImportService`（`PreviewAsync(rows)`＝機番解決・検証・取込済判定、`ImportAsync(previewRows)`＝1行ずつ `SalesService.CreateAsync` と履歴INSERT。履歴INSERTは売上と同一トランザクションで二重取込を防ぐ）。
+- Application: `CopierMachineService`（CRUD）、`CopierSalesImportService`（`PreviewAsync(rows)`＝機番解決・検証・取込済判定、`ImportAsync(previewRows)`＝1行ずつ `SalesService.CreateAsync` と履歴INSERT。履歴INSERTは `SalesService.CreateAsync` の `beforeSave` コールバックで売上と同一のSaveChanges・トランザクションに載せ、二重取込を防ぐ。汎用商品の有無は `CheckProductAsync` で画面開始時に確認できる。履歴の主キー違反は「取込済」の失敗行として扱う）。
 - Presentation: `CopierMachineMasterWindow/ViewModel`、`CopierSalesImportWindow/ViewModel`。
 - DB: `scripts/024_create_copier_machines.sql`（2テーブル）、`scripts/014_seed_menu_structure.sql` へメニュー2項目を追記、`MainMenuViewModel.OpenMenuItem` に2キーを追加、`App.xaml.cs` にDI登録。
 - テスト: Domain単体（パーサー）、Application結合（外側トランザクション＋Rollback方式。機番解決・税額・摘要・二重取込拒否・締め済み拒否）。実機確認で追加したデータは最後に削除する。
