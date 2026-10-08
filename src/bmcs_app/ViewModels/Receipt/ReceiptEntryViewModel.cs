@@ -18,16 +18,16 @@ using ReceiptEntity = bmcs_app.Domain.Entities.Receipt;
 namespace bmcs_app.ViewModels.Receipt;
 
 /// <summary>
-/// 入金入力画面（TODO.md 7-2・7-5）。締め得意先（請求単位／伝票単位）専用。都度得意先（内税明細単位）の
-/// 入金は明細入金画面（TODO.md 7-4）が担う。
+/// 入金入力画面。締め得意先（請求単位／伝票単位）専用。都度得意先（内税明細単位）の
+/// 入金は明細入金画面が担う。
 ///
 /// 明細行は支払手段の内訳（入金方法＋金額＋行摘要）であり、利用者が直接追加・編集・削除する
-/// （売上入力と同じ明細行パターン。docs/design_document.md 17章、2026-09-15改訂）。請求への充当は
+/// （売上入力と同じ明細行パターン。docs/design_document.md 17章）。請求への充当は
 /// 保存時に<see cref="ReceiptEntryService.SaveNewAsync"/>／<see cref="ReceiptEntryService.UpdateAsync"/>
 /// が内部で自動計算するため、この画面には表示しない。利用者に必要なのは充当先ではなく残高であるため、
 /// 得意先確定時に請求残高を表示する。
 ///
-/// 振込手数料差額の入力（TODO.md 7-3）はこの画面のスコープ外。既存伝票の訂正・取消（TODO.md 7-5）は
+/// 振込手数料差額の入力はこの画面のスコープ外。既存伝票の訂正・取消は
 /// 伝票No.欄で読み込んだ後、そのまま編集して保存(F10)＝訂正、取消(F8)＝取消として扱う
 /// （<see cref="Sales.SalesEntryViewModel"/>と同じパターン）。得意先コードのみ、読み込んだ後は
 /// 変更できない（<see cref="IsExistingLoaded"/>）。編集ロック中（<see cref="IsEditLocked"/>、
@@ -47,7 +47,7 @@ public partial class ReceiptEntryViewModel(
     private IReadOnlyList<short> _loadedLineNumbers = [];
 
     /// <summary>
-    /// 伝票プレビュー（TODO.md 8-3）用の入口。得意先元帳からの表示専用で開くとき、
+    /// 伝票プレビュー用の入口。得意先元帳からの表示専用で開くとき、
     /// <see cref="Services.WindowService.Show{TWindow, TViewModel}"/> の <c>configure</c> から
     /// ウィンドウ表示前に一度だけ設定する。値は以後変化しないため<c>[ObservableProperty]</c>は使わない。
     /// </summary>
@@ -56,7 +56,7 @@ public partial class ReceiptEntryViewModel(
     /// <summary>プレビュー表示中かどうか。</summary>
     public bool IsPreviewMode => PreviewSlipNumber is not null;
 
-    /// <summary>ウィンドウタイトル（TODO.md 8-3）。</summary>
+    /// <summary>ウィンドウタイトル。</summary>
     public string WindowTitle => IsPreviewMode ? "bmcs_app - 入金入力（プレビュー・編集不可）" : "bmcs_app - 入金入力";
 
     public ObservableCollection<BankAccount> BankAccounts { get; } = [];
@@ -80,8 +80,7 @@ public partial class ReceiptEntryViewModel(
     public partial bool IsExistingLoaded { get; set; }
 
     /// <summary>
-    /// 編集ロック中かどうか（<see cref="ReceiptEntryService.EvaluateEditLockAsync"/>の結果。
-    /// TODO.md 7-5）。ViewModelは判定せず、結果をそのまま表示・反映するだけにする
+    /// 編集ロック中かどうか（<see cref="ReceiptEntryService.EvaluateEditLockAsync"/>の結果）。ViewModelは判定せず、結果をそのまま表示・反映するだけにする
     /// （docs/architecture.md 5章）。
     /// </summary>
     [ObservableProperty]
@@ -109,7 +108,7 @@ public partial class ReceiptEntryViewModel(
     /// 登録可能な最小日付（請求締め済みの翌日。制限なしなら<c>null</c>）。得意先確定時に
     /// <see cref="BillingClosedDateService"/>から取得し、<c>DatePicker.DisplayDateStart</c>に
     /// バインドする（画面上の利便性のみを担い、最終的な検証はApplication層が行う。
-    /// docs/design_document.md 21-4章 申し送り事項R2）。
+    /// docs/design_document.md 25章「ジャーナル系の日付制限」）。
     /// </summary>
     [ObservableProperty]
     public partial DateTime? MinimumReceiptDate { get; set; }
@@ -164,7 +163,7 @@ public partial class ReceiptEntryViewModel(
         if (PreviewSlipNumber is { } previewSlipNumber)
         {
             // Loaded → LoadCommand の async void 経路で呼ばれるため、ここで例外を握らないと
-            // アプリがクラッシュする（TODO.md 8-3）。
+            // アプリがクラッシュする。
             try
             {
                 await LookupByNumberAsync(previewSlipNumber);
@@ -251,7 +250,7 @@ public partial class ReceiptEntryViewModel(
     /// <summary>
     /// 得意先確定時に登録可能な最小日付を取得して<see cref="MinimumReceiptDate"/>へ反映する。新規登録
     /// （<see cref="ApplyCustomerAsync"/>経由）では、現在の<see cref="ReceiptDate"/>が最小日付より前なら
-    /// 最小日付へ補正する（2026-09-16ユーザー確認）。訂正モードの読込（<see cref="ApplyExisting"/>、
+    /// 最小日付へ補正する。訂正モードの読込（<see cref="ApplyExisting"/>、
     /// 既に保存済みの日付を保つべき経路）ではこのメソッドを呼ばない。戻り値は補正した場合のみ通知文言、
     /// それ以外は<c>null</c>。
     /// </summary>
@@ -329,7 +328,7 @@ public partial class ReceiptEntryViewModel(
         {
             // 受注入力・売上入力（商品コード確定時にEnsureTrailingBlankLineを呼ぶ）と同じ操作感にする。
             // 入金明細にはコード欄が無く、IsBlankはAmount==0mで判定するため、金額確定がこの行を
-            // 使う意思表示になる（2026-09-17ユーザー確認）。
+            // 使う意思表示になる。
             EnsureTrailingBlankLine();
             RenumberLines();
             RaiseTotalsChanged();
@@ -339,14 +338,14 @@ public partial class ReceiptEntryViewModel(
     /// <summary>
     /// 入金No.欄で Return を押したときの挙動（docs/product-spec.md UI/UX節「ジャーナル系画面の
     /// 伝票No入力欄の挙動」）。空欄なら新規登録モードとして次項目（入金日付）へフォーカス移動する
-    /// のみ。入力済みなら既存の入金No.で直接読み込む（訂正・取消モード。TODO.md 7-5）。
+    /// のみ。入力済みなら既存の入金No.で直接読み込む（訂正・取消モード）。
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanEdit))]
     private Task LookupAsync() => RunBusyAsync(() => LookupByNumberAsync(ReceiptSlipNumberQuery));
 
     /// <summary>
     /// 入金No.欄からの読込の本体。<see cref="LookupAsync"/>（対話操作）と<see cref="LoadAsync"/>
-    /// （プレビュー。TODO.md 8-3）の両方から呼ぶため、<see cref="RunBusyAsync"/>には包まない
+    /// （プレビュー）の両方から呼ぶため、<see cref="RunBusyAsync"/>には包まない
     /// （呼び出し側がそれぞれ包む。二重に包むと<see cref="ViewModelBase.RunBusyAsync"/>の
     /// 再入防止で内側が無視される）。
     /// </summary>
@@ -466,7 +465,7 @@ public partial class ReceiptEntryViewModel(
         }
     });
 
-    /// <summary>取消（F8、TODO.md 7-5）。</summary>
+    /// <summary>取消（F8）。</summary>
     [RelayCommand(CanExecute = nameof(CanDeleteSlip))]
     private Task DeleteSlipAsync() => RunBusyAsync(async () =>
     {

@@ -15,10 +15,10 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Receipt;
 
 /// <summary>
-/// 入金消込（TODO.md 7-1）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
+/// 入金消込の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
 /// （docs/architecture.md 16章）。完了条件「登録・取消・訂正のいずれでもキャッシュ列が
 /// 実態と一致する」の実証。<c>receipt</c>は支払手段の内訳、充当は<c>receipt_allocation</c>が
-/// 別に持つ（docs/design_document.md 17章、2026-09-15改訂）。
+/// 別に持つ（docs/design_document.md 17章）。
 /// </summary>
 /// <remarks>
 /// <see cref="SettlementService.RecalculateForBillingGroupAsync"/> は自前で<c>BeginTransactionAsync</c>
@@ -115,7 +115,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
         {
             await InsertCustomerAsync(dbContext, CustomerInvoice, TaxUnit.Invoice);
             // billing A(1月・前残0・売上10,000・税1,000)→請求11,000。billing B(2月・前残11,000
-            // ・売上5,000・税500)→請求16,500（TODO.md 7-1決定3の検証例）。
+            // ・売上5,000・税500)→請求16,500（検証例）。
             await InsertBillingAsync(dbContext, "__TSTBIL_STLA", CustomerInvoice, TaxUnit.Invoice, currentBillingAmount: 11000m, closingYearMonth: "202601");
             await InsertBillingAsync(dbContext, "__TSTBIL_STLB", CustomerInvoice, TaxUnit.Invoice, currentBillingAmount: 16500m, closingYearMonth: "202602");
 
@@ -562,7 +562,7 @@ public class SettlementServiceTests(DevDatabaseFixture fixture) : IClassFixture<
         }
     }
 
-    // 親子請求（請求集約、Phase 12-B）。請求集約先（Root）と請求集約元（Child）は
+    // 親子請求（請求集約）。請求集約先（Root）と請求集約元（Child）は
     // closing_day・tax_unit・rounding_type が一致していなければならないため、いずれも
     // InsertCustomerAsync の既定値（ClosingDay=15・RoundingType.Floor）のまま組む。
     private const string CustomerBillingRoot = "__TSTSTLP1";

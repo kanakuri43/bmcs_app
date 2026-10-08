@@ -10,7 +10,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Billing;
 
 /// <summary>
-/// 請求書の印刷データ取得（TODO.md 10-5、12-D）の結合テスト。開発用ライブDB（172.16.3.171）に対して
+/// 請求書の印刷データ取得の結合テスト。開発用ライブDB（172.16.3.171）に対して
 /// 実行する。既存のテストは読み取り専用（保存しない）のため専用のテスト得意先を新設せず、既存の
 /// seedデータ（`scripts/seed_dev_data.sql`）に対する回帰検知テストとして実装している
 /// （`CustomerLedgerQueryServiceTests`と同じ方針）。親子請求（請求集約）のテストのみ、seedデータに

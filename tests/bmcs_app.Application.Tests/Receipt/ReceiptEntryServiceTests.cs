@@ -15,10 +15,10 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Receipt;
 
 /// <summary>
-/// 入金入力画面（TODO.md 7-2）・入金の取消訂正（TODO.md 7-5）の結合テスト。開発用ライブDB
+/// 入金入力画面・入金の取消訂正の結合テスト。開発用ライブDB
 /// （172.16.3.171）に対して実行する（docs/architecture.md 16章）。明細行は支払手段の内訳
 /// （入金方法＋金額）であり、請求への充当（<see cref="ReceiptAllocationEntity"/>）は保存時に
-/// 内部で自動計算される（docs/design_document.md 17章、2026-09-15改訂）。
+/// 内部で自動計算される（docs/design_document.md 17章）。
 /// </summary>
 /// <remarks>
 /// <see cref="ReceiptEntryService.SaveNewAsync"/>／<see cref="ReceiptEntryService.UpdateAsync"/>／
@@ -397,7 +397,7 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         }
     }
 
-    // ── 取消（TODO.md 7-5） ──────────────────────────────────────
+    // ── 取消 ──────────────────────────────────────
 
     [Fact]
     public async Task 取消すると売上の消込状態と消込済金額が入金前に戻る()
@@ -467,7 +467,7 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         }
     }
 
-    // ── 編集ロック（請求締めスナップショット。TODO.md 7-5） ──────────────
+    // ── 編集ロック（請求締めスナップショット） ──────────────
 
     [Fact]
     public async Task 確定済み請求の集計期間内の締め入金は取消できない()
@@ -536,7 +536,7 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         var customerCode = "__TSTRCL03";
         const string billingNumber = "__TSTBIL_RCL03";
         // 締め解除はbilling_date単位で走査するため、seedデータのBIL_INV001（billing_date=2026-07-20）
-        // と衝突しない専用の日付を使う（2026-09-15、ReleaseAsync→ReleaseByBillingDateAsyncへの変更に伴う対応）。
+        // と衝突しない専用の日付を使う。
         var billingDate = new DateOnly(2026, 7, 22);
         try
         {
@@ -719,7 +719,7 @@ public class ReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         }
     }
 
-    // ── 訂正の充当再構築（TODO.md 7-5） ──────────────────────────────
+    // ── 訂正の充当再構築 ──────────────────────────────
 
     [Fact]
     public async Task 締め入金の金額を訂正すると自分自身の旧充当を除いた残高に対して再配分される()

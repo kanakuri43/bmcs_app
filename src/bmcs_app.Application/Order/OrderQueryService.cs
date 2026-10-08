@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace bmcs_app.Application.Order;
 
 /// <summary>
-/// 受注伝票の読み込み・検索ユースケース（TODO.md 5-3の共通前提）。
+/// 受注伝票の読み込み・検索ユースケース。
 /// 検索は既定で中止・売上完了の受注を除外する（売上化できない受注を候補に出さないため）。
 /// </summary>
 public class OrderQueryService(BmcsDbContext dbContext)
@@ -65,7 +65,7 @@ public class OrderQueryService(BmcsDbContext dbContext)
     /// </summary>
     /// <param name="excludeUnavailableForSales">
     /// <c>true</c>（既定）のとき、全明細行が中止または売上完了の受注を除外する
-    /// （5-3の受注No.検索では、これ以上売上化できない受注を出す意味がないため）。
+    /// （売上入力の受注No.検索では、これ以上売上化できない受注を出す意味がないため）。
     /// </param>
     public async Task<List<OrderSlipHit>> SearchAsync(
         string? keyword,

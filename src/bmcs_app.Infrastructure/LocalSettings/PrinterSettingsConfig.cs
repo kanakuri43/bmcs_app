@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace bmcs_app.Infrastructure.LocalSettings;
 
 /// <summary>
-/// 端末ローカルのプリンタ設定（<c>bmcs_config.json</c>）の読み書き。DBでは管理しない（TODO.md 2-6）。
+/// 端末ローカルのプリンタ設定（<c>bmcs_config.json</c>）の読み書き。DBでは管理しない。
 /// 接続文字列など他の設定は appsettings.json 側で管理しており、このファイルはプリンタ設定専用。
 /// </summary>
 public class PrinterSettingsConfig

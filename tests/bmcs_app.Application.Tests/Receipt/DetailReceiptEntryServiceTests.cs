@@ -12,7 +12,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Receipt;
 
 /// <summary>
-/// 明細入金画面（TODO.md 7-4）・明細入金の取消訂正（TODO.md 7-5）の結合テスト。開発用ライブDB
+/// 明細入金画面・明細入金の取消訂正の結合テスト。開発用ライブDB
 /// （172.16.3.171）に対して実行する（docs/architecture.md 16章）。都度得意先（内税明細単位）専用。
 /// 充当先は売上明細行の直接指定（target_type=1）と明細請求書まるごと1行（target_type=2）の2種類
 /// （docs/design_document.md 18章）。
@@ -581,7 +581,7 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
         }
     }
 
-    // ── 取消（TODO.md 7-5） ──────────────────────────────────────
+    // ── 取消 ──────────────────────────────────────
 
     [Fact]
     public async Task 明細入金_直接指定_を取消すると対象売上明細行が未消込に戻る()
@@ -714,7 +714,7 @@ public class DetailReceiptEntryServiceTests(DevDatabaseFixture fixture) : IClass
         }
     }
 
-    // ── 訂正（TODO.md 7-5） ──────────────────────────────────────
+    // ── 訂正 ──────────────────────────────────────
 
     [Fact]
     public async Task 明細入金の訂正では充当先の候補条件を再評価しないため他の伝票の影響を受けない()

@@ -12,7 +12,7 @@ using ProductEntity = bmcs_app.Domain.Entities.Product;
 namespace bmcs_app.Application.Tests.Master;
 
 /// <summary>
-/// マスタ更新の楽観的排他制御（docs/architecture.md 9章、TODO.md X-2）の結合テスト。
+/// マスタ更新の楽観的排他制御（docs/architecture.md 9章）の結合テスト。
 /// 「別の端末が先に更新した」状態を、読み込み時点の RowVersion（古い値）を持つ別オブジェクトで
 /// 再現する。外側をトランザクションで包み、最後に必ず Rollback するので DB には何も残らない。
 /// </summary>

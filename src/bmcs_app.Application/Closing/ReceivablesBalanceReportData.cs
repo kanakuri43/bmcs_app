@@ -3,7 +3,7 @@ namespace bmcs_app.Application.Closing;
 /// <summary>
 /// 売掛金残高一覧表の1行（確定済みの <c>monthly_closings</c> 1件）。
 /// <see cref="IsBillingChild"/> が真の行（請求集約元）は、前月残高・入金額・消費税・当月残高が
-/// 0で保存されており（<c>docs/design_document.md</c> 29-1）、売上額だけが意味を持つ。
+/// 0で保存されており（<c>docs/design_document.md</c> 29-1節）、売上額だけが意味を持つ。
 /// </summary>
 public sealed record ReceivablesBalanceReportRow(
     string CustomerCode,

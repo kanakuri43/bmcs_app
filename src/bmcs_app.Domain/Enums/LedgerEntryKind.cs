@@ -1,6 +1,6 @@
 namespace bmcs_app.Domain.Enums;
 
-/// <summary>得意先元帳の1行の区分（TODO.md 8-1）。売上・返品・値引の内訳は <see cref="SlipType"/> が別に持つ。</summary>
+/// <summary>得意先元帳の1行の区分。売上・返品・値引の内訳は <see cref="SlipType"/> が別に持つ。</summary>
 public enum LedgerEntryKind : byte
 {
     /// <summary>前月繰越。期間の直前日に置く仮想行。</summary>

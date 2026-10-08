@@ -21,7 +21,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.ViewModels.Sales;
 
 /// <summary>
-/// 売上入力画面（TODO.md 5-2・5-3・5-4・5-5・5-6）。都度売上の直接入力、受注からの売上確定、
+/// 売上入力画面。都度売上の直接入力、受注からの売上確定、
 /// 返品・値引、過去伝票の複写、既存伝票の訂正・取消を扱う。
 /// 印刷・前後移動・担当者は、対象フェーズが別、またはこのプロジェクトのスキーマ／機能に
 /// まだ存在しないため、枠のみ用意し無効化している（詳細は docs/design_document.md）。
@@ -47,7 +47,7 @@ public partial class SalesEntryViewModel(
     private string? _loadedSalesSlipNumber;
 
     /// <summary>
-    /// 伝票プレビュー（TODO.md 8-3）用の入口。得意先元帳からの表示専用で開くとき、
+    /// 伝票プレビュー用の入口。得意先元帳からの表示専用で開くとき、
     /// <see cref="Services.WindowService.Show{TWindow, TViewModel}"/> の <c>configure</c> から
     /// ウィンドウ表示前に一度だけ設定する。<see cref="LoadAsync"/> の末尾でこの伝票を読み込み、
     /// 以後値は変化しない（ウィンドウは毎回新規に開くため）ため、<c>[ObservableProperty]</c>や
@@ -88,13 +88,13 @@ public partial class SalesEntryViewModel(
     /// 登録可能な最小日付（請求締め済みの翌日。制限なしなら<c>null</c>）。得意先確定時に
     /// <see cref="BillingClosedDateService"/>から取得し、<c>DatePicker.DisplayDateStart</c>に
     /// バインドする（画面上の利便性のみを担い、最終的な検証はApplication層が行う。
-    /// docs/design_document.md 21-4章 申し送り事項R2）。
+    /// docs/design_document.md 25章「ジャーナル系の日付制限」）。
     /// </summary>
     [ObservableProperty]
     public partial DateTime? MinimumSlipDate { get; set; }
 
     /// <summary>
-    /// 売上No.欄。新規時は空欄（Watermarkで「自動採番」を案内）。既存伝票の訂正・取消（TODO.md 5-6）では
+    /// 売上No.欄。新規時は空欄（Watermarkで「自動採番」を案内）。既存伝票の訂正・取消では
     /// 番号を直接入力して <c>Return</c> で読み込む、または <c>Space</c> で検索モーダルを開ける。
     /// 空欄のまま <c>Return</c> は新規登録モードとして次項目へフォーカス移動する
     /// （docs/product-spec.md UI/UX節「ジャーナル系画面の伝票No入力欄の挙動」）。
@@ -102,7 +102,7 @@ public partial class SalesEntryViewModel(
     [ObservableProperty]
     public partial string SalesSlipNumberDisplay { get; set; } = string.Empty;
 
-    /// <summary>受注No.欄（TODO.md 5-3）。<c>Space</c> で受注検索モーダル、<c>Return</c> で直接読込。</summary>
+    /// <summary>受注No.欄。<c>Space</c> で受注検索モーダル、<c>Return</c> で直接読込。</summary>
     [ObservableProperty]
     public partial string OrderSlipNumberQuery { get; set; } = string.Empty;
 
@@ -140,7 +140,7 @@ public partial class SalesEntryViewModel(
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     public partial bool IsSaved { get; set; }
 
-    /// <summary>編集ロック中かどうか（C-6の3条件。TODO.md 5-6）。ViewModelは判定せず、
+    /// <summary>編集ロック中かどうか（編集ロックの3条件）。ViewModelは判定せず、
     /// <see cref="SalesEditLockService"/> の結果をそのまま表示・反映するだけにする
     /// （docs/architecture.md 5章）。</summary>
     [ObservableProperty]
@@ -151,7 +151,7 @@ public partial class SalesEntryViewModel(
     /// <summary>
     /// 保存が例外で失敗した後、再読込まで保存を封じるフラグ。ミューテーション後に例外が発生すると
     /// ChangeTrackerが汚れたまま残り、同じ画面から再保存すると行が静かに論理削除される
-    /// 潜在バグ（TODO.md 4-6レビューで発見）への対策。自動マージ・後勝ちの上書きは行わない
+    /// 潜在バグへの対策。自動マージ・後勝ちの上書きは行わない
     /// （docs/architecture.md 9章）ため、操作面でも再読込を強制する。
     /// </summary>
     [ObservableProperty]
@@ -166,19 +166,19 @@ public partial class SalesEntryViewModel(
 
     private bool CanDeleteSlip => CanEdit && _loadedSalesSlipNumber is not null && !IsEditLocked;
 
-    /// <summary>ヘッダー入力欄の <c>IsReadOnly</c> バインディング用（TODO.md 8-3）。</summary>
+    /// <summary>ヘッダー入力欄の <c>IsReadOnly</c> バインディング用。</summary>
     public bool IsHeaderLocked => IsPreviewMode;
 
-    /// <summary>明細行グリッドの <c>IsEnabled</c> バインディング用（TODO.md 8-3）。</summary>
+    /// <summary>明細行グリッドの <c>IsEnabled</c> バインディング用。</summary>
     public bool IsEditable => !IsPreviewMode;
 
-    /// <summary>ウィンドウタイトル（TODO.md 8-3）。</summary>
+    /// <summary>ウィンドウタイトル。</summary>
     public string WindowTitle => IsPreviewMode ? "bmcs_app - 売上入力（プレビュー・編集不可）" : "bmcs_app - 売上入力";
 
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
 
-    // ── フッター集計（TODO.md 5-1 の ConsumptionTaxCalculator を再利用） ──────────
+    // ── フッター集計（ConsumptionTaxCalculator を再利用） ──────────
     public decimal TaxExcludedTotal => ComputeTaxSummary().TaxableAmount;
 
     public decimal TaxTotal => ComputeTaxSummary().TaxAmount;
@@ -192,7 +192,7 @@ public partial class SalesEntryViewModel(
     public decimal GrandTotal => ComputeTaxSummary().TotalAmount;
 
     /// <summary>
-    /// 値引行の原価は0として扱う（TODO.md 5-4。<see cref="SalesSlipTypeRules.NormalizeCostPrice"/>）。
+    /// 値引行の原価は0として扱う（<see cref="SalesSlipTypeRules.NormalizeCostPrice"/>）。
     /// 行自体の <see cref="SlipLineViewModel.CostPrice"/> は破壊的に書き換えない
     /// （値引→売上の往復で原価を失わないため）。
     /// </summary>
@@ -203,7 +203,7 @@ public partial class SalesEntryViewModel(
 
     /// <summary>
     /// 得意先の税区分が内税明細単位（Line）なら明細ごとに1回の端数処理、
-    /// それ以外（Invoice/Slip）は伝票全体で税率ごとに1回の端数処理（暫定 C-4b）。
+    /// それ以外（Invoice/Slip）は伝票全体で税率ごとに1回の端数処理（暫定：税区分どおりの端数処理）。
     /// これは画面表示専用（フッター集計）であり、保存時の税額確定は
     /// <see cref="SalesTaxAmountAssigner"/> が別途行う。空行（商品未選択）は
     /// 税種別区分が未対応値のため、計算対象から除外する。
@@ -238,7 +238,7 @@ public partial class SalesEntryViewModel(
         if (PreviewSlipNumber is { } previewSlipNumber)
         {
             // Loaded → LoadCommand の async void 経路で呼ばれるため、ここで例外を握らないと
-            // アプリがクラッシュする（TODO.md 8-3）。
+            // アプリがクラッシュする。
             try
             {
                 await LoadSalesSlipForCorrectionAsync(previewSlipNumber);
@@ -271,7 +271,7 @@ public partial class SalesEntryViewModel(
         if (_customer?.CustomerCode == CustomerCode)
         {
             // すでに確定済みの得意先（受注読込・複写・訂正読込等で得意先名を上書き済みの場合を
-            // 含む。C-9）と同じコードなら再取得しない。マスタを読み直すと上書きが失われるため
+            // 含む）と同じコードなら再取得しない。マスタを読み直すと上書きが失われるため
             // （受注No.読込後にCustomerCode欄でEnterを押すと得意先名がマスタ名称に戻る不具合）。
             // ただしEnterでの通常のフォーカス送りは維持する（ApplyCustomerAsyncと同じ送り先）。
             RequestFocus("EmployeeCode");
@@ -321,7 +321,7 @@ public partial class SalesEntryViewModel(
     /// <summary>
     /// 得意先確定時に登録可能な最小日付を取得して<see cref="MinimumSlipDate"/>へ反映する。新規登録
     /// （<see cref="ApplyCustomerAsync"/>経由）では、現在の<see cref="SlipDate"/>が最小日付より前なら
-    /// 最小日付へ補正する（2026-09-16ユーザー確認）。訂正モードの読込（既に保存済みの日付を保つべき
+    /// 最小日付へ補正する。訂正モードの読込（既に保存済みの日付を保つべき
     /// 経路）ではこのメソッドを呼ばない。戻り値は補正した場合のみ通知文言、それ以外は<c>null</c>。
     /// </summary>
     private async Task<string?> ApplyMinimumSlipDateAsync(string customerCode)
@@ -560,7 +560,7 @@ public partial class SalesEntryViewModel(
 
     /// <summary>
     /// 商品検索モーダルの選択結果（最大6件）を行へ展開する。1件目は呼び出した行、
-    /// 残りは後続の空行を埋め、足りなければ直後に挿入する（TODO.md 4-2）。
+    /// 残りは後続の空行を埋め、足りなければ直後に挿入する。
     /// </summary>
     private Task ApplySelectionsAsync(SlipLineViewModel invokingLine, IReadOnlyList<ProductSelection> selections)
     {
@@ -761,7 +761,7 @@ public partial class SalesEntryViewModel(
 
     /// <summary>
     /// 保存失敗時の共通処理。訂正モード中の失敗は、ミューテーション後にChangeTrackerが汚れたまま
-    /// 残る可能性があるため、再読込までSaveを封じる（TODO.md 4-6レビューで発見した潜在バグの対策）。
+    /// 残る可能性があるため、再読込までSaveを封じる。
     /// </summary>
     private void HandleSaveFailure(Exception ex)
     {
@@ -793,7 +793,7 @@ public partial class SalesEntryViewModel(
         var printNote = await PromptAndPrintDeliveryNoteAsync(salesSlipNumber);
 
         // 登録後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
-        // 納品書の発行有無に関わらずリセットする（TODO.md 10-4。保存直後の発行確認は
+        // 納品書の発行有無に関わらずリセットする（保存直後の発行確認は
         // New() の前に完結させ、リセット自体の方針は変えない）。
         New();
         StatusMessage = printNote is null
@@ -839,7 +839,7 @@ public partial class SalesEntryViewModel(
         SlipDate = slipDate,
         CustomerCode = _customer!.CustomerCode,
         TaxUnit = _customer.TaxUnit,
-        CustomerName = CustomerName, // 手入力で上書きされていればその値（C-9・2026-09-10確定）
+        CustomerName = CustomerName, // 手入力で上書きされていればその値
         SlipType = line.SlipType,
         ProductCode = line.ProductCode,
         ProductName = line.ProductName,
@@ -868,7 +868,7 @@ public partial class SalesEntryViewModel(
         UpdatedAt = now,
     };
 
-    // ── 受注からの売上確定（TODO.md 5-3） ──────────────────────
+    // ── 受注からの売上確定 ──────────────────────
     [RelayCommand(CanExecute = nameof(CanEdit))]
     private void OpenOrderSlipSearch()
     {
@@ -939,7 +939,7 @@ public partial class SalesEntryViewModel(
             return;
         }
 
-        // 受注で得意先名を上書き登録している場合（子得意先の宛名等。C-9）、得意先マスタの名称ではなく
+        // 受注で得意先名を上書き登録している場合（子得意先の宛名等。）、得意先マスタの名称ではなく
         // 受注側の名称を引用する（CopyFromPastSlipAsync・LoadSalesSlipForCorrectionAsyncと同じ方針）。
         CustomerName = sellableLines[0].CustomerName;
 
@@ -1012,7 +1012,7 @@ public partial class SalesEntryViewModel(
         return line;
     }
 
-    // ── 過去伝票の複写（TODO.md 5-5） ──────────────────────────
+    // ── 過去伝票の複写 ──────────────────────────
     [RelayCommand(CanExecute = nameof(CanEdit))]
     private Task CopyFromPastSlipAsync() => RunBusyAsync(async () =>
     {
@@ -1077,7 +1077,7 @@ public partial class SalesEntryViewModel(
         StatusMessage = $"売上No. {sourceSlipNumber} を複写しました（新規登録として保存されます）。";
     });
 
-    // ── 既存伝票の訂正・取消（TODO.md 5-6） ────────────────────
+    // ── 既存伝票の訂正・取消 ────────────────────
     [RelayCommand(CanExecute = nameof(CanEdit))]
     private void OpenSalesSlipSearch()
     {
@@ -1238,7 +1238,7 @@ public partial class SalesEntryViewModel(
     private bool CanUseUnimplementedFeature => false;
 
     /// <summary>
-    /// 印刷（納品書、TODO.md 10-4）。既存伝票を読み込んでいる場合のみ有効
+    /// 印刷（納品書）。既存伝票を読み込んでいる場合のみ有効
     /// （プレビューモードでも可＝再発行。docs/design_document.md「プレビューは書き込まない」方針の
     /// 明示的な例外。発行日時・発行回数は伝票内容の編集ではなく帳簿外の記録列のため）。
     /// 新規未保存の伝票はここでは印刷できず、保存直後の発行確認（<see cref="PromptAndPrintDeliveryNoteAsync"/>）
@@ -1278,7 +1278,7 @@ public partial class SalesEntryViewModel(
     /// <summary>
     /// 納品書データを取得してプレビューを開き、印刷が成功した場合のみ発行記録
     /// （<see cref="DeliveryNoteService.MarkIssuedAsync"/>）を行う。プレビューはモーダル
-    /// （TODO.md 10-3ユーザー確認済み。開いている間は他画面を操作できない）。
+    /// （開いている間は他画面を操作できない）。
     /// </summary>
     private async Task<string?> PrintDeliveryNoteAsync(string salesSlipNumber)
     {

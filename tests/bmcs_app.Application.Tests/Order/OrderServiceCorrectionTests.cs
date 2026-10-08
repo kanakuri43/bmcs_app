@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace bmcs_app.Application.Tests.Order;
 
 /// <summary>
-/// 受注の直接修正（TODO.md 4-6）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
+/// 受注の直接修正の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
 /// （docs/architecture.md 16章）。完了条件「未売上の受注のみ修正・保存できる」の実証。
 /// </summary>
 /// <remarks>

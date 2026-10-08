@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace bmcs_app.Infrastructure.Configurations;
 
 /// <summary>
-/// 締め入金（receipt）。明細行＝支払手段の内訳（docs/design_document.md 17章、2026-09-15改訂）。
+/// 締め入金（receipt）。明細行＝支払手段の内訳（docs/design_document.md 17章）。
 /// 請求への充当は<see cref="ReceiptAllocation"/>が別テーブルで担う。旧 ReceiptTaxUnitInvoice /
 /// ReceiptTaxUnitSlip の統合版（010_unify_tax_unit_tables.sql）。
 /// </summary>

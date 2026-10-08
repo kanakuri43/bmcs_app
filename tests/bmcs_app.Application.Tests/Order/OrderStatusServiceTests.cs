@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace bmcs_app.Application.Tests.Order;
 
 /// <summary>
-/// 受注の状態遷移（TODO.md 4-4）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
+/// 受注の状態遷移の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
 /// （docs/architecture.md 16章）。完了条件「分納・中止・売上取消による逆遷移が正しく反映される」の実証。
 /// </summary>
 /// <remarks>

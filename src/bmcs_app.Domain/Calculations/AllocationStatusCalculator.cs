@@ -4,7 +4,7 @@ namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
 /// 入金伝票の充当状態（<see cref="AllocationStatus"/>）を、伝票単位の入金額合計と
-/// 充当額合計から判定する（TODO.md 7-1）。<c>receipt</c>では伝票単位の入金額合計は
+/// 充当額合計から判定する。<c>receipt</c>では伝票単位の入金額合計は
 /// 同一伝票の<c>amount</c>のSUM、充当額は<c>receipt_allocation</c>の<c>allocated_amount</c>
 /// 合計から得る。<c>detail_receipt</c>では前者は<c>receipt_amount</c>列そのもの（伝票単位の値）。
 /// </summary>

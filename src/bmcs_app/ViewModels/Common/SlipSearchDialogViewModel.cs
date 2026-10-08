@@ -9,7 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Common;
 
 /// <summary>
-/// 伝票検索モーダル（TODO.md 5-3・5-5・5-6の共通前提）。受注No.検索・売上No.検索・明細請求書No.検索・
+/// 伝票検索モーダル。受注No.検索・売上No.検索・明細請求書No.検索・
 /// 入金No.検索すべてに使う（<see cref="CustomerSearchDialogViewModel"/> と同じ、全件ロード後に
 /// メモリ絞り込みする作り）。選択された**伝票番号**だけを返す。伝票実体の読み込みは呼び出し元が
 /// 自分のクエリサービスで行う。
@@ -30,8 +30,8 @@ public partial class SlipSearchDialogViewModel(
     /// <summary>
     /// <see cref="SlipSearchTarget.Order"/> 専用。<c>true</c> のとき、売上完了・中止済みの受注も
     /// 検索結果に含める（既定は<c>false</c>＝これ以上売上化できない受注を除外する。
-    /// 売上入力画面の受注No.検索が使う既定挙動）。受注入力画面（TODO.md 4-6）は、修正できない
-    /// 受注も閲覧目的で探せるようにするため<c>true</c>を設定する（2026-09-16確定）。
+    /// 売上入力画面の受注No.検索が使う既定挙動）。受注入力画面は、修正できない
+    /// 受注も閲覧目的で探せるようにするため<c>true</c>を設定する。
     /// </summary>
     public bool IncludeUnavailableOrders { get; set; }
 

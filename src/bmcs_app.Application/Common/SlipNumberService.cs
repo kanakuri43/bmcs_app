@@ -5,7 +5,7 @@ using bmcs_app.Infrastructure.Numbering;
 namespace bmcs_app.Application.Common;
 
 /// <summary>
-/// 伝票番号の採番ユースケース（TODO.md 4-1）。
+/// 伝票番号の採番ユースケース。
 /// 呼び出し元（受注入力等の各伝票登録ユースケース）が明示トランザクション
 /// （<c>dbContext.Database.BeginTransactionAsync()</c>）を開始した上で、
 /// 伝票の登録処理（<c>SaveChangesAsync</c>）とあわせて呼び出すこと

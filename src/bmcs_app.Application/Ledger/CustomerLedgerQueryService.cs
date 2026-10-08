@@ -7,10 +7,10 @@ using BillingStatus = bmcs_app.Domain.Enums.BillingStatus;
 namespace bmcs_app.Application.Ledger;
 
 /// <summary>
-/// 得意先元帳の照会ユースケース（TODO.md 8-1）。SQLビュー・GROUP BY は使わず、得意先の全期間の
+/// 得意先元帳の照会ユースケース。SQLビュー・GROUP BY は使わず、得意先の全期間の
 /// 売上・入金・請求を読み出してアプリ側（Domain の純粋関数 <see cref="CustomerLedgerBuilder"/>）で
 /// マージする（docs/architecture.md 7章・10章）。残高キャッシュ列は持たず都度集計する
-/// （M-11・2026-09-10確定）。
+/// 。
 /// </summary>
 public class CustomerLedgerQueryService(BmcsDbContext dbContext)
 {
@@ -42,7 +42,7 @@ public class CustomerLedgerQueryService(BmcsDbContext dbContext)
         }
 
         // 請求集約先（Customer.IsBillingRoot）はグループ全体（自身＋全請求集約元）の売上・入金を
-        // 含めないと残高が正しくならない（docs/design_document.md 28章、TODO.md 12-E）。
+        // 含めないと残高が正しくならない（docs/design_document.md 28章）。
         // 請求集約元はグループ展開せず自身の売上のみ（＝取引履歴のみモードのスコープそのもの）。
         // 都度得意先（TaxUnit.Line）は請求集約に一切参加できない（CHECK制約）ため、
         // グループ解決クエリ自体を省略する（SettlementService.RecalculateForBillingGroupAsync
@@ -120,9 +120,9 @@ public class CustomerLedgerQueryService(BmcsDbContext dbContext)
     }
 
     /// <summary>
-    /// 指定日時点のリアルタイム残高（TODO.md 8-2 / 9-1 から再利用する入口）。
+    /// 指定日時点のリアルタイム残高（月次締めなど他のユースケースから再利用する入口）。
     /// <c>GetAsync(code, asOf, asOf)</c> の <see cref="CustomerLedgerResult.ClosingBalance"/> と同値。
-    /// 請求集約元（取引履歴のみモード。TODO.md 12-E）は残高を管理しないため null を返す
+    /// 請求集約元（取引履歴のみモード）は残高を管理しないため null を返す
     /// （残高0円と区別するため。呼び出し元は既に <c>?? 0m</c> で受けている）。
     /// </summary>
     public async Task<decimal?> GetBalanceAsOfAsync(

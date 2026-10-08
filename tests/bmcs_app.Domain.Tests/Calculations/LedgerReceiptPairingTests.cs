@@ -5,7 +5,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Domain.Tests.Calculations;
 
 /// <summary>
-/// 都度得意先の売上明細行への消込証跡の紐づけ（TODO.md 8-1）のテスト。
+/// 都度得意先の売上明細行への消込証跡の紐づけのテスト。
 /// 表示専用（残高計算には使わない）ため、金額の按分ではなく「どの売上明細行にどの明細入金行が
 /// 証跡として結びつくか」だけを検証する。
 /// </summary>

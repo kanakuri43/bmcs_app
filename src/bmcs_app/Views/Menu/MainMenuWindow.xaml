@@ -11,7 +11,7 @@
                  WindowTransitionsEnabled="False"
                  Background="#FFF3F5F8">
     <!--
-        TODO.md 2-7。デザインモック（旧 MainMenuMockWindow）のC案＝リスト・アコーディオン型を
+        デザインモック（旧 MainMenuMockWindow）のC案＝リスト・アコーディオン型を
         採用し、メニュー構成マスタ（menu）駆動・権限フィルタ済みの内容を表示する（縦長ウィンドウ）。
     -->
     <mah:MetroWindow.Resources>

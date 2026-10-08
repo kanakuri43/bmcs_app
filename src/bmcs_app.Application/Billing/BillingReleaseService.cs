@@ -9,11 +9,11 @@ using BillingEntity = bmcs_app.Domain.Entities.Billing;
 namespace bmcs_app.Application.Billing;
 
 /// <summary>
-/// 締め解除処理のユースケース（TODO.md 6-2、2026-09-15改訂）。指定した請求日
+/// 締め解除処理のユースケース。指定した請求日
 /// （<c>billing.billing_date</c>）の確定済み<c>billing</c>をまとめて解除済にし、
 /// 紐付いていた<c>sales</c>行を未請求へ戻す。請求締め処理（<see cref="BillingClosingService"/>）
 /// が「締め日を指定して一括」処理するのと粒度を揃える（請求番号を1件ずつ指定する方式から変更）。
-/// 請求締め処理とは別画面（別ウィンドウ）として提供する（C-8・2026-09-10確定）。
+/// 請求締め処理とは別画面（別ウィンドウ）として提供する。
 /// </summary>
 public class BillingReleaseService(
     BmcsDbContext dbContext,
@@ -38,7 +38,7 @@ public class BillingReleaseService(
     /// <summary>
     /// 指定した請求日の確定済み<c>billing</c>をすべて解除する。対象のうち1件でも
     /// 締め順序が逆転する（より新しい確定済み<c>billing</c>が存在する）ものが含まれる場合は、
-    /// 何も更新せずに例外を投げる（All-or-nothing。2026-09-15ユーザー確認）。
+    /// 何も更新せずに例外を投げる（All-or-nothing）。
     /// </summary>
     /// <exception cref="BillingReleaseException">
     /// 指定した請求日に確定済み<c>billing</c>が存在しない、または対象の一部が
@@ -106,9 +106,9 @@ public class BillingReleaseService(
         }
 
         // 解除で billing_number が外れた売上行は充当先を失うため、消込キャッシュ列を未消込へ
-        // 戻す（TODO.md 7-1。解除前は消込完了/一部消込のまま取り残されていた既存の不整合の修正）。
+        // 戻す（解除前の消込完了／一部消込のまま取り残さない）。
         // 解除した請求に充当されていた入金（receipt_allocation.allocated_amount）自体は
-        // 本処理では付け替えない（再消込は7-2の責務。docs/design_document.md 16章「既知の限界」）。
+        // 本処理では付け替えない（再消込は入金入力側の責務。docs/design_document.md 16章「既知の限界」）。
         foreach (var customerCode in targets.Select(b => b.CustomerCode).Distinct())
         {
             await settlementService.RecalculateForBillingGroupAsync(customerCode, cancellationToken);

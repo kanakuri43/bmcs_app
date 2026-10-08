@@ -4,7 +4,7 @@ using MahApps.Metro.Controls;
 
 namespace bmcs_app.Views.Sales;
 
-/// <summary>売上入力画面（TODO.md 5-2）。</summary>
+/// <summary>売上入力画面。</summary>
 public partial class SalesEntryWindow : MetroWindow
 {
     public SalesEntryWindow()
@@ -19,7 +19,7 @@ public partial class SalesEntryWindow : MetroWindow
             }
         };
 
-        // 伝票プレビュー（TODO.md 8-3）には保存・取消以外の退出手段が無いため、Escで閉じられるようにする。
+        // 伝票プレビューには保存・取消以外の退出手段が無いため、Escで閉じられるようにする。
         // 通常の編集セッションでは無効（未保存の入力をEscで誤って破棄しない）。
         PreviewKeyDown += (_, e) =>
         {

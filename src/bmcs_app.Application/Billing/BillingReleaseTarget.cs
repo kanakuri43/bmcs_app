@@ -3,7 +3,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Application.Billing;
 
 /// <summary>
-/// 締め解除処理（請求日単位、TODO.md 6-2 2026-09-15改訂）の請求データ1件分。
+/// 締め解除処理（請求日単位）の請求データ1件分。
 /// <see cref="BillingReleaseService.PreviewAsync"/>／<see cref="BillingReleaseService.ReleaseByBillingDateAsync"/>
 /// の両方がこの形で結果を返す（<see cref="BillingClosingTarget"/>と同じく、金額を出す経路を1本にする）。
 /// </summary>

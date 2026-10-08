@@ -11,14 +11,14 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Billing;
 
 /// <summary>
-/// Phase 6-5「フェーズレビュー（二重計上・状態整合）」の結合テスト。開発用ライブDB
+/// 請求の二重計上・状態整合の結合テスト。開発用ライブDB
 /// （172.16.3.171）に対して実行する（docs/architecture.md 16章）。
 /// </summary>
 /// <remarks>
-/// 締め・解除・発行・取消（6-1〜6-4）は単体では既存テスト（<see cref="BillingClosingServiceTests"/>／
+/// 締め・解除・発行・取消は単体では既存テスト（<see cref="BillingClosingServiceTests"/>／
 /// <see cref="BillingReleaseServiceTests"/>／<see cref="DetailInvoiceServiceTests"/>）で検証済み。
 /// 本ファイルは①締め請求と明細請求が同じ売上を二重に拾わないこと、②請求後の売上訂正・取消
-/// （Phase 5-6）との相互作用、③Phase 6-5で追加した第4の編集ロック条件（明細請求書発行済み）
+/// との相互作用、③第4の編集ロック条件（明細請求書発行済み）
 /// を検証する。<c>BillingClosingServiceTests</c>と同じ「専用のテスト得意先で確定した後、
 /// finallyで物理削除する」方式を採る。seedの得意先・既存の専用テスト得意先（closing_day = 15, 16）
 /// とは重ならない<c>closing_day = 17</c>を使う。

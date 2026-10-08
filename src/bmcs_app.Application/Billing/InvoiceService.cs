@@ -8,7 +8,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Billing;
 
 /// <summary>
-/// 請求書（締め得意先向け）の印刷データ取得（TODO.md 10-5）。<see cref="BillingClosingService"/>は
+/// 請求書（締め得意先向け）の印刷データ取得。<see cref="BillingClosingService"/>は
 /// 締め処理（採番・確定）のユースケースのため、読み取り専用の印刷データ組み立てはこちらへ分離する
 /// （<see cref="DetailInvoiceQueryService"/>と対称）。帳票のレンダリング・印刷は Presentation 層
 /// （<c>src/bmcs_app/Reports/</c>）が担うため、本クラスは WPF 型を一切含まないプレーンな DTO
@@ -17,10 +17,9 @@ namespace bmcs_app.Application.Billing;
 public class InvoiceService(BmcsDbContext dbContext)
 {
     /// <summary>
-    /// 画面の一覧表示用に、指定した請求日の確定済み請求データを読み取り専用で返す（TODO.md 10-7、
-    /// 再印刷用の一覧）。<see cref="BillingReleaseService.PreviewAsync"/>と同じ絞り込み
+    /// 画面の一覧表示用に、指定した請求日の確定済み請求データを読み取り専用で返す（再印刷用の一覧）。<see cref="BillingReleaseService.PreviewAsync"/>と同じ絞り込み
     /// （<c>billing_date</c>一致・確定済み・未削除）を使う。解除済み（<c>BillingStatus.Released</c>）は
-    /// 対象外（同一得意先に解除済みの旧番号と再締めした新番号が並び得るため。2026-09-29ユーザー確認）。
+    /// 対象外（同一得意先に解除済みの旧番号と再締めした新番号が並び得るため）。
     /// </summary>
     public Task<List<InvoiceListItem>> GetByBillingDateAsync(
         DateOnly billingDate, CancellationToken cancellationToken = default)
@@ -61,7 +60,7 @@ public class InvoiceService(BmcsDbContext dbContext)
         }
 
         // 得意先コード順を最優先にする。請求集約先の請求書では、この billing_number に
-        // 請求集約元（支店等）の売上も合算されるため（Phase 12-C）、得意先ごとに固めて並べる
+        // 請求集約元（支店等）の売上も合算されるため、得意先ごとに固めて並べる
         // ことで見出し行・小計行（InvoiceReportRowBuilder、Presentation層）が正しく組み立てられる。
         // 単独得意先ではCustomerCodeが全行同じ値のため、この並び順の変更自体は無害
         // （既存の単独得意先の帳票をバイト単位で不変に保つ）。
@@ -114,7 +113,7 @@ public class InvoiceService(BmcsDbContext dbContext)
 
     /// <summary>
     /// 得意先マスタに紐づいた振込先口座を、スロット順（口座1→口座2）で解決する
-    /// （TODO.md 10-5。論理削除済みの口座・得意先が見つからない場合は空リスト）。
+    /// （論理削除済みの口座・得意先が見つからない場合は空リスト）。
     /// </summary>
     private async Task<IReadOnlyList<BankAccount>> ResolveBillingBankAccountsAsync(
         Customer? customer, CancellationToken cancellationToken)

@@ -3,7 +3,7 @@ using bmcs_app.Domain.Entities;
 
 namespace bmcs_app.Domain.Tests.Calculations;
 
-/// <summary>メニュー構成マスタの権限フィルタ（TODO.md 2-7）のテスト。</summary>
+/// <summary>メニュー構成マスタの権限フィルタのテスト。</summary>
 public class MenuTreeBuilderTests
 {
     private static Menu Category(string code, short order) => new()

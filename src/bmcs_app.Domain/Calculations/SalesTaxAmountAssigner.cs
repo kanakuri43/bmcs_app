@@ -5,7 +5,7 @@ namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
 /// 売上明細行（<see cref="Sales"/>）に、得意先の税区分（<see cref="TaxUnit"/>）に応じた
-/// 税額カラム（<see cref="Sales.SlipTaxAmount"/> / <see cref="Sales.TaxAmount"/>）を書き込む（TODO.md 5-2）。
+/// 税額カラム（<see cref="Sales.SlipTaxAmount"/> / <see cref="Sales.TaxAmount"/>）を書き込む。
 ///
 /// <see cref="ConsumptionTaxCalculator"/> は「税率をどう丸めるか」の計算ロジックそのものであり、
 /// 「税単位で分岐する単一の入口は用意しない」と既に決めている（同クラスのXMLコメント参照）。
@@ -14,12 +14,12 @@ namespace bmcs_app.Domain.Calculations;
 /// （<c>CK_sales_tax_amount_by_tax_unit</c> / <c>CK_sales_billing_number_by_tax_unit</c>、
 /// <c>scripts/010_unify_tax_unit_tables.sql</c>）を満たすことだけを目的とする。
 ///
-/// 同じ分岐は受注からの売上確定（5-3）・返品値引（5-4）・複写入力（5-5）・訂正（5-6）でも
+/// 同じ分岐は受注からの売上確定・返品値引・複写入力・訂正でも
 /// 再登場するため、`sales` への書き込み口である <c>SalesService</c> から必ずこのクラスを
 /// 経由させることで、後続フェーズも自動的に正しくなるようにする。
 ///
 /// <see cref="Sales.BillingNumber"/> は本クラスでは扱わない。新規登録時は常に未請求
-/// （<c>null</c>）であり、既存の請求済み売上を再保存する経路（5-6）で誤って請求紐付けを
+/// （<c>null</c>）であり、既存の請求済み売上を再保存する経路（訂正）で誤って請求紐付けを
 /// 消してしまわないよう、呼び出し元（新規登録専用の <c>SalesService.CreateAsync</c>）の
 /// 責務とする。
 /// </summary>

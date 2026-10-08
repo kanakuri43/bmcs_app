@@ -11,7 +11,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Billing;
 
 /// <summary>
-/// 請求締め処理（TODO.md 6-1）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
+/// 請求締め処理の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
 /// （docs/architecture.md 16章）。完了条件「締めを2回実行しても二重計上されない」の実証。
 /// </summary>
 /// <remarks>

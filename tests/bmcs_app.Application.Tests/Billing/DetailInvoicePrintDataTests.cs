@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace bmcs_app.Application.Tests.Billing;
 
 /// <summary>
-/// 明細請求書の印刷データ取得（<see cref="DetailInvoiceService.GetPrintDataAsync"/>、TODO.md 10-5）
+/// 明細請求書の印刷データ取得（<see cref="DetailInvoiceService.GetPrintDataAsync"/>）
 /// の結合テスト。読み取り専用（保存しない）のため、専用のテスト得意先を新設せず、既存のseedデータ
 /// （`scripts/seed_dev_data.sql`）に対する回帰検知テストとして実装する
 /// （<see cref="InvoiceServiceTests"/>と同じ方針）。

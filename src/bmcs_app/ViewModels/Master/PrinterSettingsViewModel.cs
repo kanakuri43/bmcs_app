@@ -9,7 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Master;
 
 /// <summary>
-/// プリンタ環境設定画面（TODO.md 2-6）。端末ローカルの bmcs_config.json に保存し、DBでは管理しない。
+/// プリンタ環境設定画面。端末ローカルの bmcs_config.json に保存し、DBでは管理しない。
 /// 帳票種別（納品書・請求書・明細請求書・売掛金残高一覧表）ごとに出力先プリンタを選択する。
 /// </summary>
 public partial class PrinterSettingsViewModel(PrinterSettingsService printerSettingsService) : ViewModelBase

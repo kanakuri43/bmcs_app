@@ -4,7 +4,7 @@ using bmcs_app.Domain.Enums;
 
 namespace bmcs_app.Domain.Tests.Calculations;
 
-/// <summary>受注の編集ロック（未売上のみ直接修正可。TODO.md 4-6・2026-09-16確定）の判定テスト。</summary>
+/// <summary>受注の編集ロック（未売上のみ直接修正可）の判定テスト。</summary>
 public class OrderEditLockEvaluatorTests
 {
     [Fact]

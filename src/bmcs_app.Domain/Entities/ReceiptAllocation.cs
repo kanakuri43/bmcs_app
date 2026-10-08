@@ -7,7 +7,7 @@ namespace bmcs_app.Domain.Entities;
 /// <see cref="Receipt"/>の明細行（支払手段の内訳）とは独立した行番号体系を持つ。
 /// <c>ReceiptEntryService</c>が入金額（<see cref="Receipt.Amount"/>の合計）を確定済み請求へ
 /// 古い順に自動配分して生成する内部データであり、画面には表示しない（利用者にとって重要なのは
-/// 充当先ではなく残高のため。docs/design_document.md 17章、2026-09-15改訂）。
+/// 充当先ではなく残高のため。docs/design_document.md 17章）。
 /// </summary>
 public class ReceiptAllocation : AuditableEntity
 {

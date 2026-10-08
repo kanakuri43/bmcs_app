@@ -13,24 +13,24 @@ using ReceiptEntity = bmcs_app.Domain.Entities.Receipt;
 namespace bmcs_app.Application.Receipt;
 
 /// <summary>
-/// 入金入力画面（TODO.md 7-2）のユースケース。締め得意先（<see cref="TaxUnit.Invoice"/>／
+/// 入金入力画面のユースケース。締め得意先（<see cref="TaxUnit.Invoice"/>／
 /// <see cref="TaxUnit.Slip"/>）専用。都度得意先（<see cref="TaxUnit.Line"/>）の入金は
-/// 明細入金画面（TODO.md 7-4）が担う。
+/// 明細入金画面が担う。
 ///
 /// 明細行は支払手段の内訳（入金方法＋金額）であり、利用者が直接入力する
-/// （docs/design_document.md 17章、2026-09-15改訂）。請求への充当は、明細行の合計額を
+/// （docs/design_document.md 17章）。請求への充当は、明細行の合計額を
 /// 確定済み<c>billing</c>の未消込残額へ古い順（<c>billing_date</c>→<c>billing_number</c>）に
 /// 自動配分して<see cref="ReceiptAllocationEntity"/>として保存する内部データであり、画面には
 /// 表示しない（利用者にとって重要なのは充当先ではなく残高のため）。配分そのものは新規の
-/// Domainクラスを作らず、7-1で実装済みの<see cref="SettlementAllocator"/>をそのまま流用する。
+/// Domainクラスを作らず、既存の<see cref="SettlementAllocator"/>をそのまま流用する。
 /// 全額を割り当てきれない残額（前受・過入金）は<c>billing_number = NULL</c>の1行にまとめる。
 ///
-/// 振込手数料差額の入力（TODO.md 7-3）はこの画面のスコープ外。既存伝票の訂正・取消（TODO.md 7-5）は
+/// 振込手数料差額の入力はこの画面のスコープ外。既存伝票の訂正・取消は
 /// <see cref="UpdateAsync"/>／<see cref="CancelSlipAsync"/> が担う。
 ///
-/// 編集ロックは<see cref="EvaluateEditLockAsync"/>が判定する。C-6の4条件のうち①②④は`sales`側にのみ
+/// 編集ロックは<see cref="EvaluateEditLockAsync"/>が判定する。売上の編集ロック4条件のうち①②④は`sales`側にのみ
 /// 適用し、`receipt`自体には適用しない（充当完了直後にほぼ必ずなるため、適用すると訂正・取消できる
-/// 入金がほぼ無くなり7-5の目的と矛盾する。2026-09-15ユーザー確認）。代わりに、月次締めに加えて
+/// 入金がほぼ無くなり訂正・取消機能の目的と矛盾する）。代わりに、月次締めに加えて
 /// 「請求締めスナップショット」（対象の<c>receipt_date</c>が、その得意先の確定済み<c>billing</c>の
 /// 集計期間に含まれるか）を独自にロック条件とする。
 /// <see cref="bmcs_app.Application.Billing.BillingClosingService"/>が締め時点で
@@ -74,7 +74,7 @@ public class ReceiptEntryService(
     /// <exception cref="ReceiptEntryException">
     /// 得意先が存在しない、都度得意先、請求集約元（親子請求、docs/design_document.md 28章。業務ルール4:
     /// 入金は請求集約先にだけ入る）、明細行が0件、明細行の合計額が0以下、振込の行で入金先口座が
-    /// 未指定、手形の行で手形期日が未指定、または入金日付が請求締め済み期間（申し送り事項R2）の場合。
+    /// 未指定、手形の行で手形期日が未指定、または入金日付が請求締め済み期間（design_document.md 25章）の場合。
     /// </exception>
     public async Task<string> SaveNewAsync(
         string customerCode,
@@ -189,7 +189,7 @@ public class ReceiptEntryService(
             .ToListAsync(cancellationToken);
 
     /// <summary>
-    /// 対象の`receipt`行が訂正・取消不可かどうかを判定する（TODO.md 7-5）。
+    /// 対象の`receipt`行が訂正・取消不可かどうかを判定する。
     /// ①月次締め: 得意先・伝票日付の年月に対応する確定済み<c>monthly_closing</c>が存在する
     /// （請求集約先の行が確定済みの場合も含む。判定は<c>MonthlyClosedService</c>に集約）。
     /// ②請求締めスナップショット: 伝票日付が、その得意先の確定済み<c>billing</c>のうち最新の
@@ -221,7 +221,7 @@ public class ReceiptEntryService(
     }
 
     /// <summary>
-    /// 既存の入金伝票を訂正する（TODO.md 7-5）。元伝票の直接修正（C-6）であり、赤伝は発行しない。
+    /// 既存の入金伝票を訂正する。元伝票の直接修正であり、赤伝は発行しない。
     /// 明細行（支払手段の内訳）の追加・更新・削除を行い、請求への充当（<see cref="ReceiptAllocationEntity"/>）は
     /// 新しい合計額で全面再構築する（充当は導出データであり、ユーザーが直接編集するものではないため）。
     /// </summary>
@@ -239,7 +239,7 @@ public class ReceiptEntryService(
     /// </param>
     /// <exception cref="ReceiptEntryException">
     /// 対象の入金が存在しない、編集ロックに該当する、明細行の内容が不正、または訂正後の入金日付が
-    /// 請求締め済み期間（申し送り事項R2）の場合。
+    /// 請求締め済み期間（design_document.md 25章）の場合。
     /// </exception>
     /// <exception cref="SlipConcurrencyException">他のユーザーが同じ伝票を更新済みの場合。</exception>
     public async Task UpdateAsync(
@@ -289,7 +289,7 @@ public class ReceiptEntryService(
             throw new ReceiptEntryException("存在しない明細行番号が指定されています。");
         }
 
-        // 読込時にあったが今回の一覧に含まれない行は論理削除する（M-17: 物理削除しない）。
+        // 読込時にあったが今回の一覧に含まれない行は論理削除する（物理削除しない）。
         foreach (var current in currentLines.Where(l => !keptLineNumbers.Contains(l.LineNumber)))
         {
             current.IsDeleted = true;
@@ -425,8 +425,8 @@ public class ReceiptEntryService(
     }
 
     /// <summary>
-    /// 入金伝票を取消する（TODO.md 7-5）。全明細行と、紐づく充当（<see cref="ReceiptAllocationEntity"/>）を
-    /// 論理削除する（M-17）。編集ロックに該当する伝票は取消できない。
+    /// 入金伝票を取消する。全明細行と、紐づく充当（<see cref="ReceiptAllocationEntity"/>）を
+    /// 論理削除する（物理削除しない）。編集ロックに該当する伝票は取消できない。
     /// </summary>
     /// <exception cref="ReceiptEntryException">対象の入金が存在しない、または編集ロックに該当する場合。</exception>
     /// <exception cref="SlipConcurrencyException">他のユーザーが同じ伝票を更新済みの場合。</exception>
@@ -489,7 +489,7 @@ public class ReceiptEntryService(
 
     /// <summary>
     /// 「振込なら口座必須」「手形なら期日必須」の対応は<see cref="Domain.Entities.DepositMethod"/>の
-    /// フラグに基づく（旧enum+CHECK制約から2026-09-18にマスタ駆動へ移行。DBのCHECK制約では他テーブル
+    /// フラグに基づく（マスタ駆動。DBのCHECK制約では他テーブル
     /// 参照ができないため、この検証がクロステーブル整合性の唯一の担保点になる）。
     /// </summary>
     private async Task ValidateLinesAsync(IReadOnlyList<ReceiptLineInput> lines, CancellationToken cancellationToken)
@@ -589,7 +589,7 @@ public class ReceiptEntryService(
     }
 
     /// <summary>
-    /// <see cref="SettlementAllocator"/>（TODO.md 7-1）を請求単位の配分に流用する。未消込残額を
+    /// <see cref="SettlementAllocator"/>を請求単位の配分に流用する。未消込残額を
     /// 古い順に整列した対象額として渡し、入金額をその順に充当する。全額充当できない残額
     /// （前受・過入金）は<c>billing_number = NULL</c>の1行にまとめる。
     /// </summary>

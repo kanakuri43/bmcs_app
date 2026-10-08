@@ -5,12 +5,12 @@ using Microsoft.EntityFrameworkCore;
 namespace bmcs_app.Application.Common;
 
 /// <summary>
-/// 商品検索モーダル（TODO.md 3-2）の「過去の取引履歴から」軸のユースケース。
-/// 対象は売上のみ（受注は対象外。2026-09-08 ユーザー確認済み）。
+/// 商品検索モーダルの「過去の取引履歴から」軸のユースケース。
+/// 対象は売上のみ（受注は対象外）。
 /// 010_unify_tax_unit_tables.sql の統合前は得意先の税区分（TaxUnit）によって
 /// 参照する売上テーブルが3つに分かれていたが、統合後は sales 1テーブルを
 /// customer_code で絞るだけで済むため、得意先マスタへの事前SELECTも不要になった。
-/// 返品・値引行（TODO.md 5-4）と論理削除された行（TODO.md 5-6）は、単価の参考値として
+/// 返品・値引行と論理削除された行は、単価の参考値として
 /// ふさわしくないため除外する。
 /// </summary>
 public class ProductHistoryQueryService(BmcsDbContext dbContext)

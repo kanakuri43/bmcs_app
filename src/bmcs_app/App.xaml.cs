@@ -35,8 +35,8 @@ namespace bmcs_app;
 /// <summary>
 /// アプリケーションのエントリポイント。DI・設定・ロギング・例外ハンドリングを構成する。
 /// 起動時パラメータ（ショートカット引数の1つ目＝社員コード）は <see cref="OnStartup"/> で受け取り、
-/// <c>StartupArgsCurrentEmployeeContext</c>（TODO.md 0-7）へ渡す。権限レベルの判定はメニュー画面
-/// （TODO.md 2-7）が社員マスタを参照して行う。
+/// <c>StartupArgsCurrentEmployeeContext</c>へ渡す。権限レベルの判定はメニュー画面
+/// が社員マスタを参照して行う。
 /// </summary>
 public partial class App : System.Windows.Application
 {
@@ -53,7 +53,7 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
-        // DatePicker（全画面デザイン統一・2026-09-15）は FrameworkElement.Language 由来の
+        // DatePickerは FrameworkElement.Language 由来の
         // カルチャで表示書式（ShortDatePattern）を決める。既定は en-US のため、設定しないと
         // 「9/15/2026」表記になり docs/product-spec.md UI/UX「日付は yyyy/MM/dd 表記で統一」が
         // 崩れる。実行端末の OS 言語に依存させず ja-JP に固定する。どのウィンドウも
@@ -135,7 +135,7 @@ public partial class App : System.Windows.Application
         builder.Services.AddSingleton<WindowService>();
 
         // 帳票の印刷・PDF出力。PrinterSettingsService（Application）と同様、
-        // DbContext に依存しないため Singleton（TODO.md 10-3）。
+        // DbContext に依存しないため Singleton。
         builder.Services.AddSingleton<ReportPrintService>();
 
         // ウィンドウと ViewModel は Scoped。WindowService がウィンドウごとに
@@ -248,7 +248,7 @@ public partial class App : System.Windows.Application
     {
         Log.ForContext<App>().Error(e.Exception, "画面操作中に例外が発生しました。");
 
-        // ダイアログは Phase 0-5 で MahApps のものに差し替える。
+        // ダイアログは今後 MahApps のものに差し替える予定。
         MessageBox.Show(
             $"処理中にエラーが発生しました。{Environment.NewLine}{Environment.NewLine}" +
             $"{e.Exception.Message}{Environment.NewLine}{Environment.NewLine}" +

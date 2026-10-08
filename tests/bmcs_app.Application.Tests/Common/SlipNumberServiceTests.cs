@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace bmcs_app.Application.Tests.Common;
 
 /// <summary>
-/// 採番（TODO.md 4-1）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
+/// 採番の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
 /// （docs/architecture.md 16章）。完了条件「同時登録でも採番が重複しない」の実証。
 /// </summary>
 public class SlipNumberServiceTests(DevDatabaseFixture fixture) : IClassFixture<DevDatabaseFixture>

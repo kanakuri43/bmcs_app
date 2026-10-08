@@ -62,7 +62,7 @@
                 </TextBox.Style>
             </TextBox>
 
-            <!-- 区分（売上／返品／値引。TODO.md 5-4。受注入力では非表示） -->
+            <!-- 区分（売上／返品／値引。受注入力では非表示） -->
             <ComboBox Grid.Column="3"
                       Visibility="{Binding IsSlipTypeVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
                       ItemsSource="{Binding SlipTypeOptions}"
@@ -83,7 +83,7 @@
                      Text="{Binding Quantity}"
                      Margin="{StaticResource SlipLineCellMargin}" />
 
-            <!-- 単価（商品マスタから初期値が転記される。手入力で上書き可＝TODO.md 4-2） -->
+            <!-- 単価（商品マスタから初期値が転記される。手入力で上書き可） -->
             <TextBox Grid.Column="5"
                      Style="{StaticResource AmountTextBoxStyle}"
                      Text="{Binding UnitPrice}"

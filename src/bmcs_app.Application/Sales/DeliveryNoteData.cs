@@ -5,7 +5,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Application.Sales;
 
 /// <summary>
-/// 納品書1件分の表示用データ（TODO.md 10-4）。WPF 型を含まないプレーンな DTO とし、
+/// 納品書1件分の表示用データ。WPF 型を含まないプレーンな DTO とし、
 /// レンダリング（<c>src/bmcs_app/Reports/</c>）は本レコードだけを見て組み立てる。
 /// </summary>
 /// <param name="Company">

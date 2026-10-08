@@ -3,7 +3,7 @@ using bmcs_app.ViewModels.Common;
 
 namespace bmcs_app.Views.Common;
 
-/// <summary>伝票明細行の1行分（TODO.md 4-2）。</summary>
+/// <summary>伝票明細行の1行分。</summary>
 public partial class SlipLineControl : UserControl
 {
     public SlipLineControl()

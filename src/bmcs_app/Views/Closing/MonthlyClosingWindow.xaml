@@ -8,7 +8,7 @@
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 9-1。全得意先の暦月末売掛残高を monthly_closings に確定する画面。
+        全得意先の暦月末売掛残高を monthly_closings に確定する画面。
         構成は請求締め処理画面と同じ。違いは、締め日のコンボボックスがないことと、
         請求日の代わりに集計年月（暦月）を選ぶことの2点。
         一覧は選んだ年月の確定済み月次締め（解除済みを除く）。未確定の年月は0件になる。

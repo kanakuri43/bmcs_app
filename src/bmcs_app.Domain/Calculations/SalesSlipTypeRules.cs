@@ -3,7 +3,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
-/// 伝票区分（<see cref="SlipType"/>）に応じた数量の符号・原価の正規化（TODO.md 5-4）。
+/// 伝票区分（<see cref="SlipType"/>）に応じた数量の符号・原価の正規化。
 /// ユーザーは常に正の数量を入力し、符号は区分から機械的に決まる（符号の入力ミスを構造的に防ぐ）。
 /// 金額が狂う経路を1箇所に閉じ込めるため、<c>SalesService</c>・ViewModel の双方がこのクラスだけを経由する。
 /// </summary>

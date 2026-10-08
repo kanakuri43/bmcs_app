@@ -8,13 +8,13 @@ using Microsoft.Extensions.Logging;
 namespace bmcs_app.Application.Closing;
 
 /// <summary>
-/// 月次締め解除処理のユースケース（TODO.md 9-3）。指定した年月の確定済み<c>monthly_closings</c>を
+/// 月次締め解除処理のユースケース。指定した年月の確定済み<c>monthly_closings</c>を
 /// まとめて解除済にする（<c>billings</c>と同じ非破壊方式。物理削除しない）。他のテーブルは更新しない。
-/// 編集ロックは導出方式（<see cref="MonthlyClosedService"/>）のため、解除すると9-2の判定から外れ、
+/// 編集ロックは導出方式（<see cref="MonthlyClosedService"/>）のため、解除すると編集ロック判定から外れ、
 /// その月の伝票を再び登録・訂正・取消できる。再確定は<see cref="MonthlyClosingService.ConfirmAsync"/>
 /// が解除済みの行を上書きして行う。
-/// 月次締め処理（<see cref="MonthlyClosingService"/>）とは別画面として提供する（C-8・2026-09-10確定）。
-/// 権限はメニュー単位の判定のみ（画面内アクション単位の権限判定は持たない。C-8）。
+/// 月次締め処理（<see cref="MonthlyClosingService"/>）とは別画面として提供する。
+/// 権限はメニュー単位の判定のみ（画面内アクション単位の権限判定は持たない）。
 /// </summary>
 public class MonthlyClosingReleaseService(
     BmcsDbContext dbContext,
@@ -143,7 +143,7 @@ public class MonthlyClosingReleaseService(
 }
 
 /// <summary>
-/// 月次締め解除処理（TODO.md 9-3）の得意先1件分。
+/// 月次締め解除処理の得意先1件分。
 /// </summary>
 /// <param name="BlockReason">
 /// 非null＝この行は解除できない。<c>BillingReleaseTarget.BlockReason</c>と同じく、1件でも非nullなら

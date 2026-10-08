@@ -10,7 +10,7 @@
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 7-4・7-5。都度得意先（内税明細単位）専用。画面レイアウトは旧デモ bmcs_app.LineReceipt を
+        都度得意先（内税明細単位）専用。画面レイアウトは旧デモ bmcs_app.LineReceipt を
         踏襲（左＝入金登録の明細行、右＝上段タブ〈売上伝票／明細請求書〉＋下段の選択伝票明細）。
         充当の粒度はスキーマに合わせ、売上伝票タブ＝売上明細行単位、明細請求書タブ＝請求書まるごと
         1行とした（デモは請求書タブでも行単位だったが不採用。docs/design_document.md 18章）。
@@ -44,7 +44,7 @@
             <Separator />
             <Button Command="{Binding DeleteSlipCommand}"
                     Content="取消 (F8)"
-                    ToolTip="読み込んだ明細入金を取消します (F8)。TODO.md 7-5" />
+                    ToolTip="読み込んだ明細入金を取消します (F8)" />
         </ToolBar>
 
         <!-- ===== ヘッダー ===== -->
@@ -221,7 +221,7 @@
                           HorizontalAlignment="Stretch"
                           Background="{DynamicResource MahApps.Brushes.Gray8}" />
 
-            <!-- 右: 売上伝票 / 明細請求書候補（上下2ペイン）。プレビュー中は充当先の選択に意味が無いため無効化する（TODO.md 8-3） -->
+            <!-- 右: 売上伝票 / 明細請求書候補（上下2ペイン）。プレビュー中は充当先の選択に意味が無いため無効化する -->
             <Grid Grid.Column="2" Margin="4,8,8,8" IsEnabled="{Binding IsEditable}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="1.3*" />

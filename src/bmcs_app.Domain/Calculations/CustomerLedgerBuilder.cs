@@ -4,24 +4,23 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
-/// 得意先元帳のマージ・時系列化・残高推移の算出（TODO.md 8-1）。SQLビュー・GROUP BY は使わず、
+/// 得意先元帳のマージ・時系列化・残高推移の算出。SQLビュー・GROUP BY は使わず、
 /// 呼び出し元（<c>CustomerLedgerQueryService</c>）がロードした得意先の全期間の売上・入金・請求を
 /// アプリ側でマージする（docs/architecture.md 7章・10章）。
 ///
 /// 残高は税込で扱う。<see cref="TaxUnit.Invoice"/>（請求単位）は伝票時点で消費税額を持てない
 /// （CHECK制約 <c>CK_sales_tax_amount_by_tax_unit</c>）ため、消費税を独立した明細行として
-/// 時系列に挿入することで税込残高を成立させる（TODO.md 8-1 D-1）。
+/// 時系列に挿入することで税込残高を成立させる。
 ///
 /// 入金の残高影響は常に入金日付の独立行（<see cref="LedgerEntryKind.Receipt"/>）でのみ発生させる。
 /// 都度得意先の売上行に同居する入金情報は消込の証跡（<see cref="LedgerReceiptPairing"/>）であり、
 /// 金額を持たないため残高に影響しない。売上と入金が月をまたいでも各月末の売掛残高が
-/// 日付どおり正確になり、TODO.md 9-1（月次締め）の暦月末残高と矛盾しない（D-2）。
+/// 日付どおり正確になり、月次締めの暦月末残高と矛盾しない。
 ///
 /// 繰越は全期間積み上げで算出する（<c>monthly_closing</c> / <c>billing.previous_balance</c> を
-/// 起点に使わない。M-11「都度集計する・残高キャッシュ列は持たない」と整合させるため。D-4）。
+/// 起点に使わない。「都度集計する・残高キャッシュ列は持たない」方針と整合させるため）。
 ///
-/// 請求集約元（<c>!Customer.IsBillingRoot</c>）は取引履歴のみモードへ分岐する（<see cref="BuildTransactionHistoryOnly"/>、
-/// TODO.md 12-E）。請求集約先はこのクラスの通常経路のまま無改修で、呼び出し元がグループ全体の
+/// 請求集約元（<c>!Customer.IsBillingRoot</c>）は取引履歴のみモードへ分岐する（<see cref="BuildTransactionHistoryOnly"/>）。請求集約先はこのクラスの通常経路のまま無改修で、呼び出し元がグループ全体の
 /// <c>Sales</c>／<c>Receipts</c>を渡すだけで残高がグループ合算になる（<c>Customer.CustomerCode</c>は
 /// このクラスのどこでも参照しないため）。docs/design_document.md 28章参照。
 /// </summary>
@@ -109,8 +108,8 @@ public static class CustomerLedgerBuilder
     }
 
     /// <summary>
-    /// 請求集約元（<c>!Customer.IsBillingRoot</c>）の取引履歴のみモード（TODO.md 12-E、
-    /// docs/design_document.md 28-2節 #6）。売掛残高・請求・入金は請求集約先に集約されるため、
+    /// 請求集約元（<c>!Customer.IsBillingRoot</c>）の取引履歴のみモード
+    /// （docs/design_document.md 28-2節 #6）。売掛残高・請求・入金は請求集約先に集約されるため、
     /// この得意先自身の売上行のみを組み立てて返す（消費税行・入金行・前月繰越行・残高累積は行わない）。
     /// 請求集約元は必ず締め得意先（<see cref="TaxUnit.Invoice"/>／<see cref="TaxUnit.Slip"/>。
     /// 業務ルール・DB CHECK制約）なので、<see cref="AddSalesEntries"/> 内の
@@ -138,7 +137,7 @@ public static class CustomerLedgerBuilder
 
     /// <summary>
     /// <see cref="TaxUnit.Invoice"/> の未締め区間（<c>billing_number IS NULL</c> かつ
-    /// <c>slip_date &lt;= asOf</c>）の消費税を仮計算する。6-1 の <c>BillingClosingService</c> と
+    /// <c>slip_date &lt;= asOf</c>）の消費税を仮計算する。<c>BillingClosingService</c> と
     /// 同じ「未請求の全行を1グループとして税率ごとに1回丸める」方式
     /// （<see cref="ConsumptionTaxCalculator.CalculateExternalTaxBuckets"/>）を使うため、
     /// 締めた瞬間の <c>billing.tax_amount</c> と一致する。<see cref="TaxUnit.Slip"/>／
@@ -148,7 +147,7 @@ public static class CustomerLedgerBuilder
         => ProvisionalTaxBucketsAsOf(customer, salesLines, asOf).Sum(b => b.TaxAmount);
 
     /// <summary>
-    /// <see cref="ProvisionalTaxAsOf"/> の税率別内訳版（月次締めの税率別カラム用。TODO.md 9-1）。
+    /// <see cref="ProvisionalTaxAsOf"/> の税率別内訳版（月次締めの税率別カラム用）。
     /// <see cref="TaxUnit.Invoice"/> 以外は空。
     /// </summary>
     public static IReadOnlyList<TaxRateBucket> ProvisionalTaxBucketsAsOf(
@@ -211,7 +210,7 @@ public static class CustomerLedgerBuilder
                     Remarks = sales.LineRemarks,
                 }));
 
-            // 2件目以降の証跡は、売上側の列を空欄にした行として直下に続ける（D-3）。
+            // 2件目以降の証跡は、売上側の列を空欄にした行として直下に続ける。
             for (var i = 1; i < traces.Count; i++)
             {
                 var trace = traces[i];
@@ -289,7 +288,7 @@ public static class CustomerLedgerBuilder
             }));
     }
 
-    /// <summary>入金は常に入金日付の独立行として残高に反映する（D-2）。</summary>
+    /// <summary>入金は常に入金日付の独立行として残高に反映する。</summary>
     private static void AddReceiptEntries(
         List<SortableEntry> entries, CustomerLedgerInput input, Customer customer,
         IReadOnlyDictionary<string, string> depositMethodNameByCode)

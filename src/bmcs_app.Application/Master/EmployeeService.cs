@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace bmcs_app.Application.Master;
 
-/// <summary>社員マスタのユースケース（TODO.md 2-3）。</summary>
+/// <summary>社員マスタのユースケース。</summary>
 public class EmployeeService(
     BmcsDbContext dbContext,
     ICurrentEmployeeContext currentEmployeeContext,

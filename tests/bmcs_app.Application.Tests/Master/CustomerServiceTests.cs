@@ -11,8 +11,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Master;
 
 /// <summary>
-/// 親子請求（請求集約）のリンク検証・変更可否判定（docs/database-schema.md 1-1節、
-/// 2026-09-29確定）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する。
+/// 親子請求（請求集約）のリンク検証・変更可否判定（docs/database-schema.md 1-1節）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する。
 /// </summary>
 /// <remarks>
 /// <see cref="CustomerService"/> は自前で<c>BeginTransactionAsync</c>しないため、

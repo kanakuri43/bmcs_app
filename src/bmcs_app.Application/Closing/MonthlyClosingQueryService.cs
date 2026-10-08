@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace bmcs_app.Application.Closing;
 
-/// <summary>月次締め処理画面の一覧用の読み取り専用照会（TODO.md 9-1）。</summary>
+/// <summary>月次締め処理画面の一覧用の読み取り専用照会。</summary>
 public class MonthlyClosingQueryService(BmcsDbContext dbContext)
 {
     /// <summary>指定した年月の確定済み（解除済みを除く）月次締めを、得意先コード順に返す。</summary>

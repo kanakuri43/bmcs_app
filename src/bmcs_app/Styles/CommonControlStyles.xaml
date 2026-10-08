@@ -14,8 +14,8 @@
 
             重要: MahApps.Metro は TextBox/ComboBox/Button 等に対して暗黙スタイル
             （x:Key 無し・TargetType のみ）を提供しない。キー付きスタイル
-            （x:Key="MahApps.Styles.TextBox" 等）のみが定義されている（2026-09-15、
-            SPACE検索欄のWatermarkが表示されない不具合の調査で判明）。
+            （x:Key="MahApps.Styles.TextBox" 等）のみが定義されている
+            （SPACE検索欄のWatermarkが表示されない原因だった）。
             このため BasedOn には必ず明示的なキー名（"MahApps.Styles.TextBox" 等）を
             指定すること。`{StaticResource {x:Type TextBox}}` は MahApps の既定スタイルには
             解決されず、このファイル自身が下で定義する暗黙 `<Style TargetType="TextBox">`
@@ -29,7 +29,7 @@
     </ResourceDictionary.MergedDictionaries>
 
     <!--
-        全画面共通の入力欄高さ（全画面デザイン統一・2026-09-15）。TextBox/ComboBox/DatePicker の
+        全画面共通の入力欄高さ。TextBox/ComboBox/DatePicker の
         自然高がばらつき、同じ行に並べたときに高さが揃わない問題への対応（詳細は
         docs/architecture.md 12章）。
         - MinHeight だけでは行の Stretch により他コントロールに引き伸ばされてしまうため、
@@ -98,10 +98,10 @@
 
     <!--
         伝票ナビゲーション（前へ/次へ）ボタン。ジャーナル系画面（受注入力・売上入力）の
-        ヘッダーツールバーに置く「|◀」「▶|」の置き換え（2026-09-17）。文字のシェブロン
-        （‹›）は小さく視認性が低いというフィードバックを受け、太いストローク付きの
-        ベクターアイコン（Path）に変更した。フォントに依存しないため機種差の心配もない。
-        通常時は薄いグレーの正方形、ホバー時のみアクセント色にする（2026-09-17、26pxに縮小）。
+        ヘッダーツールバーに置く「|◀」「▶|」の置き換え。文字のシェブロン
+        （‹›）は小さく視認性が低いため、太いストローク付きの
+        ベクターアイコン（Path）を使う。フォントに依存しないため機種差の心配もない。
+        通常時は薄いグレーの正方形、ホバー時のみアクセント色にする（26px）。
     -->
     <Style x:Key="SlipNavButtonBaseStyle" TargetType="Button">
         <Setter Property="Width" Value="26" />

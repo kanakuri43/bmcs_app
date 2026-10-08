@@ -50,7 +50,7 @@ public class ConsumptionTaxCalculatorInternalTests
         Assert.Equal(500m, bucket.TaxableAmount);
     }
 
-    // 行列I: 暫定C-4b — 内税明細単位は明細行ごとに端数処理する（一括の再計算ではない）
+    // 行列I: 内税明細単位は明細行ごとに端数処理する（一括の再計算ではない）
     [Theory]
     [InlineData(RoundingType.Floor, 270)]
     [InlineData(RoundingType.RoundHalfUp, 273)]
@@ -72,7 +72,7 @@ public class ConsumptionTaxCalculatorInternalTests
     public void 明細行ごとの積み上げは一括で丸め直した値と異なる_切捨()
     {
         // 一括（3行合計3,000円をまとめて丸める）なら 272円になるが、
-        // 明細行ごとの端数処理（暫定C-4b）では 270円になる。両者が異なることを明示する。
+        // 明細行ごとの端数処理では 270円になる。両者が異なることを明示する。
         TaxLine[] lines =
         [
             new(TaxCategory.Standard, 10m, 1000m),

@@ -16,9 +16,8 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Order;
 
 /// <summary>
-/// 受注入力画面（TODO.md 4-3・5-3・4-6）。旧プロトタイプ（bmcs_app.Order）のレイアウトを再現する。
-/// 新規登録に加え、既存受注の読み込み・直接修正・中止（F8）を扱う（TODO.md 4-6で訂正保存を追加。
-/// 4-4で先行実装した <see cref="OrderStatusService.CancelSlipAsync"/> の画面配線は5-3で追加済み）。
+/// 受注入力画面。旧プロトタイプ（bmcs_app.Order）のレイアウトを再現する。
+/// 新規登録に加え、既存受注の読み込み・直接修正・中止（F8）を扱う。
 /// 直接修正できるのは未売上（<see cref="OrderStatus.NotSold"/>）の伝票のみ（<see cref="OrderEditLockEvaluator"/>）。
 /// 前後移動は、このプロジェクトの機能にまだ存在しないため、枠のみ用意し無効化している
 /// （詳細は docs/design_document.md）。
@@ -102,7 +101,7 @@ public partial class OrderEntryViewModel(
     public partial bool IsSaved { get; set; }
 
     /// <summary>
-    /// 修正不可かどうか（未売上でない受注を読み込んだ場合。TODO.md 4-6・<see cref="OrderEditLockEvaluator"/>）。
+    /// 修正不可かどうか（未売上でない受注を読み込んだ場合。<see cref="OrderEditLockEvaluator"/>）。
     /// ViewModelは判定せず、Domain純粋関数の結果をそのまま表示・反映するだけにする
     /// （docs/architecture.md 5章）。
     /// </summary>
@@ -114,7 +113,7 @@ public partial class OrderEntryViewModel(
     /// <summary>
     /// 保存が例外で失敗した後、再読込まで保存を封じるフラグ。ミューテーション後に例外が発生すると
     /// ChangeTrackerが汚れたまま残り、同じ画面から再保存すると行が静かに論理削除される
-    /// 潜在バグ（TODO.md 4-6レビューで発見）への対策。自動マージ・後勝ちの上書きは行わない
+    /// 潜在バグへの対策。自動マージ・後勝ちの上書きは行わない
     /// （docs/architecture.md 9章）ため、操作面でも再読込を強制する。
     /// </summary>
     [ObservableProperty]
@@ -124,7 +123,7 @@ public partial class OrderEntryViewModel(
     /// <summary>
     /// 訂正モード（既存受注を読み込んだ）かどうか。得意先の変更は <see cref="OrderService.UpdateAsync"/>
     /// が無視するため、画面側で得意先コードの変更操作自体を封じる（黙って無視される潜在的な不整合を
-    /// UIレベルで防ぐ。TODO.md 4-6レビュー）。
+    /// UIレベルで防ぐ）。
     /// </summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(OpenCustomerSearchCommand))]
@@ -132,7 +131,7 @@ public partial class OrderEntryViewModel(
     [NotifyPropertyChangedFor(nameof(IsCustomerCodeReadOnly))]
     public partial bool IsCorrectionMode { get; set; }
 
-    /// <summary>得意先コード欄の <c>IsReadOnly</c> バインディング用。得意先名欄は対象外（C-9の宛名都度書き換え）。</summary>
+    /// <summary>得意先コード欄の <c>IsReadOnly</c> バインディング用。得意先名欄は対象外。</summary>
     public bool IsCustomerCodeReadOnly => IsCorrectionMode;
 
     /// <summary>ヘッダー入力欄・明細グリッドの <c>IsEnabled</c> バインディング用。修正不可の受注は読取専用にする。</summary>
@@ -154,7 +153,7 @@ public partial class OrderEntryViewModel(
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
 
-    // ── フッター集計（TODO.md 5-1 の ConsumptionTaxCalculator を再利用） ──────────
+    // ── フッター集計（ConsumptionTaxCalculator を再利用） ──────────
     public decimal TaxExcludedTotal => ComputeTaxSummary().TaxableAmount;
 
     public decimal TaxTotal => ComputeTaxSummary().TaxAmount;
@@ -173,7 +172,7 @@ public partial class OrderEntryViewModel(
 
     /// <summary>
     /// 得意先の税区分が内税明細単位（Line）なら明細ごとに1回の端数処理、
-    /// それ以外（Invoice/Slip）は伝票全体で税率ごとに1回の端数処理（暫定 C-4b）。
+    /// それ以外（Invoice/Slip）は伝票全体で税率ごとに1回の端数処理（暫定：税区分どおりの端数処理）。
     /// 空行（商品未選択）は税種別区分が未対応値のため、計算対象から除外する。
     /// </summary>
     private TaxSummary ComputeTaxSummary()
@@ -224,7 +223,7 @@ public partial class OrderEntryViewModel(
 
         if (_customer?.CustomerCode == CustomerCode)
         {
-            // すでに確定済みの得意先（得意先名を手入力で上書き済みの場合を含む。C-9）と同じコード
+            // すでに確定済みの得意先（得意先名を手入力で上書き済みの場合を含む）と同じコード
             // なら再取得しない。マスタを読み直すと上書きが失われるため。
             // ただしEnterでの通常のフォーカス送りは維持する（ApplyCustomerAsyncと同じ送り先）。
             RequestFocus("EmployeeCode");
@@ -383,7 +382,7 @@ public partial class OrderEntryViewModel(
             onLookupProductByCode: OnLookupProductByCodeAsync,
             onDelete: OnDeleteLine)
         {
-            IsSlipTypeVisible = false, // order_slip に伝票区分の概念がないため（TODO.md 5-4）
+            IsSlipTypeVisible = false, // order_slip に伝票区分の概念がないため
         };
 
         if (_customer is not null)
@@ -486,7 +485,7 @@ public partial class OrderEntryViewModel(
 
     /// <summary>
     /// 商品検索モーダルの選択結果（最大6件）を行へ展開する。1件目は呼び出した行、
-    /// 残りは後続の空行を埋め、足りなければ直後に挿入する（TODO.md 4-2）。
+    /// 残りは後続の空行を埋め、足りなければ直後に挿入する。
     /// </summary>
     private Task ApplySelectionsAsync(SlipLineViewModel invokingLine, IReadOnlyList<ProductSelection> selections)
     {
@@ -679,11 +678,11 @@ public partial class OrderEntryViewModel(
         StatusMessage = $"受注No. {sourceOrderSlipNumber} を複写しました（新規登録として保存されます）。";
     });
 
-    // ── 既存受注の読み込み・修正・中止（TODO.md 5-3・4-6） ─────
+    // ── 既存受注の読み込み・修正・中止 ─────
     [RelayCommand]
     private void OpenOrderSlipSearch()
     {
-        // 修正できない受注（売上完了・中止済み）も閲覧目的で探せるようにする（2026-09-16確定）。
+        // 修正できない受注（売上完了・中止済み）も閲覧目的で探せるようにする。
         // 売上入力画面の受注No.検索（売上化できる受注のみ）とは異なる挙動。
         var orderSlipNumber = windowService.ShowDialog<SlipSearchDialog, SlipSearchDialogViewModel, string>(
             vm =>
@@ -716,7 +715,7 @@ public partial class OrderEntryViewModel(
     });
 
     /// <summary>
-    /// 既存受注を読み込む。未売上の伝票は直接修正・保存できる（TODO.md 4-6）。
+    /// 既存受注を読み込む。未売上の伝票は直接修正・保存できる。
     /// 一部売上・売上完了・中止済みの伝票は読み込めるが修正できない（<see cref="OrderEditLockEvaluator"/>）。
     /// 例外は呼び出し元がfire-and-forget（<see cref="OpenOrderSlipSearch"/>）でも握れるよう、ここで捕まえる。
     /// </summary>
@@ -873,7 +872,7 @@ public partial class OrderEntryViewModel(
 
     /// <summary>
     /// 保存失敗時の共通処理。訂正モード中の失敗は、ミューテーション後にChangeTrackerが汚れたまま
-    /// 残る可能性があるため、再読込までSaveを封じる（TODO.md 4-6レビューで発見した潜在バグの対策）。
+    /// 残る可能性があるため、再読込までSaveを封じる。
     /// </summary>
     private void HandleSaveFailure(Exception ex)
     {
@@ -938,7 +937,7 @@ public partial class OrderEntryViewModel(
         LineNumber = lineNumber,
         OrderDate = orderDate,
         CustomerCode = _customer!.CustomerCode,
-        CustomerName = this.CustomerName, // ViewModelのプロパティ（手入力で上書きされていればその値。C-9・2026-09-10確定）
+        CustomerName = this.CustomerName, // ViewModelのプロパティ（手入力で上書きされていればその値）
         ProductCode = line.ProductCode,
         ProductName = line.ProductName,
         Specification = line.Specification,
@@ -962,11 +961,11 @@ public partial class OrderEntryViewModel(
         UpdatedAt = now,
     };
 
-    // ── 枠のみ・使用不可（TODO.md 4-3。理由は docs/design_document.md 参照） ──────
+    // ── 枠のみ・使用不可（理由は docs/design_document.md 参照） ──────
     private bool CanUseUnimplementedFeature => false;
 
     /// <summary>
-    /// 中止（TODO.md 4-4・5-3）。物理削除はしない（M-17）。<see cref="OrderStatusService.CancelSlipAsync"/>
+    /// 中止。物理削除はしない。<see cref="OrderStatusService.CancelSlipAsync"/>
     /// による伝票単位の中止（終端状態・解除なし）。売上完了済みの明細行を含む受注・
     /// 既に中止済みの受注は拒否される。
     /// </summary>

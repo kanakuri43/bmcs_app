@@ -5,7 +5,7 @@ namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
 /// 都度得意先（<see cref="TaxUnit.Line"/>）の売上明細行に対し、消込の証跡となる明細入金行
-/// （<see cref="DetailReceipt"/>）を紐づける（TODO.md 8-1）。
+/// （<see cref="DetailReceipt"/>）を紐づける。
 ///
 /// **表示専用であり、残高計算には使わない。** 残高（<see cref="LedgerEntryKind.Receipt"/> の
 /// 独立行）は明細入金行ごとに <see cref="DetailReceipt.AllocatedAmount"/> をそのまま計上する別ロジック

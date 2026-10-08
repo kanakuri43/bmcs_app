@@ -14,7 +14,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Ledger;
 
 /// <summary>
-/// 得意先元帳の照会（TODO.md 8-1）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する。
+/// 得意先元帳の照会の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する。
 /// <see cref="SettlementServiceTests"/> と同じ「外側をトランザクションで包み、テストの最後に
 /// 必ずRollbackする」方式で seed データを一切破壊しない。
 /// </summary>
@@ -61,8 +61,8 @@ public class CustomerLedgerQueryServiceTests(DevDatabaseFixture fixture) : IClas
     }
 
     /// <summary>
-    /// TODO.md 8-2「リアルタイム残高の常時表示」の完了条件「伝票登録直後に残高が正しく変わる」の
-    /// 直接検証。残高キャッシュ列を持たないため（M-11）、登録直後に呼び出すだけで最新値になる。
+    /// リアルタイム残高表示の要件「伝票登録直後に残高が正しく変わる」の
+    /// 直接検証。残高キャッシュ列を持たないため、登録直後に呼び出すだけで最新値になる。
     /// </summary>
     [Fact]
     public async Task 現在残高は伝票登録直後に反映される()
@@ -187,7 +187,7 @@ public class CustomerLedgerQueryServiceTests(DevDatabaseFixture fixture) : IClas
     }
 
     /// <summary>
-    /// Phase 12-E: 請求集約先の元帳はグループ内の請求集約元の売上・入金を合算する。
+    /// 請求集約先の元帳はグループ内の請求集約元の売上・入金を合算する。
     /// 請求集約元名義に残った入金（HasBillingChangeLockAsyncがreceiptsを見ないため発生し得る。
     /// docs/design_document.md 28-7章）も含めて残高が正しくなることを検証する。
     /// </summary>
@@ -228,7 +228,7 @@ public class CustomerLedgerQueryServiceTests(DevDatabaseFixture fixture) : IClas
         }
     }
 
-    /// <summary>Phase 12-E: 請求集約元は取引履歴のみを返し、現在残高もnullになる。</summary>
+    /// <summary>請求集約元は取引履歴のみを返し、現在残高もnullになる。</summary>
     [Fact]
     public async Task 請求集約元のGetAsyncは取引履歴のみを返しGetBalanceAsOfAsyncはnullを返す()
     {

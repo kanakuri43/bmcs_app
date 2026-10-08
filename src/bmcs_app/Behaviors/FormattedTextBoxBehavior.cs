@@ -10,7 +10,7 @@ namespace bmcs_app.Behaviors;
 /// TextBox に対して共通に適用する添付ビヘイビア。
 /// フォーカス時はカンマなしの生数値、blur 時はカンマ区切りに整形する。
 /// 値の妥当性検証は行わない（形式チェックは ViewModel の責務。docs/architecture.md 11章）。
-/// 日付は<see cref="DatePickerInputBehavior"/>（DatePicker専用）へ移行済み（全画面デザイン統一・2026-09-15）。
+/// 日付は<see cref="DatePickerInputBehavior"/>（DatePicker専用）へ移行済み。
 /// </summary>
 public static class FormattedTextBoxBehavior
 {
@@ -68,8 +68,7 @@ public static class FormattedTextBoxBehavior
     /// 何も反映されない（画面によっては自動再取得の起点にもならない）。これは
     /// 「値を入力したら Enter で確定する」という、本アプリの他の入力欄（請求番号等の
     /// コード直接入力）と同じ操作感をユーザーが期待するため、直感に反する
-    /// （2026-09-15、締め解除処理〈請求日入力〉で実機確認した不具合）。
-    /// ※当該の日付欄はその後 DatePicker 化した（<see cref="DatePickerInputBehavior"/>）ため、
+    /// ※日付欄は DatePicker 化している（<see cref="DatePickerInputBehavior"/>）ため、
     /// 現在この処理の適用対象は金額・数量欄のみ。
     /// </summary>
     private static void OnPreviewKeyDown(object sender, KeyEventArgs e)

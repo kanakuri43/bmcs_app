@@ -7,7 +7,7 @@ namespace bmcs_app.Behaviors;
 
 /// <summary>
 /// DatePicker に対し、8桁ベタ打ち等の入力（例: <c>20260101</c>）を <c>yyyy/MM/dd</c> へ
-/// 正規化する添付ビヘイビア（全画面デザイン統一・2026-09-15、TODO.md）。
+/// 正規化する添付ビヘイビア。
 /// <see cref="FormattedTextBoxBehavior"/> と同じ方針で、書式のみを担当し、
 /// 値の妥当性検証は ViewModel の責務とする（docs/architecture.md 11章）。
 ///

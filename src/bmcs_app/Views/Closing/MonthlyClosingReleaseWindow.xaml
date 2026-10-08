@@ -8,8 +8,8 @@
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 9-3。指定した年月の確定済みmonthly_closingsをまとめて解除済にする（非破壊）。
-        月次締め処理（MonthlyClosingWindow）とは別画面とする（C-8・2026-09-10確定）。
+        指定した年月の確定済みmonthly_closingsをまとめて解除済にする（非破壊）。
+        月次締め処理（MonthlyClosingWindow）とは別画面とする。
         入力は集計年月のみで、対象を一覧表示してから一括で解除する（プレビューはボタンを持たず
         条件変更時に自動再取得する）。対象の中に解除できないものが1件でもあれば解除実行を
         無効化する（All-or-nothing）。権限はメニュー単位の判定のみ（管理者専用メニュー）。

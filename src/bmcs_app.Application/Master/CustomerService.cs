@@ -12,7 +12,7 @@ namespace bmcs_app.Application.Master;
 /// 得意先マスタのユースケース。
 /// 税区分×締日の整合（docs/database-schema.md の CK_customers_tax_unit_closing_day）と、
 /// 登録後の締め区分・税区分の変更禁止をここで担保する（DB の CHECK 制約は最終防衛線）。
-/// 親子請求（請求集約）のリンク検証（2026-09-29確定、docs/database-schema.md 1-1節）も担う。
+/// 親子請求（請求集約）のリンク検証（docs/database-schema.md 1-1節）も担う。
 /// </summary>
 public class CustomerService(
     BmcsDbContext dbContext,
@@ -84,9 +84,9 @@ public class CustomerService(
             || current.TaxUnit != customer.TaxUnit
             || current.RoundingType != customer.RoundingType)
         {
-            // 端数区分が変更可能だと、発行済み伝票の消費税額（TODO.md 5-1）を
-            // 後から再現できなくなり、請求締め（Phase 6）で金額が合わなくなる。
-            // 締め区分・税区分と同じく登録後は不変にする（2026-09-08 ユーザー確認済み）。
+            // 端数区分が変更可能だと、発行済み伝票の消費税額を
+            // 後から再現できなくなり、請求締めで金額が合わなくなる。
+            // 締め区分・税区分と同じく登録後は不変にする。
             throw new CustomerValidationException("締め区分・税区分・端数区分は登録後変更できません。");
         }
 
@@ -242,7 +242,7 @@ public class CustomerService(
     }
 
     /// <summary>
-    /// 請求書へ印字する振込先口座（最大2件）の紐づけを検証する（2026-09-29確定）。
+    /// 請求書へ印字する振込先口座（最大2件）の紐づけを検証する。
     /// 同一口座の二重紐づけ・存在しない口座・論理削除済みの口座を拒否する
     /// （DBのFK/CHECK制約の生の例外が画面にそのまま出ないようにする）。
     /// </summary>

@@ -4,7 +4,7 @@ namespace bmcs_app.Domain.Entities;
 
 /// <summary>
 /// 締め入金（receipt）。主キーは (ReceiptSlipNumber, LineNumber)。各明細行は支払手段の内訳
-/// （入金方法＋金額）を表す（docs/design_document.md 17章、2026-09-15改訂）。
+/// （入金方法＋金額）を表す（docs/design_document.md 17章）。
 /// 請求への充当は<see cref="ReceiptAllocation"/>が別途担い、このテーブルには持たない
 /// （利用者にとって充当先は重要でなく、内部データとして自動計算されれば足りるため）。
 /// 旧 ReceiptTaxUnitInvoice / ReceiptTaxUnitSlip の2テーブルを TaxUnit 列を持つ単一テーブルに

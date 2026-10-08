@@ -10,7 +10,7 @@
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 5-2〜5-6。旧プロトタイプ（bmcs_app.Sales の SalesMainView.xaml）のレイアウトを
+        旧プロトタイプ（bmcs_app.Sales の SalesMainView.xaml）のレイアウトを
         再現しつつ、都度売上の直接入力・受注からの売上確定・返品値引・過去伝票の複写・
         既存伝票の訂正取消を扱う。印刷・前後移動は、対象フェーズが別、またはこの
         プロジェクトのスキーマ／機能にまだ存在しないため、枠のみ用意し無効化している
@@ -48,7 +48,7 @@
             <Separator />
             <Button Command="{Binding CopyFromPastSlipCommand}"
                     Content="複写"
-                    ToolTip="過去の売上伝票を複写して新規登録します（TODO.md 5-5）" />
+                    ToolTip="過去の売上伝票を複写して新規登録します" />
             <Separator />
         </ToolBar>
 
@@ -139,7 +139,7 @@
                                  IsReadOnly="{Binding IsHeaderLocked}"
                                  Text="{Binding SalesSlipNumberDisplay, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="自動採番（SPACEで検索）"
-                                 ToolTip="既存の売上No.を入力してEnterで読み込む（訂正・取消。TODO.md 5-6）。Spaceで検索モーダルを開く">
+                                 ToolTip="既存の売上No.を入力してEnterで読み込む（訂正・取消）。Spaceで検索モーダルを開く">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Space"  Command="{Binding OpenSalesSlipSearchCommand}" />
                                 <KeyBinding Key="Return" Command="{Binding LookupSalesSlipByNumberCommand}" />
@@ -154,7 +154,7 @@
                                     SelectedDate="{Binding SlipDate}" />
                     </Grid>
 
-                    <!-- 行2: 受注No.（TODO.md 5-3。受注からの売上確定） -->
+                    <!-- 行2: 受注No. -->
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="58"  />
@@ -200,7 +200,7 @@
                                  IsReadOnly="{Binding IsHeaderLocked}"
                                  Text="{Binding CustomerName, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="名称（宛名変更時は上書き可）"
-                                 ToolTip="得意先コード検索後に自動入力される名称。学校のクラス・先生等の宛名を都度変更する場合は、ここを直接書き換える（子得意先マスタは持たない。C-9・2026-09-10確定）" />
+                                 ToolTip="得意先コード検索後に自動入力される名称。学校のクラス・先生等の宛名を都度変更する場合は、ここを直接書き換える（子得意先マスタは持たない）" />
                     </Grid>
 
                     <!-- 担当者（その伝票自体の担当者。得意先の営業担当を初期値に入れるが修正できる。任意） -->
@@ -428,7 +428,7 @@
                             Margin="0,0,0,4" />
                     <Button Command="{Binding DeleteSlipCommand}"
                             Content="削除 (F8)"
-                            ToolTip="読み込んだ売上を取消します（編集ロック中は無効。TODO.md 5-6）" />
+                            ToolTip="読み込んだ売上を取消します（編集ロック中は無効）" />
                 </StackPanel>
             </Grid>
         </Border>

@@ -2,7 +2,7 @@ namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
 /// 得意先マスタの締め日区分（<c>customer.closing_day</c>）から、指定した対象年月の
-/// 実際の締め日を求める（TODO.md 6-1）。純粋関数のみで、DBアクセスは行わない。
+/// 実際の締め日を求める。純粋関数のみで、DBアクセスは行わない。
 /// </summary>
 public static class ClosingDateResolver
 {

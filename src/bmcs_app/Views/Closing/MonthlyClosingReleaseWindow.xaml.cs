@@ -3,7 +3,7 @@ using MahApps.Metro.Controls;
 
 namespace bmcs_app.Views.Closing;
 
-/// <summary>月次締め解除処理画面（TODO.md 9-3）。</summary>
+/// <summary>月次締め解除処理画面。</summary>
 public partial class MonthlyClosingReleaseWindow : MetroWindow
 {
     public MonthlyClosingReleaseWindow()

@@ -5,7 +5,7 @@ namespace bmcs_app.Domain.Entities;
 /// <summary>
 /// 銀行口座マスタ（bank_account）。自社の振込先口座マスタ。得意先マスタから
 /// 最大2件（<see cref="Customer.BankAccountCode1"/>／<see cref="Customer.BankAccountCode2"/>）
-/// 紐づけて請求書へ印字する（得意先ごとに使い分ける。2026-09-29確定）。
+/// 紐づけて請求書へ印字する（得意先ごとに使い分ける）。
 /// </summary>
 public class BankAccount : AuditableEntity
 {

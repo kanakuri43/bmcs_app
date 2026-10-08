@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace bmcs_app.Application.Tests.Receipt;
 
 /// <summary>
-/// Phase 7-6「フェーズレビュー（消込整合性）」の結合テスト。開発用ライブDB（172.16.3.171）に
+/// 消込整合性の結合テスト。開発用ライブDB（172.16.3.171）に
 /// 対して実行する（docs/architecture.md 16章）。完了条件「キャッシュ列と入金明細の実集計が
 /// 全パターンで一致する」を、個々のシナリオ単体テスト（<see cref="SettlementServiceTests"/>）
 /// ではなく、**DBに現存する全得意先**に対して直接検証する。
@@ -28,7 +28,7 @@ public class SettlementPhaseReviewTests(DevDatabaseFixture fixture) : IClassFixt
         var service = scope.ServiceProvider.GetRequiredService<SettlementService>();
 
         // 請求集約グループ単位で再計算するため、グループの代表（請求集約先コード）ごとに1回だけ呼べば
-        // 十分（Phase 12-B）。得意先ごとに呼ぶと同じグループを重複して再計算してしまう。
+        // 十分。得意先ごとに呼ぶと同じグループを重複して再計算してしまう。
         var billingCustomerCodes = await dbContext.Customers.AsNoTracking()
             .Select(c => c.BillingCustomerCode)
             .Distinct()

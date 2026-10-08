@@ -12,7 +12,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Sales;
 
 /// <summary>
-/// 受注からの売上確定（TODO.md 5-3）・返品値引（5-4）・訂正取消（5-6）の結合テスト。
+/// 受注からの売上確定・返品値引・訂正取消の結合テスト。
 /// 開発用ライブDBに対して実行する（docs/architecture.md 16章）。
 /// </summary>
 /// <remarks>
@@ -22,7 +22,7 @@ namespace bmcs_app.Application.Tests.Sales;
 /// <c>SalesServiceTests</c>と同じ「外側をトランザクションで包みRollbackする」方式は使えない
 /// （ネストした<c>BeginTransactionAsync</c>はEF Coreが例外を投げる）。使い捨てデータ
 /// （<c>__TESTORD*</c> の受注、業務キーと衝突しない売上番号）をコミットし、
-/// <c>finally</c>で物理削除する（M-17は業務操作の話であり、テストの後始末は例外扱い。
+/// <c>finally</c>で物理削除する（伝票を物理削除しない方針は業務操作の話であり、テストの後始末は例外扱い。
 /// <c>SalesServiceTests</c>の既存方針と同じ）。
 /// </remarks>
 public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFixture<DevDatabaseFixture>
@@ -274,7 +274,7 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
     [Fact]
     public async Task 一部消込の売上を訂正して金額を減らすと消込済金額が新しい金額に丸められる()
     {
-        // TODO.md 7-1レビューで発見した既存不整合の修正確認: UpdateAsyncは消込完了(3)のみを
+        // 回帰確認: UpdateAsyncは消込完了(3)のみを
         // 編集ロック対象にし一部消込(2)は編集を許すため、金額を減らす訂正でsettled_amountが
         // 新しいamountを超えて取り残る経路があった。SettlementService.RecalculateForBillingGroupAsync
         // を配線したことで、実際の入金データ（detail_receipt）に基づき新しい金額へ丸め直される

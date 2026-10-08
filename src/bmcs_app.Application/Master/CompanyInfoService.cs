@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace bmcs_app.Application.Master;
 
 /// <summary>
-/// 自社情報マスタのユースケース（TODO.md 2-4）。1レコード運用（<see cref="CompanyInfo.CompanyInfoId"/> は常に1）のため、
+/// 自社情報マスタのユースケース。1レコード運用（<see cref="CompanyInfo.CompanyInfoId"/> は常に1）のため、
 /// 他マスタと違いコード検索・新規登録・無効化の概念を持たない（画面を開くと常に唯一の行を読み込み、保存は upsert）。
 /// </summary>
 public class CompanyInfoService(

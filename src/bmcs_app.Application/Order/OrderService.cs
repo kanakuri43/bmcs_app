@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace bmcs_app.Application.Order;
 
-/// <summary>受注入力のユースケース（TODO.md 4-3・4-6）。仮伝票の新規登録と、既存受注の直接修正を扱う。</summary>
+/// <summary>受注入力のユースケース。仮伝票の新規登録と、既存受注の直接修正を扱う。</summary>
 public class OrderService(
     BmcsDbContext dbContext,
     SlipNumberService slipNumberService,
@@ -54,9 +54,8 @@ public class OrderService(
     }
 
     /// <summary>
-    /// 既存の受注伝票を直接修正する（TODO.md 4-6、2026-09-16確定）。C-6の当初決定「受注は状態にかかわらず
-    /// 常に直接修正可能」は本タスクで「未売上（<see cref="OrderStatus.NotSold"/>）の伝票のみ直接修正可」に
-    /// 改訂された（<see cref="OrderEditLockEvaluator"/>）。行の追加・更新・削除（論理削除）を1回の呼び出しで
+    /// 既存の受注伝票を直接修正する。受注は
+    /// 「未売上（<see cref="OrderStatus.NotSold"/>）の伝票のみ直接修正可」である（<see cref="OrderEditLockEvaluator"/>）。行の追加・更新・削除（論理削除）を1回の呼び出しで
     /// まとめて扱う。<see cref="bmcs_app.Application.Sales.SalesService.UpdateAsync"/> と同じ構成だが、
     /// 受注には税額確定・消込再計算・受注デルタ適用に相当する処理がないため、それらは行わない。
     /// </summary>
@@ -126,7 +125,7 @@ public class OrderService(
             throw new OrderOperationException("訂正で全行を削除することはできません。中止（F8）をご利用ください。");
         }
 
-        // 読込時にあったが今回の一覧に含まれない行は論理削除する（M-17: 物理削除しない）。
+        // 読込時にあったが今回の一覧に含まれない行は論理削除する（物理削除しない）。
         foreach (var current in currentLines.Where(l => !keptLineNumbers.Contains(l.LineNumber)))
         {
             current.IsDeleted = true;

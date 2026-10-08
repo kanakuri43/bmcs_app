@@ -13,7 +13,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Sales;
 
 /// <summary>
-/// 売上入力のユースケース（TODO.md 5-2・5-3・5-6）。新規登録（都度売上・受注からの売上確定）と、
+/// 売上入力のユースケース。新規登録（都度売上・受注からの売上確定）と、
 /// 既存伝票の訂正・取消を扱う。<see cref="OrderService"/>（受注入力）と同じ構成だが、
 /// 保存前に税額カラムを確定する点が異なる（<c>order_slip</c> は税額列を持たないため）。
 /// </summary>
@@ -38,7 +38,7 @@ public class SalesService(
     /// 保存対象の明細行。<see cref="SalesEntity.SalesSlipNumber"/> は仮値でよい（採番後に上書きする）。
     /// <see cref="SalesEntity.SlipTaxAmount"/>／<see cref="SalesEntity.TaxAmount"/> は未設定でよい
     /// （本メソッドが確定する）。すべて同一の <see cref="SalesEntity.TaxUnit"/> を持つこと。
-    /// 受注からの売上確定（TODO.md 5-3）の場合、該当行に <see cref="SalesEntity.OrderSlipNumber"/>／
+    /// 受注からの売上確定の場合、該当行に <see cref="SalesEntity.OrderSlipNumber"/>／
     /// <see cref="SalesEntity.OrderLineNumber"/> を設定しておくと、本メソッドが受注側の
     /// 売上化済数量を同一トランザクション・同一 SaveChangesAsync で更新する
     /// （<see cref="OrderStatusService.ApplySalesQuantityDeltasAsync"/>）。受注に紐付けられるのは
@@ -46,7 +46,7 @@ public class SalesService(
     /// </param>
     /// <param name="roundingType">得意先マスタの端数区分。税額計算に使う。</param>
     /// <exception cref="SalesOperationException">
-    /// 返品・値引行が受注に紐付けられている場合、または伝票日付が請求締め済み期間（申し送り事項R2）の場合。
+    /// 返品・値引行が受注に紐付けられている場合、または伝票日付が請求締め済み期間（design_document.md 25章）の場合。
     /// </exception>
     public async Task<string> CreateAsync(
         IReadOnlyList<SalesEntity> lines, RoundingType roundingType, CancellationToken cancellationToken = default)
@@ -106,7 +106,7 @@ public class SalesService(
     }
 
     /// <summary>
-    /// 既存の売上伝票を訂正する（TODO.md 5-6）。元伝票の直接修正（C-6）であり、赤伝は発行しない。
+    /// 既存の売上伝票を訂正する。元伝票の直接修正であり、赤伝は発行しない。
     /// 行の追加・更新・削除（論理削除）を1回の呼び出しでまとめて扱う。
     /// </summary>
     /// <param name="salesSlipNumber">対象の売上伝票番号。</param>
@@ -123,7 +123,7 @@ public class SalesService(
     /// 他のユーザーによる行の追加・削除を検出する（docs/architecture.md 9章）。
     /// </param>
     /// <exception cref="SalesOperationException">
-    /// 対象の売上が存在しない、編集ロック（C-6の3条件）に該当する場合、または返品・値引行が
+    /// 対象の売上が存在しない、編集ロックの条件に該当する場合、または返品・値引行が
     /// 受注に紐付けられている場合。訂正後の伝票日付が新たに編集ロック対象の年月になる場合も含む。
     /// </exception>
     /// <exception cref="SlipConcurrencyException">
@@ -175,7 +175,7 @@ public class SalesService(
         var deltaContributions = new List<(string? OrderSlipNumber, short? OrderLineNumber, decimal Delta)>();
         var nextLineNumber = (short)(currentLines.Max(l => l.LineNumber) + 1);
 
-        // 読込時にあったが今回の一覧に含まれない行は論理削除する（M-17: 物理削除しない）。
+        // 読込時にあったが今回の一覧に含まれない行は論理削除する（物理削除しない）。
         foreach (var current in currentLines.Where(l => !keptLineNumbers.Contains(l.LineNumber)))
         {
             deltaContributions.Add((current.OrderSlipNumber, current.OrderLineNumber, -SignedQuantity(current)));
@@ -250,7 +250,7 @@ public class SalesService(
         }
 
         // 訂正で金額を減らした場合に消込済金額が売上金額を超えて取り残る不整合を防ぐ
-        // （TODO.md 7-1）。訂正後の金額に合わせてクランプし直す。
+        // 。訂正後の金額に合わせてクランプし直す。
         await settlementService.RecalculateForBillingGroupAsync(currentLines[0].CustomerCode, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
@@ -259,8 +259,8 @@ public class SalesService(
     }
 
     /// <summary>
-    /// 売上伝票を取消する（TODO.md 5-6）。全明細行を論理削除し（M-17）、受注由来の行があれば
-    /// 受注側の売上化済数量を逆遷移させる。C-6の3条件に該当する伝票は取消できない。
+    /// 売上伝票を取消する。全明細行を論理削除し、受注由来の行があれば
+    /// 受注側の売上化済数量を逆遷移させる。編集ロックの条件に該当する伝票は取消できない。
     /// </summary>
     /// <exception cref="SalesOperationException">対象の売上が存在しない、または編集ロックに該当する場合。</exception>
     /// <exception cref="SlipConcurrencyException">他のユーザーが同じ伝票を更新済みの場合。</exception>
@@ -310,7 +310,7 @@ public class SalesService(
 
         // 取消した行自体は再計算対象から外れる（RecalculateForBillingGroupAsyncはIsDeleted行を
         // 読まない）が、同じ請求／明細請求書に属する他の売上明細行への配分が取消によって
-        // 変わりうるため再計算する（TODO.md 7-1）。
+        // 変わりうるため再計算する。
         await settlementService.RecalculateForBillingGroupAsync(lines[0].CustomerCode, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
@@ -360,7 +360,7 @@ public class SalesService(
     /// <summary>
     /// 返品・値引行が受注に紐付けられていないことを検証する。受注の売上化済数量を減算するのは
     /// 「売上」行のみであり（<see cref="SignedQuantity"/>）、返品・値引による受注消化の取消は
-    /// 元の売上行を直接訂正することで行う（TODO.md 5-6）。
+    /// 元の売上行を直接訂正することで行う。
     /// </summary>
     private static void ValidateOrderLinkRestrictedToSalesType(IReadOnlyList<SalesEntity> lines)
     {
@@ -371,7 +371,7 @@ public class SalesService(
     }
 
     /// <summary>
-    /// 数量と金額の符号が一致していることを検証する（金額が狂う経路を構造的に防ぐ。TODO.md 5-4）。
+    /// 数量と金額の符号が一致していることを検証する（金額が狂う経路を構造的に防ぐ）。
     /// 空行やゼロ数量行は対象外。
     /// </summary>
     private static void ValidateQuantityAmountSignConsistency(IReadOnlyList<SalesEntity> lines)
@@ -388,8 +388,7 @@ public class SalesService(
     /// （得意先の変更や請求紐付けの改変は、行編集の範囲を超えるため）。
     /// <see cref="Domain.Entities.AuditableEntity.IsDeleted"/> は明示的に <c>false</c> に戻す
     /// （保存失敗後に同じ画面から再保存すると、ChangeTrackerに残った汚れた値
-    /// （直前の失敗した保存で立てた <c>true</c>）がそのまま上書きされず論理削除される潜在バグの対策。
-    /// TODO.md 5-6レビューで発見）。
+    /// （直前の失敗した保存で立てた <c>true</c>）がそのまま上書きされず論理削除される潜在バグの対策）。
     /// </summary>
     private static void ApplyLineValues(SalesEntity current, SalesEntity incoming)
     {

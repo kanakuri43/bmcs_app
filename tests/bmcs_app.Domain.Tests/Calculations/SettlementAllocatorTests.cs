@@ -14,8 +14,7 @@ public class SettlementAllocatorTests
     [Fact]
     public void 充当額が対象額の合計以上なら全行が対象額どおりに配分される()
     {
-        // 明細6,000円+4,000円=10,000円の請求に対し、消費税込11,000円を入金した例
-        // （TODO.md 7-1決定1）。残1,000円（税額分）は行に載せない。
+        // 明細6,000円+4,000円=10,000円の請求に対し、消費税込11,000円を入金した例。残1,000円（税額分）は行に載せない。
         var actual = SettlementAllocator.Allocate([6000m, 4000m], 11000m);
         Assert.Equal([6000m, 4000m], actual);
     }
@@ -30,7 +29,7 @@ public class SettlementAllocatorTests
     [Fact]
     public void 充当額が不足する場合は古い順に配分され残りの行はゼロになる()
     {
-        // 明細6,000円+4,000円=10,000円の請求に対し、部分入金5,500円の例（TODO.md 7-1決定1）。
+        // 明細6,000円+4,000円=10,000円の請求に対し、部分入金5,500円の例。
         var actual = SettlementAllocator.Allocate([6000m, 4000m], 5500m);
         Assert.Equal([5500m, 0m], actual);
     }

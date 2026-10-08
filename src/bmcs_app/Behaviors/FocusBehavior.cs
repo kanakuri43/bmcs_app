@@ -120,7 +120,7 @@ public static class FocusBehavior
 
     /// <summary>
     /// DatePicker は Keyboard.Focus(datePicker) を呼んでも本体にフォーカスが当たるだけで、
-    /// 内部の PART_TextBox にキャレットが入らない（全画面デザイン統一・2026-09-15）。
+    /// 内部の PART_TextBox にキャレットが入らない。
     /// Dispatcher で遅延済み（DispatcherPriority.Input）のためテンプレート適用は完了している
     /// 前提で PART_TextBox を解決する。見つからない場合は DatePicker 自身にフォーカスする。
     /// </summary>

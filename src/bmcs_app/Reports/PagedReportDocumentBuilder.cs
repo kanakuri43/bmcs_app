@@ -9,8 +9,8 @@ namespace bmcs_app.Reports;
 
 /// <summary>
 /// 改ページを伴う単一フロー帳票（請求書・明細請求書）の A4 <see cref="FixedDocument"/> を
-/// 組み立てる基底クラス（TODO.md 10-3、帳票基盤。2026-09-17、納品書3段複写対応で
-/// <see cref="ReportDocumentBuilder"/> から分割）。派生クラスはヘッダー・フッター・列定義・
+/// 組み立てる基底クラス（帳票基盤 <see cref="ReportDocumentBuilder"/>
+/// から分割）。派生クラスはヘッダー・フッター・列定義・
 /// 行データのみを与える。改ページの分割計算そのものは <see cref="ReportPagination"/>
 /// （Domain、単体テスト済み）に委ねる。
 /// </summary>
@@ -45,12 +45,12 @@ public abstract class PagedReportDocumentBuilder : ReportDocumentBuilder
 
     /// <summary>
     /// 見出し行・小計行のような、通常の明細行とは異なる太字・単色背景で描画すべき行かどうか
-    /// （TODO.md 12-D、親子請求）。既定はfalse（全行が通常の明細行）。
+    /// 。既定はfalse（全行が通常の明細行）。
     /// </summary>
     protected virtual bool IsGroupMarkerRow(int lineIndex) => false;
 
     /// <summary>
-    /// ページ末尾に来ると孤立してしまう行（見出し行）かどうか（TODO.md 12-D、親子請求）。
+    /// ページ末尾に来ると孤立してしまう行（見出し行）かどうか。
     /// <see cref="ReportPagination.AvoidTrailingHeaderOrphans"/>が参照する。既定はfalse
     /// （調整不要）。
     /// </summary>
@@ -65,7 +65,7 @@ public abstract class PagedReportDocumentBuilder : ReportDocumentBuilder
 
     /// <summary>
     /// 既存の<see cref="Build"/>と同じページ組み立てを、呼び出し元が用意した<paramref name="document"/>に
-    /// 追加する（TODO.md 10-7、複数請求書を1つの<see cref="FixedDocument"/>にまとめて印刷する用途）。
+    /// 追加する。
     /// ページ番号（<c>pageNumber</c>/<c>totalPages</c>）はこのビルダー分だけで1始まりに閉じる
     /// （請求書ごとに「1/N ページ」と表示するため、連結先の既存ページ数はここでは加味しない）。
     /// </summary>

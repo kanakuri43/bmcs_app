@@ -56,7 +56,7 @@ public class BmcsDbContext(DbContextOptions<BmcsDbContext> options) : DbContext(
     /// 採番自体は <see cref="bmcs_app.Infrastructure.Numbering.SlipNumberSequenceCommand"/>
     /// の生SQL（UPDATE）で行い ChangeTracker を経由しないため、追跡インスタンスは
     /// 即座に陳腐化する。row_version を持たないため、陳腐化した値で SaveChanges しても
-    /// 検出できず、他者の採番結果を古い値で上書きしてしまう（TODO.md 4-1）。
+    /// 検出できず、他者の採番結果を古い値で上書きしてしまう。
     /// </summary>
     public DbSet<SlipNumberSequence> SlipNumberSequences => Set<SlipNumberSequence>();
 

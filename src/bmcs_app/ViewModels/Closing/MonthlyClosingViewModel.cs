@@ -11,7 +11,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Closing;
 
 /// <summary>
-/// 月次締め処理画面（TODO.md 9-1）。構成は請求締め処理画面（<c>BillingClosingViewModel</c>）と同じで、
+/// 月次締め処理画面。構成は請求締め処理画面（<c>BillingClosingViewModel</c>）と同じで、
 /// 違いは「締め日のコンボボックスがない」「請求日の代わりに集計年月（暦月）を選ぶ」の2点。
 /// 一覧は選んだ年月の確定済み <c>monthly_closings</c>（解除済みを除く）で、年月を変えると自動で再取得する。
 /// 締め確定は全得意先を対象とし、実行前に確認ダイアログを挟む。

@@ -1,7 +1,7 @@
 namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
-/// 請求書明細の表示行の種類（TODO.md 12-D、親子請求）。
+/// 請求書明細の表示行の種類（親子請求）。
 /// </summary>
 public enum InvoiceReportRowKind
 {

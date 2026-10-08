@@ -4,7 +4,7 @@ using MahApps.Metro.Controls;
 
 namespace bmcs_app.Views.Common;
 
-/// <summary>商品検索モーダル（TODO.md 3-2）。</summary>
+/// <summary>商品検索モーダル。</summary>
 public partial class ProductSearchDialog : MetroWindow
 {
     public ProductSearchDialog()

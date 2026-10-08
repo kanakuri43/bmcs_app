@@ -11,7 +11,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Closing;
 
 /// <summary>
-/// 月次締め解除処理（TODO.md 9-3）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する。
+/// 月次締め解除処理の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する。
 /// <see cref="MonthlyClosingServiceTests"/>と同じく、実データが存在しない2020年の1〜2月だけを扱い、
 /// 後始末でその月の <c>monthly_closings</c> を全件物理削除する。
 /// </summary>
@@ -37,7 +37,7 @@ public class MonthlyClosingReleaseServiceTests(DevDatabaseFixture fixture) : ICl
             await closing.ConfirmAsync(2020, 1);
             Assert.Contains(await release.PreviewAsync(2020, 1), t => t.CustomerCode == CustomerA && t.BlockReason is null);
 
-            // 確定中は登録できない（9-2）。
+            // 確定中は登録できない。
             await Assert.ThrowsAsync<SalesOperationException>(
                 () => sales.CreateAsync([NewSalesLine(CustomerA, string.Empty, new DateOnly(2020, 1, 20))], RoundingType.Floor));
 

@@ -4,7 +4,7 @@ using bmcs_app.Domain.Enums;
 
 namespace bmcs_app.Domain.Tests.Calculations;
 
-/// <summary>親子請求（請求集約）のリンク可否判定（2026-09-29確定）のテスト。</summary>
+/// <summary>親子請求（請求集約）のリンク可否判定のテスト。</summary>
 public class BillingAggregationValidatorTests
 {
     [Fact]

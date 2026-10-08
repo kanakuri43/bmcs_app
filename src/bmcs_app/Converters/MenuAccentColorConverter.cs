@@ -5,7 +5,7 @@ using System.Windows.Media;
 namespace bmcs_app.Converters;
 
 /// <summary>
-/// メインメニュー（TODO.md 2-7）のカテゴリ見出しの色分けに使う。ViewModel は色を持たず、
+/// メインメニューのカテゴリ見出しの色分けに使う。ViewModel は色を持たず、
 /// カテゴリの表示順に応じた整数インデックスだけを持つ（ViewModel が WPF の Media 型に依存しないため）。
 /// </summary>
 public class MenuAccentColorConverter : IValueConverter

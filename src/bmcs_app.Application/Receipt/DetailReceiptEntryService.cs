@@ -13,19 +13,18 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Receipt;
 
 /// <summary>
-/// 明細入金画面（TODO.md 7-4）のユースケース。都度得意先（<see cref="TaxUnit.Line"/>）専用。
-/// 締め得意先（請求単位／伝票単位）の入金は入金入力画面（TODO.md 7-2、<see cref="ReceiptEntryService"/>）
+/// 明細入金画面のユースケース。都度得意先（<see cref="TaxUnit.Line"/>）専用。
+/// 締め得意先（請求単位／伝票単位）の入金は入金入力画面（<see cref="ReceiptEntryService"/>）
 /// が担う。
 ///
 /// 充当先は2種類（<see cref="DetailReceiptTargetType"/>）で、粒度が異なる: 売上明細行を直接指定
 /// （<see cref="DetailReceiptTargetType.SalesLine"/>）は行単位、明細請求書を指定
-/// （<see cref="DetailReceiptTargetType.DetailInvoice"/>）は請求書まるごと1行（2026-09-15
-/// ユーザー確認。デモ<c>bmcs_app.LineReceipt</c>は請求書タブでも行単位だったが、
-/// <c>docs/database-schema.md</c> 2.11節のスキーマに合わせた）。
+/// （<see cref="DetailReceiptTargetType.DetailInvoice"/>）は請求書まるごと1行
+/// （<c>docs/database-schema.md</c> 2.11節のスキーマに合わせる）。
 ///
 /// 金額（<see cref="DetailReceiptEntity.AllocatedAmount"/>）は常に対象の全額（または残額）を
 /// 充当し、手入力では変更できない。前受金は無く、充当先が未定の行は作らない。
-/// 振込手数料差額の入力（TODO.md 7-3）はこの画面のスコープ外。既存伝票の訂正・取消（TODO.md 7-5）は
+/// 振込手数料差額の入力はこの画面のスコープ外。既存伝票の訂正・取消は
 /// <see cref="UpdateAsync"/>／<see cref="CancelSlipAsync"/> が担う。
 ///
 /// <see cref="UpdateAsync"/>は充当先の追加を許さない（変更できるのは入金日付・伝票摘要・各行の
@@ -33,7 +32,7 @@ namespace bmcs_app.Application.Receipt;
 /// <see cref="BuildDetailInvoiceCandidateQuery"/>）は自伝票自身の充当を除外する仕組みを持たない
 /// サーバー側クエリのため、追加を許すと自伝票の充当状況によって候補条件やあるべき金額が変わる
 /// ケースを扱う必要が生じる。同じ理由で、既存行の<see cref="DetailReceiptEntity.AllocatedAmount"/>は
-/// 訂正時に再計算せず読込時の値をそのまま保持する（2026-09-15ユーザー確認）。
+/// 訂正時に再計算せず読込時の値をそのまま保持する。
 ///
 /// 編集ロック（<see cref="EvaluateEditLockAsync"/>）は月次締めのみを見る。`receipt`（締め入金）と
 /// 異なり、`detail_invoice`（明細請求書）の金額は`sales`から都度導出され、`detail_receipt`からは
@@ -165,7 +164,7 @@ public class DetailReceiptEntryService(
         }
 
         // 候補条件をトランザクション内で再実行し、金額（残額・請求書合計額）を利用者の入力に
-        // 頼らずサーバー側で確定する（docs/architecture.md 9章、6-3 IssueAsync と同じ方式）。
+        // 頼らずサーバー側で確定する（docs/architecture.md 9章、明細請求書の発行処理 IssueAsync と同じ方式）。
         var candidateSales = await BuildSalesLineCandidateQuery(customer.CustomerCode, tracking: true)
             .ToDictionaryAsync(s => (s.SalesSlipNumber, s.LineNumber), cancellationToken);
         var candidateInvoices = await BuildDetailInvoiceCandidateQuery(customer.CustomerCode, tracking: true)
@@ -254,7 +253,7 @@ public class DetailReceiptEntryService(
 
         // receipt_amount は伝票単位の値（全行同値）。SettlementService.RecalculateDetailAsync が
         // slipLines[0] の receipt_amount のみを参照するため、この不変条件を必ず保つこと
-        // （docs/design_document.md 18章。Phase 7-5で行の一部だけを論理削除する場合は要再検証）。
+        // （docs/design_document.md 18章。行の一部だけを論理削除する場合は要再検証）。
         var receiptAmount = entities.Sum(e => e.AllocatedAmount);
         if (receiptAmount <= 0m)
         {
@@ -298,7 +297,7 @@ public class DetailReceiptEntryService(
             .ToListAsync(cancellationToken);
 
     /// <summary>
-    /// 対象の`detail_receipt`行が訂正・取消不可かどうかを判定する（TODO.md 7-5）。月次締めのみを
+    /// 対象の`detail_receipt`行が訂正・取消不可かどうかを判定する。月次締めのみを
     /// 見る（このクラスの doc comment を参照。`receipt`と異なり請求締めスナップショット相当は無い）。
     /// </summary>
     public async Task<SalesEditLock> EvaluateEditLockAsync(
@@ -315,7 +314,7 @@ public class DetailReceiptEntryService(
     }
 
     /// <summary>
-    /// 既存の明細入金伝票を訂正する（TODO.md 7-5）。元伝票の直接修正（C-6）であり、赤伝は発行しない。
+    /// 既存の明細入金伝票を訂正する。元伝票の直接修正であり、赤伝は発行しない。
     /// 充当先の追加はできない（このクラスの doc comment を参照）。変更できるのは入金日付・伝票摘要
     /// （伝票単位）、各行の入金方法・入金先口座・行摘要、および行の削除のみ。
     /// </summary>
@@ -435,7 +434,7 @@ public class DetailReceiptEntryService(
     }
 
     /// <summary>
-    /// 明細入金伝票を取消する（TODO.md 7-5）。全明細行を論理削除する（M-17）。編集ロックに該当する
+    /// 明細入金伝票を取消する。全明細行を論理削除する（物理削除しない）。編集ロックに該当する
     /// 伝票は取消できない。
     /// </summary>
     /// <exception cref="DetailReceiptEntryException">対象の明細入金が存在しない、または編集ロックに該当する場合。</exception>
@@ -490,8 +489,7 @@ public class DetailReceiptEntryService(
     /// <summary>
     /// 訂正で編集可能なフィールド（入金方法・入金先口座）のみを検証する。<see cref="ValidateLineFieldsAsync"/>
     /// と異なり充当先の妥当性は見ない（訂正では充当先を変更できないため）。手形除外の判定は
-    /// <see cref="Domain.Entities.DepositMethod.RequiresBillDueDate"/>に基づく（旧enumから
-    /// 2026-09-18にマスタ駆動へ移行。DBのCHECK制約では他テーブル参照ができないため、
+    /// <see cref="Domain.Entities.DepositMethod.RequiresBillDueDate"/>に基づく（マスタ駆動。DBのCHECK制約では他テーブル参照ができないため、
     /// この検証がクロステーブル整合性の唯一の担保点になる）。
     /// </summary>
     private async Task<Dictionary<string, Domain.Entities.DepositMethod>> ValidateLineFieldsForCorrectionAsync(

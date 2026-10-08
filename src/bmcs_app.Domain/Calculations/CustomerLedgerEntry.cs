@@ -3,7 +3,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
-/// 得意先元帳の1行（TODO.md 8-1）。左側（売上・消費税）と右側（入金）が同居しうる
+/// 得意先元帳の1行。左側（売上・消費税）と右側（入金）が同居しうる
 /// （都度得意先の消込済み売上行は、消込の証跡として同じ行の右側に入金日付・入金Noを表示する。
 /// ただし残高への影響は入金日付の独立行（<see cref="LedgerEntryKind.Receipt"/>）でのみ発生させる
 /// ため、証跡表示では <see cref="ReceiptAmount"/> を設定しない。売上と入金が月をまたいでも
@@ -64,7 +64,7 @@ public sealed record CustomerLedgerEntry
     /// <summary>
     /// この行（売上・入金）を記録した得意先。請求集約先の元帳ではグループ内の複数得意先の
     /// 行が混在するため、どの得意先の伝票かを画面で識別できるように設定する
-    /// （<c>Sales</c>／<c>Receipt</c>の<c>CustomerCode</c>スナップショット列から取得。TODO.md 12-E）。
+    /// （<c>Sales</c>／<c>Receipt</c>の<c>CustomerCode</c>スナップショット列から取得）。
     /// </summary>
     public string? CustomerCode { get; init; }
 

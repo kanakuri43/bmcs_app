@@ -10,7 +10,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Sales;
 
 /// <summary>
-/// 売上入力（TODO.md 5-2）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
+/// 売上入力の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
 /// （docs/architecture.md 16章）。GUIでのsmoke testの代わりに、税区分3種すべてで
 /// <see cref="SalesService.CreateAsync"/> を実際に呼び、DBのCHECK制約
 /// （<c>CK_sales_tax_amount_by_tax_unit</c>／<c>CK_sales_billing_number_by_tax_unit</c>）を
@@ -18,10 +18,10 @@ namespace bmcs_app.Application.Tests.Sales;
 /// </summary>
 /// <remarks>
 /// 登録した行は各テストの最後に物理削除する（作成した売上番号のみを対象とし、他データには
-/// 触れない）。実際の業務では伝票を物理削除しない（M-17）が、本テストは検証用データの
+/// 触れない）。実際の業務では伝票を物理削除しないが、本テストは検証用データの
 /// 後始末であり業務操作ではないため、<see cref="DevDatabaseFixture"/> 自身のテストキー削除と
 /// 同じ扱いとする。ただし採番テーブルの <c>current_value</c> は巻き戻さない（欠番は許容する。
-/// M-2の欠番なし方針は正常運用時の話であり、テストで一時的に消費した番号を戻す仕組みは無い）。
+/// 採番の欠番なし方針は正常運用時の話であり、テストで一時的に消費した番号を戻す仕組みは無い）。
 /// </remarks>
 public class SalesServiceTests(DevDatabaseFixture fixture) : IClassFixture<DevDatabaseFixture>
 {

@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace bmcs_app.Reports;
 
-/// <summary>帳票種別。<see cref="PrinterSettings"/>（TODO.md 2-6）の項目に一致させる。</summary>
+/// <summary>帳票種別。<see cref="PrinterSettings"/>の項目に一致させる。</summary>
 public enum ReportKind
 {
     DeliveryNote,
@@ -19,7 +19,7 @@ public enum ReportKind
 public readonly record struct ReportPrintResult(bool Success, string? Message);
 
 /// <summary>
-/// 帳票の印刷・PDF出力（TODO.md 10-3、M-10確定方式）。<see cref="PrinterSettingsService"/>
+/// 帳票の印刷・PDF出力。<see cref="PrinterSettingsService"/>
 /// （Application、Singleton）と同じ Singleton で登録する（DbContext に依存しないため）。
 /// 設定済みプリンタへダイアログなしで直接送信し、失敗時のみ <see cref="PrintDialog"/> に
 /// フォールバックする（docs/report-spec.md 1章）。エラー表示（MessageBox 等）は行わず、

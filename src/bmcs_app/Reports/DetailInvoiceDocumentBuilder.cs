@@ -7,11 +7,11 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Reports;
 
 /// <summary>
-/// 明細請求書のレイアウト（TODO.md 10-5）。都度得意先（内税明細単位）向け。複数の売上伝票にまたがる
+/// 明細請求書のレイアウト。都度得意先（内税明細単位）向け。複数の売上伝票にまたがる
 /// 明細を1枚にまとめるため、納品書には無い「伝票No.」列を持つ。適格請求書の記載事項
 /// （登録番号・取引年月日・軽減税率対象品目の付記・税率ごとの対価額と適用税率・税率ごとの消費税額・
-/// 交付を受ける者の名称）をすべて満たす。宛名は<c>AddresseeName</c>（都度入力のスナップショット、
-/// C-9）を印字し、得意先マスタの登録名称は使わない。
+/// 交付を受ける者の名称）をすべて満たす。宛名は<c>AddresseeName</c>（都度入力のスナップショット）
+/// を印字し、得意先マスタの登録名称は使わない。
 /// </summary>
 public sealed class DetailInvoiceDocumentBuilder(DetailInvoiceData data) : PagedReportDocumentBuilder
 {
@@ -28,7 +28,7 @@ public sealed class DetailInvoiceDocumentBuilder(DetailInvoiceData data) : Paged
     ];
 
     // 発行者情報ボックス直下に追加した振込先口座ボックス分を加算する
-    // （BillingBankAccountsBoxHeightEstimate、2026-09-29、振込先の得意先単位印字対応）。
+    // （BillingBankAccountsBoxHeightEstimate、振込先の得意先単位印字に対応）。
     protected override double FullHeaderHeight => 260.0 + BillingBankAccountsBoxHeightEstimate;
     protected override double CompactHeaderHeight => 34.0;
     protected override double FooterHeight => 220.0;

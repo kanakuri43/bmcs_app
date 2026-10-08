@@ -8,7 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Common;
 
 /// <summary>
-/// 得意先検索モーダル（TODO.md 3-1）。得意先名・カナ・住所・担当者名を検索対象にする
+/// 得意先検索モーダル。得意先名・カナ・住所・担当者名を検索対象にする
 /// （docs/database-schema.md 2.1 が検索対象と明記する列＋タスク要件の担当者名・住所）。
 /// 検索はマスタ全件をロードしたうえでのメモリ絞り込み（得意先マスタ画面と同じ全件ロード方針に揃える）。
 /// <see cref="RequiredTaxUnit"/> を呼び出し元（<c>windowService.ShowDialog</c>の<c>configure</c>）で
@@ -25,7 +25,7 @@ public partial class CustomerSearchDialogViewModel(CustomerService customerServi
     public TaxUnit? RequiredTaxUnit { get; set; }
 
     /// <summary>true を設定すると、請求集約先（自分自身に請求得意先コードを設定している得意先）のみに
-    /// 絞り込む。得意先マスタ画面の「請求得意先コード」欄からの呼び出しで使う（2026-09-29確定）。</summary>
+    /// 絞り込む。得意先マスタ画面の「請求得意先コード」欄からの呼び出しで使う。</summary>
     public bool BillingRootOnly { get; set; }
 
     [ObservableProperty]

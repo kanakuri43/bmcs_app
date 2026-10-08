@@ -10,7 +10,7 @@ public static class OrderStatusCalculator
 {
     /// <summary>
     /// <see cref="OrderStatus.Cancelled"/> はここでは導出しない。中止は数量から導けない明示的な
-    /// 業務操作であり、いちど中止した行は再遷移しない終端状態のため（TODO.md 4-4 決定）。
+    /// 業務操作であり、いちど中止した行は再遷移しない終端状態のため。
     /// </summary>
     public static OrderStatus Determine(decimal orderQuantity, decimal salesConfirmedQuantity)
     {

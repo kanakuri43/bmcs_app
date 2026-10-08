@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace bmcs_app.Application.Closing;
 
 /// <summary>
-/// 月次締め処理のユースケース（TODO.md 9-1）。全得意先の暦月末売掛残高を <c>monthly_closings</c> に
+/// 月次締め処理のユースケース。全得意先の暦月末売掛残高を <c>monthly_closings</c> に
 /// 確定保存する。金額の計算は <see cref="MonthlyClosingCalculator"/>（Domain）、元帳の入力は
 /// <see cref="CustomerLedgerQueryService"/> と共通（集計値を元帳の残高と一致させるため）。
 /// 集計・スキップ規則の詳細は docs/design_document.md の月次締めの章を参照。

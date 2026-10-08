@@ -3,7 +3,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
-/// 消費税額の端数処理（TODO.md 5-1）。金額に対して <see cref="Math.Round(decimal)"/> /
+/// 消費税額の端数処理。金額に対して <see cref="Math.Round(decimal)"/> /
 /// <see cref="Math.Floor(decimal)"/> / <see cref="Math.Ceiling(decimal)"/> を直接呼んでよいのは
 /// このクラスだけとする（端数処理のルールを1箇所に集約するため）。
 /// </summary>

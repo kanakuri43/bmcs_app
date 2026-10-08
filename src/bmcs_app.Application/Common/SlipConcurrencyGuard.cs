@@ -3,7 +3,7 @@ using bmcs_app.Domain.Entities;
 namespace bmcs_app.Application.Common;
 
 /// <summary>
-/// 伝票単位の楽観的排他制御の共通処理（docs/architecture.md 9章、TODO.md 5-6で実装）。
+/// 伝票単位の楽観的排他制御の共通処理（docs/architecture.md 9章）。
 /// rowversion は明細行単位（物理的な適用単位）だが、業務上の編集単位は「伝票」であるため、
 /// 行単位の rowversion だけでは次の2つを検出できない。
 /// 1. 自分が変更しなかった明細行を、他のユーザーが変更した

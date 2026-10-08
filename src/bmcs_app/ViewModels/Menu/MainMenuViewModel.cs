@@ -24,7 +24,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Menu;
 
 /// <summary>
-/// メインメニュー画面（TODO.md 2-7）。メニュー構成マスタ（`menu`）を親子階層で読み込み、
+/// メインメニュー画面。メニュー構成マスタ（`menu`）を親子階層で読み込み、
 /// 現在の社員の権限レベルで絞り込んだ結果を表示する（デザインモックのC案＝リスト・アコーディオン型）。
 /// メニュー項目自体の追加・編集画面は持たない（DBへ直接投入する運用。`scripts/014_seed_menu_structure.sql`）。
 /// </summary>

@@ -6,7 +6,7 @@ namespace bmcs_app.Behaviors;
 
 /// <summary>
 /// ListBox/ListView（<c>SelectionMode="Extended"</c>）の複数選択結果を ViewModel の
-/// コレクションへ同期する（TODO.md 10-7、請求締め処理画面の複数選択印刷で導入）。
+/// コレクションへ同期する。
 /// <see cref="ListBox.SelectedItems"/>は依存関係プロパティでないため直接バインドできず、
 /// このビヘイビアで View→VM の一方向同期を行う（VM側から選択状態を書き換えるユースケースは無い）。
 /// </summary>

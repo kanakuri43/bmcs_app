@@ -4,7 +4,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Domain.Tests.Calculations;
 
 /// <summary>
-/// TODO.md 5-1 の完了条件「税区分3種×端数区分3種、全組み合わせの単体テストが通る」の
+/// 税区分3種×端数区分3種、全組み合わせの単体テストのうち
 /// 主対象となる9セルの行列。得意先の税区分（TaxUnit.Invoice/Slip/Line）ごとに
 /// 手計算した期待値を明示する。
 /// </summary>
@@ -43,7 +43,7 @@ public class TaxUnitCombinationTests
         Assert.Equal(expectedTotalTax, summary.TaxAmount);
     }
 
-    // TaxUnit.Slip: 伝票ごとに税率ごとに1回端数処理してから合算する（暫定C-4b）。
+    // TaxUnit.Slip: 伝票ごとに税率ごとに1回端数処理してから合算する。
     // 伝票A 標準: 1,005 → raw 100.5 / 軽減: 1,006.25 → raw 80.5
     // 伝票B 標準: 998(=2,003-1,005) → raw 99.8
     [Theory]

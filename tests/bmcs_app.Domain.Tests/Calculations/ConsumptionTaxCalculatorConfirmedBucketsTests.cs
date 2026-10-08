@@ -4,7 +4,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Domain.Tests.Calculations;
 
 /// <summary>
-/// <see cref="ConsumptionTaxCalculator.ResolveConfirmedBuckets"/>（TODO.md 10-5）のテスト。
+/// <see cref="ConsumptionTaxCalculator.ResolveConfirmedBuckets"/>のテスト。
 /// 金額は常に確定済み<see cref="TaxSummary"/>の値をそのまま使い、税率(%)ラベルだけを
 /// 明細行から拝借するという設計判断を直接検証する。
 /// </summary>

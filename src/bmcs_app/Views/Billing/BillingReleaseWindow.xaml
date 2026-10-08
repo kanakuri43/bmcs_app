@@ -8,9 +8,9 @@
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 6-2（2026-09-15改訂）。指定した請求日の確定済みbillingをまとめて解除済にし、
+        指定した請求日の確定済みbillingをまとめて解除済にし、
         紐付く売上を未請求へ戻す。請求締め処理（BillingClosingWindow）とは別画面とする
-        （C-8・2026-09-10確定）。入力は請求日のみで、対象を一覧表示してから一括で解除する
+        。入力は請求日のみで、対象を一覧表示してから一括で解除する
         （BillingClosingWindowと同様、プレビューはボタンを持たず条件変更時に自動再取得する）。
         対象の中に解除できないものが1件でもあれば解除実行を無効化する（All-or-nothing）。
     -->

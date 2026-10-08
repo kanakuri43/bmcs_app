@@ -3,7 +3,7 @@ using MahApps.Metro.Controls;
 
 namespace bmcs_app.Views.Order;
 
-/// <summary>受注入力画面（TODO.md 4-2）。</summary>
+/// <summary>受注入力画面。</summary>
 public partial class OrderEntryWindow : MetroWindow
 {
     public OrderEntryWindow()

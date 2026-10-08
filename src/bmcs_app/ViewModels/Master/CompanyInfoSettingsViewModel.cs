@@ -8,7 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Master;
 
 /// <summary>
-/// 自社情報マスタ画面（TODO.md 2-4）。1レコード運用のため、他マスタ画面（得意先・商品・社員）と違い
+/// 自社情報マスタ画面。1レコード運用のため、他マスタ画面（得意先・商品・社員）と違い
 /// コード検索・新規登録・無効化を持たない。画面表示時に唯一の行を読み込み、保存のみを行う
 /// （<see cref="Master.PrinterSettingsViewModel"/> と同じ「読み込み→編集→保存」の構成）。
 /// </summary>

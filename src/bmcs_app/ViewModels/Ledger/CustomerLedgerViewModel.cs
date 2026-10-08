@@ -17,29 +17,29 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Ledger;
 
 /// <summary>
-/// 得意先元帳画面（TODO.md 8-1）。得意先ごとの売上・入金明細と残高推移を時系列表示する。
+/// 得意先元帳画面。得意先ごとの売上・入金明細と残高推移を時系列表示する。
 /// 画面レイアウト・操作方法は旧デモ（bmcs_app.CustomerLedger）を踏襲しつつ、部分消込・複数入金を
 /// 扱うため入金額・残高の2列を追加した（項目に過不足がある場合は本プロジェクトを優先）。
 ///
 /// 締め・都度の両区分を同じ画面で扱う（デモは内税明細単位専用だったが、本プロジェクトは
-/// 全税単位を対象にする）。残高キャッシュ列は持たず都度集計する（M-11）。
+/// 全税単位を対象にする）。残高キャッシュ列は持たず都度集計する。
 ///
-/// <see cref="CurrentBalance"/>（TODO.md 8-2、本日時点の残高）は、検索期間（<see cref="PeriodFrom"/>／
+/// <see cref="CurrentBalance"/>（本日時点の残高）は、検索期間（<see cref="PeriodFrom"/>／
 /// <see cref="PeriodTo"/>）とは独立に、得意先確定時と表示（<see cref="SearchAsync"/>）実行時に毎回
 /// <see cref="CustomerLedgerQueryService.GetBalanceAsOfAsync"/> を呼んで都度計算する
-/// （M-11「残高キャッシュ列を持たない」。ウィンドウを開いたまま他画面の更新を自動検知する
+/// （ウィンドウを開いたまま他画面の更新を自動検知する
 /// 仕組みは持たない。再検索・再オープンのたびに必ず最新値になることが「常時表示」の意味。
 /// docs/design_document.md 21章）。得意先・<see cref="PeriodFrom"/>・<see cref="PeriodTo"/>の
 /// いずれかを変更すると<see cref="TriggerAutoRefresh"/>経由で表示が自動実行される
-/// （2026-09-17。専用ボタンは撤去済み。F5キーは手動再表示用に残す）。
+/// （専用ボタンは撤去済み。F5キーは手動再表示用に残す）。
 ///
-/// 伝票プレビュー（TODO.md 8-3、<see cref="OpenSlipPreview"/>）は行を <c>Enter</c>／ダブルクリック
+/// 伝票プレビュー（<see cref="OpenSlipPreview"/>）は行を <c>Enter</c>／ダブルクリック
 /// （<see cref="Behaviors.RowActivationBehavior"/>）で活性化すると、対応する売上入力・入金入力・
 /// 明細入金画面を <see cref="Services.WindowService.Show{TWindow, TViewModel}"/> の <c>configure</c>
-/// 経由で読み取り専用（プレビュー）表示する。印刷（Phase 10、元帳自体の帳票プレビュー）は
+/// 経由で読み取り専用（プレビュー）表示する。印刷（元帳自体の帳票プレビュー）は
 /// 別物で本タスクのスコープ外（ボタンは枠のみ用意し無効化する）。
 ///
-/// 請求集約元（TODO.md 12-E、docs/design_document.md 28-2節 #6）は取引履歴のみモードになる
+/// 請求集約元（docs/design_document.md 28-2節 #6）は取引履歴のみモードになる
 /// （<see cref="IsTransactionHistoryOnly"/>）。残高・繰越・現在残高は表示せず（<see cref="IsBalanceVisible"/>）、
 /// 案内文（<see cref="AggregationNotice"/>）で請求集約先を案内する。請求集約先は従来どおりの
 /// 表示だが、グループ内の請求集約元の伝票も含めて合算表示する（<see cref="CustomerLedgerQueryService"/>
@@ -63,7 +63,7 @@ public partial class CustomerLedgerViewModel(
     [ObservableProperty]
     public partial string TaxUnitDisplay { get; set; } = string.Empty;
 
-    /// <summary>本日時点の残高（TODO.md 8-2）。検索期間を変えても変化しない。</summary>
+    /// <summary>本日時点の残高。検索期間を変えても変化しない。</summary>
     [ObservableProperty]
     public partial decimal CurrentBalance { get; set; }
 
@@ -92,7 +92,7 @@ public partial class CustomerLedgerViewModel(
     [ObservableProperty]
     public partial decimal ClosingBalance { get; set; }
 
-    /// <summary>請求集約元の取引履歴のみモード（TODO.md 12-E）。</summary>
+    /// <summary>請求集約元の取引履歴のみモード。</summary>
     [ObservableProperty]
     public partial bool IsTransactionHistoryOnly { get; set; }
 
@@ -154,8 +154,7 @@ public partial class CustomerLedgerViewModel(
         => CurrentBalance = await ledgerQueryService.GetBalanceAsOfAsync(customerCode, DateOnly.FromDateTime(DateTime.Today)) ?? 0m;
 
     /// <summary>
-    /// 得意先・開始日付・終了日付のいずれかを変更すると自動的に実行される（TODO.md 8-1、
-    /// 2026-09-17変更）。専用の「表示」ボタンは、自動実行により不要になったため撤去した。
+    /// 得意先・開始日付・終了日付のいずれかを変更すると自動的に実行される。専用の「表示」ボタンは、自動実行により不要になったため撤去した。
     /// F5キーバインドは、他画面での更新後に手動で再表示したい場合に備えて残す。
     /// </summary>
     [RelayCommand]
@@ -219,7 +218,7 @@ public partial class CustomerLedgerViewModel(
         ReceiptTotal = result.ReceiptTotal;
         ClosingBalance = result.ClosingBalance;
 
-        // 表示のたびに本日時点の残高も再計算する（都度集計。M-11）。取引履歴のみモード
+        // 表示のたびに本日時点の残高も再計算する（都度集計）。取引履歴のみモード
         // （請求集約元）は残高を管理しないため呼ばない（GetBalanceAsOfAsyncはnullを返す）。
         if (!result.IsTransactionHistoryOnly)
         {
@@ -263,10 +262,10 @@ public partial class CustomerLedgerViewModel(
 
     /// <summary>
     /// 行の活性化（<c>Enter</c>／ダブルクリック。<see cref="Behaviors.RowActivationBehavior"/>）から
-    /// 伝票プレビュー（TODO.md 8-3）を開く。開く画面は行の種別で決まる:
+    /// 伝票プレビューを開く。開く画面は行の種別で決まる:
     /// <list type="bullet">
     /// <item><see cref="LedgerEntryKind.Sales"/>で<see cref="CustomerLedgerEntry.SalesSlipNumber"/>が
-    /// あれば売上入力。無ければ消込証跡の継続行（D-3。都度得意先のみ）で、実体は
+    /// あれば売上入力。無ければ消込証跡の継続行（都度得意先のみ）で、実体は
     /// <see cref="CustomerLedgerEntry.ReceiptSlipNumber"/>（detail_receiptの番号）なので明細入金。</item>
     /// <item><see cref="LedgerEntryKind.Receipt"/>は得意先の税区分で分岐（<c>ReceiptSlipNumber</c>は
     /// <c>receipt</c>／<c>detail_receipt</c>のどちらの番号かを区別する情報を持たないため）。</item>
@@ -291,7 +290,7 @@ public partial class CustomerLedgerViewModel(
                 break;
 
             case LedgerEntryKind.Sales when entry.ReceiptSlipNumber is { } detailReceiptNumber:
-                // 消込証跡の継続行（D-3）。SalesSlipNumberがnullで実体はdetail_receiptへのポインタ。
+                // 消込証跡の継続行。SalesSlipNumberがnullで実体はdetail_receiptへのポインタ。
                 OpenDetailReceiptPreview(detailReceiptNumber);
                 break;
 

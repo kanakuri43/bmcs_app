@@ -33,14 +33,14 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton(new DatabaseConnectionInfo(connectionString));
 
         // 現在操作している社員の解決。起動時パラメータ（ショートカット引数）の1つ目を社員コードとして扱う
-        // （TODO.md 0-7、docs/architecture.md 14章）。
+        // （docs/architecture.md 14章）。
         services.AddSingleton<ICurrentEmployeeContext>(new StartupArgsCurrentEmployeeContext(startupArgs));
 
-        // 端末ローカルのファイル I/O のみで DbContext に依存しないため Singleton（TODO.md 2-6）。
+        // 端末ローカルのファイル I/O のみで DbContext に依存しないため Singleton。
         services.AddSingleton<PrinterSettingsService>();
 
         // 単価決定ロジック。将来的に掛け率マスタ等（DBアクセスを伴う実装）へ差し替える想定のため、
-        // 現時点は状態を持たないが Scoped で登録しておく（M-3・2026-09-10確定）。
+        // 現時点は状態を持たないが Scoped で登録しておく（docs/decisions.md 参照）。
         services.AddScoped<IUnitPriceCalculator, StandardUnitPriceCalculator>();
 
         // ユースケースは DbContext と同じ Scoped で登録する。

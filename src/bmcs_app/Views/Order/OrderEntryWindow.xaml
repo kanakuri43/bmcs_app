@@ -10,7 +10,7 @@
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 4-3・5-3・4-6。旧プロトタイプ（bmcs_app.Order の OrderMainView.xaml）のレイアウトを
+        旧プロトタイプ（bmcs_app.Order の OrderMainView.xaml）のレイアウトを
         再現する。既存受注の読み込み・直接修正（未売上のみ）・中止（F8）に対応する。
         前後移動は、このプロジェクトの機能にまだ存在しないため、
         枠のみ用意し無効化している（理由は docs/design_document.md）。
@@ -123,7 +123,7 @@
                                  beh:FocusBehavior.IsInitialFocus="True"
                                  Text="{Binding OrderSlipNumberDisplay, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="自動採番（SPACEで検索）"
-                                 ToolTip="既存の受注No.を入力してEnterで読み込む（未売上のみ修正可。TODO.md 4-6）。Spaceで検索モーダルを開く">
+                                 ToolTip="既存の受注No.を入力してEnterで読み込む（未売上のみ修正可）。Spaceで検索モーダルを開く">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Space"  Command="{Binding OpenOrderSlipSearchCommand}" />
                                 <KeyBinding Key="Return" Command="{Binding LookupOrderSlipByNumberCommand}" />
@@ -152,7 +152,7 @@
                                  IsReadOnly="{Binding IsCustomerCodeReadOnly}"
                                  Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="コード（SPACEで検索）"
-                                 ToolTip="既存受注を読み込んだ後は得意先を変更できません（TODO.md 4-6）">
+                                 ToolTip="既存受注を読み込んだ後は得意先を変更できません">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Space"  Command="{Binding OpenCustomerSearchCommand}" />
                                 <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />
@@ -162,7 +162,7 @@
                                  IsEnabled="{Binding IsEditable}"
                                  Text="{Binding CustomerName, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.Watermark="名称（宛名変更時は上書き可）"
-                                 ToolTip="得意先コード検索後に自動入力される名称。学校のクラス・先生等の宛名を都度変更する場合は、ここを直接書き換える（子得意先マスタは持たない。C-9・2026-09-10確定）" />
+                                 ToolTip="得意先コード検索後に自動入力される名称。学校のクラス・先生等の宛名を都度変更する場合は、ここを直接書き換える（子得意先マスタは持たない）" />
                     </Grid>
 
                     <!-- 担当者（その伝票自体の担当者。得意先の営業担当を初期値に入れるが修正できる。任意） -->
@@ -386,7 +386,7 @@
                             Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" />
                     <Button Command="{Binding DeleteSlipCommand}"
                             Content="中止 (F8)"
-                            ToolTip="読み込んだ受注を中止します（終端状態・解除なし。TODO.md 4-4・5-3）" />
+                            ToolTip="読み込んだ受注を中止します（終端状態・解除なし）" />
                 </StackPanel>
             </Grid>
         </Border>

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace bmcs_app.Application.Order;
 
 /// <summary>
-/// 受注の状態遷移のユースケース（TODO.md 4-4）。新規登録専用の <see cref="OrderService"/> とは
+/// 受注の状態遷移のユースケース。新規登録専用の <see cref="OrderService"/> とは
 /// 責務を分ける。
 /// </summary>
 public class OrderStatusService(
@@ -21,7 +21,7 @@ public class OrderStatusService(
     /// 正のデルタ＝売上化、負のデルタ＝売上取消（逆遷移）。両方向を1メソッドで扱う
     /// （分けると同じ検証が二重になるため）。
     /// <see cref="OrderStatus.Cancelled"/> の明細行に対しては、正のデルタ（売上化）は拒否するが、
-    /// 負のデルタ（売上取消）は許可する（TODO.md 5-6。一部売上化 → 受注を中止 → その売上を
+    /// 負のデルタ（売上取消）は許可する（一部売上化 → 受注を中止 → その売上を
     /// 後から訂正・取消する、という順序があり得るため）。ただしその場合も状態は
     /// <see cref="OrderStatus.Cancelled"/> のまま維持し、未売上・一部売上へは戻さない
     /// （中止は終端状態。docs/product-spec.md）。
@@ -93,7 +93,7 @@ public class OrderStatusService(
             line.SalesConfirmedQuantity = updatedQuantity;
 
             // 中止は終端状態であり、負のデルタ（売上取消）で解除しない（docs/product-spec.md）。
-            // 中止済み行への負のデルタは、中止後に別途取消される売上の訂正・取消（TODO.md 5-6）から
+            // 中止済み行への負のデルタは、中止後に別途取消される売上の訂正・取消から
             // 呼ばれうる（例: 一部売上化 → 受注を中止 → その売上を後から訂正・取消する場合）ため許可するが、
             // 状態は Cancelled のまま維持し、未売上・一部売上へは戻さない。
             if (line.OrderStatus != OrderStatus.Cancelled)
@@ -110,7 +110,7 @@ public class OrderStatusService(
 
     /// <summary>
     /// 受注伝票（同一伝票番号の全明細行）を中止する。伝票単位のみの操作
-    /// （TODO.md 4-4 決定。業務上の失注・キャンセルは伝票丸ごとが通常のため）。
+    /// （業務上の失注・キャンセルは伝票丸ごとが通常のため）。
     /// 中止は終端状態であり、解除は実装しない（docs/product-spec.md の遷移定義どおり）。
     /// </summary>
     /// <exception cref="OrderOperationException">対象の受注が存在しない、または遷移できない状態の場合。</exception>

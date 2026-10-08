@@ -5,7 +5,7 @@ namespace bmcs_app.Domain.Calculations;
 /// <summary>
 /// <see cref="CustomerLedgerBuilder.Build"/> の入力。DBアクセスは呼び出し元
 /// （<c>CustomerLedgerQueryService</c>）の責務とし、本レコードは得意先の**全期間・未削除の全行**を
-/// 受け取る（繰越を全期間積み上げで算出するため。TODO.md 8-1 D-4）。
+/// 受け取る（繰越を全期間積み上げで算出するため）。
 /// </summary>
 /// <param name="Customer">得意先マスタ。</param>
 /// <param name="PeriodFrom">表示期間の開始日。</param>
@@ -34,7 +34,7 @@ public sealed record CustomerLedgerInput(
 
 /// <summary>
 /// <see cref="CustomerLedgerBuilder.Build"/> の出力。<see cref="Entries"/> の先頭は前月繰越行。
-/// ただし <see cref="IsTransactionHistoryOnly"/> が true（請求集約元。TODO.md 12-E）の場合は
+/// ただし <see cref="IsTransactionHistoryOnly"/> が true（請求集約元）の場合は
 /// 繰越行を持たず、<see cref="Entries"/> は売上行のみになる。
 /// </summary>
 /// <param name="SalesTotal">期間内の売上額計（返品・値引を含む純額。消費税は含まない）。</param>
@@ -42,8 +42,8 @@ public sealed record CustomerLedgerInput(
 /// 期間内の入金額計。エントリから直接積み上げる（前月繰越との差分から逆算する方式は採用しない）。
 /// </param>
 /// <param name="IsTransactionHistoryOnly">
-/// 請求集約元（<c>!Customer.IsBillingRoot</c>）の取引履歴のみモード（TODO.md 12-E、
-/// docs/design_document.md 28-2節 #6）。true のとき <see cref="OpeningBalance"/>／
+/// 請求集約元（<c>!Customer.IsBillingRoot</c>）の取引履歴のみモード
+/// （docs/design_document.md 28-2節 #6）。true のとき <see cref="OpeningBalance"/>／
 /// <see cref="TaxTotal"/>／<see cref="ReceiptTotal"/>／<see cref="ClosingBalance"/> はすべて 0
 /// （残高・繰越を持たない。入金・請求・売掛残高は請求集約先に集約されるため）。
 /// </param>

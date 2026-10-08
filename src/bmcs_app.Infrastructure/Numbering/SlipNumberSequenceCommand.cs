@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 namespace bmcs_app.Infrastructure.Numbering;
 
 /// <summary>
-/// 採番（<c>slip_number_sequences</c>）の同時実行制御付きINCREMENT（TODO.md 4-1）。
+/// 採番（<c>slip_number_sequences</c>）の同時実行制御付きINCREMENT。
 /// 単一の <c>UPDATE ... OUTPUT</c> 文で「+1して読む」をアトミックに行う。SQL Server の
 /// 行ロックが直列化を保証するため、このテーブルは row_version を持たない
 /// （docs/database-schema.md 2.17節）。

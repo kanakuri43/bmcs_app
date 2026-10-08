@@ -4,7 +4,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
-/// 親子請求（請求集約）のリンク可否判定（2026-09-29確定）。
+/// 親子請求（請求集約）のリンク可否判定。
 /// 得意先マスタに登録・更新しようとしている得意先（<paramref name="candidate"/>）の
 /// <see cref="Customer.BillingCustomerCode"/> が有効かどうかを、指し先の得意先
 /// （<paramref name="billingCustomer"/>、DBから未取得または存在しない場合は <c>null</c>）

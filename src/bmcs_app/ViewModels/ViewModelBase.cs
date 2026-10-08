@@ -4,7 +4,7 @@ namespace bmcs_app.ViewModels;
 
 /// <summary>
 /// 全 ViewModel の基底クラス。
-/// 進捗表示の見た目（オーバーレイ等）は Phase 0-5 で MahApps に載せる。
+/// 進捗表示の見た目（オーバーレイ等）は MahApps に載せる予定。
 /// </summary>
 public abstract partial class ViewModelBase : ObservableObject
 {

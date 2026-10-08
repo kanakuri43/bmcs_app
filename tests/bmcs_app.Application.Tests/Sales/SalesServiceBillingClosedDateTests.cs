@@ -160,7 +160,7 @@ public class SalesServiceBillingClosedDateTests(DevDatabaseFixture fixture) : IC
             await InsertCustomerAsync(dbContext, rootCode);
             await InsertCustomerAsync(dbContext, childCode, billingCustomerCode: rootCode);
             // billingsは請求集約先(root)にしか作られない。childは自身のコードでは1件もbillingsを
-            // 持たない（Phase 12-B）。
+            // 持たない。
             await InsertBillingAsync(dbContext, "__TSTBIL_SDL06", rootCode, new DateOnly(2026, 9, 30));
 
             var ex = await Assert.ThrowsAsync<SalesOperationException>(

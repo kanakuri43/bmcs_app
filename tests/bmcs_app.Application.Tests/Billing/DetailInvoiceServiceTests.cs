@@ -10,7 +10,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Billing;
 
 /// <summary>
-/// 明細請求書発行（TODO.md 6-3）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
+/// 明細請求書発行の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する
 /// （docs/architecture.md 16章）。完了条件「対象条件が明細行単位で正しく効いている」の実証。
 /// </summary>
 /// <remarks>

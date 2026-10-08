@@ -13,7 +13,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Closing;
 
 /// <summary>
-/// 月次締め処理（TODO.md 9-1）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する。
+/// 月次締め処理の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する。
 /// 完了条件「集計値が元帳の残高と一致する」の実証。
 /// </summary>
 /// <remarks>

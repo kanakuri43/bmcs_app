@@ -4,7 +4,7 @@ namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
 /// 売上明細行の消込状態（<see cref="SettlementStatus"/>）を、対象額（<c>sales.amount</c>）と
-/// 消込済金額（<c>sales.settled_amount</c>）から判定する（TODO.md 7-1）。
+/// 消込済金額（<c>sales.settled_amount</c>）から判定する。
 /// </summary>
 public static class SettlementStatusCalculator
 {

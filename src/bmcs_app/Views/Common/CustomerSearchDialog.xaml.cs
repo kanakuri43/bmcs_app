@@ -3,7 +3,7 @@ using MahApps.Metro.Controls;
 
 namespace bmcs_app.Views.Common;
 
-/// <summary>得意先検索モーダル（TODO.md 3-1）。</summary>
+/// <summary>得意先検索モーダル。</summary>
 public partial class CustomerSearchDialog : MetroWindow
 {
     public CustomerSearchDialog()

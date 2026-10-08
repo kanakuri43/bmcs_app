@@ -8,14 +8,14 @@
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 8-1。得意先ごとの売上・入金明細と残高推移を時系列表示する。レイアウトは旧デモ
+        得意先ごとの売上・入金明細と残高推移を時系列表示する。レイアウトは旧デモ
         （bmcs_app.CustomerLedger）を踏襲しつつ、部分消込・複数入金を扱うため入金額・残高の
         2列を追加した。都度得意先の消込済み売上行には、証跡として入金日付・入金No.を同じ行の
         右側に表示する（金額は載せない。残高は入金日付の独立行でのみ変化する）。
         締め得意先の入金は独立行になり、左側の売上欄は空欄になる。
-        印刷・プレビューはPhase 10（帳票）の範囲のため枠のみ用意し無効化する。
-        得意先・期間のいずれかを変更すると自動的に再表示するため、「表示」ボタンは撤去した
-        （2026-09-17）。F5キーは他画面での更新後に手動で再表示したい場合に備えて残す。
+        印刷・プレビューは帳票未実装のため枠のみ用意し無効化する。
+        得意先・期間のいずれかを変更すると自動的に再表示するため、「表示」ボタンは撤去している。
+        F5キーは他画面での更新後に手動で再表示したい場合に備えて残す。
     -->
     <mah:MetroWindow.InputBindings>
         <KeyBinding Key="F5" Command="{Binding SearchCommand}" />
@@ -67,19 +67,19 @@
                             SelectedDate="{Binding PeriodTo}" />
 
                 <Button Content="プレビュー" Padding="12,6" Margin="0,0,8,0" IsEnabled="False"
-                        ToolTip="帳票基盤・得意先元帳印刷（Phase 10、未実装）" />
+                        ToolTip="得意先元帳の印刷（未実装）" />
                 <Button Content="印刷" Padding="12,6" IsEnabled="False"
-                        ToolTip="帳票基盤・得意先元帳印刷（Phase 10、未実装）" />
+                        ToolTip="得意先元帳の印刷（未実装）" />
             </StackPanel>
 
-            <!-- 請求集約元の案内文（取引履歴のみモード、TODO.md 12-E）。 -->
+            <!-- 請求集約元の案内文（取引履歴のみモード）。 -->
             <TextBlock Text="{Binding AggregationNotice}" Margin="0,8,0,0" FontWeight="SemiBold"
                        Foreground="{DynamicResource MahApps.Brushes.Accent}"
                        Visibility="{Binding IsTransactionHistoryOnly, Converter={StaticResource BooleanToVisibilityConverter}}" />
         </StackPanel>
 
         <!-- ===== 明細 ===== -->
-        <!-- 行をEnter／ダブルクリックで活性化すると、対応する伝票を読み取り専用（プレビュー）で開く（TODO.md 8-3） -->
+        <!-- 行をEnter／ダブルクリックで活性化すると、対応する伝票を読み取り専用（プレビュー）で開く -->
         <ListView Grid.Row="1" ItemsSource="{Binding Lines}"
                   ToolTip="行をEnterまたはダブルクリックすると、対応する伝票をプレビュー表示します。"
                   beh:RowActivationBehavior.Command="{Binding OpenSlipPreviewCommand}">
@@ -88,7 +88,7 @@
                     <GridViewColumn Header="区分" Width="60" DisplayMemberBinding="{Binding KindLabel}" />
                     <GridViewColumn Header="伝票日付" Width="90" DisplayMemberBinding="{Binding Entry.EntryDate, StringFormat={}{0:yyyy/MM/dd}}" />
                     <!-- 請求集約先の元帳はグループ内の複数得意先の伝票が混在するため、どの得意先の
-                         伝票かを表示する（TODO.md 12-E）。売上・入金行以外は空欄。 -->
+                         伝票かを表示する。売上・入金行以外は空欄。 -->
                     <GridViewColumn Header="得意先" Width="140" DisplayMemberBinding="{Binding CustomerLabel}" />
                     <GridViewColumn Header="伝票No" Width="110" DisplayMemberBinding="{Binding Entry.SalesSlipNumber}" />
                     <GridViewColumn Header="行" Width="36" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
@@ -141,7 +141,7 @@
                     <GridViewColumn Header="残高" Width="100" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <!-- 取引履歴のみモード（請求集約元、TODO.md 12-E）は残高を表示しない
+                                <!-- 取引履歴のみモード（請求集約元）は残高を表示しない
                                      （BalanceDisplayがnullを返し空欄になる）。 -->
                                 <TextBlock Text="{Binding BalanceDisplay, StringFormat={}{0:N0}}" HorizontalAlignment="Right" FontWeight="SemiBold" />
                             </DataTemplate>
@@ -157,10 +157,10 @@
                 BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
                 BorderThickness="0,1,0,0">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <!-- 前月繰越・消費税計・入金額計・残高は請求集約元（取引履歴のみモード、TODO.md 12-E）
+                <!-- 前月繰越・消費税計・入金額計・残高は請求集約元（取引履歴のみモード）
                      では管理しないため非表示にする。売上額計は常に表示する（税抜）。 -->
-                <!-- 現在残高（TODO.md 8-2）。検索期間とは独立に、得意先確定時と表示(F5)実行時に
-                     都度計算する（残高キャッシュ列は持たない。M-11）。 -->
+                <!-- 現在残高。検索期間とは独立に、得意先確定時と表示(F5)実行時に
+                     都度計算する（残高キャッシュ列は持たない）。 -->
                 <StackPanel Orientation="Horizontal"
                             Visibility="{Binding IsBalanceVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <TextBlock Text="現在残高" VerticalAlignment="Center" Margin="0,0,4,0" FontWeight="Bold" />

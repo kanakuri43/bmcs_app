@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace bmcs_app.Application.Common;
 
 /// <summary>
-/// 税率マスタの取得（TODO.md 5-1）。売上・受注・請求の各ユースケースから使う。
+/// 税率マスタの取得。売上・受注・請求の各ユースケースから使う。
 /// <c>tax_rate_master</c> はごく少数行のため全件取得し、伝票日付ごとの解決は
 /// Domain の <see cref="TaxRateResolver"/> に任せる（1伝票／1締め期間で1クエリで済む）。
 /// </summary>

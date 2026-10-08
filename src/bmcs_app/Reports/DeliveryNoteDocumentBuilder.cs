@@ -10,7 +10,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Reports;
 
 /// <summary>
-/// 納品書のレイアウト（TODO.md 10-4、2026-09-17改訂：ミシン目入りA4用紙・3段複写に変更）。
+/// 納品書のレイアウト。
 /// 参考実装（別リポジトリ <c>bmcs_app.Sales/Services/SalesPrintHelper.cs</c>の
 /// <c>BuildTripleDocument</c>系）を移植したもの。1枚のA4を<see cref="SectionTitles"/>の3セクションに
 /// 分け、同一内容を「納品書（控）」「請求書」「納品書」の順に印字する（内容は3セクションとも同一で、

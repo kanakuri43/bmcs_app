@@ -6,7 +6,7 @@ namespace bmcs_app.ViewModels.Receipt;
 
 /// <summary>
 /// 入金入力画面の明細行1行分。支払手段の内訳（入金方法＋金額）を表す
-/// （docs/design_document.md 17章、2026-09-15改訂）。<see cref="Common.SlipLineViewModel"/>と
+/// （docs/design_document.md 17章）。<see cref="Common.SlipLineViewModel"/>と
 /// 同じ「親のコールバックを注入され、行自身が削除コマンドを持つ」構造。
 /// </summary>
 public partial class ReceiptLineViewModel : ObservableObject
@@ -22,7 +22,7 @@ public partial class ReceiptLineViewModel : ObservableObject
     public partial short LineNumber { get; set; }
 
     /// <summary>
-    /// 訂正（TODO.md 7-5）で、読込時に存在した実際の行番号を保持する。<c>null</c>＝新規追加行
+    /// 訂正で、読込時に存在した実際の行番号を保持する。<c>null</c>＝新規追加行
     /// （<see cref="Common.SlipLineViewModel.PersistedLineNumber"/>と同じ理由。主キーの一部である
     /// 実際の行番号とは独立に保持し、行の並べ替え・削除で誤って詰め直さないようにする）。
     /// </summary>

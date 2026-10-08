@@ -9,7 +9,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Reports;
 
 /// <summary>
-/// 帳票の A4 描画プリミティブ（TODO.md 10-3、帳票基盤。2026-09-17、納品書3段複写対応で分割）。
+/// 帳票の A4 描画プリミティブ。
 /// 参考実装（別リポジトリ <c>bmcs_app.Sales/Services/SalesPrintHelper.cs</c>）のうち、
 /// 帳票種別に依存しない部分（A4寸法・明細テーブル1行の描画・共通描画ユーティリティ）だけを
 /// 切り出したもの。改ページを伴う単一フロー帳票（請求書・明細請求書）は
@@ -134,8 +134,7 @@ public abstract class ReportDocumentBuilder
             Margin = new Thickness(0, 2, 0, 2),
         };
 
-    // ── 帳票2枚目（TODO.md 10-5、請求書・明細請求書）を書いた時点で共通部分の不足が判明した
-    // ため基底へ引き上げた処理（10-3のコメントどおり）。DeliveryNoteDocumentBuilder もこれらを使う。
+    // ── 複数の帳票で共通に使うため基底へ置いた処理。DeliveryNoteDocumentBuilder もこれらを使う。
 
     /// <summary>宛先ブロック（郵便番号・住所・宛名＋敬称）。</summary>
     protected static FrameworkElement BuildCustomerBlock(
@@ -167,7 +166,7 @@ public abstract class ReportDocumentBuilder
     /// <summary>
     /// 発行者情報ボックス（社名・住所・TEL/FAX・登録番号）。<paramref name="printRepresentative"/>が
     /// 真のときは「代表者　○○○○」＋押印用の空欄枠を追加する（得意先マスタ
-    /// <c>print_representative_flag</c>、TODO.md 10-5）。納品書は適格請求書として扱わない方針
+    /// <c>print_representative_flag</c>）。納品書は適格請求書として扱わない方針
     /// のため常に偽で呼ぶ。
     /// </summary>
     protected static FrameworkElement BuildCompanyInfoBox(
@@ -239,7 +238,7 @@ public abstract class ReportDocumentBuilder
     /// の直下に独立した枠として置く）。得意先マスタに紐づけた口座（最大2件、
     /// <c>customers.bank_account_code1</c>／<c>bank_account_code2</c>）をスロット順に印字する。
     /// 1口座1行（口座名義は印字しない）。紐づけが0〜1件でも常に「見出し1行＋2行」の固定行数で組み立てることで、得意先によって
-    /// 明細の開始位置がずれないようにする（2026-09-29確定）。行数を固定にしているため、
+    /// 明細の開始位置がずれないようにする。行数を固定にしているため、
     /// 高さを明示指定する必要はない（内容量に関わらず自然な高さが常に一定になる）。
     /// </summary>
     protected static FrameworkElement BuildBillingBankAccountsBox(IReadOnlyList<BankAccount> accounts)

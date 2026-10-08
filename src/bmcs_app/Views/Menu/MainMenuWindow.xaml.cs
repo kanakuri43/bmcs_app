@@ -4,7 +4,7 @@ using MahApps.Metro.Controls;
 
 namespace bmcs_app.Views.Menu;
 
-/// <summary>メインメニュー画面（TODO.md 2-7）。</summary>
+/// <summary>メインメニュー画面。</summary>
 public partial class MainMenuWindow : MetroWindow
 {
     public MainMenuWindow()

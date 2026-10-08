@@ -26,7 +26,7 @@ public class WindowService(IServiceScopeFactory scopeFactory, ILogger<WindowServ
     /// <b>ここで渡すのはプロパティの設定だけにする。</b> ウィンドウの初期化（DB読込）は
     /// View の <c>Loaded</c> イベント→ViewModel の <c>LoadCommand</c> が担うため
     /// （<c>Show</c>は<c>window.Show()</c>の前に本コールバックを呼ぶが、<c>Loaded</c>はその後に
-    /// 非同期で発火する。ここで非同期処理を行うと実行順が保証されない。TODO.md 8-3）。
+    /// 非同期で発火する。ここで非同期処理を行うと実行順が保証されない）。
     /// </param>
     public TWindow Show<TWindow, TViewModel>(Action<TViewModel>? configure = null)
         where TWindow : Window

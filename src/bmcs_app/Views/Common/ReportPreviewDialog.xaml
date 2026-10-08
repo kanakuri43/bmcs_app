@@ -8,7 +8,7 @@
                  ShowInTaskbar="False"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 10-3。全帳票が共通で使う帳票プレビュー（特定帳票の知識を持たない）。
+        全帳票が共通で使う帳票プレビュー（特定帳票の知識を持たない）。
         DocumentViewer は既定で組込みツールバー（印刷ボタン＝標準の印刷ダイアログを開く）を持つが、
         「設定済みプリンタへダイアログなしで直接送信する」方針（docs/report-spec.md 1章）と
         矛盾するため、ControlTemplate を PART_ContentHost（DocumentViewer が要求する名前付き

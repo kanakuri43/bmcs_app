@@ -10,7 +10,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Billing;
 
 /// <summary>
-/// 明細請求書発行のユースケース（TODO.md 6-3）。都度得意先（<c>tax_unit = 3</c>内税明細単位）の
+/// 明細請求書発行のユースケース。都度得意先（<c>tax_unit = 3</c>内税明細単位）の
 /// 未請求かつ消込完了でない売上明細行を数件選び、<c>detail_invoice</c>／
 /// <c>detail_invoice_sales_line</c>へ確定する。締め請求（<see cref="BillingClosingService"/>）とは
 /// 異なり、締め得意先の<c>billing_number</c>は使わず連携テーブルのみで紐付ける
@@ -70,7 +70,7 @@ public class DetailInvoiceService(
     }
 
     /// <summary>
-    /// 明細請求書の印刷データを組み立てる（TODO.md 10-5、画面表示・印刷用、保存しない）。
+    /// 明細請求書の印刷データを組み立てる（画面表示・印刷用、保存しない）。
     /// <see cref="GetByNumberAsync"/>と同じヘッダー・連携行・売上行を取得したうえで、
     /// 印刷に必要な得意先の住所・代表者印字フラグ・自社情報・振込先口座を追加で取得する。
     /// 取消済み（連携行が物理削除済み）を指定した場合は明細0件・ヘッダーの確定金額のみが返る
@@ -269,7 +269,7 @@ public class DetailInvoiceService(
     }
 
     /// <summary>
-    /// 明細請求書を取消す（TODO.md 6-4）。連携行（<c>detail_invoice_sales_line</c>）を物理削除し、
+    /// 明細請求書を取消す。連携行（<c>detail_invoice_sales_line</c>）を物理削除し、
     /// 連携先の売上明細行を未請求へ戻す。連携行が消えることで<see cref="BuildCandidateQuery"/>の
     /// 「どの明細請求書にも連携していない」条件が再び真になり、同じ売上を再度請求できる
     /// （完了条件）。ヘッダー（<c>detail_invoice</c>）は物理削除せず<c>invoice_status</c>を
@@ -299,9 +299,9 @@ public class DetailInvoiceService(
             throw new DetailInvoiceException("既に取消済みです。");
         }
 
-        // Phase 7-4（明細入金）は未実装だが、テーブル・FK・seedデータは既に存在する
+        // 明細入金（detail_receipt）が明細請求書を充当先として指す（テーブル・FKが存在する）
         // （docs/database-schema.md 2.11節）。取消すると入金の充当先が宙に浮くため、
-        // 7-4の実装を待たずにここで塞ぐ。
+        // 入金済みの場合はここで取消を拒否する。
         var linkedReceipt = await dbContext.DetailReceipts
             .AsNoTracking()
             .Where(r => r.TargetDetailInvoiceNumber == detailInvoiceNumber && !r.IsDeleted)
@@ -368,7 +368,7 @@ public class DetailInvoiceService(
 
     /// <summary>
     /// 得意先マスタに紐づいた振込先口座を、スロット順（口座1→口座2）で解決する
-    /// （TODO.md 10-5。論理削除済みの口座・得意先が見つからない場合は空リスト）。
+    /// （論理削除済みの口座・得意先が見つからない場合は空リスト）。
     /// </summary>
     private async Task<IReadOnlyList<BankAccount>> ResolveBillingBankAccountsAsync(
         Customer? customer, CancellationToken cancellationToken)

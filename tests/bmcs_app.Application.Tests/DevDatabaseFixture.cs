@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace bmcs_app.Application.Tests;
 
 /// <summary>
-/// 開発用ライブDB（172.16.3.171）に対する結合テストの共通フィクスチャ（TODO.md 4-1）。
+/// 開発用ライブDB（172.16.3.171）に対する結合テストの共通フィクスチャ。
 /// <see cref="ApplicationServiceCollectionExtensions.AddApplication"/> を通してサービスを
 /// 解決するため、DI 配線も含めて検証できる。
 /// </summary>

@@ -2,7 +2,7 @@ namespace bmcs_app.Domain.Entities;
 
 /// <summary>
 /// 入金方法マスタ（deposit_method）。現金・振込・手形・相殺等、利用者が自由に追加・編集できる
-/// （旧 ReceiptMethod enum を廃止し、マスタ駆動に置き換えたもの。2026-09-18決定）。
+/// （旧 ReceiptMethod enum を廃止し、マスタ駆動に置き換えたもの）。
 /// </summary>
 public class DepositMethod : AuditableEntity
 {

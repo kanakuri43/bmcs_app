@@ -8,8 +8,8 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Closing;
 
 /// <summary>
-/// 月次締め解除処理画面（TODO.md 9-3）。月次締め処理（<see cref="MonthlyClosingViewModel"/>）とは
-/// 別画面（別ウィンドウ）とする（C-8・2026-09-10確定。管理者権限のみの操作を画面分離で表現する。
+/// 月次締め解除処理画面。月次締め処理（<see cref="MonthlyClosingViewModel"/>）とは
+/// 別画面（別ウィンドウ）とする（管理者権限のみの操作を画面分離で表現する。
 /// 権限はメニュー単位の判定のみで、本画面では行わない）。構成は締め解除処理（請求）と同じで、
 /// 入力は集計年月のみ。画面表示時・年月変更時に自動でプレビューを取得し、保存を伴う解除実行のみ
 /// 明示操作にする。対象は年月単位でまとめて表示し、解除も一括で行う（All-or-nothing。

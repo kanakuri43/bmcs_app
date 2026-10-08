@@ -11,7 +11,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Closing;
 
 /// <summary>
-/// 確定後のロック（TODO.md 9-2）の結合テスト。開発用ライブDB（172.16.3.171）に対して実行する。
+/// 確定後のロックの結合テスト。開発用ライブDB（172.16.3.171）に対して実行する。
 /// 月次締めの行はテストが直接INSERTし（締め処理自体は <see cref="MonthlyClosingServiceTests"/> の担当）、
 /// 専用のテスト得意先（<c>__TSTMLK*</c>）に対してのみ作るため、後始末は得意先コードで物理削除する。
 /// </summary>

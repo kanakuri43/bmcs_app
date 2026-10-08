@@ -5,14 +5,14 @@ using Microsoft.EntityFrameworkCore;
 namespace bmcs_app.Application.Closing;
 
 /// <summary>
-/// 月次締め済みかどうかの判定（TODO.md 9-2）。売上・入金の編集ロック（既存行の訂正・取消）と、
+/// 月次締め済みかどうかの判定。売上・入金の編集ロック（既存行の訂正・取消）と、
 /// 新規登録・日付変更の入口検証の両方がこのクラスを使う（判定ルールを1か所に集約する）。
 ///
 /// 「得意先 C の日付 D は月次締め済み」⇔ <c>monthly_closings</c> に、<c>closing_date</c> が D の月末日、
 /// <c>closing_status = Confirmed</c>、<c>customer_code</c> が C **または C の請求集約先**
 /// （<c>customers.billing_customer_code</c>）である行がある。請求集約先の月次行にはグループ全体
 /// （請求集約元の売上・入金）が入るため、請求集約元に自分の行が無くても、請求集約先が確定済みなら
-/// 請求集約元の伝票も動かせないようにする（2026-09-30ユーザー確認）。単独得意先・請求集約先は
+/// 請求集約元の伝票も動かせないようにする。単独得意先・請求集約先は
 /// <c>billing_customer_code</c> が自分自身なので、自社の行だけを見る従来どおりの挙動になる。
 /// 解除済み（<see cref="ClosingStatus.Released"/>）は締め済みに含めない。
 /// </summary>

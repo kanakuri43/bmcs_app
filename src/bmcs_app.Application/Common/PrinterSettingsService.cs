@@ -3,7 +3,7 @@ using bmcs_app.Infrastructure.LocalSettings;
 namespace bmcs_app.Application.Common;
 
 /// <summary>
-/// プリンタ設定（端末ローカル、<c>bmcs_config.json</c>）の読み書き。DBは使わない（TODO.md 2-6）。
+/// プリンタ設定（端末ローカル、<c>bmcs_config.json</c>）の読み書き。DBは使わない。
 /// </summary>
 public class PrinterSettingsService
 {

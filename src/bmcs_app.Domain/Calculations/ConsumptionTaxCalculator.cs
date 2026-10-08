@@ -3,7 +3,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
-/// 消費税計算の共通ロジック（TODO.md 5-1）。売上入力・返品値引・請求締め・明細請求書発行の
+/// 消費税計算の共通ロジック。売上入力・返品値引・請求締め・明細請求書発行の
 /// 4箇所から使う想定のため、端数処理の規則をここに集約する。
 ///
 /// 得意先の税区分（<see cref="TaxUnit"/>）ごとに保存すべき値の個数が異なる
@@ -13,7 +13,7 @@ namespace bmcs_app.Domain.Calculations;
 /// インボイス制度の原則は「税率ごとに区分した消費税額は1枚の請求書につき税率ごとに1回」の
 /// 端数処理だが、伝票単位・内税明細単位の得意先は構造上これを満たせない
 /// （<c>docs/design_document.md</c> 2章で税理士確認待ちの【要確認】として記録済み）。
-/// TODO.md の暫定決定 C-4b「得意先マスタの税区分どおりに計算する」に従い、
+/// 暫定方針として「得意先マスタの税区分どおりに計算する」に従い、
 /// 伝票単位は伝票ごと、内税明細単位は明細行ごとに端数処理する
 /// （<see cref="CalculateExternalTaxPerSlip"/> / <see cref="CalculateInternalTaxPerLine"/>）。
 /// 将来方針が変わった場合は、抽象化を挟まずこのクラスと対応するテストを直接修正する。
@@ -59,7 +59,7 @@ public static class ConsumptionTaxCalculator
 
     /// <summary>
     /// 伝票単位の得意先の請求締め用。伝票ごとに確定した税額を積み上げる
-    /// （請求全体で1回だけ丸め直すのではない。暫定 C-4b）。
+    /// （請求全体で1回だけ丸め直すのではない。税区分どおりの暫定処理）。
     /// </summary>
     public static TaxSummary CalculateExternalTaxPerSlip(
         IEnumerable<IEnumerable<TaxLine>> slips, RoundingType roundingType)
@@ -92,12 +92,12 @@ public static class ConsumptionTaxCalculator
     }
 
     /// <summary>
-    /// 明細請求書用。明細行ごとに確定した税額を積み上げる（暫定 C-4b）。
+    /// 明細請求書用。明細行ごとに確定した税額を積み上げる（税区分どおりの暫定処理）。
     /// </summary>
     public static TaxSummary CalculateInternalTaxPerLine(IEnumerable<TaxLine> lines, RoundingType roundingType)
         => ToSummary(lines.Select(l => CalculateInternalTaxBucket(l, roundingType)));
 
-    // ---- 帳票印字用（TODO.md 10-5） ----
+    // ---- 帳票印字用 ----
 
     /// <summary>
     /// 確定済みの固定5カラム（<see cref="TaxSummary"/>）に、明細行から拝借した適用税率(%)を
@@ -107,7 +107,7 @@ public static class ConsumptionTaxCalculator
     /// <c>tax_rate</c>をスナップショットとして持つため、金額は確定値をそのまま使い、
     /// 税率ラベルだけを該当する税種別区分を持つ明細行から拝借する。こうすることで、
     /// 伝票単位（伝票ごとに端数処理）と請求全体の再集計との二重丸めによる金額不一致を避けつつ、
-    /// 適格請求書の法定記載事項である税率(%)を表示できる（TODO.md 10-5設計判断）。
+    /// 適格請求書の法定記載事項である税率(%)を表示できる。
     /// 対価額・税額がともに0の区分（非課税は対価額のみ）は出力しない
     /// （<see cref="CalculateExternalTaxBuckets"/>と同じ「0円の区分は載せない」扱い）。
     /// </summary>

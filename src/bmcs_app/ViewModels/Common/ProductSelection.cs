@@ -2,7 +2,7 @@ using bmcs_app.Domain.Enums;
 
 namespace bmcs_app.ViewModels.Common;
 
-/// <summary>商品検索モーダル（TODO.md 3-2）から呼び出し元へ転記される1件。</summary>
+/// <summary>商品検索モーダルから呼び出し元へ転記される1件。</summary>
 public sealed record ProductSelection(
     string ProductCode,
     string ProductName,

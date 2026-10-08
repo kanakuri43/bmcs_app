@@ -15,17 +15,17 @@ using DetailReceiptEntity = bmcs_app.Domain.Entities.DetailReceipt;
 namespace bmcs_app.ViewModels.Receipt;
 
 /// <summary>
-/// 明細入金画面（TODO.md 7-4・7-5）。都度得意先（内税明細単位）専用。締め得意先（請求単位／伝票単位）の
-/// 入金は入金入力画面（TODO.md 7-2）が担う。
+/// 明細入金画面。都度得意先（内税明細単位）専用。締め得意先（請求単位／伝票単位）の
+/// 入金は入金入力画面が担う。
 ///
 /// 画面レイアウト・操作方法は旧デモ<c>bmcs_app.LineReceipt</c>を踏襲する（左＝入金登録の明細行、
 /// 右＝上段タブ〈売上伝票／明細請求書〉＋下段の選択伝票明細）。ただし充当の粒度はスキーマに
 /// 合わせて改めた: 売上伝票タブは売上明細行単位、明細請求書タブは請求書まるごと1行（デモは
-/// 請求書タブでも行単位だったが不採用。2026-09-15ユーザー確認。docs/design_document.md 18章）。
+/// 請求書タブでも行単位だったが不採用。docs/design_document.md 18章）。
 /// 金額は常に対象の全額（または残額）で固定・読み取り専用。前受金は無く、充当先が未定の行は
 /// 作らない。
 ///
-/// 振込手数料差額の入力（TODO.md 7-3）はこの画面のスコープ外。既存伝票の訂正・取消（TODO.md 7-5）は
+/// 振込手数料差額の入力はこの画面のスコープ外。既存伝票の訂正・取消は
 /// 伝票No.欄で読み込んだ後、入金方法・入金先口座・行摘要・伝票摘要・入金日付の変更と行の削除のみ
 /// 保存(F10)＝訂正として扱う（<see cref="DetailReceiptEntryService"/>のdoc comment参照。**充当先の
 /// 追加はできない**ため、読込時は右ペインの候補一覧を表示しない）。取消(F8)＝取消。
@@ -43,7 +43,7 @@ public partial class DetailReceiptEntryViewModel(
     private IReadOnlyList<short> _loadedLineNumbers = [];
 
     /// <summary>
-    /// 伝票プレビュー（TODO.md 8-3）用の入口。得意先元帳からの表示専用で開くとき、
+    /// 伝票プレビュー用の入口。得意先元帳からの表示専用で開くとき、
     /// <see cref="Services.WindowService.Show{TWindow, TViewModel}"/> の <c>configure</c> から
     /// ウィンドウ表示前に一度だけ設定する。値は以後変化しないため<c>[ObservableProperty]</c>は使わない。
     /// </summary>
@@ -52,14 +52,14 @@ public partial class DetailReceiptEntryViewModel(
     /// <summary>プレビュー表示中かどうか。</summary>
     public bool IsPreviewMode => PreviewSlipNumber is not null;
 
-    /// <summary>ウィンドウタイトル（TODO.md 8-3）。</summary>
+    /// <summary>ウィンドウタイトル。</summary>
     public string WindowTitle => IsPreviewMode ? "bmcs_app - 明細入金（プレビュー・編集不可）" : "bmcs_app - 明細入金";
 
     public ObservableCollection<BankAccount> BankAccounts { get; } = [];
 
     /// <summary>
     /// 手形期日を要する入金方法は除外する（detail_receipt は手形期日を保持する列を持たないため。
-    /// 決定3・2026-09-15確定。旧enumのハードコード除外を2026-09-18にマスタのフラグ駆動へ移行）。
+    /// 除外はマスタのフラグで駆動する）。
     /// </summary>
     public ObservableCollection<DepositMethod> DepositMethods { get; } = [];
 
@@ -81,8 +81,7 @@ public partial class DetailReceiptEntryViewModel(
     public partial bool IsExistingLoaded { get; set; }
 
     /// <summary>
-    /// 編集ロック中かどうか（<see cref="DetailReceiptEntryService.EvaluateEditLockAsync"/>の結果。
-    /// TODO.md 7-5）。ViewModelは判定せず、結果をそのまま表示・反映するだけにする
+    /// 編集ロック中かどうか（<see cref="DetailReceiptEntryService.EvaluateEditLockAsync"/>の結果）。ViewModelは判定せず、結果をそのまま表示・反映するだけにする
     /// （docs/architecture.md 5章）。
     /// </summary>
     [ObservableProperty]
@@ -140,7 +139,7 @@ public partial class DetailReceiptEntryViewModel(
     [ObservableProperty]
     public partial DetailReceiptInvoiceCandidate? SelectedInvoiceCandidate { get; set; }
 
-    /// <summary>選択中の明細請求書の明細（参考表示・読み取り専用。決定1により行単位では取込めない）。</summary>
+    /// <summary>選択中の明細請求書の明細（参考表示・読み取り専用。行単位では取込めない）。</summary>
     public ObservableCollection<DetailInvoiceSalesLineItem> SelectedInvoiceLines { get; } = [];
 
     // ── 右ペインのタブ選択（0=売上伝票, 1=明細請求書） ─────────
@@ -187,7 +186,7 @@ public partial class DetailReceiptEntryViewModel(
         if (PreviewSlipNumber is { } previewSlipNumber)
         {
             // Loaded → LoadCommand の async void 経路で呼ばれるため、ここで例外を握らないと
-            // アプリがクラッシュする（TODO.md 8-3）。
+            // アプリがクラッシュする。
             try
             {
                 await LookupByNumberAsync(previewSlipNumber);
@@ -470,14 +469,14 @@ public partial class DetailReceiptEntryViewModel(
     /// <summary>
     /// 入金No.欄で Return を押したときの挙動（docs/product-spec.md UI/UX節「ジャーナル系画面の
     /// 伝票No入力欄の挙動」）。空欄なら新規登録モードとして次項目（入金日付）へフォーカス移動する
-    /// のみ。入力済みなら既存の明細入金No.で直接読み込む（訂正・取消モード。TODO.md 7-5）。
+    /// のみ。入力済みなら既存の明細入金No.で直接読み込む（訂正・取消モード）。
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanEdit))]
     private Task LookupAsync() => RunBusyAsync(() => LookupByNumberAsync(DetailReceiptNumberQuery));
 
     /// <summary>
     /// 明細入金No.欄からの読込の本体。<see cref="LookupAsync"/>（対話操作）と<see cref="LoadAsync"/>
-    /// （プレビュー。TODO.md 8-3）の両方から呼ぶため、<see cref="RunBusyAsync"/>には包まない
+    /// （プレビュー）の両方から呼ぶため、<see cref="RunBusyAsync"/>には包まない
     /// （呼び出し側がそれぞれ包む）。
     /// </summary>
     private async Task LookupByNumberAsync(string numberQuery)
@@ -599,7 +598,7 @@ public partial class DetailReceiptEntryViewModel(
         }
     });
 
-    /// <summary>取消（F8、TODO.md 7-5）。</summary>
+    /// <summary>取消（F8）。</summary>
     [RelayCommand(CanExecute = nameof(CanDeleteSlip))]
     private Task DeleteSlipAsync() => RunBusyAsync(async () =>
     {
@@ -626,7 +625,7 @@ public partial class DetailReceiptEntryViewModel(
     });
 
     /// <summary>
-    /// 既存の明細入金を読み込む（訂正・取消モード。TODO.md 7-5）。訂正では充当先を追加できない
+    /// 既存の明細入金を読み込む（訂正・取消モード）。訂正では充当先を追加できない
     /// ため、右ペインの候補一覧は表示しない（<see cref="SalesCandidates"/>／<see cref="InvoiceCandidates"/>
     /// は空のまま）。
     /// </summary>

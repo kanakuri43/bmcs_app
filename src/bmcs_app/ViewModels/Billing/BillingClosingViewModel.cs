@@ -14,20 +14,18 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Billing;
 
 /// <summary>
-/// 請求締め処理画面（TODO.md 6-1・10-7）。「締め日を指定して一括」処理する専用画面
-/// （2026-09-11ユーザー確認）。入力は締め日区分（対象得意先の絞り込み）と請求日
+/// 請求締め処理画面。「締め日を指定して一括」処理する専用画面。入力は締め日区分（対象得意先の絞り込み）と請求日
 /// （締め切り日）の2つのみ。**「請求日でいつ締め切るか決まる」ため、対象年月を別入力に
-/// しない**（2026-09-11ユーザー確認）。
+/// しない**。
 ///
 /// **一覧は「これから締めたらどうなるか」の集計プレビューではなく、`billings`に実在する
-/// 確定済み請求データを請求日（<c>billing_date</c>）だけで抽出したもの（TODO.md 10-7、
-/// 2026-09-29改訂）。** 締め日区分は抽出条件に使わない（<c>billings</c>に締め日区分を保持する
+/// 確定済み請求データを請求日（<c>billing_date</c>）だけで抽出したもの。** 締め日区分は抽出条件に使わない（<c>billings</c>に締め日区分を保持する
 /// 列が無いため）。未確定の請求日を選んだときは1件も表示しない。**確定前の集計プレビュー
 /// 機能はこの画面から廃止した**（過去に締めた請求書をいつでも再照会・再印刷できることを
-/// 優先した。2026-09-29ユーザー確認）。これに伴い、締め確定（<see cref="ConfirmCommand"/>）は
+/// 優先した）。これに伴い、締め確定（<see cref="ConfirmCommand"/>）は
 /// 実行前に確認ダイアログを挟む（<see cref="BillingReleaseViewModel"/>と同型）。
 ///
-/// 一覧は拡張選択（Ctrl/Shiftクリック。チェックボックス列は持たない。2026-09-29ユーザー確認）
+/// 一覧は拡張選択（Ctrl/Shiftクリック。チェックボックス列は持たない）
 /// で複数行を選べる。選択した行はまとめて1つのプレビューダイアログで印刷でき、これが
 /// 請求書の再発行手段になる（<see cref="PrintCommand"/>）。
 /// </summary>
@@ -63,7 +61,7 @@ public partial class BillingClosingViewModel(
 
     /// <summary>
     /// 画面表示時に締め日区分の選択肢を読み込み、既定条件での一覧を表示する
-    /// （2026-09-11ユーザー確認。対象取得ボタンは持たない）。
+    /// （対象取得ボタンは持たない）。
     /// </summary>
     [RelayCommand]
     private async Task LoadAsync()
@@ -100,7 +98,7 @@ public partial class BillingClosingViewModel(
     /// 条件変更時（<see cref="OnClosingDateChanged"/>）から自動的に呼ばれる。
     /// <see cref="ViewModelBase.RunBusyAsync"/>は多重実行を単純に無視するため、画面表示直後の
     /// 初回読込がまだ進行中のうちに条件を変更されると、その変更が何の再取得もされないまま
-    /// 握りつぶされてしまう（2026-09-15、締め解除処理〈<c>BillingReleaseViewModel</c>〉で実機確認した
+    /// 握りつぶされてしまう（締め解除処理〈<c>BillingReleaseViewModel</c>〉でも実機確認した
     /// 不具合と同型）。ここで「実行中に来た要求」を覚えておき、実行中の処理が終わった後にもう一度
     /// （その時点の最新の条件で）再取得することで取りこぼしを防ぐ。
     /// </summary>
@@ -151,7 +149,7 @@ public partial class BillingClosingViewModel(
 
     /// <summary>
     /// 締め日区分の選択を変えたら、請求日の年月はそのまま・日だけをその締め日区分に合わせて
-    /// 補正する（2026-09-11ユーザー確認）。一覧の抽出条件は請求日のみなので、補正の結果
+    /// 補正する。一覧の抽出条件は請求日のみなので、補正の結果
     /// 請求日が変わった場合に限り<see cref="OnClosingDateChanged"/>が自動的に再取得する
     /// （締め日区分自体は一覧の抽出条件に使わないため、請求日が変わらないなら再取得は不要）。
     /// </summary>
@@ -165,14 +163,14 @@ public partial class BillingClosingViewModel(
     }
 
     /// <summary>
-    /// 請求日を変えたら自動的にその条件で再取得する（2026-09-11ユーザー確認）。
+    /// 請求日を変えたら自動的にその条件で再取得する。
     /// <c>DatePicker.SelectedDate</c>は確定した瞬間（Enter／フォーカス離脱／カレンダー選択）にしか
     /// 変化しないため、入力中の1文字ごとにDB照会が走ることはない。
     /// </summary>
     partial void OnClosingDateChanged(DateTime? value) => _ = RefreshAsync();
 
     /// <summary>
-    /// 締め確定。一覧は「これから締める予定」のプレビューではなくなったため（2026-09-29改訂）、
+    /// 締め確定。一覧は「これから締める予定」のプレビューではなくなったため、
     /// 実行前に対象件数を提示する確認ダイアログを挟む（<see cref="BillingReleaseViewModel.ReleaseAsync"/>と
     /// 同型）。確定後は<see cref="RefreshListAsync"/>で<c>billings</c>から取り直し、確定した行を
     /// 一覧へ即座に反映する。
@@ -216,7 +214,7 @@ public partial class BillingClosingViewModel(
     });
 
     /// <summary>
-    /// 印刷（F11、TODO.md 10-7）。選択中の全行（複数可）をまとめて1つのプレビューに連結して
+    /// 印刷（F11）。選択中の全行（複数可）をまとめて1つのプレビューに連結して
     /// 印刷する。一覧に載る行は常に確定済みのため、選択件数以外の実行条件は無い。
     /// 印刷履歴は記録しない（<c>docs/report-spec.md</c> 2-2節の方針を維持）。
     /// </summary>

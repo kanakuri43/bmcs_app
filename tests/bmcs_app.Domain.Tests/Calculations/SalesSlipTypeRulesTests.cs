@@ -3,7 +3,7 @@ using bmcs_app.Domain.Enums;
 
 namespace bmcs_app.Domain.Tests.Calculations;
 
-/// <summary>返品・値引（TODO.md 5-4）の数量符号・原価正規化のテスト。</summary>
+/// <summary>返品・値引の数量符号・原価正規化のテスト。</summary>
 public class SalesSlipTypeRulesTests
 {
     [Theory]

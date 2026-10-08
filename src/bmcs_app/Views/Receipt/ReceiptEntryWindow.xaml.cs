@@ -4,7 +4,7 @@ using MahApps.Metro.Controls;
 
 namespace bmcs_app.Views.Receipt;
 
-/// <summary>入金入力画面（TODO.md 7-2）。</summary>
+/// <summary>入金入力画面。</summary>
 public partial class ReceiptEntryWindow : MetroWindow
 {
     public ReceiptEntryWindow()
@@ -19,7 +19,7 @@ public partial class ReceiptEntryWindow : MetroWindow
             }
         };
 
-        // 伝票プレビュー（TODO.md 8-3）には保存・取消以外の退出手段が無いため、Escで閉じられるようにする。
+        // 伝票プレビューには保存・取消以外の退出手段が無いため、Escで閉じられるようにする。
         // 通常の編集セッションでは無効（未保存の入力をEscで誤って破棄しない）。
         PreviewKeyDown += (_, e) =>
         {

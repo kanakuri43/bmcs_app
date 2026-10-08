@@ -3,7 +3,7 @@ using MahApps.Metro.Controls;
 
 namespace bmcs_app.Views.Common;
 
-/// <summary>帳票プレビューダイアログ（TODO.md 10-3、帳票基盤）。</summary>
+/// <summary>帳票プレビューダイアログ。</summary>
 public partial class ReportPreviewDialog : MetroWindow
 {
     public ReportPreviewDialog()

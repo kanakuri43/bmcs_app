@@ -11,9 +11,9 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Common;
 
 /// <summary>
-/// 商品検索モーダル（TODO.md 3-2）。「マスタから」「過去の取引履歴から」の2軸を持ち、
+/// 商品検索モーダル。「マスタから」「過去の取引履歴から」の2軸を持ち、
 /// 選択した商品を最大 <see cref="MaxBasketSize"/> 件まで一括転記できる。
-/// 履歴軸は対象得意先が選択されていない場合は無効化する（2026-09-08 ユーザー確認済み）。
+/// 履歴軸は対象得意先が選択されていない場合は無効化する。
 /// </summary>
 public partial class ProductSearchDialogViewModel(
     ProductService productService,
@@ -34,7 +34,7 @@ public partial class ProductSearchDialogViewModel(
 
     /// <summary>
     /// 対象得意先の税区分。マスタ軸の単価列（外税／内税どちらを転記するか）を決める
-    /// （TODO.md 4-2）。呼び出し元が <see cref="TargetCustomerCode"/> と一緒に設定する。
+    /// 呼び出し元が <see cref="TargetCustomerCode"/> と一緒に設定する。
     /// 未設定（得意先未選択）のときは外税単価を使う（請求単位・伝票単位が多数派のため）。
     /// </summary>
     [ObservableProperty]

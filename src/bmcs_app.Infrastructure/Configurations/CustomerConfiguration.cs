@@ -34,7 +34,7 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         // で同じ判定ができる）。billing_parent_root_flag（常に1の定数計算列）も同様にマップしない。
         builder.Ignore(e => e.IsBillingRoot);
 
-        // CK_customers_tax_unit_closing_day 等の CHECK 制約は DB 側（Phase 1-5）で
+        // CK_customers_tax_unit_closing_day 等の CHECK 制約は DB 側で
         // 既に強制済みのため、EF Core 側では再定義しない（マイグレーションを使わない方針）。
 
         // Sales / Receipt / Billing から複合FK (customer_code, tax_unit) で参照される

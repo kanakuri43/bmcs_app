@@ -8,11 +8,11 @@
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        TODO.md 6-3／6-4。都度得意先（内税明細単位）の未請求かつ消込完了でない売上明細行を選び、
+        都度得意先（内税明細単位）の未請求かつ消込完了でない売上明細行を選び、
         明細請求書を発行する。レイアウトはデモ（bmcs_app.LineInvoice）の2ペイン構成を踏襲。
         一覧を持たず、明細請求書No.を直接入力して既存分を読み込む方式（得意先／商品マスタ・
         締め解除処理と同じコード直接入力方式）。既存分は読み取り専用表示（訂正の概念が無いため）。
-        取消（F8、6-4）は発行済みを読み込んだときのみ有効。印刷（F11、10-5）は発行済みを
+        取消（F8）は発行済みを読み込んだときのみ有効。印刷（F11）は発行済みを
         読み込んだときのみ有効（取消済みは明細0件になるため対象外）。
     -->
     <mah:MetroWindow.InputBindings>
@@ -124,7 +124,7 @@
                              IsReadOnly="{Binding IsExistingLoaded}"
                              Text="{Binding AddresseeName, UpdateSourceTrigger=PropertyChanged}"
                              mah:TextBoxHelper.Watermark="請求書に印字する宛名（得意先名を上書き可）"
-                             ToolTip="学校のクラス・先生等の宛名を都度変更する場合はここを直接書き換える（C-9・2026-09-10確定）"
+                             ToolTip="学校のクラス・先生等の宛名を都度変更する場合はここを直接書き換える"
                              MaxLength="60" />
                 </Grid>
 

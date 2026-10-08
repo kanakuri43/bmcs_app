@@ -3,7 +3,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Domain.Entities;
 
 /// <summary>
-/// 受注（order_slip）。明細行1テーブル構成（M-5）。主キーは (OrderSlipNumber, LineNumber)。
+/// 受注（order_slip）。明細行1テーブル構成。主キーは (OrderSlipNumber, LineNumber)。
 /// </summary>
 public class OrderSlip : AuditableEntity
 {
@@ -17,7 +17,7 @@ public class OrderSlip : AuditableEntity
 
     public required string CustomerName { get; set; }
 
-    /// <summary>子得意先（学校のクラス・先生等）の指定。子得意先マスタは持たない（C-9）。</summary>
+    /// <summary>子得意先（学校のクラス・先生等）の指定。子得意先マスタは持たない。</summary>
     public string? SubCustomerId { get; set; }
 
     public required string ProductCode { get; set; }

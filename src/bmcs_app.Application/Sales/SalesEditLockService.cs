@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace bmcs_app.Application.Sales;
 
 /// <summary>
-/// 売上伝票の編集可否（C-6の3条件）を判定するユースケース（TODO.md 5-6）。
+/// 売上伝票の編集可否（編集ロックの条件）を判定するユースケース。
 /// DBアクセス（<c>monthly_closing</c> の照会）はここで行い、判定ロジック自体は
 /// <see cref="SalesEditLockEvaluator"/>（Domain の純粋関数）に委ねる。
 /// ViewModel は業務ルールを判断せず、本サービスの結果をそのまま表示するだけにする

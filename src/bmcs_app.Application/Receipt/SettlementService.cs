@@ -12,7 +12,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Receipt;
 
 /// <summary>
-/// 入金消込のユースケース（TODO.md 7-1）。得意先単位で、売上明細行の消込キャッシュ列
+/// 入金消込のユースケース。得意先単位で、売上明細行の消込キャッシュ列
 /// （<see cref="SalesEntity.SettlementStatus"/>／<see cref="SalesEntity.SettledAmount"/>）と
 /// 入金伝票の充当キャッシュ列（<see cref="ReceiptEntity.AllocationStatus"/>／
 /// <see cref="DetailReceiptEntity.AllocationStatus"/>）を、入金明細（<c>receipt</c>／
@@ -91,7 +91,7 @@ public class SettlementService(
     /// 対象は<paramref name="customer"/>1件ではなく、その**請求集約グループ**（請求集約先＋全請求集約元、
     /// docs/design_document.md 28章）全体。請求集約元の売上は請求集約先の<c>billing</c>に取り込まれ
     /// （<c>sales.billing_number</c> = 請求集約先の請求番号）、入金は請求集約先にしか入らないため、
-    /// 単一得意先スコープのままでは請求集約元の売上が永久に未消込のまま残る（Phase 12-B）。
+    /// 単一得意先スコープのままでは請求集約元の売上が永久に未消込のまま残る。
     /// グルーピングキー（<c>billing_number</c>／<c>receipt_slip_number</c>）と整列キー（<c>sales</c>の
     /// 主キー）はいずれも全社で一意（得意先単位ではない）ため、対象を得意先集合へ広げても配分本体
     /// （下記の<see cref="SettlementAllocator.Allocate"/>呼び出し）は無改修で成立する。

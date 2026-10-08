@@ -98,7 +98,7 @@ public partial class CustomerMasterViewModel(
     public partial string BankAccount2Label { get; set; } = string.Empty;
 
     /// <summary>
-    /// 請求得意先コード（親子請求・請求集約、2026-09-29確定）。空欄は「自分自身＝単独で請求」を意味する。
+    /// 請求得意先コード（親子請求・請求集約）。空欄は「自分自身＝単独で請求」を意味する。
     /// 他の得意先コードを入力すると、その得意先（請求集約先）に売上が集約される。
     /// </summary>
     [ObservableProperty]
@@ -120,7 +120,7 @@ public partial class CustomerMasterViewModel(
     [NotifyPropertyChangedFor(nameof(IsClosingTypeEditable))]
     public partial bool IsNew { get; set; } = true;
 
-    /// <summary>締め区分・税区分は登録後変更不可（TODO.md 2-1）。</summary>
+    /// <summary>締め区分・税区分は登録後変更不可。</summary>
     public bool IsClosingTypeEditable => IsNew;
 
     [ObservableProperty]

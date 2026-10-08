@@ -1,8 +1,8 @@
 namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
-/// 請求締め済み期間への売上・入金の新規登録／日付変更を防ぐ判定（申し送り事項R2の解消。
-/// docs/design_document.md 21-4章）。
+/// 請求締め済み期間への売上・入金の新規登録／日付変更を防ぐ判定（docs/design_document.md
+/// 25章「ジャーナル系の日付制限」。元帳が正で`billings`は締め時点のスナップショットという前提は21-4章）。
 ///
 /// 請求締め（<see cref="Entities.Billing"/>）は確定時点の売上・入金合計を
 /// <see cref="Entities.Billing.CurrentBillingAmount"/> へスナップショットとして焼き込み、以後

@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Common;
 
 /// <summary>
-/// 伝票明細行の1行分（TODO.md 4-2）。受注入力・売上入力（TODO.md 5-2）で共用する
+/// 伝票明細行の1行分。受注入力・売上入力で共用する
 /// 明細行 ViewModel。行ごとの UserControl（<c>Views/Common/SlipLineControl.xaml</c>）と対で使う。
 /// </summary>
 public partial class SlipLineViewModel : ObservableObject
@@ -34,14 +34,14 @@ public partial class SlipLineViewModel : ObservableObject
     public partial short LineNumber { get; set; }
 
     /// <summary>
-    /// 訂正（TODO.md 5-6）でのみ使用する、DB上の実際の行番号。<c>null</c> は新規行（未保存）を意味する。
+    /// 訂正でのみ使用する、DB上の実際の行番号。<c>null</c> は新規行（未保存）を意味する。
     /// <see cref="LineNumber"/> は行追加・削除のたびに振り直される表示用の連番であり、
     /// 主キーの一部である実際の行番号とは独立に保持する（詰め直すと訂正時にPK衝突・誤上書きを招くため）。
     /// </summary>
     public short? PersistedLineNumber { get; set; }
 
     /// <summary>
-    /// 伝票区分（TODO.md 5-4）。既定は「売上」。値引・返品への変更時は数量の符号を
+    /// 伝票区分。既定は「売上」。値引・返品への変更時は数量の符号を
     /// <see cref="Domain.Calculations.SalesSlipTypeRules.NormalizeQuantity"/> で正規化する
     /// （原価は正規化しない。値引の原価0化は不可逆のため、粗利計算・保存時の境界でのみ適用する）。
     /// </summary>
@@ -57,7 +57,7 @@ public partial class SlipLineViewModel : ObservableObject
 
     partial void OnSlipTypeChanged(SlipType value) => Quantity = SalesSlipTypeRules.NormalizeQuantity(value, Quantity);
 
-    /// <summary>受注からの売上確定（TODO.md 5-3）で紐付けた受注伝票番号。紐付けがなければ<c>null</c>。</summary>
+    /// <summary>受注からの売上確定で紐付けた受注伝票番号。紐付けがなければ<c>null</c>。</summary>
     public string? OrderSlipNumber { get; set; }
 
     public short? OrderLineNumber { get; set; }

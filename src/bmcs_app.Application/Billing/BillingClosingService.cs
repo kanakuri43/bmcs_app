@@ -11,7 +11,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Billing;
 
 /// <summary>
-/// 請求締め処理のユースケース（TODO.md 6-1）。締め得意先（<c>tax_unit</c>＝請求単位／伝票単位）の
+/// 請求締め処理のユースケース。締め得意先（<c>tax_unit</c>＝請求単位／伝票単位）の
 /// 期間内売上・入金を集計し、<c>billing</c>へ請求データを確定する。集計の詳細（期間の非対称、
 /// 税額計算の税単位別分岐、二重締め防止）は docs/design_document.md 9章を参照。
 /// </summary>
@@ -49,7 +49,7 @@ public class BillingClosingService(
     /// </summary>
     /// <param name="closingDate">
     /// 締め切り日。売上・入金の集計対象範囲の上限（＜＝）であり、確定する<c>billing</c>の
-    /// 請求日（<c>billing_date</c>）としてもそのまま使う（2026-09-11ユーザー確認。
+    /// 請求日（<c>billing_date</c>）としてもそのまま使う（
     /// 「請求日でいつ締め切るか決まる」ため、締め切り日と請求日を別入力にしない）。
     /// </param>
     public async Task<IReadOnlyList<BillingClosingTarget>> ConfirmAsync(
@@ -148,7 +148,7 @@ public class BillingClosingService(
         var closingYearMonth = $"{closingDate.Year:D4}{closingDate.Month:D2}";
 
         // 請求集約元（billing_customer_codeが自分自身と異なる得意先）は候補にしない。
-        // 請求データ（billings）は請求集約先にだけ作る（docs/design_document.md 28章、Phase 12-C）。
+        // 請求データ（billings）は請求集約先にだけ作る（docs/design_document.md 28章）。
         // 請求集約元の売上・入金は、下記BuildCandidateAsyncが請求集約先の候補にまとめて取り込む。
         var customers = await dbContext.Customers
             .AsNoTracking()
@@ -202,7 +202,7 @@ public class BillingClosingService(
 
         // 対象は customer（請求集約先）1件ではなく、その請求集約グループ（請求集約先＋全請求集約元）
         // 全体。請求集約元の売上・入金は自分自身のcustomer_codeで記録されるため、ここで得意先集合へ
-        // 広げないと請求集約元の分が請求額に反映されない（Phase 12-C。docs/design_document.md 28章）。
+        // 広げないと請求集約元の分が請求額に反映されない（docs/design_document.md 28章）。
         // billings照会（latestConfirmed／previousBalance、上記）はcustomer.CustomerCodeのままでよい
         // （billingsは請求集約先にしか作られないため）。
         var groupCodes = await dbContext.Customers
@@ -238,7 +238,7 @@ public class BillingClosingService(
         var receiptLines = await receiptQuery.ToListAsync(cancellationToken);
 
         // receipt の明細行は支払手段の内訳（行単位の値）のため、単純に SUM してよい
-        // （docs/design_document.md 17章、2026-09-15改訂）。
+        // （docs/design_document.md 17章）。
         var receiptAmount = receiptLines.Sum(r => r.Amount);
 
         var taxSummary = CalculateTaxSummary(customer, salesLines, groupCodes);
@@ -254,7 +254,7 @@ public class BillingClosingService(
 
     /// <summary>
     /// 税単位別の税額計算（docs/design_document.md 9-4章）。新しい計算ロジックは追加せず、
-    /// 5-1で用意済みの<see cref="ConsumptionTaxCalculator"/>をそのまま使う。
+    /// 既存の<see cref="ConsumptionTaxCalculator"/>をそのまま使う。
     /// </summary>
     /// <exception cref="BillingClosingException">
     /// 伝票単位の得意先で、再計算した伝票税額の合計が保存済み<c>slip_tax_amount</c>の合計と

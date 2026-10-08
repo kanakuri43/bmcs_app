@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Common;
 
 /// <summary>
-/// 帳票プレビュー（TODO.md 10-3、帳票基盤）。全帳票が共通で使う汎用ダイアログで、
+/// 帳票プレビュー（帳票基盤）。全帳票が共通で使う汎用ダイアログで、
 /// 特定の帳票（納品書等）の知識を持たない。呼び出し元は <see cref="Initialize"/> で
 /// 帳票種別・ジョブ名・<see cref="FixedDocument"/> を組み立てるデリゲートを渡す。
 /// <see cref="FixedPage"/>は1つのビジュアルツリーにしか属せないため、表示・印刷・PDF保存の

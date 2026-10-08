@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace bmcs_app.Application.Master;
 
-/// <summary>銀行口座マスタのユースケース（TODO.md 2-5）。</summary>
+/// <summary>銀行口座マスタのユースケース。</summary>
 public class BankAccountService(
     BmcsDbContext dbContext,
     ICurrentEmployeeContext currentEmployeeContext,

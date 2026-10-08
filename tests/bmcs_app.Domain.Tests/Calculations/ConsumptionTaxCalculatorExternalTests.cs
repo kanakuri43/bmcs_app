@@ -172,7 +172,7 @@ public class ConsumptionTaxCalculatorExternalTests
         Assert.Equal(expectedTax, summary.StandardRateTaxAmount);
     }
 
-    // 行列I: 暫定C-4b — 伝票単位は伝票ごとに端数処理してから積み上げる（請求全体で1回の丸め直しではない）
+    // 行列I: 伝票単位は伝票ごとに端数処理してから積み上げる（請求全体で1回の丸め直しではない）
     [Theory]
     [InlineData(RoundingType.Floor, 200, 201)]
     [InlineData(RoundingType.RoundHalfUp, 202, 201)]

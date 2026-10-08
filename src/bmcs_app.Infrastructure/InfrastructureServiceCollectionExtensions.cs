@@ -39,7 +39,7 @@ public static class InfrastructureServiceCollectionExtensions
             contextLifetime: ServiceLifetime.Scoped,
             optionsLifetime: ServiceLifetime.Singleton);
 
-        // DbContext と同じ Scoped で登録する（TODO.md 4-1）。
+        // DbContext と同じ Scoped で登録する。
         services.AddScoped<SlipNumberSequenceCommand>();
 
         return services;

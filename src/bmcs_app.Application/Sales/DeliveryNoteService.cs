@@ -9,7 +9,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Sales;
 
 /// <summary>
-/// 納品書の表示データ取得と発行記録（TODO.md 10-4）。帳票のレンダリング・印刷は
+/// 納品書の表示データ取得と発行記録。帳票のレンダリング・印刷は
 /// Presentation 層（<c>src/bmcs_app/Reports/</c>）が担うため、本クラスは WPF 型を一切含まない
 /// プレーンな DTO（<see cref="DeliveryNoteData"/>）を返すことに責務を絞る。
 /// </summary>
@@ -23,7 +23,7 @@ public class DeliveryNoteService(
     /// 読み取り専用の本メソッドでは使わず、AsNoTracking で取得し直す。
     /// </summary>
     /// <exception cref="DeliveryNoteException">自社情報が未登録の場合。適格請求書としては扱わない
-    /// 方針（TODO.md 10-4）でも、登録番号・自社名は全税単位で印字するため必須とする。</exception>
+    /// 方針でも、登録番号・自社名は全税単位で印字するため必須とする。</exception>
     public async Task<DeliveryNoteData?> GetAsync(
         string salesSlipNumber, CancellationToken cancellationToken = default)
     {
@@ -87,7 +87,7 @@ public class DeliveryNoteService(
     /// 楽観的排他制御も掛けず、集合更新（<see cref="RelationalQueryableExtensions.ExecuteUpdateAsync"/>）
     /// で行う。<see cref="Sales.UpdatedBy"/>／<see cref="Sales.UpdatedAt"/>も更新しない
     /// （専用の発行日時列があるため、伝票内容を最後に編集した者の記録を印刷操作で上書きしない）。
-    /// TODO.md 10-2の一括発行も本メソッドをそのまま再利用する。
+    /// 一括発行も本メソッドをそのまま再利用する。
     /// </summary>
     /// <remarks>
     /// 呼び出し元（売上入力画面）が同じ <see cref="BmcsDbContext"/> スコープで

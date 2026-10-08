@@ -18,7 +18,7 @@ public sealed record ProductMasterSearchItem(
 {
     /// <summary>
     /// 単価は得意先の税区分（<paramref name="taxUnit"/>）に応じて外税／内税を選ぶ
-    /// （TODO.md 4-2、<see cref="IUnitPriceCalculator"/>）。
+    /// （<see cref="IUnitPriceCalculator"/>）。
     /// </summary>
     public static ProductMasterSearchItem FromEntity(
         Product product, TaxUnit taxUnit, IUnitPriceCalculator unitPriceCalculator) => new(

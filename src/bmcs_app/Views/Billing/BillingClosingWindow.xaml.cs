@@ -3,7 +3,7 @@ using MahApps.Metro.Controls;
 
 namespace bmcs_app.Views.Billing;
 
-/// <summary>請求締め処理画面（TODO.md 6-1）。</summary>
+/// <summary>請求締め処理画面。</summary>
 public partial class BillingClosingWindow : MetroWindow
 {
     public BillingClosingWindow()

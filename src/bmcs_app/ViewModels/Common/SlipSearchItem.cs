@@ -35,7 +35,7 @@ public sealed record SlipSearchItem(
         Display(hit.OrderStatus));
 
     /// <summary>
-    /// 宛名（都度書き換え。C-9・2026-09-10確定）が得意先名と異なる場合はキーワード検索できるよう
+    /// 宛名（都度書き換え）が得意先名と異なる場合はキーワード検索できるよう
     /// 得意先名欄に併記する（学校のクラス・先生単位などの宛名で探せるようにするため）。
     /// </summary>
     public static SlipSearchItem FromDetailInvoiceHit(DetailInvoiceHit hit) => new(

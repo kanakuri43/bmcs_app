@@ -10,7 +10,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Sales;
 
 /// <summary>
-/// 納品書の表示データ取得・発行記録（TODO.md 10-4）の結合テスト。開発用ライブDB
+/// 納品書の表示データ取得・発行記録の結合テスト。開発用ライブDB
 /// （172.16.3.171）に対して実行する（docs/architecture.md 16章）。専用のテスト得意先
 /// （<c>__TSTDN*</c>）で税単位3種を検証し、finallyで物理削除する
 /// （<see cref="Billing.DetailInvoiceServiceTests"/>と同じ方式）。
@@ -177,7 +177,7 @@ public class DeliveryNoteServiceTests(DevDatabaseFixture fixture) : IClassFixtur
     /// <summary>
     /// 回帰テスト: 売上入力画面が SalesQueryService.GetSlipAsync（追跡あり）で読み込んだ後に
     /// 同じ DbContext スコープで納品書を発行しても、追跡中エンティティの RowVersion が
-    /// 陳腐化せず、その後の保存が偽の競合エラーにならないこと（設計レビューで発見）。
+    /// 陳腐化せず、その後の保存が偽の競合エラーにならないこと。
     /// </summary>
     [Fact]
     public async Task 追跡中の売上行に対して発行記録しても後続の保存が競合エラーにならない()

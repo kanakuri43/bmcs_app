@@ -14,7 +14,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Billing;
 
 /// <summary>
-/// 明細請求書発行画面（TODO.md 6-3）。都度得意先（内税明細単位）の未請求かつ消込完了でない
+/// 明細請求書発行画面。都度得意先（内税明細単位）の未請求かつ消込完了でない
 /// 売上明細行を選び、明細請求書を発行する。左＝取込候補／右＝請求書明細の2ペイン構成
 /// （デモ<c>bmcs_app.LineInvoice</c>のレイアウトを踏襲。差異は docs/design_document.md 11章）。
 /// 既存の明細請求書番号を読み込んだ場合は読み取り専用表示にする（訂正の概念が無いため）。
@@ -190,7 +190,7 @@ public partial class DetailInvoiceIssueViewModel(
         CustomerName = customer.CustomerName;
 
         // 宛名は得意先名を初期値として転記し、手入力で上書き可能にする
-        // （C-9・2026-09-10確定。子得意先マスタは持たず都度書き換え方式に一本化）。
+        // （子得意先マスタは持たず都度書き換え方式に一本化）。
         if (string.IsNullOrWhiteSpace(AddresseeName))
         {
             AddresseeName = customer.CustomerName;
@@ -338,7 +338,7 @@ public partial class DetailInvoiceIssueViewModel(
     });
 
     /// <summary>
-    /// 印刷（F11、TODO.md 10-5）。発行済みを読み込んでいる場合のみ有効（取消済みは連携行が
+    /// 印刷（F11）。発行済みを読み込んでいる場合のみ有効（取消済みは連携行が
     /// 物理削除され明細0件になるため対象外。<c>docs/design_document.md</c> 12-1節）。
     /// 印刷履歴は記録しない（納品書と異なり「（再発行）」表示も行わない）。
     /// </summary>

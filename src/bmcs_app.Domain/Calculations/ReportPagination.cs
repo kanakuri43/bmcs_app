@@ -1,7 +1,7 @@
 namespace bmcs_app.Domain.Calculations;
 
 /// <summary>
-/// 帳票の明細行を複数ページに分割する（TODO.md 10-3）。
+/// 帳票の明細行を複数ページに分割する。
 /// 1ページ目と続紙でヘッダー高さが異なる帳票が多いため、収容行数を別々に受け取る。
 /// 実際のページ組み立て（<see cref="System.Windows.Documents.FixedPage"/>）は WPF に依存するため
 /// Presentation 層（<c>src/bmcs_app/Reports/</c>）に置くが、この分割計算自体は純粋関数として
@@ -59,7 +59,7 @@ public static class ReportPagination
 
     /// <summary>
     /// <see cref="Split"/>の結果を、ページ末尾に見出し行（<paramref name="isHeaderRow"/>が真を返す行）が
-    /// 孤立しないよう調整する（TODO.md 12-D、親子請求の請求書帳票。docs/report-spec.md 2-2-1節）。
+    /// 孤立しないよう調整する（親子請求の請求書帳票。docs/report-spec.md 2-2-1節）。
     /// 該当する場合、そのページの末尾から見出し行を1件切り出して次ページの先頭へ移す。
     /// 見出し行の直後には必ず1件以上の明細行と小計行が続く構造（<see cref="InvoiceReportRowBuilder"/>）
     /// のため、この調整は見出し行と次ページへ送られる行が同じページ境界にまたがることはなく、

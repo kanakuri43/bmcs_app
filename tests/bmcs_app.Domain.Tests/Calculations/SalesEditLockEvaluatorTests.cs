@@ -4,7 +4,7 @@ using bmcs_app.Domain.Enums;
 
 namespace bmcs_app.Domain.Tests.Calculations;
 
-/// <summary>売上の編集ロック（C-6の4条件。TODO.md 5-6・6-5）の判定テスト。</summary>
+/// <summary>売上の編集ロック（4条件）の判定テスト。</summary>
 public class SalesEditLockEvaluatorTests
 {
     [Fact]

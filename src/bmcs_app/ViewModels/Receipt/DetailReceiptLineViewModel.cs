@@ -7,7 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace bmcs_app.ViewModels.Receipt;
 
 /// <summary>
-/// 明細入金画面（TODO.md 7-4）の明細行1行分。締め入金（<see cref="ReceiptLineViewModel"/>）と
+/// 明細入金画面の明細行1行分。締め入金（<see cref="ReceiptLineViewModel"/>）と
 /// 異なり、行ごとに充当先（売上明細行または明細請求書）を持ち、金額は対象の全額（または残額）で
 /// 固定・読み取り専用（利用者は変更できない）。入金方法・入金先口座・行摘要のみ編集できる。
 /// </summary>
@@ -24,7 +24,7 @@ public partial class DetailReceiptLineViewModel : ObservableObject
     public partial short LineNumber { get; set; }
 
     /// <summary>
-    /// 訂正（TODO.md 7-5）で、読込時に存在した実際の行番号を保持する。<c>null</c>＝新規登録モードで
+    /// 訂正で、読込時に存在した実際の行番号を保持する。<c>null</c>＝新規登録モードで
     /// 追加した行（<see cref="Common.SlipLineViewModel.PersistedLineNumber"/>と同じ理由）。
     /// 訂正モードでは充当先の追加ができないため、この画面では常に読込時の値がそのまま保たれる
     /// （<see cref="LineNumber"/>は削除のたびに1から詰め直されるため、訂正の保存には使えない）。
@@ -62,7 +62,7 @@ public partial class DetailReceiptLineViewModel : ObservableObject
     [ObservableProperty]
     public partial string? BankAccountCode { get; set; }
 
-    /// <summary>金額。対象の全額（または残額）で固定。読み取り専用（決定2・2026-09-15確定）。</summary>
+    /// <summary>金額。対象の全額（または残額）で固定。読み取り専用。</summary>
     public required decimal Amount { get; set; }
 
     [ObservableProperty]

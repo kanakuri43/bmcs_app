@@ -5,7 +5,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Sales;
 
 /// <summary>
-/// 売上伝票の読み込み・検索ユースケース（TODO.md 5-3・5-5・5-6の共通前提）。
+/// 売上伝票の読み込み・検索ユースケース。
 /// 対象条件・並び順は <see cref="Common.ProductHistoryQueryService"/> と同じ「直近N件を取得し
 /// メモリ側で加工する」方針に揃える（伝票単位への集約をSQLビューやGROUP BYで無理に組まない）。
 /// </summary>

@@ -10,7 +10,7 @@ using SalesEntity = bmcs_app.Domain.Entities.Sales;
 namespace bmcs_app.Application.Tests.Billing;
 
 /// <summary>
-/// 締め解除処理（TODO.md 6-2、2026-09-15改訂で請求日単位の一括解除に変更）の結合テスト。
+/// 締め解除処理（請求日単位の一括解除）の結合テスト。
 /// 開発用ライブDB（172.16.3.171）に対して実行する（docs/architecture.md 16章）。
 /// 完了条件「解除→再締めで金額が一致する」の実証。
 /// </summary>
@@ -79,7 +79,7 @@ public class BillingReleaseServiceTests(DevDatabaseFixture fixture) : IClassFixt
     [Fact]
     public async Task 締め解除すると解除対象の売上行の消込状態も未消込へ戻る()
     {
-        // TODO.md 7-1レビューで発見した既存不整合の修正確認: 解除前にbilling_numberが外れる
+        // 回帰確認: 解除前にbilling_numberが外れる
         // ことだけを見ていたため、消込キャッシュ列（settlement_status/settled_amount）が
         // 消込完了のまま取り残されていた。BillingReleaseService.ReleaseByBillingDateAsyncに
         // SettlementService.RecalculateForBillingGroupAsyncを配線したことで解消したことを確認する。
@@ -96,7 +96,7 @@ public class BillingReleaseServiceTests(DevDatabaseFixture fixture) : IClassFixt
         {
             await closingService.ConfirmAsync(TestClosingDay, new DateOnly(2025, 7, 16));
 
-            // 実際の入金（Phase 7-2未実装）を経ずに、消込完了済みの状態を直接再現する。
+            // 実際の入金を経ずに、消込完了済みの状態を直接再現する。
             var salesLine = await dbContext.Sales.SingleAsync(s => s.SalesSlipNumber == slip);
             salesLine.SettlementStatus = SettlementStatus.FullySettled;
             salesLine.SettledAmount = salesLine.Amount;

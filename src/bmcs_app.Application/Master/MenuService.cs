@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace bmcs_app.Application.Master;
 
 /// <summary>
-/// メニュー構成マスタのユースケース（TODO.md 2-7）。項目自体の追加・削除、遷移先（screen_key）・親子関係の変更は
+/// メニュー構成マスタのユースケース。項目自体の追加・削除、遷移先（screen_key）・親子関係の変更は
 /// 画面から行わず DB（scripts/）に直接投入する。画面から編集できるのは表示名・表示順・必要権限レベル・初期展開だけ。
 /// </summary>
 public class MenuService(

@@ -5,7 +5,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Domain.Tests.Calculations;
 
 /// <summary>
-/// 得意先元帳のマージ・残高推移のテスト（TODO.md 8-1）。完了条件「残高推移が手計算と一致する」を
+/// 得意先元帳のマージ・残高推移のテスト。完了条件「残高推移が手計算と一致する」を
 /// 開発用DBのseedデータ（scripts/seed_dev_data.sql）と同じ形の3得意先（CUS001/CUS002/CUS003）で
 /// 直接検証する。数値は事前に手計算済み（docs/design_document.md 21章）。
 /// </summary>
@@ -158,7 +158,7 @@ public class CustomerLedgerBuilderTests
         var balances = result.Entries.Select(e => e.Balance).ToList();
         Assert.Equal([0m, 8_000m, 8_800m, 800m, -1_200m, 1_800m, 2_100m], balances);
 
-        // 過入金による一時的なマイナス残高を正常系として許容する（D-2/前受・過入金）。
+        // 過入金による一時的なマイナス残高を正常系として許容する（前受・過入金）。
         Assert.Contains(result.Entries, e => e.Balance < 0m);
     }
 
@@ -299,7 +299,7 @@ public class CustomerLedgerBuilderTests
         Assert.Equal(1_000m, receiptRow.ReceiptAmount);
     }
 
-    // ---- Phase 12-E: 請求集約（親子請求） ----
+    // ---- 請求集約（親子請求） ----
 
     [Fact]
     public void 請求集約先の元帳はグループ内の請求集約元の売上_入金を合算しグループ全体で1回だけ丸めて各行の得意先を保持する()
@@ -310,7 +310,7 @@ public class CustomerLedgerBuilderTests
         // 得意先ごとに個別に丸めると floor(100.5)+floor(100.5)=100+100=200円になるが、
         // グループとして合算(2,010円)してから1回だけ丸めると floor(201.0)=201円になる差で、
         // 「得意先ごとの個別計算ではなくグループ合算で計算されること」を検証する
-        // （28-6/28-7の丸め検証と同じ手法。呼び出し元がグループ展開したSalesLinesを渡す前提）。
+        // （呼び出し元がグループ展開したSalesLinesを渡す前提）。
         var sales = new[]
         {
             NewSales("SALAGR1", 1, new DateOnly(2026, 7, 1), root, 1_005m),

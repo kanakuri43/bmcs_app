@@ -3,7 +3,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Application.Billing;
 
 /// <summary>
-/// 明細請求書発行（TODO.md 6-3）における売上明細行1件分の表示用データ。
+/// 明細請求書発行における売上明細行1件分の表示用データ。
 /// <see cref="DetailInvoiceService.GetCandidatesAsync"/>（取込候補）と
 /// <see cref="DetailInvoiceService.GetByNumberAsync"/>（発行済みの明細請求書の内訳）の
 /// 両方で同じ形を使う（候補行と発行済み行で構造が同一のため、型を分けない）。

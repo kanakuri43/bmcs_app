@@ -3,7 +3,7 @@ using bmcs_app.Domain.Enums;
 namespace bmcs_app.Application.Billing;
 
 /// <summary>
-/// 請求締め処理（TODO.md 6-1）の得意先1件分の集計結果。
+/// 請求締め処理の得意先1件分の集計結果。
 /// <see cref="BillingClosingService.PreviewAsync"/>／<see cref="BillingClosingService.ConfirmAsync"/>
 /// の両方がこの形で結果を返す（金額を出す経路を1本にする。docs/design_document.md 9章）。
 /// </summary>
