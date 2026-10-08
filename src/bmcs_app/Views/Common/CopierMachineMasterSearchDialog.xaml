@@ -1,0 +1,48 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Common.CopierMachineMasterSearchDialog"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:beh="clr-namespace:bmcs_app.Behaviors"
+                 Title="bmcs_app - コピー機検索"
+                 Height="480" Width="680"
+                 WindowStartupLocation="CenterOwner"
+                 ShowInTaskbar="False"
+                 WindowTransitionsEnabled="False">
+    <mah:MetroWindow.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CancelCommand}" />
+    </mah:MetroWindow.InputBindings>
+
+    <Grid Margin="16" beh:EnterKeyNavigationBehavior.IsEnabled="True">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="検索（機番・得意先コード・機種名・備考）" VerticalAlignment="Center" Margin="0,0,12,0" />
+            <TextBox x:Name="SearchKeywordTextBox" Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
+                     Width="360" />
+        </StackPanel>
+
+        <ListView Grid.Row="1" x:Name="ResultsListView" ItemsSource="{Binding Results}"
+                   SelectedIndex="{Binding SelectedIndex}"
+                   beh:RowActivationBehavior.Command="{Binding ConfirmCommand}">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="機番" Width="140" DisplayMemberBinding="{Binding MachineNo}" />
+                    <GridViewColumn Header="得意先コード" Width="100" DisplayMemberBinding="{Binding CustomerCode}" />
+                    <GridViewColumn Header="機種名" Width="200" DisplayMemberBinding="{Binding MachineModel}" />
+                    <GridViewColumn Header="備考" Width="180" DisplayMemberBinding="{Binding Remarks}" />
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
+            <Button Content="選択（Enter）" Command="{Binding ConfirmCommand}"
+                    CommandParameter="{Binding SelectedItem, ElementName=ResultsListView}"
+                    Padding="16,6" Margin="0,0,12,0" />
+            <Button Content="キャンセル（Esc）" Command="{Binding CancelCommand}" Padding="16,6" />
+        </StackPanel>
+    </Grid>
+</mah:MetroWindow>

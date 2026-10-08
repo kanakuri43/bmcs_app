@@ -1,0 +1,73 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Master.CopierMachineMasterWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:beh="clr-namespace:bmcs_app.Behaviors"
+                 Title="コピー機マスタ"
+                 Height="420" Width="640"
+                 ResizeMode="CanMinimize"
+                 WindowStartupLocation="CenterScreen"
+                 WindowTransitionsEnabled="False">
+    <Grid Margin="16" beh:EnterKeyNavigationBehavior.IsEnabled="True"
+          beh:ImeAwareSpaceKeyBindingBehavior.IsEnabled="True">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="基本情報" FontWeight="Bold" Margin="0,0,0,8" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="機番" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="0" Grid.Column="1"
+                             beh:FocusBehavior.IsInitialFocus="True"
+                             Text="{Binding MachineNo, UpdateSourceTrigger=PropertyChanged}"
+                             mah:TextBoxHelper.Watermark="機番（SPACEで検索）"
+                             ToolTip="機番を直接入力してEnterで読み込む。未登録の機番は新規登録として扱う。Spaceで検索モーダルを開く"
+                             HorizontalAlignment="Left" Width="200" Margin="0,0,0,8">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Space"  Command="{Binding OpenMachineSearchCommand}" />
+                            <KeyBinding Key="Return" Command="{Binding LookupMachineByNoCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="得意先コード" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBox beh:FocusBehavior.FocusKey="Customer"
+                                 Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="得意先コード（SPACEで検索）"
+                                 ToolTip="Spaceで得意先検索モーダルを開く。Enterでコードから得意先名を照会する"
+                                 Width="200">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Space"  Command="{Binding OpenCustomerSearchCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <TextBlock Text="{Binding CustomerName}" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="Gray" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="機種名" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="2" Grid.Column="1" beh:FocusBehavior.FocusKey="Model" Text="{Binding MachineModel}" Margin="0,0,0,8" />
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="備考" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Remarks}" Margin="0,0,0,8" />
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                    <Button Content="保存" Command="{Binding SaveCommand}" Padding="16,6" Margin="0,0,12,0" />
+                    <Button Content="キャンセル" Command="{Binding NewMachineCommand}" Padding="16,6" Margin="0,0,12,0" />
+                    <Button Content="無効化" Command="{Binding DeactivateCommand}" Padding="16,6" Margin="0,0,12,0" />
+                    <TextBlock Text="処理中..." VerticalAlignment="Center" Foreground="OrangeRed"
+                               Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </StackPanel>
+
+                <TextBlock Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="Gray" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</mah:MetroWindow>

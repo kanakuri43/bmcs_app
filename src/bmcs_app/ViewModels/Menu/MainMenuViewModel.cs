@@ -141,6 +141,9 @@ public partial class MainMenuViewModel(
             case "bank_account_master":
                 windowService.Show<BankAccountMasterWindow, BankAccountMasterViewModel>();
                 break;
+            case "copier_machine_master":
+                windowService.Show<CopierMachineMasterWindow, CopierMachineMasterViewModel>();
+                break;
             case "deposit_method_master":
                 windowService.Show<DepositMethodMasterWindow, DepositMethodMasterViewModel>();
                 break;

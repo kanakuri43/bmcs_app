@@ -31,6 +31,10 @@ public class BmcsDbContext(DbContextOptions<BmcsDbContext> options) : DbContext(
 
     public DbSet<DepositMethod> DepositMethods => Set<DepositMethod>();
 
+    public DbSet<CopierMachine> CopierMachines => Set<CopierMachine>();
+
+    public DbSet<CopierImportHistory> CopierImportHistories => Set<CopierImportHistory>();
+
     public DbSet<Menu> Menus => Set<Menu>();
 
     public DbSet<OrderSlip> OrderSlips => Set<OrderSlip>();

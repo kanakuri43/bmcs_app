@@ -51,6 +51,8 @@ GO
 -- -----------------------------------------------------------------------------
 -- 2. マスタ（company_infos・menus・tax_rates は対象外）
 -- -----------------------------------------------------------------------------
+DELETE FROM dbo.copier_import_histories;
+DELETE FROM dbo.copier_machines;
 DELETE FROM dbo.customers;
 DELETE FROM dbo.products;
 DELETE FROM dbo.bank_accounts;

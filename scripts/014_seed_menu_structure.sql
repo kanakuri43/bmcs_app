@@ -67,5 +67,6 @@ VALUES
     (N'MNU_BANK_MASTER', N'MNU_MASTER', N'銀行マスタ', 5, 1, N'bank_account_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'MNU_DEPOSIT_METHOD', N'MNU_MASTER', N'入金方法マスタ', 6, 1, N'deposit_method_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
     (N'MNU_PRINTER_SETTING', N'MNU_MASTER', N'プリンタ設定', 7, 1, N'printer_settings', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    (N'MNU_MENU_MASTER', N'MNU_MASTER', N'メニューマスタ管理', 8, 9, N'menu_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
+    (N'MNU_MENU_MASTER', N'MNU_MASTER', N'メニューマスタ管理', 8, 9, N'menu_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    (N'MNU_COPIER_MACHINE', N'MNU_MASTER', N'コピー機マスタ', 9, 1, N'copier_machine_master', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
