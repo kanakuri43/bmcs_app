@@ -66,8 +66,6 @@
                 <DatePicker Width="120" Margin="0,0,16,0"
                             SelectedDate="{Binding PeriodTo}" />
 
-                <Button Content="プレビュー" Padding="12,6" Margin="0,0,8,0"
-                        Command="{Binding PreviewCommand}" />
                 <Button Content="印刷" Padding="12,6"
                         Command="{Binding PrintCommand}" />
             </StackPanel>

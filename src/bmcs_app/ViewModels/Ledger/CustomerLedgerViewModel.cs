@@ -49,8 +49,7 @@ namespace bmcs_app.ViewModels.Ledger;
 public partial class CustomerLedgerViewModel(
     CustomerLedgerQueryService ledgerQueryService,
     CustomerService customerService,
-    WindowService windowService,
-    ReportPrintService reportPrintService) : ViewModelBase
+    WindowService windowService) : ViewModelBase
 {
     private Customer? _customer;
 
@@ -267,9 +266,9 @@ public partial class CustomerLedgerViewModel(
     private static string JobName(CustomerLedgerReportData data)
         => $"得意先元帳 {data.CustomerCode} {data.PeriodFrom:yyyyMMdd}-{data.PeriodTo:yyyyMMdd}";
 
-    /// <summary>元帳を帳票プレビューで表示する（そこから印刷・PDF保存できる）。</summary>
+    /// <summary>元帳を帳票プレビューで表示する（他の帳票と同じく、そこから印刷・PDF保存する）。</summary>
     [RelayCommand(CanExecute = nameof(CanPrint))]
-    private async Task PreviewAsync()
+    private async Task PrintAsync()
     {
         if (await LoadReportDataAsync() is not { } data)
         {
@@ -280,22 +279,8 @@ public partial class CustomerLedgerViewModel(
             vm => vm.Initialize(ReportKind.CustomerLedger, JobName(data), () => new CustomerLedgerDocumentBuilder(data).Build()));
     }
 
-    /// <summary>プレビューを開かず、設定済みプリンタへ直接印刷する。</summary>
-    [RelayCommand(CanExecute = nameof(CanPrint))]
-    private async Task PrintAsync()
-    {
-        if (await LoadReportDataAsync() is not { } data)
-        {
-            return;
-        }
-
-        StatusMessage = reportPrintService.Print(
-            new CustomerLedgerDocumentBuilder(data).Build(), ReportKind.CustomerLedger, JobName(data)).Message ?? string.Empty;
-    }
-
     private void NotifyPrintCanExecuteChanged()
     {
-        PreviewCommand.NotifyCanExecuteChanged();
         PrintCommand.NotifyCanExecuteChanged();
     }
 
