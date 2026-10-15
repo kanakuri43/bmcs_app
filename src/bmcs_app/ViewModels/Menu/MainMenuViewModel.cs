@@ -150,6 +150,9 @@ public partial class MainMenuViewModel(
             case "deposit_method_master":
                 windowService.Show<DepositMethodMasterWindow, DepositMethodMasterViewModel>();
                 break;
+            case "query_runner":
+                windowService.Show<QueryRunnerWindow, QueryRunnerViewModel>();
+                break;
             case "printer_settings":
                 windowService.Show<PrinterSettingsWindow, PrinterSettingsViewModel>();
                 break;

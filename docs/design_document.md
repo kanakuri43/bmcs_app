@@ -1961,3 +1961,13 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 
 - 商品は暫定で固定の1件。機種・摘要区分ごとに商品を分けたい要望が出たら `copier_machines` に商品コードを足す。
 - CSVの「締日」を伝票日付とした根拠はサンプル（`20260920`）から。業務上別の日付を使うなら確認する。
+
+## 31. クエリ実行
+
+マスタ管理配下の「クエリ実行」（`screen_key=query_runner`、権限9）。マスタ出力など、定型SQLの結果を表示・CSV保存する汎用画面。任意のSQLを実行できるため管理者専用とする。
+
+- クエリは端末ローカルの `bmcs_queries.xml`（実行ファイルと同じフォルダ。無ければサンプル入りで自動作成）に書く。形式: `<Query id><Name/><SQL/><Param id><Name/><Value/></Param></Query>`。
+- SQL中の `#param{id}` は条件値の文字列置換（文字列は値に引用符を含める）。実行に成功すると条件値をファイルへ書き戻し、次回の初期値にする。
+- 接続先はアプリと同じDB。結果は件数制限なしでグリッド表示し、CSVはShift-JIS・ヘッダー付き。
+- 「クエリファイル編集」でメモ帳を開き、閉じると再読み込みする。
+- 実装: `QueryRunnerService`、`QueryRunnerViewModel`、`QueryRunnerWindow`。

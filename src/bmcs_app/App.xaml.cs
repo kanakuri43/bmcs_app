@@ -171,6 +171,9 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<DepositMethodMasterWindow>();
         builder.Services.AddScoped<DepositMethodMasterViewModel>();
 
+        builder.Services.AddScoped<QueryRunnerWindow>();
+        builder.Services.AddScoped<QueryRunnerViewModel>();
+
         builder.Services.AddScoped<PrinterSettingsWindow>();
         builder.Services.AddScoped<PrinterSettingsViewModel>();
 
