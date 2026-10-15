@@ -27,3 +27,13 @@ scripts/  DDL・初期データの連番SQL（001〜）。開発用の seed／re
 docs/     設計・運用ドキュメント
 TODO.md   開発タスク一覧
 ```
+
+## 各種設定ファイル
+- connection string
+    appsettings.Development.json
+
+- printer
+    bmcs_config.json
+
+- qqcs
+    bmcs_queries.xml
