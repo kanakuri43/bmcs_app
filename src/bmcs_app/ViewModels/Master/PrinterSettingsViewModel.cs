@@ -31,6 +31,9 @@ public partial class PrinterSettingsViewModel(PrinterSettingsService printerSett
     public partial string ReceivablesBalancePrinter { get; set; } = NoPrinterText;
 
     [ObservableProperty]
+    public partial string CustomerLedgerPrinter { get; set; } = NoPrinterText;
+
+    [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
 
     /// <summary>画面表示時にプリンタ一覧と保存済み設定を読み込む（Window の Loaded から呼ばれる）。</summary>
@@ -55,6 +58,7 @@ public partial class PrinterSettingsViewModel(PrinterSettingsService printerSett
         InvoicePrinter = settings.InvoicePrinter ?? NoPrinterText;
         LineInvoicePrinter = settings.LineInvoicePrinter ?? NoPrinterText;
         ReceivablesBalancePrinter = settings.ReceivablesBalancePrinter ?? NoPrinterText;
+        CustomerLedgerPrinter = settings.CustomerLedgerPrinter ?? NoPrinterText;
         StatusMessage = string.Empty;
 
         return Task.CompletedTask;
@@ -67,7 +71,8 @@ public partial class PrinterSettingsViewModel(PrinterSettingsService printerSett
             NullIfUnset(DeliverySlipPrinter),
             NullIfUnset(InvoicePrinter),
             NullIfUnset(LineInvoicePrinter),
-            NullIfUnset(ReceivablesBalancePrinter)));
+            NullIfUnset(ReceivablesBalancePrinter),
+            NullIfUnset(CustomerLedgerPrinter)));
 
         StatusMessage = "保存しました。";
     }

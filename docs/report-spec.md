@@ -11,7 +11,7 @@
 | 納品書 | 売上入力 | `DeliveryNote`／`deliverySlipPrinter` | 2-1 |
 | 請求書 | 請求締め処理 | `Invoice`／`invoicePrinter` | 2-2 |
 | 明細請求書 | 明細請求書発行 | `DetailInvoice`／`lineInvoicePrinter` | 2-2 |
-| 得意先元帳 | 得意先元帳（画面表示） | 印刷の種類は未定義（レイアウト要件のみ） | 2-3 |
+| 得意先元帳 | 得意先元帳 | `CustomerLedger`／`customerLedgerPrinter` | 2-3 |
 | 売掛金残高一覧表 | 月次締め処理 | `ReceivablesBalance`／`receivablesBalancePrinter` | 2-4 |
 
 いずれもA4。PDF保存は Windows の「Microsoft Print to PDF」を使う。
@@ -67,7 +67,7 @@ QuestPDF等の外部帳票ライブラリは使わない。QuestPDFはCommunity 
     ダイアログなしで直接送信し、失敗時のみ`PrintDialog`にフォールバックする。
     `PrintToPdf(FixedDocument, jobName)` が「Microsoft Print to PDF」へ送信する
     （保存先はこの仮想プリンタが表示するOS標準ダイアログに任せる）。両メソッドとも
-    `PrintTicket.PageMediaSize`/`PageOrientation`をA4縦に固定する（プリンタの既定用紙が
+    `PrintTicket.PageMediaSize`/`PageOrientation`をA4に固定する（向きは文書のページ寸法で縦・横を決める）（プリンタの既定用紙が
     Letterの端末で縮小・欠けが起きるのを防ぐ）。エラー表示は行わず`ReportPrintResult`で
     結果を返し、呼び出し元がStatusMessageに表示する。
   - `ReportPreviewDialog`／`ReportPreviewDialogViewModel`
@@ -79,10 +79,8 @@ QuestPDF等の外部帳票ライブラリは使わない。QuestPDFはCommunity 
     `PART_ContentHost`だけの`ScrollViewer`に絞り、印刷・PDF保存・閉じるは自前ボタンに
     一本化している。**プレビューは`ShowDialog`（モーダル）で開く**
     （`docs/architecture.md` 4章補足）。
-  - `ReportKind` enum（`DeliveryNote`/`Invoice`/`DetailInvoice`/`ReceivablesBalance`）は
-    `PrinterSettings`の4項目に一致させる。**得意先元帳用のプリンタ設定は存在しない。
-    得意先元帳の帳票実装時に`PrinterSettingsConfig`・設定画面・enumへ追加する
-    （先取りしない）。**
+  - `ReportKind` enum（`DeliveryNote`/`Invoice`/`DetailInvoice`/`ReceivablesBalance`/`CustomerLedger`）は
+    `PrinterSettings`の5項目に一致させる。
 
 ### 2-1. 納品書
 
@@ -253,8 +251,17 @@ QuestPDF等の外部帳票ライブラリは使わない。QuestPDFはCommunity 
 
 ### 2-3. 得意先元帳
 
-得意先元帳は「前頁繰越／次頁繰越」を毎ページのフッターに
-出す必要があり、納品書・請求書・明細請求書の「最終ページのみフッター」という形は使えない。
+得意先元帳画面から印刷する。画面で選んだ得意先・期間の元帳を、画面と同じ並び（先頭は前月繰越行）で出力する。A4**横**（項目を省略せず画面と同じ項目を並べるため。8pt）、`PagedReportDocumentBuilder`を継承する（`CustomerLedgerDocumentBuilder`）。印刷履歴は記録しない。向きは`PagedReportDocumentBuilder.IsLandscape`で切り替え、`ReportPrintService`は文書のページ寸法から印刷の向きを決める。
+
+- **列**: 画面と同じ。区分／伝票日付／得意先（請求集約先の元帳のみ。グループ内の複数得意先が混在するため）／伝票No／行／商品コード／商品名・摘要／課税区分／数量／単価／売上額／請求（請求済は「＊」）／入金日付／入金No／入金額／残高／備考。区分・摘要の文言は画面（`CustomerLedgerLineViewModel`）と同じ。幅を明示し、残りを商品名・摘要と備考で分ける。
+- **ヘッダー**: 1ページ目は「得意先元帳」「自社名・発行日」「得意先コード・名」「期間」。2ページ目以降は続紙ヘッダー（タイトル・得意先・`n/m ページ`）。列見出しは各ページに繰り返す。
+- **毎ページのフッター**: 「前頁繰越」（そのページの直前の行の残高。1ページ目は出さない）と「次頁繰越」（そのページ最終行の残高。最終ページは出さない）。納品書・請求書・明細請求書の「最終ページのみフッター」という形は使えないため、`PagedReportDocumentBuilder`の`BuildPageFooter`で出す。
+- **最終ページのフッター**: 前月繰越・売上額・消費税・入金額・期末残高の合計。
+- **請求集約元（取引履歴のみ）**: 残高を持たないため、入金・残高の列と繰越（前頁・次頁）を出さず、フッターは売上額の合計だけにする。
+- **自社情報**: 見出しに自社名を出すだけなので、未登録でも印刷を止めない。
+- **プリンタ設定**: `customerLedgerPrinter`（プリンタ設定画面の「得意先元帳」）。未設定なら他の帳票と同じく印刷ダイアログにフォールバックする。
+- **データ取得**: `CustomerLedgerQueryService.GetReportDataAsync`（Application）が`CustomerLedgerReportData`を返す。画面の表示結果は使わず、印刷のたびに取り直す。
+- **操作**: 画面の「プレビュー」は帳票プレビュー画面（印刷・PDF保存あり）、「印刷」はプレビューを開かず設定済みプリンタへ直接送る。
 
 ### 2-4. 売掛金残高一覧表
 

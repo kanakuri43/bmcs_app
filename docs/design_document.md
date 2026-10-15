@@ -1231,8 +1231,9 @@ SELECT COUNT(*) FROM dbo.sales WHERE is_deleted = 0 AND settlement_status <> (
 
 サービス層（元帳データのマージ）＋ViewModel＋View（画面）までを範囲とする。リアルタイム残高の常時表示は21-6、伝票プレビューは21-7を参照。
 
-スコープ外は印刷・プレビュー（ボタンは枠のみ用意し`IsEnabled="False"`。得意先元帳の帳票は
-未実装。`docs/report-spec.md` 2-3節）。
+印刷・プレビューは「プレビュー」「印刷」ボタンから行う。画面の得意先・期間の元帳を取り直して帳票にする
+（`docs/report-spec.md` 2-3節）。「プレビュー」は帳票プレビュー画面を開き、「印刷」はプレビューを開かず
+設定済みプリンタへ直接送る。元帳を表示していない間（得意先未指定）は押せない。
 
 ### 21-2. 中心的な設計課題と決定事項
 
@@ -1410,8 +1411,8 @@ WPFの`KeyBinding`はコントロールが`IsEnabled=false`でも生き続ける
 
 ### 22-5. 申し送り
 
-得意先元帳の帳票（毎ページ繰越フッター、`ReportKind`・`PrinterSettingsConfig`の追加）は
-未実装で、要件は`docs/report-spec.md` 2-3節、判断は`docs/decisions.md`に記載している。
+得意先元帳の帳票（毎ページ繰越フッター）は`CustomerLedgerDocumentBuilder`が担う。
+要件は`docs/report-spec.md` 2-3節、判断は`docs/decisions.md`に記載している。
 
 ---
 
@@ -1497,8 +1498,7 @@ WPFの`KeyBinding`はコントロールが`IsEnabled=false`でも生き続ける
 ### 23-7. 申し送り
 
 - 得意先元帳の帳票要件（毎ページ繰越フッター）と専用のプリンタ設定
-  （`ReportKind`・`PrinterSettingsConfig`）は`docs/report-spec.md` 2-3節を参照。
-  `ReportKind`に得意先元帳用の値は現在存在しない。
+  （`ReportKind.CustomerLedger`・`customerLedgerPrinter`）は`docs/report-spec.md` 2-3節を参照。
 - 納品書を適格請求書として扱うかは税理士確認待ち（`docs/design_document.md` 2章の
   【要確認】は閉じていない）。
 - 請求書・明細請求書の振込先は得意先ごとに使い分ける。`bank_accounts`は自社の振込先口座

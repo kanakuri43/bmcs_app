@@ -5,4 +5,5 @@ public record PrinterSettings(
     string? DeliverySlipPrinter,
     string? InvoicePrinter,
     string? LineInvoicePrinter,
-    string? ReceivablesBalancePrinter);
+    string? ReceivablesBalancePrinter,
+    string? CustomerLedgerPrinter);

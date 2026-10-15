@@ -3,7 +3,7 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  Title="bmcs_app - 帳票プレビュー"
-                 Height="900" Width="760"
+                 Height="900" Width="1180"
                  WindowStartupLocation="CenterOwner"
                  ShowInTaskbar="False"
                  WindowTransitionsEnabled="False">

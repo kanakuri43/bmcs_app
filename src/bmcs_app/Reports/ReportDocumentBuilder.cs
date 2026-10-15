@@ -29,6 +29,10 @@ public abstract class ReportDocumentBuilder
     protected const double ContentWidth = A4Width - 2 * MarginX;
     protected const double ContentHeight = A4Height - 2 * MarginY;
 
+    // 横向き（<see cref="PagedReportDocumentBuilder.IsLandscape"/>）の用紙・描画領域。
+    protected const double LandscapeContentWidth = A4Height - 2 * MarginX;
+    protected const double LandscapeContentHeight = A4Width - 2 * MarginY;
+
     protected const double LineHeight = 21.0;
     protected const double TableHeaderHeight = 24.0;
 

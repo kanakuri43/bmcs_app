@@ -13,7 +13,7 @@
         2列を追加した。都度得意先の消込済み売上行には、証跡として入金日付・入金No.を同じ行の
         右側に表示する（金額は載せない。残高は入金日付の独立行でのみ変化する）。
         締め得意先の入金は独立行になり、左側の売上欄は空欄になる。
-        印刷・プレビューは帳票未実装のため枠のみ用意し無効化する。
+        印刷・プレビューは得意先・期間の元帳を帳票として出力する（docs/report-spec.md 2-3）。
         得意先・期間のいずれかを変更すると自動的に再表示するため、「表示」ボタンは撤去している。
         F5キーは他画面での更新後に手動で再表示したい場合に備えて残す。
     -->
@@ -66,10 +66,10 @@
                 <DatePicker Width="120" Margin="0,0,16,0"
                             SelectedDate="{Binding PeriodTo}" />
 
-                <Button Content="プレビュー" Padding="12,6" Margin="0,0,8,0" IsEnabled="False"
-                        ToolTip="得意先元帳の印刷（未実装）" />
-                <Button Content="印刷" Padding="12,6" IsEnabled="False"
-                        ToolTip="得意先元帳の印刷（未実装）" />
+                <Button Content="プレビュー" Padding="12,6" Margin="0,0,8,0"
+                        Command="{Binding PreviewCommand}" />
+                <Button Content="印刷" Padding="12,6"
+                        Command="{Binding PrintCommand}" />
             </StackPanel>
 
             <!-- 請求集約元の案内文（取引履歴のみモード）。 -->

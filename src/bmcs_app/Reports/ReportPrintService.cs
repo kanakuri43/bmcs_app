@@ -13,6 +13,7 @@ public enum ReportKind
     Invoice,
     DetailInvoice,
     ReceivablesBalance,
+    CustomerLedger,
 }
 
 /// <summary>印刷・PDF出力の結果。呼び出し元（ViewModel）が <c>StatusMessage</c> に表示する。</summary>
@@ -43,7 +44,7 @@ public class ReportPrintService(PrinterSettingsService printerSettingsService, I
             try
             {
                 var dialog = new PrintDialog { PrintQueue = new PrintQueue(new LocalPrintServer(), printerName) };
-                ApplyA4Portrait(dialog, document);
+                ApplyA4(dialog, document);
                 dialog.PrintDocument(document.DocumentPaginator, jobName);
                 return new ReportPrintResult(true, $"「{printerName}」へ印刷しました。");
             }
@@ -59,7 +60,7 @@ public class ReportPrintService(PrinterSettingsService printerSettingsService, I
             return new ReportPrintResult(false, "印刷をキャンセルしました。");
         }
 
-        ApplyA4Portrait(fallback, document);
+        ApplyA4(fallback, document);
         fallback.PrintDocument(document.DocumentPaginator, jobName);
         return new ReportPrintResult(true, $"「{fallback.PrintQueue.FullName}」へ印刷しました。");
     }
@@ -83,21 +84,24 @@ public class ReportPrintService(PrinterSettingsService printerSettingsService, I
         }
 
         var dialog = new PrintDialog { PrintQueue = pdfQueue };
-        ApplyA4Portrait(dialog, document);
+        ApplyA4(dialog, document);
         dialog.PrintDocument(document.DocumentPaginator, jobName);
         return new ReportPrintResult(true, "PDF保存ダイアログを表示しました。");
     }
 
     /// <summary>
-    /// プリンタの既定設定（Letter 等）に依存せず A4・縦向きで出力する。
-    /// 未設定のままだと、既定用紙が Letter の端末で縮小・欠けが起きる。
+    /// プリンタの既定設定（Letter 等）に依存せず A4 で出力する。向きは文書のページ寸法から決める
+    /// （横長のページなら横向き）。未設定のままだと、既定用紙が Letter の端末で縮小・欠けが起きる。
     /// </summary>
-    private static void ApplyA4Portrait(PrintDialog dialog, FixedDocument document)
+    private static void ApplyA4(PrintDialog dialog, FixedDocument document)
     {
+        var landscape = document.Pages.Count > 0
+            && document.Pages[0].GetPageRoot(false) is { Width: var w, Height: var h } && w > h;
         dialog.PrintTicket.PageMediaSize = new PageMediaSize(PageMediaSizeName.ISOA4);
-        dialog.PrintTicket.PageOrientation = PageOrientation.Portrait;
-        document.DocumentPaginator.PageSize = new System.Windows.Size(
-            ReportDocumentBuilder.A4Width, ReportDocumentBuilder.A4Height);
+        dialog.PrintTicket.PageOrientation = landscape ? PageOrientation.Landscape : PageOrientation.Portrait;
+        document.DocumentPaginator.PageSize = landscape
+            ? new System.Windows.Size(ReportDocumentBuilder.A4Height, ReportDocumentBuilder.A4Width)
+            : new System.Windows.Size(ReportDocumentBuilder.A4Width, ReportDocumentBuilder.A4Height);
     }
 
     private string? ResolvePrinterName(ReportKind kind)
@@ -109,6 +113,7 @@ public class ReportPrintService(PrinterSettingsService printerSettingsService, I
             ReportKind.Invoice => settings.InvoicePrinter,
             ReportKind.DetailInvoice => settings.LineInvoicePrinter,
             ReportKind.ReceivablesBalance => settings.ReceivablesBalancePrinter,
+            ReportKind.CustomerLedger => settings.CustomerLedgerPrinter,
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "未対応の帳票種別です。"),
         };
     }

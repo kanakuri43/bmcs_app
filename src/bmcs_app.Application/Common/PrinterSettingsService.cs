@@ -14,7 +14,8 @@ public class PrinterSettingsService
             config.DeliverySlipPrinter,
             config.InvoicePrinter,
             config.LineInvoicePrinter,
-            config.ReceivablesBalancePrinter);
+            config.ReceivablesBalancePrinter,
+            config.CustomerLedgerPrinter);
     }
 
     public void Save(PrinterSettings settings)
@@ -25,6 +26,7 @@ public class PrinterSettingsService
             InvoicePrinter = settings.InvoicePrinter,
             LineInvoicePrinter = settings.LineInvoicePrinter,
             ReceivablesBalancePrinter = settings.ReceivablesBalancePrinter,
+            CustomerLedgerPrinter = settings.CustomerLedgerPrinter,
         });
     }
 }

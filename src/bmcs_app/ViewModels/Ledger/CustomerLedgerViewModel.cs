@@ -4,6 +4,7 @@ using bmcs_app.Application.Master;
 using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Entities;
 using bmcs_app.Domain.Enums;
+using bmcs_app.Reports;
 using bmcs_app.Services;
 using bmcs_app.ViewModels.Common;
 using bmcs_app.ViewModels.Receipt;
@@ -48,7 +49,8 @@ namespace bmcs_app.ViewModels.Ledger;
 public partial class CustomerLedgerViewModel(
     CustomerLedgerQueryService ledgerQueryService,
     CustomerService customerService,
-    WindowService windowService) : ViewModelBase
+    WindowService windowService,
+    ReportPrintService reportPrintService) : ViewModelBase
 {
     private Customer? _customer;
 
@@ -144,6 +146,7 @@ public partial class CustomerLedgerViewModel(
         TaxUnitDisplay = BuildTaxUnitDisplay(customer);
         Lines.Clear();
         ResetTotals();
+        NotifyPrintCanExecuteChanged();
 
         // 得意先確定はすでに呼び出し元の RunBusyAsync 内なので、RefreshLedgerAsync を直接呼ぶ
         // （SearchCommand 経由だと IsBusy の多重実行抑止に引っかかり無視されてしまう）。
@@ -229,7 +232,71 @@ public partial class CustomerLedgerViewModel(
             CurrentBalance = 0m;
         }
 
+        NotifyPrintCanExecuteChanged();
         StatusMessage = $"{Lines.Count}行を表示しました。";
+    }
+
+    private bool CanPrint() => _customer is not null && Lines.Count > 0;
+
+    /// <summary>画面の得意先・期間で元帳を取り直して印刷用データにする。取り直すのは自社名の取得と最新化のため。</summary>
+    private async Task<CustomerLedgerReportData?> LoadReportDataAsync()
+    {
+        if (_customer is null || PeriodFrom is not { } from || PeriodTo is not { } to)
+        {
+            return null;
+        }
+
+        try
+        {
+            var data = await ledgerQueryService.GetReportDataAsync(
+                _customer.CustomerCode, DateOnly.FromDateTime(from), DateOnly.FromDateTime(to));
+            if (data is null)
+            {
+                StatusMessage = "得意先が見つかりません。";
+            }
+
+            return data;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"印刷エラー: {ex.Message}";
+            return null;
+        }
+    }
+
+    private static string JobName(CustomerLedgerReportData data)
+        => $"得意先元帳 {data.CustomerCode} {data.PeriodFrom:yyyyMMdd}-{data.PeriodTo:yyyyMMdd}";
+
+    /// <summary>元帳を帳票プレビューで表示する（そこから印刷・PDF保存できる）。</summary>
+    [RelayCommand(CanExecute = nameof(CanPrint))]
+    private async Task PreviewAsync()
+    {
+        if (await LoadReportDataAsync() is not { } data)
+        {
+            return;
+        }
+
+        windowService.ShowDialog<ReportPreviewDialog, ReportPreviewDialogViewModel, bool>(
+            vm => vm.Initialize(ReportKind.CustomerLedger, JobName(data), () => new CustomerLedgerDocumentBuilder(data).Build()));
+    }
+
+    /// <summary>プレビューを開かず、設定済みプリンタへ直接印刷する。</summary>
+    [RelayCommand(CanExecute = nameof(CanPrint))]
+    private async Task PrintAsync()
+    {
+        if (await LoadReportDataAsync() is not { } data)
+        {
+            return;
+        }
+
+        StatusMessage = reportPrintService.Print(
+            new CustomerLedgerDocumentBuilder(data).Build(), ReportKind.CustomerLedger, JobName(data)).Message ?? string.Empty;
+    }
+
+    private void NotifyPrintCanExecuteChanged()
+    {
+        PreviewCommand.NotifyCanExecuteChanged();
+        PrintCommand.NotifyCanExecuteChanged();
     }
 
     private void ResetTotals()

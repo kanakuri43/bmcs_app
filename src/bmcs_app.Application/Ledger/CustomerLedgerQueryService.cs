@@ -26,6 +26,25 @@ public class CustomerLedgerQueryService(BmcsDbContext dbContext)
         return input is null ? null : CustomerLedgerBuilder.Build(input);
     }
 
+    /// <summary>印刷用に、元帳と自社名・得意先名をまとめて取得する。得意先が存在しなければ null。</summary>
+    public async Task<CustomerLedgerReportData?> GetReportDataAsync(
+        string customerCode, DateOnly periodFrom, DateOnly periodTo, CancellationToken cancellationToken = default)
+    {
+        var input = await GetInputAsync(customerCode, periodFrom, periodTo, cancellationToken);
+        if (input is null)
+        {
+            return null;
+        }
+
+        var companyName = await dbContext.CompanyInfos.AsNoTracking()
+            .Select(c => c.CompanyName)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return new CustomerLedgerReportData(
+            companyName, input.Customer.CustomerCode, input.Customer.CustomerName,
+            periodFrom, periodTo, CustomerLedgerBuilder.Build(input));
+    }
+
     /// <summary>
     /// <see cref="GetAsync"/> の入力（全期間の売上・入金・請求）だけを組み立てて返す。月次締め
     /// （<c>MonthlyClosingService</c>）が元帳の結果と同じ入力から税率別内訳も計算するために公開している。

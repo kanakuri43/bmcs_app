@@ -21,6 +21,9 @@ public class PrinterSettingsConfig
     [JsonPropertyName("receivablesBalancePrinter")]
     public string? ReceivablesBalancePrinter { get; set; }
 
+    [JsonPropertyName("customerLedgerPrinter")]
+    public string? CustomerLedgerPrinter { get; set; }
+
     private static string FilePath => Path.Combine(AppContext.BaseDirectory, "bmcs_config.json");
 
     public static PrinterSettingsConfig Load()
