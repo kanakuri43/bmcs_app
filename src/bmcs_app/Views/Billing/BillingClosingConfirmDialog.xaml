@@ -1,0 +1,53 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Billing.BillingClosingConfirmDialog"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 Title="bmcs_app - 締確定"
+                 Height="320" Width="520"
+                 WindowStartupLocation="CenterOwner"
+                 ShowInTaskbar="False"
+                 WindowTransitionsEnabled="False">
+    <mah:MetroWindow.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CancelCommand}" />
+    </mah:MetroWindow.InputBindings>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 対象の指定方法（締日 / 個別指定） -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <RadioButton GroupName="Target" Content="締日" IsChecked="{Binding IsByClosingDay}" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox Width="120" ItemsSource="{Binding ClosingDayOptions}"
+                      SelectedItem="{Binding SelectedClosingDay}" DisplayMemberPath="Display"
+                      IsEnabled="{Binding IsByClosingDay}" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+            <RadioButton GroupName="Target" Content="個別指定" IsChecked="{Binding IsIndividual}" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <Button Content="得意先を選択..." Command="{Binding SelectCustomersCommand}" IsEnabled="{Binding IsIndividual}" Padding="12,4" Margin="0,0,8,0" />
+            <TextBlock Text="{Binding SelectedCustomerSummary}" VerticalAlignment="Center" />
+        </StackPanel>
+
+        <!-- 対象の指定と請求日の間に区切り線と余白を入れる -->
+        <Border Grid.Row="2" Margin="0,12,0,0" Padding="0,16,0,0"
+                BorderThickness="0,1,0,0" BorderBrush="{DynamicResource MahApps.Brushes.Gray8}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="請求日（締め切り日）" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <DatePicker Width="120" SelectedDate="{Binding ClosingDate}" />
+            </StackPanel>
+        </Border>
+
+        <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Foreground="OrangeRed" TextWrapping="Wrap" Margin="0,12,0,0" />
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="締め実行" Command="{Binding ExecuteCommand}" Padding="16,6" Margin="0,0,12,0" />
+            <Button Content="キャンセル（Esc）" Command="{Binding CancelCommand}" Padding="16,6" />
+        </StackPanel>
+    </Grid>
+</mah:MetroWindow>

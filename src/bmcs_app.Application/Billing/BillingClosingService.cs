@@ -38,7 +38,7 @@ public class BillingClosingService(
     public async Task<IReadOnlyList<BillingClosingTarget>> PreviewAsync(
         byte closingDay, DateOnly closingDate, CancellationToken cancellationToken = default)
     {
-        var candidates = await BuildCandidatesAsync(closingDay, closingDate, tracking: false, cancellationToken);
+        var candidates = await BuildCandidatesAsync(closingDay, null, closingDate, tracking: false, cancellationToken);
         return candidates.Select(c => c.ToTarget()).ToList();
     }
 
@@ -52,15 +52,28 @@ public class BillingClosingService(
     /// 請求日（<c>billing_date</c>）としてもそのまま使う（
     /// 「請求日でいつ締め切るか決まる」ため、締め切り日と請求日を別入力にしない）。
     /// </param>
-    public async Task<IReadOnlyList<BillingClosingTarget>> ConfirmAsync(
+    public Task<IReadOnlyList<BillingClosingTarget>> ConfirmAsync(
         byte closingDay, DateOnly closingDate, CancellationToken cancellationToken = default)
+        => ConfirmCoreAsync(closingDay, null, closingDate, cancellationToken);
+
+    /// <summary>
+    /// 個別指定の締め。対象は<paramref name="customerCodes"/>の得意先（締め得意先かつ請求集約先のもののみ。
+    /// 該当しないコードは無視する）。締め日区分は問わない。それ以外は締め日区分指定と同じ。
+    /// </summary>
+    public Task<IReadOnlyList<BillingClosingTarget>> ConfirmAsync(
+        IReadOnlyCollection<string> customerCodes, DateOnly closingDate, CancellationToken cancellationToken = default)
+        => ConfirmCoreAsync(null, customerCodes, closingDate, cancellationToken);
+
+    private async Task<IReadOnlyList<BillingClosingTarget>> ConfirmCoreAsync(
+        byte? closingDay, IReadOnlyCollection<string>? customerCodes, DateOnly closingDate,
+        CancellationToken cancellationToken)
     {
         var employeeCode = currentEmployeeContext.EmployeeCode;
         var now = DateTime.Now;
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-        var candidates = await BuildCandidatesAsync(closingDay, closingDate, tracking: true, cancellationToken);
+        var candidates = await BuildCandidatesAsync(closingDay, customerCodes, closingDate, tracking: true, cancellationToken);
         var results = new List<BillingClosingTarget>();
 
         foreach (var candidate in candidates)
@@ -129,8 +142,8 @@ public class BillingClosingService(
         await transaction.CommitAsync(cancellationToken);
 
         logger.LogInformation(
-            "請求締めを実行しました。締め日={ClosingDay} 請求日={ClosingDate} 確定件数={ConfirmedCount} スキップ件数={SkippedCount}",
-            closingDay, closingDate,
+            "請求締めを実行しました。締め日={ClosingDay} 個別指定件数={SpecifiedCount} 請求日={ClosingDate} 確定件数={ConfirmedCount} スキップ件数={SkippedCount}",
+            closingDay, customerCodes?.Count, closingDate,
             results.Count(r => r.SkipReason is null),
             results.Count(r => r.SkipReason is not null));
 
@@ -143,18 +156,23 @@ public class BillingClosingService(
     /// trueなら<see cref="ConfirmAsync"/>が明細行を更新できるよう追跡ありで読む。
     /// </summary>
     private async Task<List<BillingClosingCandidate>> BuildCandidatesAsync(
-        byte closingDay, DateOnly closingDate, bool tracking, CancellationToken cancellationToken)
+        byte? closingDay, IReadOnlyCollection<string>? customerCodes, DateOnly closingDate, bool tracking,
+        CancellationToken cancellationToken)
     {
         var closingYearMonth = $"{closingDate.Year:D4}{closingDate.Month:D2}";
 
         // 請求集約元（billing_customer_codeが自分自身と異なる得意先）は候補にしない。
         // 請求データ（billings）は請求集約先にだけ作る（docs/design_document.md 28章）。
         // 請求集約元の売上・入金は、下記BuildCandidateAsyncが請求集約先の候補にまとめて取り込む。
-        var customers = await dbContext.Customers
+        var customerQuery = dbContext.Customers
             .AsNoTracking()
-            .Where(c => !c.IsDeleted && c.ClosingDay == closingDay
+            .Where(c => !c.IsDeleted
                 && (c.TaxUnit == TaxUnit.Invoice || c.TaxUnit == TaxUnit.Slip)
-                && c.BillingCustomerCode == c.CustomerCode)
+                && c.BillingCustomerCode == c.CustomerCode);
+        customerQuery = customerCodes is null
+            ? customerQuery.Where(c => c.ClosingDay == closingDay)
+            : customerQuery.Where(c => customerCodes.Contains(c.CustomerCode));
+        var customers = await customerQuery
             .OrderBy(c => c.CustomerCode)
             .ToListAsync(cancellationToken);
 

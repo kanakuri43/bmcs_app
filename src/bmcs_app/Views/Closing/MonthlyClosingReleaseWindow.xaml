@@ -10,7 +10,7 @@
     <!--
         指定した年月の確定済みmonthly_closingsをまとめて解除済にする（非破壊）。
         月次締め処理（MonthlyClosingWindow）とは別画面とする。
-        入力は集計年月のみで、対象を一覧表示してから一括で解除する（プレビューはボタンを持たず
+        入力は集計年月のみ（年を4桁入力→その年に月次締め済みの年月をコンボボックスで選択）で、対象を一覧表示してから一括で解除する（プレビューはボタンを持たず
         条件変更時に自動再取得する）。対象の中に解除できないものが1件でもあれば解除実行を
         無効化する（All-or-nothing）。権限はメニュー単位の判定のみ（管理者専用メニュー）。
     -->
@@ -28,9 +28,12 @@
 
         <!-- ===== 条件 ===== -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="年" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBox Width="60" MaxLength="4" Margin="0,0,16,0"
+                     beh:FocusBehavior.IsInitialFocus="True"
+                     Text="{Binding YearText, UpdateSourceTrigger=PropertyChanged}" />
             <TextBlock Text="集計年月" VerticalAlignment="Center" Margin="0,0,8,0" />
             <ComboBox Width="140" Margin="0,0,16,0"
-                      beh:FocusBehavior.IsInitialFocus="True"
                       ItemsSource="{Binding MonthOptions}"
                       SelectedItem="{Binding SelectedMonth}"
                       DisplayMemberPath="Display" />

@@ -41,6 +41,20 @@ public class InvoiceService(BmcsDbContext dbContext)
                 b.ConfirmedAt))
             .ToListAsync(cancellationToken);
 
+    /// <summary>指定した年に確定済み請求データが存在する請求日の一覧（昇順、重複なし）。画面の請求日選択用。</summary>
+    public Task<List<DateOnly>> GetBillingDatesAsync(int year, CancellationToken cancellationToken = default)
+    {
+        var from = new DateOnly(year, 1, 1);
+        var to = new DateOnly(year, 12, 31);
+        return dbContext.Billings
+            .AsNoTracking()
+            .Where(b => b.BillingDate >= from && b.BillingDate <= to && !b.IsDeleted && b.BillingStatus == BillingStatus.Confirmed)
+            .Select(b => b.BillingDate)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToListAsync(cancellationToken);
+    }
+
     /// <summary>
     /// 指定した請求番号の請求書データを組み立てる（画面表示・印刷用、保存しない）。
     /// 確定済み・解除済みのどちらも取得対象とする（過去の参照用の印刷を禁止する理由がないため）。

@@ -10,7 +10,7 @@
     <!--
         指定した請求日の確定済みbillingをまとめて解除済にし、
         紐付く売上を未請求へ戻す。請求締め処理（BillingClosingWindow）とは別画面とする
-        。入力は請求日のみで、対象を一覧表示してから一括で解除する
+        。入力は請求日のみ（年を4桁入力→その年の請求締め済み日付をコンボボックスで選択）で、対象を一覧表示してから一括で解除する
         （BillingClosingWindowと同様、プレビューはボタンを持たず条件変更時に自動再取得する）。
         対象の中に解除できないものが1件でもあれば解除実行を無効化する（All-or-nothing）。
     -->
@@ -28,10 +28,15 @@
 
         <!-- ===== 条件 ===== -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="年" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBox Width="60" MaxLength="4" Margin="0,0,16,0"
+                     beh:FocusBehavior.IsInitialFocus="True"
+                     Text="{Binding YearText, UpdateSourceTrigger=PropertyChanged}" />
             <TextBlock Text="請求日" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <DatePicker Width="120" Margin="0,0,16,0"
-                        beh:FocusBehavior.IsInitialFocus="True"
-                        SelectedDate="{Binding BillingDate}" />
+            <ComboBox Width="140" Margin="0,0,16,0"
+                      ItemsSource="{Binding BillingDates}"
+                      SelectedItem="{Binding BillingDate}"
+                      ItemStringFormat="yyyy/MM/dd" />
 
             <Button Content="解除実行 (F8)" Command="{Binding ReleaseCommand}" Padding="16,6" />
         </StackPanel>

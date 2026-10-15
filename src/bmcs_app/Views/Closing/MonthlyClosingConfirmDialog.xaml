@@ -1,0 +1,36 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Closing.MonthlyClosingConfirmDialog"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 Title="bmcs_app - 月次締め確定"
+                 Height="240" Width="440"
+                 WindowStartupLocation="CenterOwner"
+                 ShowInTaskbar="False"
+                 WindowTransitionsEnabled="False">
+    <mah:MetroWindow.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CancelCommand}" />
+    </mah:MetroWindow.InputBindings>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal">
+            <TextBlock Text="集計年月" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox Width="140"
+                      ItemsSource="{Binding MonthOptions}"
+                      SelectedItem="{Binding SelectedMonth}"
+                      DisplayMemberPath="Display" />
+        </StackPanel>
+
+        <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" Foreground="OrangeRed" TextWrapping="Wrap" Margin="0,12,0,0" />
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="締め実行" Command="{Binding ExecuteCommand}" Padding="16,6" Margin="0,0,12,0" />
+            <Button Content="キャンセル（Esc）" Command="{Binding CancelCommand}" Padding="16,6" />
+        </StackPanel>
+    </Grid>
+</mah:MetroWindow>

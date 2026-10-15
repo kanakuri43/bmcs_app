@@ -283,6 +283,42 @@ public class BillingClosingServiceTests(DevDatabaseFixture fixture) : IClassFixt
     }
 
     [Fact]
+    public async Task 個別指定した得意先だけが締められ指定外の得意先は未請求のまま残る()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+
+        await InsertCustomerAsync(dbContext, CustomerInvoice, TaxUnit.Invoice, RoundingType.Floor);
+        await InsertCustomerAsync(dbContext, CustomerSlip, TaxUnit.Invoice, RoundingType.Floor);
+
+        var slip1 = "__TSTBIL_IND1";
+        var slip2 = "__TSTBIL_IND2";
+        dbContext.Sales.AddRange(
+            NewSalesLine(CustomerInvoice, TaxUnit.Invoice, slip1, 1, new DateOnly(2025, 7, 1),
+                SlipType.Sales, TaxCategory.Standard, 10m, quantity: 1m, unitPrice: 1000m, RoundingType.Floor),
+            NewSalesLine(CustomerSlip, TaxUnit.Invoice, slip2, 1, new DateOnly(2025, 7, 1),
+                SlipType.Sales, TaxCategory.Standard, 10m, quantity: 1m, unitPrice: 2000m, RoundingType.Floor));
+        await dbContext.SaveChangesAsync();
+
+        try
+        {
+            var results = await service.ConfirmAsync([CustomerInvoice], new DateOnly(2025, 7, 15));
+
+            var target = Assert.Single(results);
+            Assert.Equal(CustomerInvoice, target.CustomerCode);
+            Assert.NotNull(target.BillingNumber);
+
+            var other = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == slip2);
+            Assert.Null(other.BillingNumber);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, CustomerInvoice, [slip1]);
+            await CleanupAsync(dbContext, CustomerSlip, [slip2]);
+        }
+    }
+
+    [Fact]
     public async Task 指定した締め日以外の得意先は対象に含まれない()
     {
         await using var scope = fixture.Services.CreateAsyncScope();

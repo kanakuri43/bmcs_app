@@ -8,14 +8,14 @@
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        締め得意先（tax_unit=請求単位／伝票単位）を締め日区分で一括処理する画面。
-        入力は締め日区分（対象得意先の絞り込み）と請求日（締め切り日）の2つのみ。
-        対象年月は別入力にしない（請求日から導出できる冗長な入力になるため）。
+        締め得意先（tax_unit=請求単位／伝票単位）の確定済み請求データ一覧と、締め実行の起点となる画面。
+        締めの実行（締日／個別指定の選択・請求日の入力）は「締め確定」ボタンで開く締確定ダイアログで行う。
+        この画面の入力は一覧の抽出条件である請求日のみ。
         一覧は「これから締めたらどうなるか」のプレビューではなく、billingsに実在する確定済み
         請求データを請求日だけで抽出したもの。未確定の請求日を選ぶと0件になる。
         一覧は拡張選択（Ctrl/Shiftクリック。チェックボックス列は持たない）で複数行を選べ、
         選択行をまとめて印刷できる（請求書の再発行手段。docs/design_document.md 9章参照）。
-        プレビューが無くなった分、締め確定（F10）の実行前に確認ダイアログを挟む。
+        プレビューが無くなった分、締確定ダイアログで実行前に確認を挟む。
     -->
     <mah:MetroWindow.InputBindings>
         <KeyBinding Key="F10" Command="{Binding ConfirmCommand}" />
@@ -31,22 +31,21 @@
         </Grid.RowDefinitions>
 
         <!-- ===== 条件 ===== -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
-            <TextBlock Text="締め日" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <ComboBox Width="120" Margin="0,0,16,0"
-                      beh:FocusBehavior.IsInitialFocus="True"
-                      ItemsSource="{Binding ClosingDayOptions}"
-                      SelectedItem="{Binding SelectedClosingDay}"
-                      DisplayMemberPath="Display" />
+        <DockPanel Grid.Row="0" Margin="0,0,0,12" LastChildFill="False">
+            <!-- 締め確定は右上。締確定ダイアログを開く。 -->
+            <Button DockPanel.Dock="Right" Content="締め確定 (F10)" Command="{Binding ConfirmCommand}" Padding="16,6" />
 
-            <!-- 請求日＝締め切り日。SelectedDate は DatePicker が確定した瞬間にしか変化しないため、
-                 条件変更時の自動再取得（OnClosingDateChanged）が1文字入力するごとに走ることはない。 -->
-            <TextBlock Text="請求日（締め切り日）" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <DatePicker Width="120" Margin="0,0,16,0"
-                        SelectedDate="{Binding ClosingDate}" />
-
-            <Button Content="締め確定 (F10)" Command="{Binding ConfirmCommand}" Padding="16,6" />
-        </StackPanel>
+            <!-- 請求日の選択: 年（4桁）→その年に請求締め済みの日付。年が変わると日付の選択肢と一覧が自動で更新される。 -->
+            <TextBlock DockPanel.Dock="Left" Text="年" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBox DockPanel.Dock="Left" Width="60" MaxLength="4" Margin="0,0,16,0"
+                     beh:FocusBehavior.IsInitialFocus="True"
+                     Text="{Binding YearText, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock DockPanel.Dock="Left" Text="請求日" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox DockPanel.Dock="Left" Width="140"
+                      ItemsSource="{Binding BillingDates}"
+                      SelectedItem="{Binding ClosingDate}"
+                      ItemStringFormat="yyyy/MM/dd" />
+        </DockPanel>
 
         <!-- ===== 一覧 ===== -->
         <ListView Grid.Row="1"

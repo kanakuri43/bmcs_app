@@ -7,6 +7,22 @@ namespace bmcs_app.Application.Closing;
 /// <summary>月次締め処理画面の一覧用の読み取り専用照会。</summary>
 public class MonthlyClosingQueryService(BmcsDbContext dbContext)
 {
+    /// <summary>指定した年に確定済み（解除済みを除く）の月次締めが存在する月（1〜12、昇順）。画面の年月選択用。</summary>
+    public async Task<List<int>> GetClosedMonthsAsync(int year, CancellationToken cancellationToken = default)
+    {
+        var from = new DateOnly(year, 1, 1);
+        var to = new DateOnly(year, 12, 31);
+
+        var dates = await dbContext.MonthlyClosings
+            .AsNoTracking()
+            .Where(m => m.ClosingDate >= from && m.ClosingDate <= to && !m.IsDeleted && m.ClosingStatus == ClosingStatus.Confirmed)
+            .Select(m => m.ClosingDate)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return dates.Select(d => d.Month).Distinct().Order().ToList();
+    }
+
     /// <summary>指定した年月の確定済み（解除済みを除く）月次締めを、得意先コード順に返す。</summary>
     public Task<List<MonthlyClosingListItem>> GetByMonthAsync(
         int year, int month, CancellationToken cancellationToken = default)

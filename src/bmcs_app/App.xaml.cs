@@ -212,9 +212,15 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<BillingClosingWindow>();
         builder.Services.AddScoped<BillingClosingViewModel>();
+        builder.Services.AddScoped<BillingClosingConfirmDialog>();
+        builder.Services.AddScoped<BillingClosingConfirmDialogViewModel>();
+        builder.Services.AddScoped<ClosingCustomerSelectDialog>();
+        builder.Services.AddScoped<ClosingCustomerSelectDialogViewModel>();
 
         builder.Services.AddScoped<MonthlyClosingWindow>();
         builder.Services.AddScoped<MonthlyClosingViewModel>();
+        builder.Services.AddScoped<MonthlyClosingConfirmDialog>();
+        builder.Services.AddScoped<MonthlyClosingConfirmDialogViewModel>();
         builder.Services.AddScoped<MonthlyClosingReleaseWindow>();
         builder.Services.AddScoped<MonthlyClosingReleaseViewModel>();
 
