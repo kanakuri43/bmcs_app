@@ -199,9 +199,10 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 
 | カラム | 型 | NULL | 内容 |
 |---|---|---|---|
-| `product_code` | `varchar(20)` | PK | 社内商品コード（JAN コードではない） |
+| `product_code` | `varchar(20)` | PK | 社内商品コード（JAN コードは `jan_code` に別持ち） |
 | `product_name` | `nvarchar(60)` | × | |
 | `product_name_kana` | `nvarchar(60)` | ○ | 共通検索モーダルの検索対象 |
+| `jan_code` | `varchar(13)` | ○ | JAN コード。商品検索モーダル（マスタから）の検索対象。重複は許容 |
 | `specification` | `nvarchar(60)` | ○ | 規格 |
 | `unit_name` | `nvarchar(10)` | ○ | 単位（個・本・ケース等） |
 | `standard_unit_price_excl_tax` | `decimal(15,4)` | × | 外税単価（税抜）。得意先の `tax_unit` が請求単位／伝票単位の場合、伝票入力時の単価初期値としてここから転記する |

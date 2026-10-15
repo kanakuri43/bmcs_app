@@ -62,6 +62,7 @@ public class ProductService(
 
         current.ProductName = product.ProductName;
         current.ProductNameKana = product.ProductNameKana;
+        current.JanCode = product.JanCode;
         current.Specification = product.Specification;
         current.UnitName = product.UnitName;
         current.StandardUnitPriceExclTax = product.StandardUnitPriceExclTax;

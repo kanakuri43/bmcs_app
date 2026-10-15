@@ -22,7 +22,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="商品コード" Margin="0,0,12,8" VerticalAlignment="Center" />
@@ -49,6 +49,9 @@
 
                     <TextBlock Grid.Row="4" Grid.Column="0" Text="単位" Margin="0,0,12,8" VerticalAlignment="Center" />
                     <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding UnitName}" Margin="0,0,0,8" />
+
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="JANコード" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding JanCode}" MaxLength="13" HorizontalAlignment="Left" Width="160" Margin="0,0,0,8" />
                 </Grid>
 
                 <TextBlock Text="単価・税区分" FontWeight="Bold" Margin="0,16,0,8" />

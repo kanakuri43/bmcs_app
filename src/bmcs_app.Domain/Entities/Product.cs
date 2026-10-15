@@ -2,7 +2,7 @@ using bmcs_app.Domain.Enums;
 
 namespace bmcs_app.Domain.Entities;
 
-/// <summary>商品マスタ（product）。社内商品コードを使用し、JANコードではない。</summary>
+/// <summary>商品マスタ（product）。主キーは社内商品コード（JANコードは別カラム）。</summary>
 public class Product : AuditableEntity
 {
     public required string ProductCode { get; set; }
@@ -10,6 +10,9 @@ public class Product : AuditableEntity
     public required string ProductName { get; set; }
 
     public string? ProductNameKana { get; set; }
+
+    /// <summary>JANコード（任意）。商品検索の対象。主キーは社内商品コード。</summary>
+    public string? JanCode { get; set; }
 
     public string? Specification { get; set; }
 

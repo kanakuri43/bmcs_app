@@ -27,6 +27,9 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
     public partial string ProductNameKana { get; set; } = string.Empty;
 
     [ObservableProperty]
+    public partial string JanCode { get; set; } = string.Empty;
+
+    [ObservableProperty]
     public partial string Specification { get; set; } = string.Empty;
 
     [ObservableProperty]
@@ -103,6 +106,7 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
         ProductCode = product.ProductCode;
         ProductName = product.ProductName;
         ProductNameKana = product.ProductNameKana ?? string.Empty;
+        JanCode = product.JanCode ?? string.Empty;
         Specification = product.Specification ?? string.Empty;
         UnitName = product.UnitName ?? string.Empty;
         StandardUnitPriceExclTax = product.StandardUnitPriceExclTax;
@@ -135,6 +139,7 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
             ProductCode = ProductCode,
             ProductName = ProductName,
             ProductNameKana = NullIfEmpty(ProductNameKana),
+            JanCode = NullIfEmpty(JanCode),
             Specification = NullIfEmpty(Specification),
             UnitName = NullIfEmpty(UnitName),
             StandardUnitPriceExclTax = StandardUnitPriceExclTax,
@@ -231,6 +236,7 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
         ProductCode = string.Empty;
         ProductName = string.Empty;
         ProductNameKana = string.Empty;
+        JanCode = string.Empty;
         Specification = string.Empty;
         UnitName = string.Empty;
         StandardUnitPriceExclTax = 0;

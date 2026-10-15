@@ -56,6 +56,7 @@ public partial class ProductMasterSearchDialogViewModel(ProductService productSe
     private static bool Matches(Product product, string keyword) =>
         Contains(product.ProductCode, keyword)
         || Contains(product.ProductName, keyword)
+        || Contains(product.JanCode, keyword)
         || Contains(product.ProductNameKana, keyword)
         || Contains(product.Specification, keyword);
 

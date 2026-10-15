@@ -107,6 +107,7 @@ public partial class ProductSearchDialogViewModel(
             : _allProducts.Where(p => keywords.All(k =>
                 Contains(p.ProductCode, k)
                 || Contains(p.ProductName, k)
+                || Contains(p.JanCode, k)
                 || Contains(p.ProductNameKana, k)
                 || Contains(p.Specification, k)));
 
