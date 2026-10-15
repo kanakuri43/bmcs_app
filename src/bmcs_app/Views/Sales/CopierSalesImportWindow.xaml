@@ -6,7 +6,8 @@
                  Title="bmcs_app - コピー機売上CSV取込"
                  Height="640" Width="1100"
                  WindowStartupLocation="CenterScreen"
-                 WindowTransitionsEnabled="False">
+                 WindowTransitionsEnabled="False"
+                 AllowDrop="True" DragOver="Window_DragOver" Drop="Window_Drop">
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -83,6 +84,29 @@
                 <DataGridTextColumn Header="理由・結果" Binding="{Binding Reason}" Width="*" />
             </DataGrid.Columns>
         </DataGrid>
+
+        <Border Grid.Row="2" Margin="0,12,0,0" BorderBrush="Gray" BorderThickness="2" CornerRadius="8"
+                IsHitTestVisible="False">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Rows.Count}" Value="0">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Border.Background>
+                <SolidColorBrush Color="{DynamicResource MahApps.Colors.ThemeBackground}" />
+            </Border.Background>
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="&#xE8E5;" FontFamily="Segoe MDL2 Assets" FontSize="64" Foreground="Gray"
+                           HorizontalAlignment="Center" Margin="0,0,0,12" />
+                <TextBlock Text="ここにCSVファイルをドラッグ＆ドロップ&#10;（または「ファイル選択」ボタン）"
+                           FontSize="20" Foreground="Gray" TextAlignment="Center" />
+            </StackPanel>
+        </Border>
 
         <Grid Grid.Row="3" Margin="0,12,0,0">
             <Grid.ColumnDefinitions>

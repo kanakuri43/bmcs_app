@@ -105,19 +105,20 @@ public partial class CopierSalesImportViewModel(
     }
 
     [RelayCommand]
-    private Task SelectFileAsync() => RunBusyAsync(async () =>
+    private Task SelectFileAsync()
     {
         var dialog = new OpenFileDialog { Filter = "CSVファイル (*.csv)|*.csv", Title = "コピー機売上CSVを選択" };
-        if (dialog.ShowDialog() != true)
-        {
-            return;
-        }
+        return dialog.ShowDialog() == true ? LoadFileAsync(dialog.FileName) : Task.CompletedTask;
+    }
 
-        FilePath = dialog.FileName;
+    /// <summary>CSVを読み込んでプレビューを表示する。ボタン選択とファイルD&amp;Dの共通入口。</summary>
+    public Task LoadFileAsync(string path) => RunBusyAsync(async () =>
+    {
+        FilePath = path;
         Rows.Clear();
         try
         {
-            var text = await CopierCsvFileReader.ReadAsync(dialog.FileName);
+            var text = await CopierCsvFileReader.ReadAsync(path);
             var parsed = CopierCsvParser.Parse(text);
             if (parsed.FileError is not null)
             {
