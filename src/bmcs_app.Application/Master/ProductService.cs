@@ -68,6 +68,7 @@ public class ProductService(
         current.StandardUnitPriceExclTax = product.StandardUnitPriceExclTax;
         current.StandardUnitPriceInclTax = product.StandardUnitPriceInclTax;
         current.StandardCostPrice = product.StandardCostPrice;
+        current.CatalogPrice = product.CatalogPrice;
         current.TaxCategory = product.TaxCategory;
         current.UpdatedBy = currentEmployeeContext.EmployeeCode;
         current.UpdatedAt = DateTime.Now;

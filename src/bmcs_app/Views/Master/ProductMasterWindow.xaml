@@ -63,6 +63,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="外税単価（税抜）" Margin="0,0,12,8" VerticalAlignment="Center" />
@@ -77,8 +78,12 @@
                     <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource AmountTextBoxStyle}"
                              Text="{Binding StandardCostPrice}" Width="140" HorizontalAlignment="Left" Margin="0,0,0,8" />
 
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="税種別区分" Margin="0,0,12,8" VerticalAlignment="Center" />
-                    <ComboBox Grid.Row="3" Grid.Column="1" Width="140" HorizontalAlignment="Left" Margin="0,0,0,8"
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="定価（税抜）" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource AmountTextBoxStyle}"
+                             Text="{Binding CatalogPrice}" Width="140" HorizontalAlignment="Left" Margin="0,0,0,8" />
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="税種別区分" Margin="0,0,12,8" VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="4" Grid.Column="1" Width="140" HorizontalAlignment="Left" Margin="0,0,0,8"
                               ItemsSource="{Binding TaxCategoryOptions}"
                               SelectedItem="{Binding TaxCategory}">
                         <ComboBox.ItemTemplate>

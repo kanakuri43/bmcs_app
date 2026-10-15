@@ -27,5 +27,8 @@ public class Product : AuditableEntity
     /// <summary>標準原価。粗利計算用に伝票明細へ転記する。</summary>
     public required decimal StandardCostPrice { get; set; }
 
+    /// <summary>定価（税抜）。参照用で、伝票の単価決定には使わない。未設定は 0。</summary>
+    public decimal CatalogPrice { get; set; }
+
     public required TaxCategory TaxCategory { get; set; }
 }

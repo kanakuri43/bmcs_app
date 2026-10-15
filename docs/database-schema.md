@@ -208,6 +208,7 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `standard_unit_price_excl_tax` | `decimal(15,4)` | × | 外税単価（税抜）。得意先の `tax_unit` が請求単位／伝票単位の場合、伝票入力時の単価初期値としてここから転記する |
 | `standard_unit_price_incl_tax` | `decimal(15,4)` | × | 内税単価（税込）。得意先の `tax_unit` が内税明細単位の場合、伝票入力時の単価初期値としてここから転記する |
 | `standard_cost_price` | `decimal(15,4)` | × | 標準原価。粗利計算用に伝票明細へ転記する |
+| `catalog_price` | `decimal(15,4)` | × | 定価（税抜）。参照用で、伝票の単価決定には使わない。既定 `0`（未設定） |
 | `tax_category` | `tinyint` | × | `1`＝標準税率／`2`＝軽減税率／`3`＝非課税。**具体的な税率（%）は持たず、税率マスタ（2.3節）から引く** |
 
 **CHECK 制約**: `CK_products_tax_category` … `tax_category IN (1, 2, 3)`（税種別区分は3区分のみ。「不課税」は区分として存在しない）

@@ -45,6 +45,9 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
     public partial decimal StandardCostPrice { get; set; }
 
     [ObservableProperty]
+    public partial decimal CatalogPrice { get; set; }
+
+    [ObservableProperty]
     public partial TaxCategory TaxCategory { get; set; } = TaxCategory.Standard;
 
     /// <summary>税種別区分の選択肢。</summary>
@@ -112,6 +115,7 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
         StandardUnitPriceExclTax = product.StandardUnitPriceExclTax;
         StandardUnitPriceInclTax = product.StandardUnitPriceInclTax;
         StandardCostPrice = product.StandardCostPrice;
+        CatalogPrice = product.CatalogPrice;
         TaxCategory = product.TaxCategory;
 
         _loadedRowVersion = product.RowVersion;
@@ -145,6 +149,7 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
             StandardUnitPriceExclTax = StandardUnitPriceExclTax,
             StandardUnitPriceInclTax = StandardUnitPriceInclTax,
             StandardCostPrice = StandardCostPrice,
+            CatalogPrice = CatalogPrice,
             TaxCategory = TaxCategory,
             RowVersion = _loadedRowVersion,
             CreatedBy = string.Empty,
@@ -242,6 +247,7 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
         StandardUnitPriceExclTax = 0;
         StandardUnitPriceInclTax = 0;
         StandardCostPrice = 0;
+        CatalogPrice = 0;
         TaxCategory = TaxCategory.Standard;
         _loadedRowVersion = null;
     }
