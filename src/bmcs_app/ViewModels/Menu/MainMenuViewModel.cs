@@ -153,6 +153,9 @@ public partial class MainMenuViewModel(
             case "customer_product_price_master":
                 windowService.Show<CustomerProductPriceMasterWindow, CustomerProductPriceMasterViewModel>();
                 break;
+            case "customer_product_rate_master":
+                windowService.Show<CustomerProductRateMasterWindow, CustomerProductRateMasterViewModel>();
+                break;
             case "deposit_method_master":
                 windowService.Show<DepositMethodMasterWindow, DepositMethodMasterViewModel>();
                 break;
