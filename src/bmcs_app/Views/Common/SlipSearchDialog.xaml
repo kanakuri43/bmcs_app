@@ -34,7 +34,13 @@
                     <GridViewColumn Header="伝票番号" Width="100" DisplayMemberBinding="{Binding SlipNumber}" />
                     <GridViewColumn Header="得意先コード" Width="90" DisplayMemberBinding="{Binding CustomerCode}" />
                     <GridViewColumn Header="得意先名" Width="180" DisplayMemberBinding="{Binding CustomerName}" />
-                    <GridViewColumn Header="金額計" Width="90" DisplayMemberBinding="{Binding TotalAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="金額計" Width="90" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding TotalAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
                     <GridViewColumn Header="状態" Width="110" DisplayMemberBinding="{Binding StatusDisplay}" />
                 </GridView>
             </ListView.View>

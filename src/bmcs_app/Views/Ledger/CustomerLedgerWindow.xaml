@@ -21,14 +21,6 @@
         <KeyBinding Key="F5" Command="{Binding SearchCommand}" />
     </mah:MetroWindow.InputBindings>
 
-    <mah:MetroWindow.Resources>
-        <!-- 行・数量・金額系の列はヘッダーも右詰めにする -->
-        <Style x:Key="RightAlignedColumnHeaderStyle" TargetType="{x:Type GridViewColumnHeader}"
-               BasedOn="{StaticResource {x:Type GridViewColumnHeader}}">
-            <Setter Property="HorizontalContentAlignment" Value="Right" />
-        </Style>
-    </mah:MetroWindow.Resources>
-
     <Grid Margin="16" beh:ImeAwareSpaceKeyBindingBehavior.IsEnabled="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" /> <!-- ヘッダー -->

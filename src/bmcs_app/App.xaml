@@ -28,6 +28,11 @@
             <conv:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
             <conv:EnumDisplayConverter x:Key="EnumDisplayConverter" />
             <conv:MenuAccentColorConverter x:Key="MenuAccentColorConverter" />
+            <!-- 行・数量・金額系の列はヘッダーも右詰めにする（セルは CellTemplate の TextBlock を HorizontalAlignment="Right" にする） -->
+            <Style x:Key="RightAlignedColumnHeaderStyle" TargetType="{x:Type GridViewColumnHeader}"
+                   BasedOn="{StaticResource {x:Type GridViewColumnHeader}}">
+                <Setter Property="HorizontalContentAlignment" Value="Right" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

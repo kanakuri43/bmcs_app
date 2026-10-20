@@ -45,7 +45,13 @@
                                 <GridViewColumn Header="規格" Width="100" DisplayMemberBinding="{Binding Specification}" />
                                 <GridViewColumn Header="単位" Width="50" DisplayMemberBinding="{Binding UnitName}" />
                                 <GridViewColumn Header="{Binding DataContext.MasterUnitPriceHeader, ElementName=MasterResultsListView}"
-                                                Width="80" DisplayMemberBinding="{Binding UnitPrice, StringFormat=N0}" />
+                                                Width="80" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding UnitPrice, StringFormat=N0}" HorizontalAlignment="Right" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                                 <GridViewColumn Header="税種別" Width="80" DisplayMemberBinding="{Binding TaxCategoryDisplay}" />
                             </GridView>
                         </ListView.View>
@@ -79,7 +85,13 @@
                                 <GridViewColumn Header="名称" Width="150" DisplayMemberBinding="{Binding ProductName}" />
                                 <GridViewColumn Header="規格" Width="90" DisplayMemberBinding="{Binding Specification}" />
                                 <GridViewColumn Header="単位" Width="50" DisplayMemberBinding="{Binding UnitName}" />
-                                <GridViewColumn Header="前回単価" Width="80" DisplayMemberBinding="{Binding UnitPrice, StringFormat=N0}" />
+                                <GridViewColumn Header="前回単価" Width="80" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding UnitPrice, StringFormat=N0}" HorizontalAlignment="Right" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                                 <GridViewColumn Header="前回売上日" Width="90" DisplayMemberBinding="{Binding LastSlipDateDisplay}" />
                             </GridView>
                         </ListView.View>
@@ -108,7 +120,7 @@
                         <StackPanel Margin="0,2">
                             <TextBlock Text="{Binding ProductCode}" FontWeight="Bold" />
                             <TextBlock Text="{Binding ProductName}" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding UnitPrice, StringFormat=N0}" />
+                            <TextBlock Text="{Binding UnitPrice, StringFormat=N0}" HorizontalAlignment="Right" />
                         </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
