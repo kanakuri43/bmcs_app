@@ -208,14 +208,22 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `standard_unit_price_excl_tax` | `decimal(15,4)` | × | 外税単価（税抜）。得意先の `tax_unit` が請求単位／伝票単位の場合、伝票入力時の単価初期値としてここから転記する |
 | `standard_unit_price_incl_tax` | `decimal(15,4)` | × | 内税単価（税込）。得意先の `tax_unit` が内税明細単位の場合、伝票入力時の単価初期値としてここから転記する |
 | `standard_cost_price` | `decimal(15,4)` | × | 標準原価。粗利計算用に伝票明細へ転記する |
-| `catalog_price` | `decimal(15,4)` | × | 定価（税抜）。参照用で、伝票の単価決定には使わない。既定 `0`（未設定） |
+| `catalog_price` | `decimal(15,4)` | × | 定価（税抜）。得意先／商品／定価掛率マスタ（2.6-4節）で単価を算出するときの基準。既定 `0`（未設定）。`0` の商品は掛率が設定されていても単価 `0` になる |
 | `tax_category` | `tinyint` | × | `1`＝標準税率／`2`＝軽減税率／`3`＝非課税。**具体的な税率（%）は持たず、税率マスタ（2.3節）から引く** |
 
 **CHECK 制約**: `CK_products_tax_category` … `tax_category IN (1, 2, 3)`（税種別区分は3区分のみ。「不課税」は区分として存在しない）
 
 **税種別区分から具体的な税率への対応は税率マスタ（2.3節）を参照する。** 税率の解決方法は2.3節を参照。
 
-**単価計算マスタは作らない（現時点）。** 単価は商品マスタの外税単価・内税単価（得意先の `tax_unit` に応じたどちらか一方）を初期値として転記し、手入力で上書きする方式。単価列の選択ロジックは `IUnitPriceCalculator`（`src/bmcs_app.Domain/Calculations/IUnitPriceCalculator.cs`）インターフェースと、その現時点の実装 `StandardUnitPriceCalculator`に集約する。**将来的に掛け率マスタ等を実装する予定があるため、単価決定ロジックを差し替え可能なインターフェース（ドライバ）として設計している（「将来の差し替えを見据えた抽象化は行わない」という既定方針の例外として明示的に採用）。** 掛け率マスタ実装時は `StandardUnitPriceCalculator` を差し替える（DI登録は `ApplicationServiceCollectionExtensions.AddApplication`）だけで対応する想定。
+**伝票明細の単価の初期値（受注入力・売上入力で商品を選んだとき）は、次の順に検索して最初に見つかったものを転記する。** 以後は手入力で上書きできる。
+
+| 順 | 参照先 | 転記する単価 |
+|---|---|---|
+| 1 | 得意先／商品／単価マスタ（2.6-3節） | 登録された単価をそのまま転記する。得意先の `tax_unit` が請求単位／伝票単位なら外税単価、内税明細単位なら内税単価として登録されている |
+| 2 | 得意先／商品／定価掛率マスタ（2.6-4節） | 商品マスタの `catalog_price` × 掛率 ÷ 100。得意先の `tax_unit` が内税明細単位なら、続けて商品の税種別・伝票日付の税率（2.3節）で税込に換算する（非課税は換算しない）。最後に得意先の端数区分で整数円に1回だけ丸める。`catalog_price` が `0` の商品は `0`（3へはフォールバックしない） |
+| 3 | 商品マスタ | `tax_unit` が請求単位／伝票単位なら外税単価（`standard_unit_price_excl_tax`）、内税明細単位なら内税単価（`standard_unit_price_incl_tax`） |
+
+論理削除されたマスタ行は検索対象にしない。単価決定ロジックは `IUnitPriceCalculator`（`src/bmcs_app.Domain/Calculations/IUnitPriceCalculator.cs`）に集約する（「将来の差し替えを見据えた抽象化は行わない」という既定方針の例外として明示的に採用した）。単価計算マスタ（数量別単価など）は作らない。
 
 **原価は商品検索モーダルの「過去の取引履歴から」軸でも商品マスタの標準原価を転記する（暫定）。** 過去の売上行が保持する原価（`sales.cost_price`）は当時のスナップショットだが、粗利計算には現在の標準原価を使う方針とし、履歴軸から選んだ場合も再照会せず商品マスタから取り直す。過去実績原価での粗利計算が必要になった場合は `ProductSearchDialogViewModel.AddHistoryToBasket` を直接修正する。
 
@@ -328,6 +336,34 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | 監査列 | | `created_by`・`created_at`・`updated_by`・`updated_at` |
 
 主キーは `(machine_no, closing_date)`。同じ機番・締日は1件しか取り込めない。紐づく売上が取消済み（`sales.is_deleted`）の場合に限り再取込を許し、履歴行は新しい伝票番号で更新する。
+
+---
+
+### 2.6-3. `customer_product_prices`（得意先／商品／単価マスタ）
+
+得意先と商品の組み合わせに単価を直接設定する。伝票明細の単価の初期値としての検索順は2.2節を参照。共通カラム（2.0節）を持つ。
+
+| カラム | 型 | 説明 |
+|---|---|---|
+| `customer_code` | varchar(10), FK→`customers` | 得意先 |
+| `product_code` | varchar(20), FK→`products` | 商品 |
+| `unit_price` | decimal(15,4) NOT NULL | 単価。得意先の `tax_unit` が請求単位／伝票単位なら外税単価、内税明細単位なら内税単価として登録する（得意先の税区分は登録後不変のため1列で足りる） |
+
+主キーは `(customer_code, product_code)`。
+
+---
+
+### 2.6-4. `customer_product_rates`（得意先／商品／定価掛率マスタ）
+
+得意先と商品の組み合わせに、商品マスタの定価（`catalog_price`）に掛ける率を設定する。単価の算出方法は2.2節を参照。共通カラム（2.0節）を持つ。
+
+| カラム | 型 | 説明 |
+|---|---|---|
+| `customer_code` | varchar(10), FK→`customers` | 得意先 |
+| `product_code` | varchar(20), FK→`products` | 商品 |
+| `catalog_price_rate` | int NOT NULL | 定価掛率（パーセント。`80` なら定価の80%） |
+
+主キーは `(customer_code, product_code)`。**CHECK 制約**: `CK_customer_product_rates_rate` … `catalog_price_rate BETWEEN 0 AND 100`（整数のみ。100を超える掛率は登録できない）。
 
 ---
 
@@ -795,7 +831,6 @@ OR
 
 | 論点 | 現在の暫定 | 見直したときに影響する範囲 |
 |---|---|---|
-| 単価決定ロジック | 商品マスタの外税単価／内税単価（得意先の`tax_unit`で選択）を転記する。単価計算マスタは作らず、将来の掛け率マスタ実装に備え`IUnitPriceCalculator`インターフェースとして実装している（2.2節） | 掛け率マスタ実装時は`StandardUnitPriceCalculator`の差し替えのみで対応（DI登録済み） |
 | 原価の取得元 | 商品マスタの `standard_cost_price` を転記する（仕入機能がスコープ外のため。2.2節） | 仕入機能を実装する際に最終仕入原価・移動平均等へ再検討 |
 | リアルタイム残高 | 都度集計（残高キャッシュ列を持たない） | 性能不足なら残高キャッシュ列を追加 |
 | 得意先の支払条件・与信限度額 | 項目を作っていない（設計資料に記載がないため） | `customers` への `ALTER TABLE` で追加 |

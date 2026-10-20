@@ -11,6 +11,8 @@
 --
 -- 対象テーブル（マスタ・ジャーナル・締め集計。FKの逆順で削除）:
 --   employees, customers, products, bank_accounts,
+--   copier_machines, copier_import_histories,
+--   customer_product_prices, customer_product_rates,
 --   orders, sales, receipts, receipt_allocations, detail_receipts,
 --   billings, detail_invoices, detail_invoice_sales_lines, monthly_closings
 --
@@ -53,6 +55,8 @@ GO
 -- -----------------------------------------------------------------------------
 DELETE FROM dbo.copier_import_histories;
 DELETE FROM dbo.copier_machines;
+DELETE FROM dbo.customer_product_rates;
+DELETE FROM dbo.customer_product_prices;
 DELETE FROM dbo.customers;
 DELETE FROM dbo.products;
 DELETE FROM dbo.bank_accounts;

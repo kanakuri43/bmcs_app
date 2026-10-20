@@ -285,17 +285,18 @@ M-2（採番規則）・M-3（単価決定）・C-6（訂正・取消方式）�
 - **定価掛率マスタに設定があっても、商品マスタ上の定価が 0（未設定）の商品は単価 0 で表示する**（③へはフォールバックしない）。
 - 2つのマスタそれぞれにメンテナンス画面が必要。
 
-**着手前に決める点（暫定で進めるなら下記の暫定案）**
-- 単価マスタの単価は外税／内税のどちらか。**暫定案: 得意先の税区分（締め＝外税、都度＝内税）に従い、登録値をそのまま単価として転記する**（得意先の税区分は登録後不変のため、1つの単価で足りる）。
-- 掛率計算が内税得意先に当たる場合の扱い。`catalog_price` は税抜（`docs/database-schema.md` 2.2節）のため、内税得意先では税込への換算が要るか。**暫定案: 換算せず `catalog_price` × 掛率を転記する。業務確認が必要**。
-- 掛率の端数処理（単価の小数桁・丸め方向）。**暫定案: 商品マスタの単価列と同じ桁数に、既存の端数区分の丸めに合わせず切り捨て**。業務確認が必要。
-- 掛率の範囲は **0〜100 の整数で確定**（ユーザー指示。100 を超える掛率は登録できない）。
+**確定した点（2026-10-20 ユーザー回答。15-1 で `docs/` へ反映済み）**
+- 単価マスタの単価は、得意先の税区分（締め＝外税、都度＝内税）に従い、登録値を換算せずそのまま単価として転記する（得意先の税区分は登録後不変のため1列）。
+- 掛率計算は `catalog_price`（税抜）× 掛率 ÷ 100。**内税得意先は商品の税種別・伝票日付の税率で税込へ換算**する（非課税は換算しない）。
+- 端数は **得意先の端数区分**で整数円に丸める。換算後に1回だけ丸める（`TaxRounding.RoundToYen` を使う）。
+- 掛率の範囲は **0〜100 の整数**。定価0の商品は掛率があっても単価0（商品マスタへフォールバックしない）。
+- テーブル名は `customer_product_prices`・`customer_product_rates`（複数形規則に合わせた）。両テーブルとも論理削除・監査列・rowversion を持つ。
 
-**影響する docs**: 現行文書は「定価は参照用で伝票の単価決定には使わない」「単価計算マスタは作らない」と書いている（`docs/database-schema.md` 2.2節 `catalog_price`、`docs/product-spec.md`・`docs/design_document.md` の単価の記述、`docs/decisions.md` の M-3 関連）。本フェーズで方針が変わるため、実装前に `docs/` を直す（進め方のルール5）。
+**docs の整合**: 15-1 で `docs/database-schema.md` 2.2節・2.6-3節・2.6-4節・4章、`docs/design_document.md`、`docs/decisions.md` を新方針に改訂済み。`IUnitPriceCalculator` のコメントは 15-2 で直す。
 
 | 完了 | # | タスク | 推奨モデル | 前提 | 完了条件 |
 |---|---|---|---|---|---|
-| [ ] | 15-1 | 設計資料の確定とDBスキーマ（`docs/` の単価決定の記述を新方針へ改訂、上記「着手前に決める点」を確定。`customer_product_prices`・`customer_product_rate`（仮称。命名は `docs/database-schema.md` の命名規則に従う）の連番SQLを `scripts/` に作成しSQLCMDで適用。主キーは（得意先コード, 商品コード）、得意先・商品へのFK、監査列・論理削除・rowversion の要否は既存マスタに合わせて決める、掛率は int で 0〜100 の CHECK 制約、EFエンティティ・Configuration・`DbSet`、`reset_test_data.sql` へのテーブル追加） | Sonnet | 着手前に決める点 | 2テーブルが開発用DBに存在し、CHECK・FK 違反が実DBで拒否されることをSQLで確認済み。docs が新方針と一致している |
+| [x] | 15-1 | 設計資料の確定とDBスキーマ（`docs/` の単価決定の記述を新方針へ改訂、上記「着手前に決める点」を確定。`customer_product_prices`・`customer_product_rate`（仮称。命名は `docs/database-schema.md` の命名規則に従う）の連番SQLを `scripts/` に作成しSQLCMDで適用。主キーは（得意先コード, 商品コード）、得意先・商品へのFK、監査列・論理削除・rowversion の要否は既存マスタに合わせて決める、掛率は int で 0〜100 の CHECK 制約、EFエンティティ・Configuration・`DbSet`、`reset_test_data.sql` へのテーブル追加） | Sonnet | 着手前に決める点 | 2テーブルが開発用DBに存在し、CHECK・FK 違反が実DBで拒否されることをSQLで確認済み。docs が新方針と一致している。**実施済み。** `scripts/029_create_customer_product_price_masters.sql` で `customer_product_prices`・`customer_product_rates` を作成し開発用ライブDBへSQLCMDで適用（2回流して再実行安全を確認、`sys.columns`／`sys.objects`／`sys.check_constraints` で列・PK・FK 4本・CHECK `CK_customer_product_rates_rate`〔0〜100〕を確認）。`CustomerProductPrice`／`CustomerProductRate`（`AuditableEntity`）・Configuration・`DbSet`、`reset_test_data.sql` への削除追加。結合テスト `CustomerProductPriceMasterSchemaTests`（6件、Rollback方式）で書き込み・読み取り、主キー重複・未登録の得意先／商品（FK違反）、掛率 -1／101 の拒否と 0／100 の受理を確認。Domain 321件・Application 273件すべてgreen、テスト後に両テーブル0件を確認。docs は `database-schema.md` 2.2節（単価の検索順・換算・端数）・2.6-3節・2.6-4節を新設、4章の暫定表から単価決定を削除、`design_document.md`・`decisions.md` を更新。単価決定ロジック（15-2）・画面（15-3／15-4）は未着手 |
 | [ ] | 15-2 | 単価取得ロジック（`IUnitPriceCalculator` を得意先コードを受け取る形へ変更し、①単価マスタ→②掛率マスタ→③商品マスタの優先順で決定。定価 0 の商品は掛率ありでも 0。マスタ参照はアプリ層のサービスで行い、Domain は純粋関数のまま保つ方法を決める。受注入力・売上入力・商品検索モーダルの呼び出し元を追従） | Sonnet | 15-1 | 単体テストで3段階の優先順・定価0・設定なしの各ケースが手計算と一致する。受注入力・売上入力で得意先を変えたあとの商品選択でも正しい単価が入る（手入力での上書きは従来どおり可）。金額が狂う種類のタスクのため、掛率計算は手計算で検算する |
 | [ ] | 15-3 | 得意先／商品／単価マスタ画面（既存マスタ画面のパターン。得意先・商品の組み合わせを指定して読込・登録・削除、検索モーダルは既存の得意先・商品検索を再利用）とメニュー追加（`014` と `MainMenuViewModel`・DI登録） | Sonnet | 15-1 | キーボード操作で登録・読込・削除でき、メニューから開ける。結合テスト（Rollback方式）でFK・主キー制約が働く |
 | [ ] | 15-4 | 得意先／商品／定価掛率マスタ画面（掛率は整数のパーセント入力。範囲外・小数は保存前に検証。そのほか 15-3 と同様）とメニュー追加 | Sonnet | 15-1 | 同上。小数・0〜100 の範囲外（101 以上・負数）の掛率が拒否される |
