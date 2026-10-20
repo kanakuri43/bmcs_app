@@ -166,6 +166,38 @@ public class DeliveryNoteServiceTests(DevDatabaseFixture fixture) : IClassFixtur
     }
 
     [Fact]
+    public async Task 未発行一覧は発行済の伝票を含まず伝票単位に集約される()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        const string customerCode = "__TSTDNUNI";
+        const string unissued = "__TSTDNUNI1";
+        const string issued = "__TSTDNUNI2";
+
+        await InsertCustomerAsync(dbContext, customerCode, TaxUnit.Invoice);
+        dbContext.Sales.Add(NewSalesLine(customerCode, unissued, 1, TaxCategory.Standard, 10m, 1m, 1000m, null, null));
+        dbContext.Sales.Add(NewSalesLine(customerCode, unissued, 2, TaxCategory.Standard, 10m, 2m, 500m, null, null));
+        dbContext.Sales.Add(NewSalesLine(customerCode, issued, 1, TaxCategory.Standard, 10m, 1m, 1000m, null, null));
+        await dbContext.SaveChangesAsync();
+
+        try
+        {
+            await service.MarkIssuedAsync(issued);
+
+            var slips = (await service.GetUnissuedAsync(null, null))
+                .Where(s => s.CustomerCode == customerCode).ToList();
+
+            var slip = Assert.Single(slips);
+            Assert.Equal(unissued, slip.SalesSlipNumber);
+            Assert.Equal(2000m, slip.TotalAmount);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, [customerCode], [unissued, issued]);
+        }
+    }
+
+    [Fact]
     public async Task 存在しない伝票の発行記録は例外になる()
     {
         await using var scope = fixture.Services.CreateAsyncScope();

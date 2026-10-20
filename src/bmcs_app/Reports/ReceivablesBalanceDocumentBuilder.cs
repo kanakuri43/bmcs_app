@@ -55,7 +55,7 @@ public sealed class ReceivablesBalanceDocumentBuilder(ReceivablesBalanceReportDa
         ];
     }
 
-    protected override FrameworkElement BuildFullHeader()
+    protected override FrameworkElement BuildFullHeader(int totalPages)
     {
         var root = new StackPanel();
 
@@ -81,7 +81,9 @@ public sealed class ReceivablesBalanceDocumentBuilder(ReceivablesBalanceReportDa
             issue.Children.Add(Tb(data.CompanyName, 9, FontWeights.Bold, TextAlignment.Right));
         }
 
-        issue.Children.Add(Tb($"発行日 {DateTime.Today:yyyy/MM/dd}", 8, align: TextAlignment.Right));
+        // 高さの見積りを変えないため、ページ表記は発行日と同じ行に置く。
+        var pageSuffix = totalPages > 1 ? $"　{PageLabel(1, totalPages)}" : "";
+        issue.Children.Add(Tb($"発行日 {DateTime.Today:yyyy/MM/dd}{pageSuffix}", 8, align: TextAlignment.Right));
         Grid.SetColumn(issue, 2);
         grid.Children.Add(issue);
 
@@ -94,19 +96,8 @@ public sealed class ReceivablesBalanceDocumentBuilder(ReceivablesBalanceReportDa
 
     protected override FrameworkElement BuildCompactHeader(int pageNumber, int totalPages)
     {
-        var row = new Grid { Margin = new Thickness(0, 4, 0, 4) };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var left = Tb($"売掛金残高一覧表（続き）　{data.Year}年{data.Month:00}月分", 10, FontWeights.Bold);
-        Grid.SetColumn(left, 0);
-        row.Children.Add(left);
-
-        var pageText = Tb($"{pageNumber}/{totalPages} ページ", 8, align: TextAlignment.Right);
-        Grid.SetColumn(pageText, 1);
-        row.Children.Add(pageText);
-
-        return row;
+        return BuildContinuationHeaderRow(
+            "売掛金残高一覧表（続き）", $"{data.Year}年{data.Month:00}月分", pageNumber, totalPages);
     }
 
     protected override FrameworkElement BuildFooter()

@@ -116,6 +116,33 @@ public abstract class ReportDocumentBuilder
         return columns.Select(c => c.Width > 0 ? c.Width : starWidth).ToArray();
     }
 
+    /// <summary>全帳票共通のページ表記。1ページ目・続紙とも「（n/N）」にそろえる。</summary>
+    protected static string PageLabel(int pageNumber, int totalPages) => $"（{pageNumber}/{totalPages}）";
+
+    /// <summary>
+    /// 全帳票共通の続紙ヘッダー行。左にタイトル、続けて補足情報、右端に <see cref="PageLabel"/> を置く。
+    /// </summary>
+    protected static FrameworkElement BuildContinuationHeaderRow(
+        string title, string info, int pageNumber, int totalPages, double verticalMargin = 4)
+    {
+        var row = new Grid { Margin = new Thickness(0, verticalMargin, 0, verticalMargin) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        row.Children.Add(Tb(title, 10, FontWeights.Bold));
+
+        var infoText = Tb(info, 9);
+        infoText.Margin = new Thickness(16, 0, 0, 0);
+        Grid.SetColumn(infoText, 1);
+        row.Children.Add(infoText);
+
+        var page = Tb(PageLabel(pageNumber, totalPages), 9, align: TextAlignment.Right);
+        Grid.SetColumn(page, 2);
+        row.Children.Add(page);
+        return row;
+    }
+
     protected static TextBlock Tb(
         string text, double size = 10, FontWeight? weight = null, TextAlignment align = TextAlignment.Left)
         => new()

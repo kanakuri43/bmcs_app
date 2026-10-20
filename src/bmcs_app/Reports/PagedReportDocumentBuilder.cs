@@ -49,7 +49,7 @@ public abstract class PagedReportDocumentBuilder : ReportDocumentBuilder
     protected abstract int LineCount { get; }
 
     /// <summary>1ページ目の先頭に出すフルヘッダー。</summary>
-    protected abstract FrameworkElement BuildFullHeader();
+    protected abstract FrameworkElement BuildFullHeader(int totalPages);
 
     /// <summary>2ページ目以降の先頭に出す続紙ヘッダー。</summary>
     protected abstract FrameworkElement BuildCompactHeader(int pageNumber, int totalPages);
@@ -144,7 +144,7 @@ public abstract class PagedReportDocumentBuilder : ReportDocumentBuilder
     {
         var root = new StackPanel { Width = BodyWidth, Background = Brushes.White };
 
-        root.Children.Add(isFirst ? BuildFullHeader() : BuildCompactHeader(pageNumber, totalPages));
+        root.Children.Add(isFirst ? BuildFullHeader(totalPages) : BuildCompactHeader(pageNumber, totalPages));
         root.Children.Add(HLine(1));
         root.Children.Add(BuildLinesTable(startIndex, count));
 

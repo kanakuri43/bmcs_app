@@ -80,6 +80,42 @@ public class DeliveryNoteService(
     }
 
     /// <summary>
+    /// 納品書未発行（発行日時が NULL）の売上伝票を伝票単位で返す（一括発行の対象一覧。古い順）。
+    /// 期間は伝票日付で絞る（null は無制限）。
+    /// </summary>
+    public async Task<List<UnissuedDeliveryNoteSlip>> GetUnissuedAsync(
+        DateOnly? from, DateOnly? to, CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.Sales.AsNoTracking()
+            .Where(s => !s.IsDeleted && s.DeliveryNoteIssuedAt == null);
+        if (from is { } f)
+        {
+            query = query.Where(s => s.SlipDate >= f);
+        }
+
+        if (to is { } t)
+        {
+            query = query.Where(s => s.SlipDate <= t);
+        }
+
+        var rows = await query
+            .Select(s => new { s.SalesSlipNumber, s.SlipDate, s.CustomerCode, s.CustomerName, s.Amount })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .GroupBy(r => r.SalesSlipNumber)
+            .Select(g =>
+            {
+                var first = g.First();
+                return new UnissuedDeliveryNoteSlip(
+                    g.Key, first.SlipDate, first.CustomerCode, first.CustomerName, g.Sum(r => r.Amount));
+            })
+            .OrderBy(s => s.SlipDate)
+            .ThenBy(s => s.SalesSlipNumber)
+            .ToList();
+    }
+
+    /// <summary>
     /// 納品書の発行を記録する（伝票の全行の発行日時を更新し、発行回数を+1する）。
     /// 請求済・入金済であっても再発行できる（product-spec.md 軸1「再発行は可能」）ため、
     /// <c>SalesEditLockEvaluator</c>（<c>src/bmcs_app.Domain/Calculations/</c>）の編集ロックは適用しない。
@@ -187,6 +223,10 @@ public class DeliveryNoteService(
         TaxRate: line.TaxRate,
         LineRemarks: line.LineRemarks);
 }
+
+/// <summary>納品書一括発行の対象一覧の1行（売上伝票単位）。</summary>
+public sealed record UnissuedDeliveryNoteSlip(
+    string SalesSlipNumber, DateOnly SlipDate, string CustomerCode, string CustomerName, decimal TotalAmount);
 
 /// <summary>納品書データの取得・発行記録に失敗した場合の業務例外。</summary>
 public sealed class DeliveryNoteException(string message) : Exception(message);

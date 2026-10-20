@@ -61,11 +61,11 @@ public sealed class DetailInvoiceDocumentBuilder(DetailInvoiceData data) : Paged
         ];
     }
 
-    protected override FrameworkElement BuildFullHeader()
+    protected override FrameworkElement BuildFullHeader(int totalPages)
     {
         var root = new StackPanel();
 
-        root.Children.Add(BuildTitle());
+        root.Children.Add(BuildTitle(totalPages));
         root.Children.Add(HLine(1.5));
         root.Children.Add(BuildInfoRow());
         root.Children.Add(BuildSlipMeta());
@@ -74,20 +74,10 @@ public sealed class DetailInvoiceDocumentBuilder(DetailInvoiceData data) : Paged
     }
 
     protected override FrameworkElement BuildCompactHeader(int pageNumber, int totalPages)
-    {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 4) };
-        row.Children.Add(Tb("請求書（続き）", 10, FontWeights.Bold));
-        row.Children.Add(new System.Windows.Shapes.Rectangle { Width = 20, Fill = Brushes.Transparent });
-        row.Children.Add(Tb($"請求書No. {data.DetailInvoiceNumber}　{data.AddresseeName}　御中", 9));
-        row.Children.Add(new System.Windows.Shapes.Rectangle
-        {
-            Width = 1, Fill = Brushes.Transparent, HorizontalAlignment = HorizontalAlignment.Stretch,
-        });
-        row.Children.Add(Tb($"{pageNumber}/{totalPages} ページ", 8, align: TextAlignment.Right));
-        return row;
-    }
+        =>BuildContinuationHeaderRow(
+            "請求書（続き）", $"請求書No. {data.DetailInvoiceNumber}　{data.AddresseeName}　御中", pageNumber, totalPages);
 
-    private FrameworkElement BuildTitle()
+    private FrameworkElement BuildTitle(int totalPages)
     {
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 6) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -103,6 +93,14 @@ public sealed class DetailInvoiceDocumentBuilder(DetailInvoiceData data) : Paged
         title.Margin = new Thickness(0, 0, 0, 4);
         Grid.SetColumn(title, 1);
         grid.Children.Add(title);
+
+        if (totalPages > 1)
+        {
+            var pageTb = Tb(PageLabel(1, totalPages), 9, align: TextAlignment.Right);
+            pageTb.VerticalAlignment = VerticalAlignment.Bottom;
+            Grid.SetColumn(pageTb, 2);
+            grid.Children.Add(pageTb);
+        }
 
         return grid;
     }

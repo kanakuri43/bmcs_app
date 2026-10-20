@@ -102,6 +102,9 @@ public partial class MainMenuViewModel(
             case "copier_csv_import":
                 windowService.Show<CopierSalesImportWindow, CopierSalesImportViewModel>();
                 break;
+            case "delivery_note_bulk_issue":
+                windowService.Show<DeliveryNoteBulkIssueWindow, DeliveryNoteBulkIssueViewModel>();
+                break;
             case "billing_closing":
                 windowService.Show<BillingClosingWindow, BillingClosingViewModel>();
                 break;

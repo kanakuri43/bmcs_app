@@ -116,7 +116,7 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
 
         if (isFirst)
         {
-            section.Children.Add(BuildSectionTitle(title, totalPages > 1 ? $"（{pageNumber}/{totalPages}）" : ""));
+            section.Children.Add(BuildSectionTitle(title, totalPages > 1 ? PageLabel(pageNumber, totalPages) : ""));
             section.Children.Add(HLine(1));
             section.Children.Add(BuildSectionInfoRow());
             section.Children.Add(BuildSectionSlipMeta());
@@ -222,16 +222,11 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
 
     private FrameworkElement BuildSectionCompactHeader(string title, int pageNumber, int totalPages)
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 3) };
-        row.Children.Add(Tb($"{title}（続き）", 10, FontWeights.Bold));
-        row.Children.Add(new Rectangle { Width = 16, Fill = Brushes.Transparent });
-        row.Children.Add(Tb($"伝票No. {data.SalesSlipNumber}　{data.CustomerName}　御中", 9));
-        row.Children.Add(new Rectangle
-        {
-            Width = 1, Fill = Brushes.Transparent, HorizontalAlignment = HorizontalAlignment.Stretch,
-        });
-        row.Children.Add(Tb($"{pageNumber}/{totalPages} ページ", 8, align: TextAlignment.Right));
-        return row;
+        // 「納品書（控）」のように括弧で終わるタイトルは「納品書（控・続き）」にして括弧の重複を避ける。
+        var continuedTitle = title.EndsWith('）') ? $"{title[..^1]}・続き）" : $"{title}（続き）";
+
+        return BuildContinuationHeaderRow(
+            continuedTitle, $"伝票No. {data.SalesSlipNumber}　{data.CustomerName}　御中", pageNumber, totalPages, 3);
     }
 
     private FrameworkElement BuildSectionLinesTable(List<DeliveryNoteLine> lines)

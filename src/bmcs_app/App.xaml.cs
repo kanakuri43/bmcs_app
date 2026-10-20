@@ -212,6 +212,8 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<CopierSalesImportWindow>();
         builder.Services.AddScoped<CopierSalesImportViewModel>();
+        builder.Services.AddScoped<DeliveryNoteBulkIssueWindow>();
+        builder.Services.AddScoped<DeliveryNoteBulkIssueViewModel>();
 
         builder.Services.AddScoped<BillingClosingWindow>();
         builder.Services.AddScoped<BillingClosingViewModel>();

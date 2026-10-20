@@ -106,7 +106,7 @@ public sealed class CustomerLedgerDocumentBuilder(CustomerLedgerReportData data)
         return _columns.Select(c => c.Cell(line)).ToArray();
     }
 
-    protected override FrameworkElement BuildFullHeader()
+    protected override FrameworkElement BuildFullHeader(int totalPages)
     {
         var root = new StackPanel();
 
@@ -126,7 +126,9 @@ public sealed class CustomerLedgerDocumentBuilder(CustomerLedgerReportData data)
             issue.Children.Add(Tb(data.CompanyName, 9, FontWeights.Bold, TextAlignment.Right));
         }
 
-        issue.Children.Add(Tb($"発行日 {DateTime.Today:yyyy/MM/dd}", 8, align: TextAlignment.Right));
+        // 高さの見積りを変えないため、ページ表記は発行日と同じ行に置く。
+        var pageSuffix = totalPages > 1 ? $"　{PageLabel(1, totalPages)}" : "";
+        issue.Children.Add(Tb($"発行日 {DateTime.Today:yyyy/MM/dd}{pageSuffix}", 8, align: TextAlignment.Right));
         Grid.SetColumn(issue, 2);
         grid.Children.Add(issue);
 
@@ -140,19 +142,8 @@ public sealed class CustomerLedgerDocumentBuilder(CustomerLedgerReportData data)
 
     protected override FrameworkElement BuildCompactHeader(int pageNumber, int totalPages)
     {
-        var row = new Grid { Margin = new Thickness(0, 4, 0, 4) };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var left = Tb($"得意先元帳（続き）　{data.CustomerCode}　{data.CustomerName}", 10, FontWeights.Bold);
-        Grid.SetColumn(left, 0);
-        row.Children.Add(left);
-
-        var pageText = Tb($"{pageNumber}/{totalPages} ページ", 8, align: TextAlignment.Right);
-        Grid.SetColumn(pageText, 1);
-        row.Children.Add(pageText);
-
-        return row;
+        return BuildContinuationHeaderRow(
+            "得意先元帳（続き）", $"{data.CustomerCode}　{data.CustomerName}", pageNumber, totalPages);
     }
 
     /// <summary>
