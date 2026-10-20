@@ -31,7 +31,7 @@ public partial class OrderEntryViewModel(
     OrderQueryService orderQueryService,
     OrderStatusService orderStatusService,
     WindowService windowService,
-    IUnitPriceCalculator unitPriceCalculator) : ViewModelBase
+    UnitPriceService unitPriceService) : ViewModelBase
 {
     private Customer? _customer;
     private IReadOnlyList<TaxRateMaster> _taxRateMasters = [];
@@ -437,13 +437,15 @@ public partial class OrderEntryViewModel(
     private async Task OnOpenProductLookupAsync(SlipLineViewModel line)
     {
         var customerCode = string.IsNullOrWhiteSpace(CustomerCode) ? null : CustomerCode;
-        var taxUnit = _customer?.TaxUnit;
+        var customer = _customer;
+        var orderDate = ParseOrderDate();
 
         var selections = windowService.ShowDialog<ProductSearchDialog, ProductSearchDialogViewModel, IReadOnlyList<ProductSelection>>(
             vm =>
             {
                 vm.TargetCustomerCode = customerCode;
-                vm.TargetTaxUnit = taxUnit;
+                vm.TargetCustomer = customer;
+                vm.TargetSlipDate = orderDate;
             });
 
         if (selections is null || selections.Count == 0)
@@ -468,13 +470,13 @@ public partial class OrderEntryViewModel(
             return;
         }
 
-        var taxUnit = _customer?.TaxUnit ?? TaxUnit.Invoice;
+        var unitPriceResolver = await unitPriceService.CreateResolverAsync(_customer, ParseOrderDate());
         var selection = new ProductSelection(
             product.ProductCode,
             product.ProductName,
             product.Specification,
             product.UnitName,
-            unitPriceCalculator.SelectStandardUnitPrice(product, taxUnit),
+            unitPriceResolver.Resolve(product),
             product.StandardCostPrice,
             product.TaxCategory,
             ProductSelectionSource.Master);
@@ -483,13 +485,15 @@ public partial class OrderEntryViewModel(
         await ApplySelectionsAsync(line, [selection]);
     }
 
+    private DateOnly ParseOrderDate() => OrderDate is { } value ? DateOnly.FromDateTime(value) : DateOnly.FromDateTime(DateTime.Today);
+
     /// <summary>
     /// 商品検索モーダルの選択結果（最大6件）を行へ展開する。1件目は呼び出した行、
     /// 残りは後続の空行を埋め、足りなければ直後に挿入する。
     /// </summary>
     private Task ApplySelectionsAsync(SlipLineViewModel invokingLine, IReadOnlyList<ProductSelection> selections)
     {
-        var orderDate = OrderDate is { } orderDateValue ? DateOnly.FromDateTime(orderDateValue) : DateOnly.FromDateTime(DateTime.Today);
+        var orderDate = ParseOrderDate();
         var roundingType = _customer?.RoundingType ?? RoundingType.Floor;
 
         var targetLines = new List<SlipLineViewModel> { invokingLine };
@@ -649,7 +653,7 @@ public partial class OrderEntryViewModel(
             ApplyEmployee(sourceEmployee.EmployeeCode, sourceEmployee.EmployeeName);
         }
 
-        var orderDate = OrderDate is { } orderDateValue ? DateOnly.FromDateTime(orderDateValue) : DateOnly.FromDateTime(DateTime.Today);
+        var orderDate = ParseOrderDate();
         ClearLines();
         foreach (var source in sourceLines.OrderBy(l => l.LineNumber))
         {

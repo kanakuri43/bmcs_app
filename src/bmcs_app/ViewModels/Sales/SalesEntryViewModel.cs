@@ -38,7 +38,7 @@ public partial class SalesEntryViewModel(
     OrderQueryService orderQueryService,
     DeliveryNoteService deliveryNoteService,
     WindowService windowService,
-    IUnitPriceCalculator unitPriceCalculator) : ViewModelBase
+    UnitPriceService unitPriceService) : ViewModelBase
 {
     private Customer? _customer;
     private IReadOnlyList<TaxRateMaster> _taxRateMasters = [];
@@ -512,13 +512,15 @@ public partial class SalesEntryViewModel(
     private async Task OnOpenProductLookupAsync(SlipLineViewModel line)
     {
         var customerCode = string.IsNullOrWhiteSpace(CustomerCode) ? null : CustomerCode;
-        var taxUnit = _customer?.TaxUnit;
+        var customer = _customer;
+        var slipDate = ParseSlipDate();
 
         var selections = windowService.ShowDialog<ProductSearchDialog, ProductSearchDialogViewModel, IReadOnlyList<ProductSelection>>(
             vm =>
             {
                 vm.TargetCustomerCode = customerCode;
-                vm.TargetTaxUnit = taxUnit;
+                vm.TargetCustomer = customer;
+                vm.TargetSlipDate = slipDate;
             });
 
         if (selections is null || selections.Count == 0)
@@ -543,13 +545,13 @@ public partial class SalesEntryViewModel(
             return;
         }
 
-        var taxUnit = _customer?.TaxUnit ?? TaxUnit.Invoice;
+        var unitPriceResolver = await unitPriceService.CreateResolverAsync(_customer, ParseSlipDate());
         var selection = new ProductSelection(
             product.ProductCode,
             product.ProductName,
             product.Specification,
             product.UnitName,
-            unitPriceCalculator.SelectStandardUnitPrice(product, taxUnit),
+            unitPriceResolver.Resolve(product),
             product.StandardCostPrice,
             product.TaxCategory,
             ProductSelectionSource.Master);
