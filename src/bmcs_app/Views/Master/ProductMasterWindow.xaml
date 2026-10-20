@@ -4,7 +4,7 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="商品マスタ"
-                 Height="600" Width="640"
+                 Height="640" Width="640"
                  ResizeMode="CanMinimize"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
