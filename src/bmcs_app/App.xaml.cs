@@ -168,6 +168,9 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<CopierMachineMasterWindow>();
         builder.Services.AddScoped<CopierMachineMasterViewModel>();
 
+        builder.Services.AddScoped<CustomerProductPriceMasterWindow>();
+        builder.Services.AddScoped<CustomerProductPriceMasterViewModel>();
+
         builder.Services.AddScoped<DepositMethodMasterWindow>();
         builder.Services.AddScoped<DepositMethodMasterViewModel>();
 
