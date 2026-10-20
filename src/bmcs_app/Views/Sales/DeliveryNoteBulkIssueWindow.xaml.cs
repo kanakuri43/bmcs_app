@@ -14,7 +14,7 @@ public partial class DeliveryNoteBulkIssueWindow : MetroWindow
         {
             if (DataContext is DeliveryNoteBulkIssueViewModel viewModel)
             {
-                await viewModel.SearchCommand.ExecuteAsync(null);
+                await viewModel.ReloadCommand.ExecuteAsync(null);
             }
         };
     }

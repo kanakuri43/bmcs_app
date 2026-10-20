@@ -1405,8 +1405,8 @@ WPFの`KeyBinding`はコントロールが`IsEnabled=false`でも生き続ける
 
 `DeliveryNoteBulkIssueWindow`／`DeliveryNoteBulkIssueViewModel`。メニュー「受注・売上＞納品書一括発行」（`screen_key=delivery_note_bulk_issue`、権限レベル1）。
 
-- 一覧は`DeliveryNoteService.GetUnissuedAsync`（`delivery_note_issued_at IS NULL`の売上を伝票単位に集約、伝票日付の古い順）。伝票日付の期間は任意（空欄は無制限）。画面表示時に全期間で検索する。
-- 初期状態は全行選択。チェックを外した伝票は発行しない。「一括発行」は確認ダイアログの後、選択行を順に`GetAsync`→`DeliveryNoteDocumentBuilder`→`ReportPrintService.Print`→成功時のみ`MarkIssuedAsync`で処理する。プリンタは納品書の既存のプリンタ設定に従う。
+- 一覧は`DeliveryNoteService.GetUnissuedAsync`（`delivery_note_issued_at IS NULL`の売上を伝票単位に集約、伝票日付の古い順）を画面表示時に全件ロードし、絞り込みはメモリで行う。条件は伝票日付の期間（任意、空欄は無制限）と得意先コード（1社、完全一致、空欄は全社。直接入力のほか、SPACEまたは「...」ボタン（得意先元帳と同じ表記）で得意先検索モーダル`CustomerSearchDialog`から選べる。税単位の制限なし）で、**条件を変えた時点で即座に再適用する**（検索ボタンは無い）。「再読込」ボタンはDBから読み直す。
+- 初期状態は全行選択。チェックを外した伝票は発行しない。「全選択」「全解除」と「一括発行」の対象は、絞り込み後に表示されている行だけ。「一括発行」は確認ダイアログの後、選択行を順に`GetAsync`→`DeliveryNoteDocumentBuilder`→`ReportPrintService.Print`→成功時のみ`MarkIssuedAsync`で処理する。プリンタは納品書の既存のプリンタ設定に従う。
 - 1枚失敗しても続行し、行ごとの「結果」列に「発行済」または失敗理由を表示する。発行済の行は選択が外れ、同じ画面内で再実行しても重複発行されない。失敗行は選択が残り、そのまま再実行できる。
 
 ### 22-5. 申し送り

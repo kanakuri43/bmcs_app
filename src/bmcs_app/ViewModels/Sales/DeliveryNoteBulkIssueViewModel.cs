@@ -1,7 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using bmcs_app.Application.Sales;
+using bmcs_app.Domain.Entities;
 using bmcs_app.Reports;
+using bmcs_app.Services;
+using bmcs_app.ViewModels.Common;
+using bmcs_app.Views.Common;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -30,8 +34,13 @@ public sealed partial class BulkIssueRowItem(UnissuedDeliveryNoteSlip slip) : Ob
 /// </summary>
 public partial class DeliveryNoteBulkIssueViewModel(
     DeliveryNoteService deliveryNoteService,
-    ReportPrintService reportPrintService) : ViewModelBase
+    ReportPrintService reportPrintService,
+    WindowService windowService) : ViewModelBase
 {
+    /// <summary>未発行の全件。条件変更のたびにここからメモリで <see cref="Rows"/> を絞る。</summary>
+    private List<BulkIssueRowItem> _allRows = [];
+
+    /// <summary>絞り込み後の表示行。発行の対象はこの行だけ。</summary>
     public ObservableCollection<BulkIssueRowItem> Rows { get; } = [];
 
     [ObservableProperty]
@@ -40,30 +49,70 @@ public partial class DeliveryNoteBulkIssueViewModel(
     [ObservableProperty]
     public partial DateTime? DateTo { get; set; }
 
+    /// <summary>得意先コード（1社、完全一致）。空欄は全得意先。</summary>
+    [ObservableProperty]
+    public partial string CustomerCode { get; set; } = string.Empty;
+
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
 
+    partial void OnDateFromChanged(DateTime? value) => ApplyFilter();
+
+    partial void OnDateToChanged(DateTime? value) => ApplyFilter();
+
+    /// <summary>検索ダイアログで選んだ得意先の名称表示（コードを手入力で変えたら消す）。</summary>
+    [ObservableProperty]
+    public partial string CustomerName { get; set; } = string.Empty;
+
+    partial void OnCustomerCodeChanged(string value)
+    {
+        CustomerName = string.Empty;
+        ApplyFilter();
+    }
+
     [RelayCommand]
-    private Task SearchAsync() => RunBusyAsync(async () =>
+    private void OpenCustomerSearch()
+    {
+        var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>(_ => { });
+        if (customer is not null)
+        {
+            CustomerCode = customer.CustomerCode;
+            CustomerName = customer.CustomerName;
+        }
+    }
+
+    /// <summary>DBから未発行の全件を読み直し、現在の条件で絞り込む。</summary>
+    [RelayCommand]
+    private Task ReloadAsync() => RunBusyAsync(async () =>
     {
         try
         {
-            var slips = await deliveryNoteService.GetUnissuedAsync(
-                DateFrom is { } f ? DateOnly.FromDateTime(f) : null,
-                DateTo is { } t ? DateOnly.FromDateTime(t) : null);
-            Rows.Clear();
-            foreach (var slip in slips)
-            {
-                Rows.Add(new BulkIssueRowItem(slip));
-            }
-
-            StatusMessage = $"未発行の売上 {Rows.Count}件";
+            var slips = await deliveryNoteService.GetUnissuedAsync();
+            _allRows = slips.Select(s => new BulkIssueRowItem(s)).ToList();
+            ApplyFilter();
         }
         catch (Exception ex)
         {
             StatusMessage = $"検索エラー: {ex.Message}";
         }
     });
+
+    private void ApplyFilter()
+    {
+        var code = CustomerCode.Trim();
+        var filtered = _allRows.Where(r =>
+            (DateFrom is not { } f || r.SlipDate >= DateOnly.FromDateTime(f))
+            && (DateTo is not { } t || r.SlipDate <= DateOnly.FromDateTime(t))
+            && (code.Length == 0 || string.Equals(r.CustomerCode, code, StringComparison.OrdinalIgnoreCase)));
+
+        Rows.Clear();
+        foreach (var row in filtered)
+        {
+            Rows.Add(row);
+        }
+
+        StatusMessage = $"未発行の売上 {Rows.Count}件（全{_allRows.Count}件中）";
+    }
 
     [RelayCommand]
     private void SelectAll() => SetAll(true);

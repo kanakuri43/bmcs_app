@@ -81,24 +81,12 @@ public class DeliveryNoteService(
 
     /// <summary>
     /// 納品書未発行（発行日時が NULL）の売上伝票を伝票単位で返す（一括発行の対象一覧。古い順）。
-    /// 期間は伝票日付で絞る（null は無制限）。
+    /// 絞り込みは呼び出し元がメモリで行う（全件ロード後に絞る伝票検索モーダルと同じ方式）。
     /// </summary>
-    public async Task<List<UnissuedDeliveryNoteSlip>> GetUnissuedAsync(
-        DateOnly? from, DateOnly? to, CancellationToken cancellationToken = default)
+    public async Task<List<UnissuedDeliveryNoteSlip>> GetUnissuedAsync(CancellationToken cancellationToken = default)
     {
-        var query = dbContext.Sales.AsNoTracking()
-            .Where(s => !s.IsDeleted && s.DeliveryNoteIssuedAt == null);
-        if (from is { } f)
-        {
-            query = query.Where(s => s.SlipDate >= f);
-        }
-
-        if (to is { } t)
-        {
-            query = query.Where(s => s.SlipDate <= t);
-        }
-
-        var rows = await query
+        var rows = await dbContext.Sales.AsNoTracking()
+            .Where(s => !s.IsDeleted && s.DeliveryNoteIssuedAt == null)
             .Select(s => new { s.SalesSlipNumber, s.SlipDate, s.CustomerCode, s.CustomerName, s.Amount })
             .ToListAsync(cancellationToken);
 

@@ -184,7 +184,7 @@ public class DeliveryNoteServiceTests(DevDatabaseFixture fixture) : IClassFixtur
         {
             await service.MarkIssuedAsync(issued);
 
-            var slips = (await service.GetUnissuedAsync(null, null))
+            var slips = (await service.GetUnissuedAsync())
                 .Where(s => s.CustomerCode == customerCode).ToList();
 
             var slip = Assert.Single(slips);
