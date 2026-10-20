@@ -18,7 +18,7 @@ namespace bmcs_app.ViewModels.Common;
 public partial class ProductSearchDialogViewModel(
     ProductService productService,
     ProductHistoryQueryService historyQueryService,
-    IUnitPriceCalculator unitPriceCalculator)
+    UnitPriceService unitPriceService)
     : DialogViewModelBase<IReadOnlyList<ProductSelection>>
 {
     public const int MaxBasketSize = 6;
@@ -33,16 +33,21 @@ public partial class ProductSearchDialogViewModel(
     public partial string? TargetCustomerCode { get; set; }
 
     /// <summary>
-    /// 対象得意先の税区分。マスタ軸の単価列（外税／内税どちらを転記するか）を決める
+    /// 対象得意先。マスタ軸の単価（得意先別単価・定価掛率・外税／内税）を決める。
     /// 呼び出し元が <see cref="TargetCustomerCode"/> と一緒に設定する。
-    /// 未設定（得意先未選択）のときは外税単価を使う（請求単位・伝票単位が多数派のため）。
+    /// 未設定（得意先未選択）のときは商品マスタの外税単価を使う（請求単位・伝票単位が多数派のため）。
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MasterUnitPriceHeader))]
-    public partial TaxUnit? TargetTaxUnit { get; set; }
+    public partial Customer? TargetCustomer { get; set; }
+
+    /// <summary>伝票日付。内税得意先の定価掛率計算で使う税率の適用日。</summary>
+    public DateOnly TargetSlipDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
 
     /// <summary>マスタ軸の単価列ヘッダ。表示と転記される単価が食い違わないよう、転記元と同じ判定を使う。</summary>
-    public string MasterUnitPriceHeader => TargetTaxUnit == TaxUnit.Line ? "単価(税込)" : "単価(税抜)";
+    public string MasterUnitPriceHeader => TargetCustomer?.TaxUnit == TaxUnit.Line ? "単価(税込)" : "単価(税抜)";
+
+    private UnitPriceResolver? _unitPriceResolver;
 
     /// <summary>履歴軸を有効化できるかどうか（対象得意先が指定されているか）。</summary>
     public bool HasCustomer => !string.IsNullOrWhiteSpace(TargetCustomerCode);
@@ -75,6 +80,7 @@ public partial class ProductSearchDialogViewModel(
     private Task LoadMasterAsync() => RunBusyAsync(async () =>
     {
         _allProducts = await productService.GetProductsAsync();
+        _unitPriceResolver = await unitPriceService.CreateResolverAsync(TargetCustomer, TargetSlipDate);
         ApplyMasterFilter();
     });
 
@@ -111,12 +117,10 @@ public partial class ProductSearchDialogViewModel(
                 || Contains(p.ProductNameKana, k)
                 || Contains(p.Specification, k)));
 
-        var taxUnit = TargetTaxUnit ?? TaxUnit.Invoice;
-
         MasterResults.Clear();
         foreach (var product in filtered)
         {
-            MasterResults.Add(ProductMasterSearchItem.FromEntity(product, taxUnit, unitPriceCalculator));
+            MasterResults.Add(ProductMasterSearchItem.FromEntity(product, _unitPriceResolver!.Resolve(product)));
         }
 
         MasterSelectedIndex = MasterResults.Count > 0 ? 0 : -1;

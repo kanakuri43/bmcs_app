@@ -39,8 +39,7 @@ public static class ApplicationServiceCollectionExtensions
         // 端末ローカルのファイル I/O のみで DbContext に依存しないため Singleton。
         services.AddSingleton<PrinterSettingsService>();
 
-        // 単価決定ロジック。将来的に掛け率マスタ等（DBアクセスを伴う実装）へ差し替える想定のため、
-        // 現時点は状態を持たないが Scoped で登録しておく（docs/decisions.md 参照）。
+        // 単価決定ロジック（docs/decisions.md 参照）。マスタ行の取得と税率の解決は UnitPriceService が行う。
         services.AddScoped<IUnitPriceCalculator, StandardUnitPriceCalculator>();
 
         // ユースケースは DbContext と同じ Scoped で登録する。
@@ -56,6 +55,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<QueryRunnerService>();
         services.AddScoped<ProductHistoryQueryService>();
         services.AddScoped<TaxRateQueryService>();
+        services.AddScoped<UnitPriceService>();
         services.AddScoped<SlipNumberService>();
         services.AddScoped<OrderService>();
         services.AddScoped<OrderStatusService>();

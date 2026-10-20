@@ -1,4 +1,3 @@
-using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Entities;
 using bmcs_app.Domain.Enums;
 
@@ -16,18 +15,14 @@ public sealed record ProductMasterSearchItem(
     TaxCategory TaxCategory,
     string TaxCategoryDisplay)
 {
-    /// <summary>
-    /// 単価は得意先の税区分（<paramref name="taxUnit"/>）に応じて外税／内税を選ぶ
-    /// （<see cref="IUnitPriceCalculator"/>）。
-    /// </summary>
-    public static ProductMasterSearchItem FromEntity(
-        Product product, TaxUnit taxUnit, IUnitPriceCalculator unitPriceCalculator) => new(
+    /// <summary>単価は <see cref="bmcs_app.Application.Master.UnitPriceResolver"/> が得意先・伝票日付に応じて決めた値。</summary>
+    public static ProductMasterSearchItem FromEntity(Product product, decimal unitPrice) => new(
         product.ProductCode,
         product.ProductName,
         product.ProductNameKana,
         product.Specification,
         product.UnitName,
-        unitPriceCalculator.SelectStandardUnitPrice(product, taxUnit),
+        unitPrice,
         product.StandardCostPrice,
         product.TaxCategory,
         TaxCategoryDisplayOf(product.TaxCategory));
