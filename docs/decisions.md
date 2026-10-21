@@ -92,6 +92,7 @@
 - **`TextBox`/`ComboBox`/`DatePicker` の暗黙スタイルに共通の `MinHeight`（`Styles/Metrics.xaml` の `InputControlHeight`、実測で確定）と `VerticalAlignment="Center"`・`VerticalContentAlignment="Center"` を設定して入力欄の高さを統一する（`Button` は `MinHeight` のみ、`VerticalAlignment=Center` は付けない）**: MahApps 既定では `ComboBox` の自然高が `TextBox` より大きく、`RowDefinition` 未指定の `Grid`（子が `Stretch`）に混在させると行高が `ComboBox` に引っ張られ、画面ごとに高さがバラつく。`VerticalAlignment=Center` で各コントロールを行高から独立させ、`MinHeight` を3種の自然高の最大値以上に取ることで一致させる。
 - **画面上の数量・金額は小数点以下を表示しない（`DecimalPlaces` 既定0、`N0`、`MidpointRounding.AwayFromZero`）が、帳票の単価のみ `N4`（小数4桁）を維持する**: 単価の内部精度（`decimal(15,4)` 等）は保持し画面表示のみ丸める。画面の単価欄はマスタ入力用の丸め表示、帳票の単価は明細金額の根拠を示す表示、という役割の違いによる（ユーザー判断で単価は据え置き）。帳票の数量は画面と同じく `N0`。
 - **ViewModel は WPF の `Brush` 等の Media 型を持たず、整数インデックス（`ColorIndex`）だけを持ち、View 側の Converter で Brush へ変換する**: ViewModel を WPF 依存にしないため（`EnumDisplayConverter` と同じ方針）。
+- **明細の商品名は手入力で上書きでき、変更した名称の末尾に「.」を付けて区別する（名称の元値は別途保持しない）**: 印字・請求にマスタと違う名称が出るため、後から見て手で直した行と分かるようにする。元値を持たず「編集前と違い、末尾が「.」でなければ付ける」判定にしたため、訂正で読み込んだ行でも二重に付かない。トレードオフとして、「.」付きの名称から「.」を消して確定しても再び付く（元の名称に戻すには商品を選び直す）。商品名は60文字までなので「.」を付けると超える場合は本文を切り詰める。Tab順には入れず、マウスで移動して入力する。
 
 ## テスト
 

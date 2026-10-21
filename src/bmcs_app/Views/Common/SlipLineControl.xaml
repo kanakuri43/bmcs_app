@@ -43,8 +43,11 @@
                 </TextBox.InputBindings>
             </TextBox>
 
-            <!-- 商品名（通常は表示のみ） -->
+            <!-- 商品名（Tab順の対象外。マウスで移動して手入力で上書きできる。変更すると末尾に「.」が付く） -->
             <TextBox Grid.Column="2"
+                     MaxLength="60"
+                     GotKeyboardFocus="ProductNameBox_GotKeyboardFocus"
+                     LostKeyboardFocus="ProductNameBox_LostKeyboardFocus"
                      Text="{Binding ProductName, UpdateSourceTrigger=PropertyChanged}"
                      IsReadOnly="{Binding IsProductNameReadOnly}"
                      IsTabStop="False"
