@@ -20,6 +20,7 @@ public class CompanyInfoConfiguration : IEntityTypeConfiguration<CompanyInfo>
         builder.Property(e => e.PhoneNumber).HasMaxLength(20).IsUnicode(false);
         builder.Property(e => e.FaxNumber).HasMaxLength(20).IsUnicode(false);
         builder.Property(e => e.RepresentativeName).HasMaxLength(40);
+        builder.Property(e => e.EstablishedDate).HasColumnType("date");
 
         builder.ConfigureAuditColumns();
     }

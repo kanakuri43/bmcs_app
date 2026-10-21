@@ -59,6 +59,7 @@ public class CompanyInfoService(
         current.PhoneNumber = companyInfo.PhoneNumber;
         current.FaxNumber = companyInfo.FaxNumber;
         current.RepresentativeName = companyInfo.RepresentativeName;
+        current.EstablishedDate = companyInfo.EstablishedDate;
         current.UpdatedBy = employeeCode;
         current.UpdatedAt = now;
 
