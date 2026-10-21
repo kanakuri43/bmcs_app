@@ -3,73 +3,91 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
-                 Title="得意先／商品／単価マスタ"
-                 Height="400" Width="680"
-                 ResizeMode="CanMinimize"
+                 Title="得意先／商品／単価・掛率マスタ"
+                 Height="640" Width="860" MinHeight="420" MinWidth="640"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
-    <Grid Margin="16" beh:EnterKeyNavigationBehavior.IsEnabled="True"
-          beh:ImeAwareSpaceKeyBindingBehavior.IsEnabled="True">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-                <TextBlock Text="基本情報" FontWeight="Bold" Margin="0,0,0,8" />
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="得意先コード" Margin="0,0,12,8" VerticalAlignment="Center" />
-                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBox beh:FocusBehavior.IsInitialFocus="True"
-                                 Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
-                                 mah:TextBoxHelper.Watermark="得意先コード（SPACEで検索）"
-                                 ToolTip="Spaceで得意先検索モーダルを開く。Enterでコードから得意先名を照会する"
-                                 Width="200">
-                            <TextBox.InputBindings>
-                                <KeyBinding Key="Space"  Command="{Binding OpenCustomerSearchCommand}" />
-                                <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />
-                            </TextBox.InputBindings>
-                        </TextBox>
-                        <TextBlock Text="{Binding CustomerName}" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="Gray" />
-                    </StackPanel>
+        <!-- ヘッダ（Enter での項目移動はここだけ。一覧のセル編集中の Enter を横取りしないため） -->
+        <Grid Grid.Row="0" beh:EnterKeyNavigationBehavior.IsEnabled="True"
+              beh:ImeAwareSpaceKeyBindingBehavior.IsEnabled="True">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="商品コード" Margin="0,0,12,8" VerticalAlignment="Center" />
-                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBox beh:FocusBehavior.FocusKey="Product"
-                                 Text="{Binding ProductCode, UpdateSourceTrigger=PropertyChanged}"
-                                 mah:TextBoxHelper.Watermark="商品コード（SPACEで検索）"
-                                 ToolTip="Spaceで商品検索モーダルを開く。Enterでコードから商品名を照会し、登録済みの単価を読み込む"
-                                 Width="200">
-                            <TextBox.InputBindings>
-                                <KeyBinding Key="Space"  Command="{Binding OpenProductSearchCommand}" />
-                                <KeyBinding Key="Return" Command="{Binding LookupProductByCodeCommand}" />
-                            </TextBox.InputBindings>
-                        </TextBox>
-                        <TextBlock Text="{Binding ProductName}" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="Gray" />
-                    </StackPanel>
-
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding UnitPriceLabel}" Margin="0,0,12,8" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="2" Grid.Column="1" beh:FocusBehavior.FocusKey="UnitPrice"
-                             Style="{StaticResource AmountTextBoxStyle}"
-                             Text="{Binding UnitPrice}" Width="140" HorizontalAlignment="Left" Margin="0,0,0,8"
-                             ToolTip="受注・売上入力で商品を選んだときに、この単価がそのまま転記される" />
-                </Grid>
-
-                <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                    <Button Content="保存" Command="{Binding SaveCommand}" Padding="16,6" Margin="0,0,12,0" />
-                    <Button Content="キャンセル" Command="{Binding NewPriceCommand}" Padding="16,6" Margin="0,0,12,0" />
-                    <Button Content="無効化" Command="{Binding DeactivateCommand}" Padding="16,6" Margin="0,0,12,0" />
-                    <TextBlock Text="処理中..." VerticalAlignment="Center" Foreground="OrangeRed"
-                               Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                </StackPanel>
-
-                <TextBlock Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="Gray" />
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="得意先" Margin="0,0,12,8" VerticalAlignment="Center" />
+            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBox beh:FocusBehavior.IsInitialFocus="True"
+                         Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
+                         mah:TextBoxHelper.Watermark="コード（SPACEで検索）"
+                         ToolTip="得意先コードを入力してEnterで、その得意先の商品一覧を読み込む。Spaceで得意先検索モーダルを開く"
+                         Width="200">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Space"  Command="{Binding SelectCustomerCommand}" />
+                        <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />
+                    </TextBox.InputBindings>
+                </TextBox>
+                <Button Content="..." Width="28" Margin="4,0,0,0" Command="{Binding SelectCustomerCommand}" />
+                <TextBlock Text="{Binding CustomerName}" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="Gray" />
             </StackPanel>
-        </ScrollViewer>
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="商品の絞り込み" Margin="0,0,12,8" VerticalAlignment="Center" />
+            <TextBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Left" Margin="0,0,0,8" Width="300"
+                     beh:FocusBehavior.FocusKey="Filter"
+                     Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
+                     mah:TextBoxHelper.Watermark="商品コード・商品名の一部"
+                     ToolTip="商品コードまたは商品名の一部で一覧を絞り込む。絞り込んでも、入力した内容は残る" />
+        </Grid>
+
+        <!-- 一覧：入力できるのは単価・掛率だけ -->
+        <DataGrid Grid.Row="1" ItemsSource="{Binding RowsView}"
+                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                  CanUserSortColumns="False" CanUserReorderColumns="False"
+                  SelectionUnit="Cell" SelectionMode="Single" HeadersVisibility="Column">
+            <DataGrid.Resources>
+                <Style x:Key="RightAlignedText" TargetType="TextBlock">
+                    <Setter Property="HorizontalAlignment" Value="Right" />
+                </Style>
+                <Style x:Key="RightAlignedEdit" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                    <Setter Property="HorizontalContentAlignment" Value="Right" />
+                </Style>
+            </DataGrid.Resources>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="商品コード" Binding="{Binding ProductCode}" IsReadOnly="True" Width="Auto" />
+                <DataGridTextColumn Header="商品名" Binding="{Binding ProductName}" IsReadOnly="True" Width="*" />
+                <DataGridTextColumn Header="単価"
+                                    Binding="{Binding PriceText, UpdateSourceTrigger=PropertyChanged}"
+                                    ElementStyle="{StaticResource RightAlignedText}"
+                                    EditingElementStyle="{StaticResource RightAlignedEdit}" Width="130" />
+                <DataGridTextColumn Header="税区分" Binding="{Binding TaxLabel}" IsReadOnly="True" Width="70" />
+                <DataGridTextColumn Header="定価（税抜）" Binding="{Binding CatalogPrice, StringFormat={}{0:N0}}" IsReadOnly="True"
+                                    ElementStyle="{StaticResource RightAlignedText}" Width="110" />
+                <DataGridTextColumn Header="掛率（%）"
+                                    Binding="{Binding RateText, UpdateSourceTrigger=PropertyChanged}"
+                                    ElementStyle="{StaticResource RightAlignedText}"
+                                    EditingElementStyle="{StaticResource RightAlignedEdit}" Width="90" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="2" Margin="0,12,0,0">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="登録" Command="{Binding SaveCommand}" Padding="16,6" Margin="0,0,12,0" />
+                <TextBlock Text="処理中..." VerticalAlignment="Center" Foreground="OrangeRed"
+                           Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <TextBlock Text="空欄にして登録すると、その単価・掛率は無効になります。" VerticalAlignment="Center" Foreground="Gray" Margin="12,0,0,0" />
+            </StackPanel>
+            <TextBlock Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="Gray" />
+        </StackPanel>
     </Grid>
 </mah:MetroWindow>
