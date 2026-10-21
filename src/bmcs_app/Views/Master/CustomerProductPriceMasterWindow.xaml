@@ -29,13 +29,13 @@
             <TextBlock Grid.Row="0" Grid.Column="0" Text="得意先" Margin="0,0,12,8" VerticalAlignment="Center" />
             <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
                 <TextBox beh:FocusBehavior.IsInitialFocus="True"
-                         Text="{Binding CustomerCode, Mode=OneWay}" IsReadOnly="True"
-                         mah:TextBoxHelper.Watermark="得意先（SPACEで検索）"
-                         ToolTip="SpaceまたはEnterで得意先検索モーダルを開き、選んだ得意先の商品一覧を読み込む"
+                         Text="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}"
+                         mah:TextBoxHelper.Watermark="コード（SPACEで検索）"
+                         ToolTip="得意先コードを入力してEnterで、その得意先の商品一覧を読み込む。Spaceで得意先検索モーダルを開く"
                          Width="200">
                     <TextBox.InputBindings>
                         <KeyBinding Key="Space"  Command="{Binding SelectCustomerCommand}" />
-                        <KeyBinding Key="Return" Command="{Binding SelectCustomerCommand}" />
+                        <KeyBinding Key="Return" Command="{Binding LookupCustomerByCodeCommand}" />
                     </TextBox.InputBindings>
                 </TextBox>
                 <Button Content="..." Width="28" Margin="4,0,0,0" Command="{Binding SelectCustomerCommand}" />
@@ -44,6 +44,7 @@
 
             <TextBlock Grid.Row="1" Grid.Column="0" Text="商品の絞り込み" Margin="0,0,12,8" VerticalAlignment="Center" />
             <TextBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Left" Margin="0,0,0,8" Width="300"
+                     beh:FocusBehavior.FocusKey="Filter"
                      Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
                      mah:TextBoxHelper.Watermark="商品コード・商品名の一部"
                      ToolTip="商品コードまたは商品名の一部で一覧を絞り込む。絞り込んでも、入力した内容は残る" />

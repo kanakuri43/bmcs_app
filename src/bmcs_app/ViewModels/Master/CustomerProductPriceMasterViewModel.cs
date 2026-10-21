@@ -20,10 +20,14 @@ namespace bmcs_app.ViewModels.Master;
 /// </summary>
 public partial class CustomerProductPriceMasterViewModel(
     CustomerProductPriceService priceService,
+    CustomerService customerService,
     WindowService windowService)
     : ViewModelBase
 {
     private ICollectionView? _rowsView;
+
+    /// <summary>一覧に読み込み済みの得意先コード。コード欄は入力途中の文字列を持つため、登録はこちらを使う。</summary>
+    private string _loadedCustomerCode = string.Empty;
 
     [ObservableProperty]
     public partial string CustomerCode { get; set; } = string.Empty;
@@ -84,7 +88,7 @@ public partial class CustomerProductPriceMasterViewModel(
             "bmcs_app", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
     }
 
-    /// <summary>得意先欄で Space／Enter を押したとき（または選択ボタン）に、得意先検索モーダルを開いて一覧を読み込む。</summary>
+    /// <summary>得意先欄で Space を押したとき（または「...」ボタン）に、得意先検索モーダルを開いて一覧を読み込む。</summary>
     [RelayCommand]
     private Task SelectCustomerAsync() => RunBusyAsync(async () =>
     {
@@ -102,6 +106,34 @@ public partial class CustomerProductPriceMasterViewModel(
         await LoadAsync(customer);
     });
 
+    /// <summary>得意先欄で Enter を押したとき、入力済みのコードの得意先を読み込む。</summary>
+    [RelayCommand]
+    private Task LookupCustomerByCodeAsync() => RunBusyAsync(async () =>
+    {
+        var code = CustomerCode.Trim();
+        if (code.Length == 0 || code == _loadedCustomerCode)
+        {
+            return;
+        }
+
+        var customer = await customerService.GetByCodeAsync(code);
+        if (customer is null || customer.IsDeleted)
+        {
+            StatusMessage = $"得意先コード「{code}」が見つからないか、無効です。";
+            return;
+        }
+
+        if (!ConfirmDiscardChanges())
+        {
+            // 確認で中止したら、欄を表示中の得意先のコードへ戻す。
+            CustomerCode = _loadedCustomerCode;
+            return;
+        }
+
+        await LoadAsync(customer);
+        RequestFocus("Filter");
+    });
+
     private async Task LoadAsync(Customer customer)
     {
         var taxLabel = customer.TaxUnit == TaxUnit.Line ? "税込" : "税抜";
@@ -113,6 +145,7 @@ public partial class CustomerProductPriceMasterViewModel(
             Rows.Add(new CustomerProductSettingRow(setting, taxLabel));
         }
 
+        _loadedCustomerCode = customer.CustomerCode;
         CustomerCode = customer.CustomerCode;
         CustomerName = customer.CustomerName;
         TaxLabel = taxLabel;
@@ -123,7 +156,7 @@ public partial class CustomerProductPriceMasterViewModel(
     [RelayCommand]
     private Task SaveAsync() => RunBusyAsync(async () =>
     {
-        if (CustomerCode.Length == 0)
+        if (_loadedCustomerCode.Length == 0)
         {
             MessageBox.Show("得意先を選択してください。", "bmcs_app", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
@@ -178,7 +211,7 @@ public partial class CustomerProductPriceMasterViewModel(
 
         try
         {
-            await priceService.SaveSettingsAsync(CustomerCode, priceChanges, rateChanges);
+            await priceService.SaveSettingsAsync(_loadedCustomerCode, priceChanges, rateChanges);
         }
         catch (CustomerProductPriceValidationException ex)
         {
@@ -194,7 +227,7 @@ public partial class CustomerProductPriceMasterViewModel(
         }
 
         // 登録後は画面を起動直後の状態へ戻す（docs/product-spec.md UI/UX節「登録後のリセット」）。
-        var message = $"得意先 {CustomerCode} の単価・掛率を登録しました（単価 {priceChanges.Count} 件・掛率 {rateChanges.Count} 件）。";
+        var message = $"得意先 {_loadedCustomerCode} の単価・掛率を登録しました（単価 {priceChanges.Count} 件・掛率 {rateChanges.Count} 件）。";
         ClearForm();
         StatusMessage = message;
         NotifyResetToInitialState();
@@ -207,6 +240,7 @@ public partial class CustomerProductPriceMasterViewModel(
     private void ClearForm()
     {
         Rows.Clear();
+        _loadedCustomerCode = string.Empty;
         CustomerCode = string.Empty;
         CustomerName = string.Empty;
         TaxLabel = string.Empty;
