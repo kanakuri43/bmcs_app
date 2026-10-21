@@ -269,6 +269,7 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `address1` / `address2` | `nvarchar(100)` | ○ | |
 | `phone_number` / `fax_number` | `varchar(20)` | ○ | |
 | `representative_name` | `nvarchar(40)` | ○ | 代表者名 |
+| `established_date` | `date` | ○ | 設立年月日 |
 
 **CHECK 制約**: `CK_company_infos_single_row` … `company_info_id = 1`（複数行の登録を防ぐ）
 

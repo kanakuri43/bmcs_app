@@ -24,4 +24,6 @@ public class CompanyInfo : AuditableEntity
     public string? FaxNumber { get; set; }
 
     public string? RepresentativeName { get; set; }
+
+    public DateOnly? EstablishedDate { get; set; }
 }

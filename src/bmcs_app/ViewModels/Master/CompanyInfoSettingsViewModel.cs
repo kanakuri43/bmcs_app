@@ -39,6 +39,9 @@ public partial class CompanyInfoSettingsViewModel(CompanyInfoService companyInfo
     public partial string RepresentativeName { get; set; } = string.Empty;
 
     [ObservableProperty]
+    public partial DateTime? EstablishedDate { get; set; }
+
+    [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
 
     private byte[]? _loadedRowVersion;
@@ -65,6 +68,7 @@ public partial class CompanyInfoSettingsViewModel(CompanyInfoService companyInfo
         PhoneNumber = companyInfo.PhoneNumber ?? string.Empty;
         FaxNumber = companyInfo.FaxNumber ?? string.Empty;
         RepresentativeName = companyInfo.RepresentativeName ?? string.Empty;
+        EstablishedDate = companyInfo.EstablishedDate?.ToDateTime(TimeOnly.MinValue);
 
         _loadedRowVersion = companyInfo.RowVersion;
         StatusMessage = string.Empty;
@@ -96,6 +100,7 @@ public partial class CompanyInfoSettingsViewModel(CompanyInfoService companyInfo
             PhoneNumber = NullIfEmpty(PhoneNumber),
             FaxNumber = NullIfEmpty(FaxNumber),
             RepresentativeName = NullIfEmpty(RepresentativeName),
+            EstablishedDate = EstablishedDate is { } established ? DateOnly.FromDateTime(established) : null,
             RowVersion = _loadedRowVersion,
             CreatedBy = string.Empty,
             CreatedAt = default,
