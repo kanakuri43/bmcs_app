@@ -64,14 +64,42 @@ public partial class SlipLineViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TaxRateDisplay))]
+    [NotifyPropertyChangedFor(nameof(IsProductNameReadOnly))]
     public partial string ProductCode { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial string ProductName { get; set; } = string.Empty;
 
-    /// <summary>諸口等の手入力商品を将来許す余地として残すが、当面は常に読み取り専用（4-3で確定）。</summary>
-    [ObservableProperty]
-    public partial bool IsProductNameReadOnly { get; set; } = true;
+    /// <summary>商品選択前（空行）は商品名を編集できない。商品選択後は手入力で上書きできる。</summary>
+    public bool IsProductNameReadOnly => IsBlank;
+
+    /// <summary>手入力で変更した商品名の末尾に付ける識別用の記号。</summary>
+    public const string EditedNameMarker = ".";
+
+    /// <summary>
+    /// 商品名欄の編集確定時（フォーカス喪失時）に呼ぶ。編集前（<paramref name="before"/>）から変わっていて、
+    /// まだ末尾が <see cref="EditedNameMarker"/> でなければ付ける。空にされた場合は編集前へ戻す。
+    /// 受注から売上へは商品名をそのまま引き継ぐため、受注で付いた記号は売上でも残る。
+    /// </summary>
+    public void CommitProductNameEdit(string before)
+    {
+        if (string.IsNullOrWhiteSpace(ProductName))
+        {
+            ProductName = before;
+            return;
+        }
+
+        if (ProductName == before || ProductName.EndsWith(EditedNameMarker, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        // DB列は60文字。記号を付けても収まるよう切り詰める。
+        ProductName = ProductName[..Math.Min(ProductName.Length, ProductNameMaxLength - EditedNameMarker.Length)] + EditedNameMarker;
+    }
+
+    /// <summary>商品名のDB列長（<c>product_name nvarchar(60)</c>）。</summary>
+    public const int ProductNameMaxLength = 60;
 
     [ObservableProperty]
     public partial string? Specification { get; set; }
