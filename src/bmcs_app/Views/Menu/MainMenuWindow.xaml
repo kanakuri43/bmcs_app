@@ -178,6 +178,7 @@
             <TextBlock Text="処理中..." Foreground="OrangeRed"
                        Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
             <TextBlock Text="{Binding ConnectionInfo}" FontSize="10" Foreground="#FFB0B6C0" Margin="0,4,0,0" />
+            <TextBlock Text="{Binding BuildInfo}" FontSize="10" Foreground="#FFB0B6C0" />
         </StackPanel>
     </Grid>
 </mah:MetroWindow>

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows;
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
@@ -47,7 +48,11 @@ public partial class MainMenuViewModel(
 
     /// <summary>フッターに常時表示する接続先情報（サーバー名・DB名）。</summary>
     public string ConnectionInfo { get; } =
-        $"接続先: {databaseConnectionInfo.ServerName} / {databaseConnectionInfo.DatabaseName}";
+        $"Database: {databaseConnectionInfo.ServerName} / {databaseConnectionInfo.DatabaseName}";
+
+    /// <summary>接続先の下に表示する最終ビルド日時（実行アセンブリの最終更新日時）。</summary>
+    public string BuildInfo { get; } =
+        $"Build: {File.GetLastWriteTime(typeof(MainMenuViewModel).Assembly.Location):yyyy/MM/dd HH:mm}";
 
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
