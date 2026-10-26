@@ -4,7 +4,7 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="bmcs_app - コピー機売上CSV取込"
-                 Height="640" Width="1100"
+                 Height="640" Width="1320"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False"
                  AllowDrop="True" DragOver="Window_DragOver" Drop="Window_Drop">
@@ -36,54 +36,76 @@
             </TextBlock.Style>
         </TextBlock>
 
-        <DataGrid Grid.Row="2" ItemsSource="{Binding Rows}" Margin="0,12,0,0"
-                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
-                  HeadersVisibility="Column" CanUserAddRows="False">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="行" Binding="{Binding LineNumber}" Width="Auto" />
-                <DataGridTextColumn Header="機番" Binding="{Binding MachineNo}" Width="Auto" />
-                <DataGridTextColumn Header="得意先コード" Binding="{Binding CustomerCode}" Width="Auto" />
-                <DataGridTextColumn Header="得意先名" Binding="{Binding CustomerName}" Width="160" />
-                <DataGridTextColumn Header="締日" Binding="{Binding ClosingDate, StringFormat={}{0:yyyy/MM/dd}}" Width="Auto" />
-                <DataGridTextColumn Header="機種名" Binding="{Binding ModelName}" Width="140" />
-                <DataGridTextColumn Header="金額（税別）" Binding="{Binding Amount, StringFormat={}{0:N0}}" Width="Auto">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right" />
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="合算行数" Binding="{Binding MergedLineCount}" Width="Auto" />
-                <DataGridTextColumn Header="状態" Binding="{Binding StateText}" Width="Auto">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="FontWeight" Value="Bold" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding State}" Value="Importable">
-                                    <Setter Property="Foreground" Value="SeaGreen" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding State}" Value="Succeeded">
-                                    <Setter Property="Foreground" Value="SeaGreen" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding State}" Value="Imported">
-                                    <Setter Property="Foreground" Value="Gray" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding State}" Value="Excluded">
-                                    <Setter Property="Foreground" Value="DarkGoldenrod" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding State}" Value="Error">
-                                    <Setter Property="Foreground" Value="Crimson" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding State}" Value="Failed">
-                                    <Setter Property="Foreground" Value="Crimson" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="理由・結果" Binding="{Binding Reason}" Width="*" />
-            </DataGrid.Columns>
-        </DataGrid>
+        <!-- 得意先元帳と同じ ListView／GridView。1行おきに薄いグレー（選択・ホバー中は既存のハイライトを優先）。 -->
+        <ListView Grid.Row="2" ItemsSource="{Binding Rows}" Margin="0,12,0,0"
+                  SelectionMode="Single" AlternationCount="2">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem" BasedOn="{StaticResource {x:Type ListViewItem}}">
+                    <Style.Triggers>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="ItemsControl.AlternationIndex" Value="1" />
+                                <Condition Property="IsSelected" Value="False" />
+                                <Condition Property="IsMouseOver" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <Setter Property="Background" Value="#F2F2F2" />
+                        </MultiTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="行" Width="40" DisplayMemberBinding="{Binding LineNumber}" />
+                    <GridViewColumn Header="機番" Width="90" DisplayMemberBinding="{Binding MachineNo}" />
+                    <GridViewColumn Header="得意先コード" Width="100" DisplayMemberBinding="{Binding CustomerCode}" />
+                    <GridViewColumn Header="得意先名" Width="160" DisplayMemberBinding="{Binding CustomerName}" />
+                    <GridViewColumn Header="締日" Width="90" DisplayMemberBinding="{Binding ClosingDate, StringFormat={}{0:yyyy/MM/dd}}" />
+                    <GridViewColumn Header="機種名" Width="140" DisplayMemberBinding="{Binding ModelName}" />
+                    <GridViewColumn Header="金額（税別）" Width="100" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Amount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="合算行数" Width="70" DisplayMemberBinding="{Binding MergedLineCount}" />
+                    <GridViewColumn Header="状態" Width="70">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding StateText}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="FontWeight" Value="Bold" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding State}" Value="Importable">
+                                                    <Setter Property="Foreground" Value="SeaGreen" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding State}" Value="Succeeded">
+                                                    <Setter Property="Foreground" Value="SeaGreen" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding State}" Value="Imported">
+                                                    <Setter Property="Foreground" Value="Gray" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding State}" Value="Excluded">
+                                                    <Setter Property="Foreground" Value="DarkGoldenrod" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding State}" Value="Error">
+                                                    <Setter Property="Foreground" Value="Crimson" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding State}" Value="Failed">
+                                                    <Setter Property="Foreground" Value="Crimson" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="理由・結果" Width="420" DisplayMemberBinding="{Binding Reason}" />
+                </GridView>
+            </ListView.View>
+        </ListView>
 
         <Border Grid.Row="2" Margin="0,12,0,0" BorderBrush="Gray" BorderThickness="2" CornerRadius="8"
                 IsHitTestVisible="False">

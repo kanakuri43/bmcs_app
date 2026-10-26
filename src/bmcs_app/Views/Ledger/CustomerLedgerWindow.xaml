@@ -70,9 +70,24 @@
 
         <!-- ===== 明細 ===== -->
         <!-- 行をEnter／ダブルクリックで活性化すると、対応する伝票を読み取り専用（プレビュー）で開く -->
-        <ListView Grid.Row="1" ItemsSource="{Binding Lines}"
+        <ListView Grid.Row="1" ItemsSource="{Binding Lines}" AlternationCount="2"
                   ToolTip="行をEnterまたはダブルクリックすると、対応する伝票をプレビュー表示します。"
                   beh:RowActivationBehavior.Command="{Binding OpenSlipPreviewCommand}">
+            <!-- 1行おきに薄いグレー。選択・ホバー中は既存のハイライトを優先する。 -->
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem" BasedOn="{StaticResource {x:Type ListViewItem}}">
+                    <Style.Triggers>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="ItemsControl.AlternationIndex" Value="1" />
+                                <Condition Property="IsSelected" Value="False" />
+                                <Condition Property="IsMouseOver" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <Setter Property="Background" Value="#F2F2F2" />
+                        </MultiTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ListView.ItemContainerStyle>
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="区分" Width="60" DisplayMemberBinding="{Binding KindLabel}" />
