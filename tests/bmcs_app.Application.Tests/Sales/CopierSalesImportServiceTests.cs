@@ -92,19 +92,17 @@ public class CopierSalesImportServiceTests(DevDatabaseFixture fixture) : IClassF
         var rows = await service.PreviewAsync(
         [
             Row("__TCINONE", 1000m),                       // 未登録機番
-            Row("__TCIM3", 1000m),                         // 内税明細単位
             Row("__TCIM4", 1000m),                         // 請求締め済み期間（2026-09-30確定）
             Row("__TCIM1", 0m),                            // 0円
             Row("__TCIM1", 5000m),                         // 正常
         ]);
 
         Assert.Equal(
-            [CopierImportStatus.Error, CopierImportStatus.Error, CopierImportStatus.Error, CopierImportStatus.Excluded, CopierImportStatus.Importable],
+            [CopierImportStatus.Error, CopierImportStatus.Error, CopierImportStatus.Excluded, CopierImportStatus.Importable],
             rows.Select(r => r.Status));
         Assert.Contains("登録されていない", rows[0].Reason);
-        Assert.Contains("内税", rows[1].Reason);
-        Assert.Contains("請求締め済み", rows[2].Reason);
-        Assert.Equal(Closed, rows[2].CustomerCode);
+        Assert.Contains("請求締め済み", rows[1].Reason);
+        Assert.Equal(Closed, rows[1].CustomerCode);
 
         var results = await service.ImportAsync(rows);
         var ok = Assert.Single(results);
@@ -132,6 +130,24 @@ public class CopierSalesImportServiceTests(DevDatabaseFixture fixture) : IClassF
         var line = await SingleLineAsync(db, result.SalesSlipNumber!);
         Assert.Equal(7500m, line.Amount);
         Assert.Equal(750m, line.SlipTaxAmount);
+    });
+
+    [Fact]
+    public Task 内税明細単位の得意先は税別金額に税率を掛けた税込単価で登録される() => RunAsync(async (sp, db) =>
+    {
+        var service = sp.GetRequiredService<CopierSalesImportService>();
+        var preview = await service.PreviewAsync([Row("__TCIM3", 12345m)]);
+        Assert.Equal(CopierImportStatus.Importable, preview[0].Status);
+        var result = (await service.ImportAsync(preview))[0];
+        Assert.True(result.IsSuccess, result.Error);
+
+        // 12345 × 1.10 = 13579.5 → 切り捨てで 13579。税額は内税の逆算（13579 × 10/110 = 1234.45 → 1234）。
+        var line = await SingleLineAsync(db, result.SalesSlipNumber!);
+        Assert.Equal(TaxUnit.Line, line.TaxUnit);
+        Assert.Equal(10m, line.TaxRate);
+        Assert.Equal(13579m, line.UnitPrice);
+        Assert.Equal(13579m, line.Amount);
+        Assert.Equal(1234m, line.TaxAmount);
     });
 
     // ── 準備と後始末 ──────────────────────────────

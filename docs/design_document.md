@@ -1933,7 +1933,7 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 - **社外摘要**（`slip_remarks`、200字）: `{機種名} モノ{CV} フル{CV} フルP{CV}`（CV＝ユーザ請求CVの3列。空欄は0）。上限超過はエラー。**社内摘要**（`internal_remarks`）: `機番`。
 - **伝票日付**: CSVの「締日」。請求締め済み・月次締め済みの期間に当たる行は取込不可（`SalesService.CreateAsync` の既存検証。画面でも事前に判定して表示する）。
 - **商品**: 売上明細は商品コード必須のため、取込専用の汎用商品1件（コード `COPYCHG`・名称「コピー機利用料」・税種別区分「通常税率」・課税・単位なし。登録手順は `docs/operations.md` 7章）を商品マスタに登録しておく運用とする（暫定。コードは定数。無い・無効なら画面を開いた時点でエラー表示し取込不可）。原価は商品マスタの標準原価を転記する（`SalesSlipTypeRules.NormalizeCostPrice`）。**暫定: 機種ごとの税種別・商品の使い分けはしない。**
-- **税区分**: 外税の得意先（請求単位・伝票単位）のみ対象。単価はCSVの税別金額をそのまま使う。内税明細単位の得意先は税別金額を単価にできないためエラー行とする（暫定）。税額は `SalesService.CreateAsync` の `SalesTaxAmountAssigner` が確定するので取込側は計算しない。金額は `ConsumptionTaxCalculator.CalculateLineAmount`。
+- **税区分**: 外税の得意先（請求単位・伝票単位）は、単価をCSVの税別金額（合算後）そのままにする。内税明細単位の得意先は単価が税込のため、税別金額に（1＋伝票日付時点の税率）を掛け、得意先の端数区分で1回だけ丸めて単価にする。税額は `SalesService.CreateAsync` の `SalesTaxAmountAssigner` が確定するので取込側は計算しない。金額は `ConsumptionTaxCalculator.CalculateLineAmount`。
 - **0円・負数**: 税別金額が0以下の行は取込対象外（警告表示。返品・値引は扱わない）。
 - **二重取込防止**: 同一機番・同一締日は1回のみ（`copier_import_histories`、2.6-2節）。取込済みの行はプレビューで「取込済」と表示し取込対象から外す。
 - **担当者**: 取込操作者の社員コード（`ICurrentEmployeeContext`）を伝票担当者に設定する。

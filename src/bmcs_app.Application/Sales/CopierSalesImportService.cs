@@ -99,8 +99,6 @@ public class CopierSalesImportService(
             { result.Add(Make(CopierImportStatus.Error, $"機番「{row.MachineNo}」がコピー機マスタに登録されていないか、無効です。")); continue; }
             if (!customers.TryGetValue(machine.CustomerCode, out customer) || customer.IsDeleted)
             { result.Add(Make(CopierImportStatus.Error, $"得意先「{machine.CustomerCode}」が登録されていないか、無効です。")); continue; }
-            if (customer.TaxUnit == TaxUnit.Line)
-            { result.Add(Make(CopierImportStatus.Error, "内税明細単位の得意先は取り込めません。", customer)); continue; }
             if (row.AmountExcludingTax <= 0m)
             { result.Add(Make(CopierImportStatus.Excluded, "税別金額が0円以下のため対象外です。", customer)); continue; }
             if (TaxRateResolver.FindApplicable(taxRates, row.ClosingDate) is null)
@@ -163,6 +161,12 @@ public class CopierSalesImportService(
             throw new InvalidOperationException("取込済みです。");
         }
 
+        // 内税明細単位の得意先は単価が税込のため、CSVの税別金額に税率を掛けて得意先の端数区分で1回だけ丸める。
+        var taxRate = TaxRateResolver.ResolveRate(taxRates, src.ClosingDate, product.TaxCategory);
+        var unitPrice = customer.TaxUnit == TaxUnit.Line
+            ? TaxRounding.RoundToYen(src.AmountExcludingTax * (1m + taxRate / 100m), customer.RoundingType)
+            : src.AmountExcludingTax;
+
         var employeeCode = currentEmployeeContext.EmployeeCode;
         var now = DateTime.Now;
         var line = new SalesEntity
@@ -179,11 +183,11 @@ public class CopierSalesImportService(
             Specification = product.Specification,
             UnitName = product.UnitName,
             Quantity = 1m,
-            UnitPrice = src.AmountExcludingTax,
-            Amount = ConsumptionTaxCalculator.CalculateLineAmount(1m, src.AmountExcludingTax, customer.RoundingType),
+            UnitPrice = unitPrice,
+            Amount = ConsumptionTaxCalculator.CalculateLineAmount(1m, unitPrice, customer.RoundingType),
             CostPrice = SalesSlipTypeRules.NormalizeCostPrice(SlipType.Sales, product.StandardCostPrice),
             TaxCategory = product.TaxCategory,
-            TaxRate = TaxRateResolver.ResolveRate(taxRates, src.ClosingDate, product.TaxCategory),
+            TaxRate = taxRate,
             DeliveryNoteIssueCount = 0,
             BillingStatus = BillingLinkStatus.Unbilled,
             SettlementStatus = SettlementStatus.Unsettled,
