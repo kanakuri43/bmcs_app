@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Check a Customer's Balance (Customer Ledger) - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb"> / Check a Customer's Balance (Customer Ledger)</span></header>
+<main>
+
+<h1>Check a Customer's Balance (Customer Ledger)</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  Use this to check <b>how much you can bill this customer right now (the amount receivable)</b>, and what you sold and when, and when payments came in.<br>
+  Sales and payments are listed in date order, and you can see the <b>balance after every line</b>. This is a view-only screen, and it does not change any data.
+</div>
+
+<h2><span class="no">1.</span>Choose a customer and display the ledger</h2>
+<p>From the main menu, open <b>Customer Ledger (得意先元帳)</b> under <b>Ledger (元帳)</b>. Enter the code in the <b>Customer (得意先)</b> field and press <kbd>Enter</kbd> (if you don't know the code, press <kbd>Space</kbd> to search). The customer's ledger is displayed.</p>
+<figure data-ann='[
+ {"r":[107,82,672,53],"n":1,"b":[1000,160]},
+ {"r":[900,84,451,49],"n":2,"b":[1200,160]},
+ {"r":[1555,82,81,53],"n":3,"b":[1750,108]},
+ {"r":[20,190,2700,40],"n":4,"b":[1500,1120]},
+ {"r":[1658,1205,1100,43],"n":5,"b":[1300,1130]}]'>
+  <div class="frame"><img src="images/ledger-01-shown.png" alt="Customer Ledger (得意先元帳)"></div>
+  <figcaption>Customer Ledger (example: Obisan Co., Ltd.)</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Customer (得意先)</b>: The customer you want to view. Next to the name, the trading terms are shown, such as "Billing unit / End-of-month closing (請求単位・末日締め)".</li>
+  <li><b>Period (期間)</b>: The period to display (by default, from the 1st of this month to today). The display refreshes when you change it.</li>
+  <li><b>Print (印刷)</b>: Opens a preview of the displayed ledger so you can print it or save it as a PDF.</li>
+  <li><b>Detail lines (明細)</b>: Lines are listed in date order with the type (sale, receipt, consumption tax), slip date, slip No., product, amount and <b>balance</b>. The top line, "Carried Forward from Previous Month (前月繰越)", is the balance as of the day before the period starts.</li>
+  <li><b>Totals at the bottom (下の合計欄)</b>: "Current Balance (現在残高)" is the <b>balance as of today</b> and does not change when you change the period. Also shown are the carried-forward amount, total sales, total consumption tax, total receipts, and the <b>Period Balance (期間残高)</b> (the balance on the last day of the period).</li>
+</ol>
+
+<h2><span class="no">2.</span>How to read the table</h2>
+<table>
+  <tr><th>Line type</th><th>Meaning</th></tr>
+  <tr><td>Carried Forward from Previous Month (前月繰越)</td><td>The balance as of the day before the period starts (tax included).</td></tr>
+  <tr><td>Sale (売上)</td><td>One line per sales line. The "Balance (残高)" at the right end is the running total up to that line.</td></tr>
+  <tr><td>Receipt (入金)</td><td>A line on the receipt date. The balance goes down.</td></tr>
+  <tr><td>Consumption Tax (消費税)</td><td>For closing-cycle customers, the consumption tax on sales before the billing closing is entered as one <b>provisional calculation</b> line, and the remarks show "Unclosed, provisional calculation (未締め分・仮計算)" (when you close the billing, it is replaced by the confirmed tax amount).</td></tr>
+</table>
+<div class="note">As in the example above, the ledger of the <b>billing consolidation customer</b> (such as a head office) also lists the sales of the customers consolidated into it (such as branches); tell them apart with the "Customer (得意先)" column. Conversely, the ledger of a consolidated customer shows only the transaction history and no balance.</div>
+<div class="note">Press <kbd>Enter</kbd> on a line in the list, or double-click it, to open that slip in the Sales Entry (売上入力) or Receipt Entry (入金入力) screen.</div>
+
+<nav class="pager"><a href="detail-receipt.html">← Previous: Register a Receipt for Per-Transaction Customers (Itemized Receipt)</a><a href="monthly-closing.html">Next: Perform Monthly Closing →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

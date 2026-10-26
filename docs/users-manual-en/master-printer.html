@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configure Printers - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb"> / Configure Printers</span></header>
+<main>
+
+<h1>Configure Printers</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  Choose <b>which printer to use for each type of document</b>, such as delivery notes and invoices. Once set, you do not have to choose a printer every time you print (for example, "Bulk Delivery Note Issue (納品書一括発行)" prints straight to the printer set here).
+</div>
+
+<div class="note">This setting is saved <b>for each computer (terminal) you use</b>. It does not affect other computers, so set it on each computer.</div>
+
+<h2><span class="no">1.</span>Choose printers and save</h2>
+<p>From the main menu, open <b>Printer Settings (プリンタ設定)</b> under <b>Master Management (マスタ管理)</b>.</p>
+<figure class="mid" data-ann='[{"r":[240,96,626,53],"n":1,"b":[891,122]},{"r":[240,170,626,52],"n":2,"b":[891,196]},{"r":[240,243,626,53],"n":3,"b":[891,269]},{"r":[240,317,626,52],"n":4,"b":[891,343]},{"r":[240,390,626,53],"n":5,"b":[891,416]},{"r":[772,505,94,53],"n":6,"b":[600,531]}]'>
+  <div class="frame"><img src="images/mprn-01.png" alt="Printer Settings (プリンタ設定)"></div>
+  <figcaption>Printer Settings (プリンタ設定) (printer names differ from computer to computer)</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Delivery note (納品書)</b>: Delivery notes from Sales Entry, Bulk Delivery Note Issue, and Copier CSV Import.</li>
+  <li><b>Invoice (請求書)</b>: Invoices from Billing Closing.</li>
+  <li><b>Itemized invoice (明細請求書)</b>: Invoices from Itemized Invoice Issue.</li>
+  <li><b>Accounts receivable balance list (売掛金残高一覧表)</b>: The list from Monthly Closing.</li>
+  <li><b>Customer ledger (得意先元帳)</b>: Printing of the Customer Ledger.</li>
+  <li><b>Save (保存)</b>: Your changes do not take effect unless you press this.</li>
+</ol>
+<p>Click each field to see a list of the printers available on this computer. If you leave it as "(Not set) ((未設定))", the <b>print dialog opens every time you print</b>, and you can choose the printer then.</p>
+<div class="note">To save as a PDF, choose Windows' "Microsoft Print to PDF" as the printer (this feature must be enabled on the computer).</div>
+
+<nav class="pager"><a href="master-deposit-method.html">← Previous: Register Payment Methods</a><a href="master-customer.html">Next: Register a Customer →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

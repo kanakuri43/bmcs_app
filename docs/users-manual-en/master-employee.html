@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register Employees (Administrator) - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb"> / Register Employees (Administrator)</span></header>
+<main>
+
+<h1>Register Employees (Administrator)</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  Register the employees who use this system. The registered <b>employee code (社員コード)</b> determines <b>which menus the person can use</b> (permission level).<br>
+  The employees registered here are also used as the "person in charge (担当者)" on orders and sales.
+</div>
+
+<div class="warn"><b>This screen is for administrators only.</b> It appears in the menu only for employees with permission level 9.</div>
+
+<h2><span class="no">1.</span>How login works (read this first)</h2>
+<p>This system has no login screen where you enter an ID and password. Instead, you <b>start the system from a desktop shortcut that specifies that person's employee code</b>. The permission level is determined from the employee code used at startup.</p>
+<ul>
+  <li>If you start the system with an employee code that is not in the Employee Master (社員マスタ), the menu is empty (a warning is shown).</li>
+  <li>For a new employee to start using the system, <b>register the employee</b> and prepare a shortcut that starts the system with that person's employee code.</li>
+</ul>
+
+<h2><span class="no">2.</span>Register an employee</h2>
+<p>From the main menu, open <b>Employee Master (社員マスタ)</b> under <b>Master Management (マスタ管理)</b>. Enter the employee code and press <kbd>Enter</kbd> (if it is already registered, its details appear; if not, continue entering the details as a new registration).</p>
+<figure class="mid" data-ann='[{"r":[143,124,280,52],"n":1,"b":[650,150]},{"r":[143,190,807,120],"n":2,"b":[960,250]},{"r":[143,323,140,53],"n":3,"b":[500,349]},{"r":[30,418,377,52],"n":4,"b":[600,444]}]'>
+  <div class="frame"><img src="images/memp-01-filled.png" alt="Employee Master (社員マスタ) (sample entry)"></div>
+  <figcaption>Employee Master (社員マスタ) (sample entry)</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Employee code (社員コード)</b>: Required. This is the number you specify in the startup shortcut.</li>
+  <li><b>Employee name and kana (社員名・カナ)</b>: The employee name is required. It appears on screens and reports as the person in charge on a slip.</li>
+  <li><b>Permission level (権限レベル)</b>: The higher the number, the more menus the person can use. <b>1 = General</b> (day-to-day work), <b>9 = Administrator</b> (billing release, Employee Master, Company Information, and so on). Each menu has a required level, and only the menus at <b>or below the person's own level</b> are shown.</li>
+  <li>Press <b>Save (保存)</b> to register. When an employee leaves, <b>deactivate (無効化)</b> them (a deactivated employee can no longer be newly specified as a person in charge. Past slips remain).</li>
+</ol>
+
+<nav class="pager"><a href="master-company.html">← Previous: Register Company Information (Administrator)</a><a href="master-bank.html">Next: Register Bank Accounts →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

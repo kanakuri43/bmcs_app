@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Close Billing (Create Monthly Invoices) - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb"> / Close Billing (Create Monthly Invoices)</span></header>
+<main>
+
+<h1>Close Billing (Create Monthly Invoices)</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  For <b>closing-cycle customers</b> (billed in a monthly batch on a closing day, such as the 20th or the end of the month), this turns the sales up to the closing day into <b>billing data</b> and <b>prints the invoices</b>.<br>
+  For <b>per-transaction billing customers</b> such as government offices and schools, do not use this screen; use <a href="detail-invoice.html">Itemized Invoice Issue (明細請求書発行)</a> instead.
+</div>
+
+<div class="warn">When you run the closing, the target sales become "Billed (請求済み)" and <b>can no longer be corrected or canceled</b>. Also, you can no longer register new sales or payments dated on or before the closing date. Before you run it, check that all sales up to the closing date have been registered.</div>
+
+<h2><span class="no">1.</span>Open the screen</h2>
+<p>In the main menu, click <b>Billing Closing (請求締め処理)</b> under <b>Billing (請求)</b>. The screen that opens is <b>a list of the billing data closed so far</b> (it is not a preview of what you are about to close).</p>
+<figure data-ann='[
+ {"r":[65,82,105,53],"n":1},
+ {"r":[275,82,245,53],"n":2},
+ {"r":[30,159,1650,170],"n":3,"b":[900,520]},
+ {"r":[1512,82,173,53],"n":4,"b":[1380,108]},
+ {"r":[1492,999,193,53],"n":5,"b":[1350,900]}]'>
+  <div class="frame"><img src="images/bclose-01-main.png" alt="Billing Closing screen (請求締め処理画面)"></div>
+  <figcaption>Billing Closing screen (請求締め処理画面) (a list of closed billing data)</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Year (年)</b>: Enter the year you want to view as 4 digits (the default is this year).</li>
+  <li><b>Billing date (請求日)</b>: Choose from the list of dates closed in that year. The billing data finalized on the chosen date appears below.</li>
+  <li>The finalized billing data. <b>Current billing amount (今回請求額) = previous balance (前回残高) - payments received (入金額) + sales amount (売上額) + consumption tax (消費税)</b>.</li>
+  <li><b>Confirm Closing (締め確定) (F10)</b>: Press this when you close billing anew (Chapter 2).</li>
+  <li><b>Print Selected Rows (選択行を印刷) (F11)</b>: Prints or reprints invoices (Chapter 3).</li>
+</ol>
+
+<h2><span class="no">2.</span>Close billing</h2>
+<p>Press <b>Confirm Closing (締め確定) (F10)</b> to open a small screen titled "Confirm Closing (締確定)".</p>
+<figure class="mid" data-ann='[
+ {"r":[30,82,310,53],"n":1,"b":[840,108]},
+ {"r":[30,156,305,52],"n":2,"b":[840,182]},
+ {"r":[30,282,425,49],"n":3,"b":[840,306]},
+ {"r":[539,478,127,52],"n":4,"b":[450,420]}]'>
+  <div class="frame"><img src="images/bclose-02-dialog.png" alt="Confirm Closing dialog (締確定ダイアログ)"></div>
+  <figcaption>Confirm Closing dialog (締確定ダイアログ)</figcaption>
+</figure>
+<ol class="legend">
+  <li>Select by <b>Closing day (締日)</b>: Choose from the closing days registered in Customer Master (得意先マスタ), such as "20th (20日締め)" or "End of month (末日締め)". <b>All customers with that closing day</b> are closed together.</li>
+  <li>Select by <b>Individual selection (個別指定)</b>: Use this when you want to close only specific customers. Choose them from "Select customers... (得意先を選択...)".</li>
+  <li><b>Billing date (closing cutoff date) (請求日（締め切り日）)</b>: The date printed on the invoice, and the date up to which sales are closed ("sales up to here"). When you choose a closing day, a suitable date is filled in.</li>
+  <li><b>Run Closing (締め実行)</b>: Choose "Yes (はい)" in the confirmation message to finalize. To cancel, press <kbd>Esc</kbd>.</li>
+</ol>
+<p>After you run it, the list of billing data for that billing date is shown. No billing data is created for a customer that has no target sales and a previous balance of zero (no empty invoices are issued). The same customer cannot be closed twice for the same month.</p>
+
+<h2><span class="no">3.</span>Print invoices</h2>
+<ol class="steps">
+  <li>In the list, click the row of the billing data you want to print. Hold <kbd>Ctrl</kbd> or <kbd>Shift</kbd> while clicking to select <b>multiple rows</b>.</li>
+  <li>Press <b>Print Selected Rows (選択行を印刷) (F11)</b> (or double-click the row / press <kbd>Enter</kbd>).</li>
+  <li>A preview opens. Check it and print (you can also save as PDF).</li>
+</ol>
+<div class="note">If you lost an invoice or want to print it again, you can reprint it any number of times with the same steps.</div>
+
+<h2><span class="no">4.</span>If you closed by mistake</h2>
+<p>If you closed billing by mistake, an <b>administrator</b> releases it with <a href="billing-release.html">Billing Release (締め解除処理)</a>, you correct the sales, and then you close again.</p>
+
+<nav class="pager"><a href="copier-csv-import.html">← Previous: Import Copier Sales (CSV)</a><a href="detail-invoice.html">Next: Issue an Itemized Invoice →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

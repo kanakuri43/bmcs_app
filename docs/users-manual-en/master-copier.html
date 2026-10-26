@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register Copiers - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb">/ Register Copiers</span></header>
+<main>
+
+<h1>Register Copiers (Copier Master / コピー機マスタ)</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  Link each copier's <b>machine number (機番)</b> to the <b>customer</b> that uses it. When you <a href="copier-csv-import.html">import</a> the manufacturer's CSV, the system uses what is registered here to decide which customer's sale each machine number belongs to.<br>
+  Rows with a machine number that is not registered cannot be imported.
+</div>
+
+<h2><span class="no">1.</span>Register a machine number</h2>
+<p>In the main menu, open <b>Master Management (マスタ管理)</b>, then open <b>Copier Master (コピー機マスタ)</b>. Enter the <b>machine number (機番)</b> and press <kbd>Enter</kbd> (if it is already registered, its details appear; if not, keep entering as a new registration).</p>
+<figure class="mid" data-ann='[
+ {"r":[157,124,350,52],"n":1,"b":[800,150]},
+ {"r":[157,190,350,53],"n":2,"b":[800,216]},
+ {"r":[157,257,933,52],"n":3,"b":[1050,330]},
+ {"r":[30,351,377,53],"n":4,"b":[600,377]}]'>
+  <div class="frame"><img src="images/mcopier-01-filled.png" alt="Copier Master (コピー機マスタ), input example"></div>
+  <figcaption>Copier Master (コピー機マスタ): input example (the machine number is a made-up value)</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Machine number (機番)</b>: Enter the same number as the "機番" (machine number) in the CSV.</li>
+  <li><b>Customer code (得意先コード)</b>: The customer that uses the copier. You can search with <kbd>Space</kbd>. You can only choose customers that have not been deactivated.</li>
+  <li><b>Remarks (備考)</b>: A note such as the installation location (optional).</li>
+  <li>Press <b>Save (保存)</b> to register. For a machine number you no longer use, press <b>Deactivate (無効化)</b>.</li>
+</ol>
+<div class="note">You can link more than one machine number to a single customer (register each machine number once).</div>
+<div class="note">When you start using the CSV import, you must also register a generic product "COPYCHG" in Product Master (商品マスタ). For details, see <a href="copier-csv-import.html">Import Copier Sales (CSV)</a>.</div>
+
+<nav class="pager"><a href="master-price.html">← Previous: Set Customer-Specific Prices</a><a href="master-menu.html">Next: Edit the Menu (Administrator) →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

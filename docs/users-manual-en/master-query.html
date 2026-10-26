@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run Queries (Administrator) - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb">/ Run Queries (Administrator)</span></header>
+<main>
+
+<h1>Run Queries (Administrator)</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  Display the results of a <b>pre-prepared search (query)</b>, such as a list of master records, on screen and <b>save it to a CSV file</b>.<br>
+  Use it when you need a list that the standard screens do not provide, so you can take the data out to Excel or similar.
+</div>
+
+<div class="warn"><b>This screen is for administrators only.</b> It appears in the menu only for employees with permission level 9. Queries are sent directly to the system's database, so <b>only administrators who understand SQL should edit the contents of a query</b>.</div>
+
+<h2><span class="no">1.</span>Select a query and run it</h2>
+<p>In the main menu, open <b>Master Management (マスタ管理)</b>, then open <b>Query Runner (クエリ実行)</b>. (On the menu it is labeled "Generic Query".)</p>
+<figure data-ann='[
+ {"r":[30,82,504,53],"n":1,"b":[700,108]},
+ {"r":[30,156,504,196],"n":2,"b":[700,250]},
+ {"r":[30,365,504,53],"n":3,"b":[700,391]},
+ {"r":[555,82,1340,440],"n":4,"b":[1200,700]},
+ {"r":[30,432,504,52],"n":5,"b":[700,458]},
+ {"r":[30,978,504,53],"n":6,"b":[700,1004]}]'>
+  <div class="frame"><img src="images/mquery-01-result.png" alt="Query Runner screen (クエリ実行画面)"></div>
+  <figcaption>Query Runner screen (クエリ実行画面): example of running "Customer List (得意先一覧)"</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Select a query (クエリの選択)</b>: Choose the query you want to run.</li>
+  <li><b>Conditions (条件)</b>: The input fields change depending on the query (this example is a range of customer codes). The values you used last time become the defaults next time.</li>
+  <li><b>Run (実行)</b>: Shows the results in the list on the right. The number of rows is shown at the bottom of the screen.</li>
+  <li><b>Results (結果)</b>: Shown with no limit on the number of rows. If the list is wide, use the scroll bar at the bottom to move sideways.</li>
+  <li><b>Save CSV (CSV保存)</b>: Saves the results currently shown to a CSV file with a header row (a format Excel can open).</li>
+  <li><b>Edit query file (クエリファイル編集)</b>: Opens the query definition file in Notepad. When you close Notepad, the contents are reloaded.</li>
+</ol>
+
+<h2><span class="no">2.</span>Add or change a query</h2>
+<p>Queries are written in the <b>query definition file</b>, which is in the system's folder on the PC you are using (if the file does not exist, it is created automatically with a sample). Open it from <b>Edit query file (クエリファイル編集)</b> on the screen, then add or change queries.</p>
+<ul>
+  <li>For each query, write a name, the SQL (the search statement), and the input fields for its conditions.</li>
+  <li>A marker such as <code>#param○○</code> in the SQL is replaced with the value you enter in the conditions on screen (for a text condition, type the value including the quotation marks).</li>
+  <li>This definition file is <b>separate on each PC</b>. To use the same query on another PC, copy the file. When you replace the system, be careful not to overwrite it.</li>
+</ul>
+
+<nav class="pager"><a href="master-menu.html">← Previous: Edit the Menu (Administrator)</a><a href="index.html">Contents →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>
