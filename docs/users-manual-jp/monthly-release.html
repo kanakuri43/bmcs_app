@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>月次締めを解除する（管理者） - bmcs_app 操作マニュアル</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">操作マニュアル</a> <span class="crumb">／ 月次締めを解除する（管理者）</span></header>
+<main>
+
+<h1>月次締めを解除する（管理者）</h1>
+
+<div class="goal">
+  <b>こんなときに使います</b><br>
+  <a href="monthly-closing.html">月次締め</a>を<b>間違えて確定した</b>とき、または締めた月の売上・入金を<b>直す必要が出た</b>ときに、締めを取り消します。<br>
+  解除すると、その月の売上・入金をすぐに登録・訂正・取消できるようになります。
+</div>
+
+<div class="warn"><b>管理者専用の画面です。</b>権限レベル9の社員にだけメニューに表示されます。</div>
+
+<h2><span class="no">1.</span>解除する月を選ぶ</h2>
+<p>メインメニューの<b>「月次」</b>の中の<b>「月次締め解除処理」</b>を開きます。<b>年</b>を4桁で入れ、<b>集計年月</b>を選ぶと、その月に確定した全得意先の結果が出ます。</p>
+<figure data-ann='[
+ {"r":[65,82,105,53],"n":1},
+ {"r":[296,82,245,53],"n":2},
+ {"r":[30,159,1650,330],"n":3,"b":[900,700]},
+ {"r":[569,82,166,53],"n":4,"b":[900,200]}]'>
+  <div class="frame"><img src="images/mrelease-01-main.png" alt="月次締め解除処理画面"></div>
+  <figcaption>月次締め解除処理画面</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>年</b>：4桁で入力。</li>
+  <li><b>集計年月</b>：その年に締めた月から選びます。</li>
+  <li>解除の対象。<b>その月の全得意先が</b>まとめて対象です（得意先を選んで一部だけ解除はできません）。</li>
+  <li><b>解除実行 (F8)</b>：確認メッセージで「はい」を選ぶと解除します。</li>
+</ol>
+
+<h2><span class="no">2.</span>解除できない場合</h2>
+<ul>
+  <li>その得意先に、<b>より後の月がすでに確定</b>しているときは解除できません。新しい月から順に解除します（例：9月分の前に10月分を解除）。</li>
+  <li>1件でも解除できない得意先があると、一覧の備考に理由が出て、<b>解除実行が押せなくなります</b>（全部が解除されません）。</li>
+</ul>
+
+<h2><span class="no">3.</span>解除したあとの流れ</h2>
+<ol class="steps">
+  <li>解除実行 (F8) で解除する。</li>
+  <li>売上・入金を直す（すぐに登録・訂正・取消ができます）。</li>
+  <li><a href="monthly-closing.html">月次締め処理</a>で、もう一度同じ月を締める（解除した結果が新しい値で上書きされます）。</li>
+</ol>
+
+<nav class="pager"><a href="billing-release.html">← 前：請求の締めを解除する（管理者）</a><a href="master-company.html">次：自社情報を登録する（管理者） →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bmcs_app 操作マニュアル（はじめての方へ）</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site">bmcs_app 操作マニュアル</header>
+<main>
+
+<h1>はじめての方へ：操作マニュアル</h1>
+
+<p>このマニュアルは、「何をしたいときに、どの画面で、何を操作するか」を順番に説明します。画面の中の<span style="color:#d9261c;font-weight:bold">赤い枠・番号・矢印</span>が、操作する場所です。番号は、画像の下の説明と対応しています。</p>
+
+<div class="warn">画面は開発用データの表示例で、実際の得意先・金額とは異なります。</div>
+
+<h2>仕事の流れ</h2>
+<p>お客様には2種類あり、<b>請求のしかたが違います</b>。最初にどちらのお客様かを確認してください。</p>
+<table>
+  <tr><th></th><th>締め取引のお客様</th><th>都度請求のお客様（官公庁・学校など）</th></tr>
+  <tr><th>請求</th><td>20日締め・末日締めなど、<b>月ごとにまとめて</b>請求書を出す</td><td>納品の<b>都度（数件ごと）</b>に請求書を出す</td></tr>
+  <tr><th>1. 注文を受けた</th><td colspan="2" style="text-align:center"><a href="order-entry.html">受注入力</a>（共通）</td></tr>
+  <tr><th>2. 納品した</th><td colspan="2" style="text-align:center"><a href="sales-entry.html">売上入力</a>（共通）／ <a href="delivery-note-bulk.html">納品書一括発行</a> ／ <a href="copier-csv-import.html">コピー機CSV取込</a></td></tr>
+  <tr><th>3. 請求書を出す</th><td><a href="billing-closing.html">請求締め処理</a></td><td><a href="detail-invoice.html">明細請求書発行</a></td></tr>
+  <tr><th>4. 入金があった</th><td><a href="receipt-entry.html">入金入力</a>（古い請求から自動で消込）</td><td><a href="detail-receipt.html">明細入金</a>（売上または請求書を指定して消込）</td></tr>
+  <tr><th>5. 残高を確認する</th><td colspan="2" style="text-align:center"><a href="customer-ledger.html">得意先元帳</a>（共通）</td></tr>
+  <tr><th>6. 月末</th><td colspan="2" style="text-align:center"><a href="monthly-closing.html">月次締め処理</a>（共通）</td></tr>
+</table>
+
+<h2>目次</h2>
+<h3>日々の業務</h3>
+<div class="cards">
+  <a href="order-entry.html"><b>受注を登録する</b>注文を受けたとき、仮の伝票として記録する</a>
+  <a href="sales-entry.html"><b>売上を登録する</b>納品したとき、売上にして納品書を出す</a>
+  <a href="delivery-note-bulk.html"><b>納品書をまとめて発行する</b>出していない納品書を後から一括で印刷する</a>
+  <a href="copier-csv-import.html"><b>コピー機の売上を取り込む</b>メーカーのCSVから機番ごとの売上を登録する</a>
+  <a href="receipt-entry.html"><b>入金を登録する</b>締め取引のお客様の入金を登録する</a>
+  <a href="detail-receipt.html"><b>都度請求の入金を登録する</b>売上・請求書を指定して入金を登録する</a>
+  <a href="customer-ledger.html"><b>得意先の残高を調べる</b>売上・入金・残高を日付順に確認する</a>
+</div>
+<h3>請求・締め（月末の作業）</h3>
+<div class="cards">
+  <a href="billing-closing.html"><b>請求を締める</b>締め取引のお客様の月次請求書を作る</a>
+  <a href="detail-invoice.html"><b>明細請求書を発行する</b>都度請求のお客様の請求書をその都度出す</a>
+  <a href="monthly-closing.html"><b>月次締めをする</b>月末の売掛残高を確定する</a>
+</div>
+<h3>管理者の作業（権限レベル9）</h3>
+<div class="cards">
+  <a href="billing-release.html"><b>請求の締めを解除する</b>誤って締めた請求を取り消す</a>
+  <a href="monthly-release.html"><b>月次締めを解除する</b>誤って締めた月を取り消す</a>
+  <a href="master-company.html"><b>自社情報を登録する</b>請求書に印字する自社の名称・登録番号</a>
+  <a href="master-employee.html"><b>社員を登録する</b>使う人と権限レベルを決める</a>
+  <a href="master-menu.html"><b>メニューを編集する</b>メニューの名前・並び順・使える人</a>
+  <a href="master-query.html"><b>クエリを実行する</b>用意した検索の結果を表示・CSV保存</a>
+</div>
+<h3>最初の準備（マスタ登録）</h3>
+<p>使い始める前に、次の順に登録しておくと進めやすくなります（目安）。</p>
+<ol class="steps">
+  <li><a href="master-company.html">自社情報</a>（管理者）</li>
+  <li><a href="master-bank.html">銀行口座</a>・<a href="master-deposit-method.html">入金方法</a>・<a href="master-employee.html">社員</a>（管理者）</li>
+  <li><a href="master-printer.html">プリンタ設定</a>（パソコンごと）</li>
+  <li><a href="master-product.html">商品</a>、<a href="master-customer.html">得意先</a>（得意先は、銀行・社員を先に登録しておくと選べます）</li>
+  <li>必要に応じて、<a href="master-price.html">得意先ごとの単価・掛率</a>、<a href="master-copier.html">コピー機</a></li>
+</ol>
+<div class="cards">
+  <a href="master-customer.html"><b>得意先を登録する</b>新しい取引先を登録・修正する</a>
+  <a href="master-product.html"><b>商品を登録する</b>新しい商品と単価を登録・修正する</a>
+  <a href="master-price.html"><b>得意先ごとの単価を設定する</b>得意先×商品の特別単価・掛率</a>
+  <a href="master-copier.html"><b>コピー機を登録する</b>機番と得意先を結びつける</a>
+  <a href="master-bank.html"><b>銀行口座を登録する</b>入金先・請求書の振込先の口座</a>
+  <a href="master-deposit-method.html"><b>入金方法を登録する</b>現金・振込などの選択肢を追加・変更</a>
+  <a href="master-printer.html"><b>プリンタを設定する</b>帳票ごとのプリンタを決める</a>
+</div>
+
+<h2>共通のキー操作</h2>
+<p>どの入力画面でも同じ操作でできます。</p>
+<table>
+  <tr><th>キー</th><th>できること</th></tr>
+  <tr><td><kbd>Enter</kbd></td><td>入力を確定して次の欄へ進む。コード欄ならそのコードの名称を引く</td></tr>
+  <tr><td><kbd>Space</kbd>（コード欄で）</td><td>検索画面を開く（得意先・商品・伝票番号・担当者）</td></tr>
+  <tr><td><kbd>F3</kbd></td><td>新規（画面を空にする）</td></tr>
+  <tr><td><kbd>F10</kbd></td><td>保存・確定・発行</td></tr>
+  <tr><td><kbd>F11</kbd></td><td>印刷</td></tr>
+  <tr><td><kbd>F8</kbd></td><td>取消・中止・削除・解除（画面によって名前が違います）</td></tr>
+  <tr><td><kbd>Esc</kbd></td><td>検索画面などを閉じる</td></tr>
+</table>
+
+<div class="note">入力を保存せずに画面を閉じても、データは登録されません。迷ったら <kbd>F3</kbd> で空に戻して、最初からやり直せます。</div>
+
+</main>
+</body>
+</html>

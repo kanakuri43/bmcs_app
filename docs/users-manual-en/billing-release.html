@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Release a Billing Closing (Administrator) - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb"> / Release a Billing Closing (Administrator)</span></header>
+<main>
+
+<h1>Release a Billing Closing (Administrator)</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  Use this to undo a <a href="billing-closing.html">Billing Closing (請求締め処理)</a> that was <b>confirmed by mistake</b>, or when you need to correct a sale after the billing was closed.<br>
+  When you release it, the sales go back to "not invoiced (未請求)" and can be corrected or canceled.
+</div>
+
+<div class="warn"><b>This screen is for administrators only.</b> It appears on the menu only for employees with permission level 9. It does not appear on the menu of regular employees.</div>
+
+<h2><span class="no">1.</span>Choose the billing date to release</h2>
+<p>From the main menu, open <b>Billing Release (締め解除処理)</b> under <b>Billing (請求)</b>. Enter the <b>Year (年)</b> as 4 digits and choose the <b>Billing Date (請求日)</b>. The list of billing data confirmed on that day appears.</p>
+<figure data-ann='[
+ {"r":[65,82,105,53],"n":1},
+ {"r":[275,82,245,53],"n":2},
+ {"r":[30,159,1650,170],"n":3,"b":[900,520]},
+ {"r":[548,82,166,53],"n":4,"b":[900,200]}]'>
+  <div class="frame"><img src="images/brelease-01-main.png" alt="Billing Release screen (締め解除処理)"></div>
+  <figcaption>Billing Release screen (締め解除処理)</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Year (年)</b>: Enter 4 digits.</li>
+  <li><b>Billing Date (請求日)</b>: Choose from the dates on which billing was closed in that year.</li>
+  <li>The billing data that will be released. <b>Everything confirmed on that billing date</b> is included (you cannot choose a customer and release only part of it).</li>
+  <li><b>Execute Release (解除実行) (F8)</b>: Choose "Yes (はい)" in the confirmation message to release.</li>
+</ol>
+<p>If a row has a reason shown in the "Remarks (備考)" column at the right end of the list, <b>the Execute Release button cannot be pressed</b>.</p>
+
+<h2><span class="no">2.</span>When release is not possible</h2>
+<ul>
+  <li>For each customer, you can release <b>only the most recent closing</b>. For example, if October was closed after September, <b>release October first</b> and then September (from the newest month back).</li>
+  <li>If even one item cannot be released, <b>none of them is released</b> (a partial release never happens).</li>
+</ul>
+
+<h2><span class="no">3.</span>What to do after releasing</h2>
+<ol class="steps">
+  <li>Release with Execute Release (解除実行) (F8) (the sales go back to "not invoiced (未請求)").</li>
+  <li>In Sales Entry (売上入力), correct or cancel the sales you want to fix.</li>
+  <li>If needed, also register or correct <a href="receipt-entry.html">payments (入金)</a>.</li>
+  <li>Close again with <a href="billing-closing.html">Billing Closing (請求締め処理)</a> (a new billing number is assigned).</li>
+</ol>
+<div class="note">Once released, the invoices no longer appear in the list. If you have already printed or sent invoices, replace them with the ones from the new closing.</div>
+
+<nav class="pager"><a href="monthly-closing.html">← Previous: Perform Monthly Closing</a><a href="monthly-release.html">Next: Release a Monthly Closing (Administrator) →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

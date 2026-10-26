@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register Payment Methods - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb"> / Register Payment Methods</span></header>
+<main>
+
+<h1>Register Payment Methods (Payment Method Master)</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  Use this to <b>add or rename</b> the choices that appear in "Payment method (入金方法)" in Receipt Entry (入金入力), such as cash, bank transfer, bill, and offset. No program change is needed.<br>
+  For example, you can add new payment methods such as "Check (小切手)" or "Credit card (クレジットカード)".
+</div>
+
+<h2><span class="no">1.</span>Register a payment method</h2>
+<p>From the main menu, open <b>Payment Method Master (入金方法マスタ)</b> under <b>Master Management (マスタ管理)</b>. Enter the <b>payment method code (入金方法コード)</b> and press <kbd>Enter</kbd> (if it is already registered, its details appear; if not, continue entering the details as a new registration).</p>
+<figure class="mid" data-ann='[{"r":[178,124,280,52],"n":1,"b":[700,150]},{"r":[178,190,842,53],"n":2,"b":[1029,216]},{"r":[178,256,520,36],"n":3,"b":[800,274]},{"r":[178,302,140,53],"n":4,"b":[600,328]},{"r":[30,397,377,52],"n":5,"b":[600,423]}]'>
+  <div class="frame"><img src="images/mdep-01-filled.png" alt="Payment Method Master (入金方法マスタ) (sample entry)"></div>
+  <figcaption>Payment Method Master (入金方法マスタ) (sample entry)</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Payment method code (入金方法コード)</b>: Required. A code that your company assigns.</li>
+  <li><b>Name (名称)</b>: The name shown in the Receipt Entry choices.</li>
+  <li><b>Additional items (付随項目)</b>: The <b>items that must be entered</b> when this payment method is chosen. "Require receiving account (入金先口座を必須にする)" (for example, bank transfer) and "Require bill due date (手形期日を必須にする)" (for example, bill). If you turn on neither, a payment can be registered with just the amount (for example, cash).</li>
+  <li><b>Display order (表示順)</b>: The order in which the choices appear (smaller numbers come first).</li>
+  <li>Press <b>Save (保存)</b> to register. When you stop using a payment method, <b>deactivate (無効化)</b> it (past receipts remain).</li>
+</ol>
+<div class="note">A payment method with "Require bill due date (手形期日を必須にする)" turned on does not appear in the choices of <a href="detail-receipt.html">Itemized Receipt (明細入金)</a> (because Itemized Receipt has no field for entering a bill due date).</div>
+<div class="note">Currently, "Cash (現金), Bank transfer (振込), Bill (手形), Offset (相殺), and Transfer fee (振込手数料)" are provided. How to handle "Transfer fee (振込手数料)" (how to deal with fee differences) has not been decided yet.</div>
+
+<nav class="pager"><a href="master-bank.html">← Previous: Register Bank Accounts</a><a href="master-printer.html">Next: Configure Printers →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

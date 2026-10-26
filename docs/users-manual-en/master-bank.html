@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register Bank Accounts - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb"> / Register Bank Accounts</span></header>
+<main>
+
+<h1>Register Bank Accounts (Bank Master)</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  Register <b>your company's accounts that receive payments</b>. The registered accounts are used in these two places.<br>
+  ・When choosing the <b>receiving account (入金先口座)</b> for a bank transfer in <a href="receipt-entry.html">Receipt Entry (入金入力)</a><br>
+  ・When choosing the <b>transfer destination printed on the invoice</b> in the <a href="master-customer.html">Customer Master (得意先マスタ)</a> (up to 2 per customer)
+</div>
+
+<h2><span class="no">1.</span>Register an account</h2>
+<p>From the main menu, open <b>Bank Master (銀行マスタ)</b> under <b>Master Management (マスタ管理)</b>. Enter the <b>bank account code (銀行口座コード)</b> and press <kbd>Enter</kbd> (if it is already registered, its details appear; if not, continue entering the details as a new registration).</p>
+<figure class="mid" data-ann='[{"r":[178,124,280,52],"n":1,"b":[700,150]},{"r":[178,190,842,120],"n":2,"b":[1029,250]},{"r":[178,323,210,53],"n":3,"b":[600,349]},{"r":[178,390,280,52],"n":4,"b":[600,416]},{"r":[178,456,842,53],"n":5,"b":[1029,482]},{"r":[178,523,140,52],"n":6,"b":[600,549]},{"r":[30,617,377,53],"n":7,"b":[600,643]}]'>
+  <div class="frame"><img src="images/mbank-01-filled.png" alt="Bank Master (銀行マスタ) (sample entry)"></div>
+  <figcaption>Bank Master (銀行マスタ) (sample entry. The bank name and numbers are fictitious values)</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Bank account code (銀行口座コード)</b>: Required. A management code that your company assigns.</li>
+  <li><b>Bank name and branch name (銀行名・支店名)</b>: Printed as the transfer destination on invoices.</li>
+  <li><b>Account type (口座種別)</b>: Choose Ordinary (普通), Checking (当座), and so on.</li>
+  <li><b>Account number (口座番号)</b>.</li>
+  <li><b>Account holder (口座名義)</b>: Enter the name (in kana) exactly as it appears in the passbook.</li>
+  <li><b>Display order (表示順)</b>: The order in which accounts appear in lists and choices (smaller numbers come first).</li>
+  <li>Press <b>Save (保存)</b> to register. When you stop using an account, <b>deactivate (無効化)</b> it (past receipts remain).</li>
+</ol>
+
+<nav class="pager"><a href="master-employee.html">← Previous: Register Employees (Administrator)</a><a href="master-deposit-method.html">Next: Register Payment Methods →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

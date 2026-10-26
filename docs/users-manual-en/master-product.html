@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register a Product - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb">/ Register a Product</span></header>
+<main>
+
+<h1>Register a Product (Product Master / 商品マスタ)</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  Use this screen when you start handling a new product, when you correct a unit price or name, or when you want to stop using a product you no longer carry.<br>
+  Only products registered here can be entered on order and sales lines.
+</div>
+
+<h2><span class="no">1.</span>Open the screen and enter a product code</h2>
+<p>In the main menu, open <b>Master Management (マスタ管理)</b>, then open <b>Product Master (商品マスタ)</b>.</p>
+<ul>
+  <li><b>To register a new product</b>: Enter a new code in the Product Code (商品コード) field and press <kbd>Enter</kbd>. The message "未登録です。新規登録として入力してください" (Not registered. Please enter as a new registration) appears. Just keep entering the details.</li>
+  <li><b>To edit an existing product</b>: Enter the code and press <kbd>Enter</kbd>, or press <kbd>Space</kbd> to search and select.</li>
+</ul>
+
+<h2><span class="no">2.</span>Enter the fields</h2>
+<figure class="mid" data-ann='[{"r":[136,124,280,52],"n":1,"b":[700,150]},{"r":[136,190,954,176],"n":2,"b":[1097,280]},{"r":[136,456,280,53],"n":3,"b":[700,482]},{"r":[219,593,245,119],"n":4,"b":[700,650]},{"r":[219,726,245,119],"n":5,"b":[700,790]},{"r":[219,859,245,52],"n":6,"b":[700,885]},{"r":[30,953,377,53],"n":7,"b":[700,980]}]'>
+  <div class="frame"><img src="images/mprod-02-filled.png" alt="Product Master (商品マスタ), input example"></div>
+  <figcaption>Product Master (商品マスタ): input example</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Product code (商品コード)</b>: Required. This is a code you decide in-house (it is not the JAN code).</li>
+  <li><b>Product name, kana, specification, unit (商品名・カナ・規格・単位)</b>: The product name is required. It is printed on lines and delivery notes. The kana and specification are used for searching.</li>
+  <li><b>JAN code (JANコード)</b>: Optional (the barcode number). You can use it for searching.</li>
+  <li><b>Unit price, tax-exclusive / Unit price, tax-inclusive (外税単価（税抜）／内税単価（税込）)</b>: The standard selling prices. When you add the product to a line, the price is filled in automatically to match the customer's transaction method: <b>the tax-exclusive price for tax-exclusive customers, and the tax-inclusive price for tax-inclusive, per-line customers (per-transaction customers)</b>. You can overwrite it later on the line.</li>
+  <li><b>Standard cost, list price (excl. tax) (標準原価・定価（税抜）)</b>: The cost is used to calculate gross profit. The list price is the basis when you set a customer-specific price as "x% of list price" (rate).</li>
+  <li><b>Tax type (税種別区分)</b>: One of standard rate / reduced rate / tax-exempt. It determines the tax rate that applies on the date you enter the sale.</li>
+  <li>Press <b>Save (保存)</b> to register. To stop, press <b>Cancel (キャンセル)</b>. For a product you no longer carry, press <b>Deactivate (無効化)</b> (past slips are kept).</li>
+</ol>
+<div class="note">If you want a different price for only certain customers, use the menu Master Management (マスタ管理) → Customer/Product Price &amp; Rate Master (得意先／商品／単価・掛率マスタ) to register a price (or a rate against the list price) for each customer and product. When you add a product to a line, this customer-specific setting takes priority.</div>
+
+<nav class="pager"><a href="master-customer.html">← Previous: Register a Customer</a><a href="master-price.html">Next: Set Customer-Specific Prices →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

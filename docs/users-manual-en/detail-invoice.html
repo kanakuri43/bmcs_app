@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Issue an Itemized Invoice - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb"> / Issue an Itemized Invoice</span></header>
+<main>
+
+<h1>Issue an Itemized Invoice (Per-Transaction Billing)</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  Use this for <b>per-transaction customers</b> such as government offices and schools. You <b>pick some of</b> the sales you have delivered and issue an invoice for them right away. No month-end closing is needed.<br>
+  You can change the addressee (for example a school class name or a teacher's name) for each invoice.
+</div>
+
+<div class="note">For closing-cycle customers (billed on a closing day such as the 20th or the end of the month), do not use this screen. Use <a href="billing-closing.html">Billing Closing (請求締め処理)</a> instead.</div>
+
+<h2><span class="no">1.</span>Choose the customer</h2>
+<p>From the main menu, open <b>Itemized Invoice Issue (明細請求書発行)</b> under <b>Billing (請求)</b>. Enter the code in the <b>Customer (得意先)</b> field and press <kbd>Enter</kbd> (if you don't know the code, press <kbd>Space</kbd> to search). The customer's <b>sales lines that have not been invoiced yet</b> appear in the candidate list on the left (<b>取込候補</b>).</p>
+<figure data-ann='[
+ {"r":[180,130,350,53],"n":1},
+ {"r":[697,132,206,49],"n":2},
+ {"r":[145,193,1897,53],"n":3},
+ {"r":[145,256,1897,53],"n":4,"b":[1300,340]},
+ {"r":[16,339,960,740],"n":5,"b":[1500,800]}]'>
+  <div class="frame"><img src="images/dinvoice-01-candidates.png" alt="Itemized Invoice Issue screen (明細請求書発行) showing candidates"></div>
+  <figcaption>Right after choosing a customer (the sales lines that can be invoiced are listed on the left)</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Invoice No. (請求書No.)</b>: Leave this blank for a new invoice (a number is assigned automatically when you issue it). To view an invoice that was already issued, enter its number and press <kbd>Enter</kbd>, or press <kbd>Space</kbd> to search.</li>
+  <li><b>Billing Date (請求日付)</b>: The date of the invoice (today's date is filled in).</li>
+  <li><b>Customer (得意先)</b>: Code and name.</li>
+  <li><b>Addressee (宛名)</b>: The name printed on the invoice. The customer name is filled in; <b>to change it just this once, type over it here</b> (example: "Chido-kan High School, Year 2 Class 3, Mr./Ms. ○○").</li>
+  <li><b>Candidates (取込候補)</b>: Sales lines that have not been invoiced and have not been paid yet.</li>
+</ol>
+
+<h2><span class="no">2.</span>Select the lines to put on the invoice</h2>
+<p>In the candidate list on the left, select the lines you want on this invoice and press <b>Add Selected Rows ▶ (選択した行を追加 ▶)</b>. The lines move to the invoice lines list (<b>請求書明細</b>) on the right. You can also double-click a line or press <kbd>Enter</kbd> to move it. If you make a mistake, select the line on the right and press <b>◀ Remove (◀ 除外)</b>.</p>
+<figure data-ann='[
+ {"r":[16,410,960,88],"n":1,"b":[500,900]},
+ {"r":[16,1076,178,53],"n":2,"b":[400,1100]},
+ {"r":[990,339,1060,150],"n":3,"b":[1500,700]},
+ {"r":[995,1076,86,53],"n":4,"b":[1200,1100]},
+ {"r":[1552,1143,320,60],"n":5,"b":[1500,1060]},
+ {"r":[1897,1143,152,63],"n":6,"b":[1700,1000]}]'>
+  <div class="frame"><img src="images/dinvoice-02-added.png" alt="Two lines added to the invoice"></div>
+  <figcaption>With two lines added</figcaption>
+</figure>
+<ol class="legend">
+  <li>Select (click) the lines you want to include.</li>
+  <li><b>Add Selected Rows ▶ (選択した行を追加 ▶)</b>.</li>
+  <li>The lines that will appear on the invoice. Amounts are shown <b>tax-inclusive</b>, and the consumption tax included in them is also shown.</li>
+  <li>To take a line off, select it on the right and press <b>◀ Remove (◀ 除外)</b>.</li>
+  <li><b>Amount excluding tax, total consumption tax, and total (税抜金額・消費税計・合計)</b>: The totals of the invoice.</li>
+  <li><b>Issue (発行) (F10)</b>: Confirms the invoice.</li>
+</ol>
+
+<h2><span class="no">3.</span>Issue and print</h2>
+<ol class="steps">
+  <li>Check the addressee, the lines and the total, then press <b>Issue (発行) (F10)</b>.</li>
+  <li>When the invoice is issued, an invoice No. is assigned and the screen returns to empty. The sales you included become "invoiced (請求済み)".</li>
+  <li>To print the invoice, enter the invoice No. and press <kbd>Enter</kbd> to call it up, then press <b>Print (印刷) (F11)</b>.</li>
+</ol>
+<div class="warn">Sales on an issued invoice <b>cannot be corrected or canceled</b>. If something is wrong, cancel the invoice first and issue it again (see section 4).</div>
+
+<h2><span class="no">4.</span>Cancel an issued invoice</h2>
+<p>Enter the invoice No. to call up the issued invoice, then press <b>Delete (削除) (F8)</b> (a confirmation message appears). The invoice becomes "canceled (取消)", and the sales that were on it go back to the not-invoiced state so they can be invoiced again. After canceling, you can create a new invoice from the same sales.</p>
+<div class="warn">You cannot cancel the invoice in these cases:<br>
+・A payment (even a partial one) has already been applied to the sales on the invoice<br>
+・An <a href="detail-receipt.html">Itemized Receipt (明細入金)</a> has been registered that specifies this invoice<br>
+Cancel the payment first, and then cancel the invoice.</div>
+
+<nav class="pager"><a href="billing-closing.html">← Previous: Close Billing (Create Monthly Invoices)</a><a href="receipt-entry.html">Next: Register a Payment Receipt →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

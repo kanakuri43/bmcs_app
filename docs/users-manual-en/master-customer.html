@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register a Customer - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb">/ Register a Customer</span></header>
+<main>
+
+<h1>Register a Customer (Customer Master / 得意先マスタ)</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  Use this screen to register a new customer, to correct an address or person in charge, or to stop using a customer you no longer do business with.<br>
+  Orders, sales, and receipts can only be entered for customers registered here.
+</div>
+
+<div class="warn">The following items <b>cannot be changed after you register the customer</b>. Check them carefully before you save.<br>
+・<b>Transaction type (取引条件)</b> (per-transaction / closing-cycle), and the <b>closing day (締日) and tax unit (税区分)</b> that go with it<br>
+・<b>Rounding method (端数区分)</b> (how fractions of consumption tax are handled: round down / round off / round up)</div>
+
+<h2><span class="no">1.</span>Open the screen and enter a customer code</h2>
+<p>In the main menu, open <b>Master Management (マスタ管理)</b> (it starts out collapsed, so click it to expand), then open <b>Customer Master (得意先マスタ)</b>.</p>
+<ul>
+  <li><b>To register a new customer</b>: Enter a new code in the Customer Code (得意先コード) field and press <kbd>Enter</kbd>. The message "未登録です。新規登録として入力してください" (Not registered. Please enter as a new registration) appears. Just keep entering the details.</li>
+  <li><b>To edit an existing customer</b>: Enter the code and press <kbd>Enter</kbd>, or press <kbd>Space</kbd> to search and select. The saved details appear. Make your changes and save.</li>
+</ul>
+
+<h2><span class="no">2.</span>Enter the fields</h2>
+<p>The example below registers a closing-cycle customer (締め取引).</p>
+<figure class="mid" data-ann='[{"r":[220,124,280,52],"n":1,"b":[800,150]},{"r":[220,190,870,176],"n":2,"b":[1097,280]},{"r":[220,722,280,53],"n":3,"b":[700,748]},{"r":[30,859,276,31],"n":4,"b":[700,874]},{"r":[283,904,280,119],"n":5,"b":[800,960]},{"r":[199,1107,280,53],"n":6,"b":[700,1133]},{"r":[342,1244,280,52],"n":7,"b":[800,1270]},{"r":[30,1587,377,52],"n":8,"b":[700,1613]}]'>
+  <div class="frame"><img src="images/mcust-02-filled.png" alt="Customer Master (得意先マスタ), input example"></div>
+  <figcaption>Customer Master (得意先マスタ): input example for a closing-cycle customer (締め取引)</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Customer code (得意先コード)</b>: Required. Decide the number yourself (you cannot use a number that another customer already has).</li>
+  <li><b>Customer name, kana, address, etc. (得意先名・カナ・住所など)</b>: The customer name is required. It is printed on invoices and delivery notes. The kana is used for searching.</li>
+  <li><b>Sales employee code (営業担当社員コード)</b>: Optional. If you enter one, it becomes the default person in charge for orders and sales (press <kbd>Space</kbd> to search).</li>
+  <li><b>Transaction type (取引条件)</b>: Choose <b>Per-transaction (都度取引)</b> (customers such as government offices and schools, who are billed for each transaction) or <b>Closing-cycle (締め取引)</b> (customers who are billed in a monthly batch). <b>This cannot be changed after registration</b>.</li>
+  <li>If you choose Closing-cycle, the fields for <b>Closing day (締日)</b> (1 to 31; <b>use 99 for the last day of the month</b>) and <b>Tax unit (税区分)</b> (per invoice / per slip) appear. Per-transaction customers are handled with consumption tax included in the amounts (tax-inclusive, per line item).</li>
+  <li><b>Billing customer code (請求得意先コード)</b>: Enter this only when you want to bill on behalf of another customer as well (example: to combine a branch's billing into the head office, enter the head office's code on the branch). If left blank, the customer is billed directly.</li>
+  <li><b>Rounding method (端数区分)</b>: How fractions of consumption tax are handled (round down / round off / round up). <b>This cannot be changed after registration</b>.</li>
+  <li>Press <b>Save (保存)</b> to register. To stop entering and clear the screen, press <b>Cancel (キャンセル)</b>. To stop using a customer you no longer do business with, press <b>Deactivate (無効化)</b>; the customer can no longer be used on new slips (past slips are kept).</li>
+</ol>
+
+<h3>Other fields</h3>
+<table>
+  <tr><th>Field</th><th>Description</th></tr>
+  <tr><td>Print representative's name on invoices (請求書に代表者印字する)</td><td>If checked, our company's representative name is printed on invoices addressed to this customer.</td></tr>
+  <tr><td>Bank account for payment on invoices, up to 2 (請求書の振込先口座（最大2件）)</td><td>The bank accounts printed on the invoice for payment. Press <kbd>Space</kbd> in the code field and choose from the accounts registered beforehand in Bank Master (銀行マスタ). If left blank, nothing is printed.</td></tr>
+</table>
+<div class="note">Even if you want a different addressee name for each school class or teacher, you do not need to add more customers. Just rewrite the name field when you enter the slip (for example in <a href="order-entry.html">Order Entry (受注入力)</a> or <a href="detail-invoice.html">Itemized Invoice (明細請求書)</a>).</div>
+
+<nav class="pager"><a href="master-printer.html">← Previous: Configure Printers</a><a href="master-product.html">Next: Register a Product →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register a Sale - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb"> / Register a Sale</span></header>
+<main>
+
+<h1>Register a Sale</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  Register a sale when you deliver (sell) products. The sale you register here is the basis for the <b>delivery note</b> and for the <b>invoice</b> you create later.<br>
+  There are two ways to do it.<br>
+  ① You have already registered an <a href="order-entry.html">order</a> → <b>call up the order</b> and turn it into a sale (Chapter 2)<br>
+  ② You sold on the spot without an order → <b>enter it directly</b> (Chapter 3)
+</div>
+
+<h2><span class="no">1.</span>Open the Sales Entry screen</h2>
+<p>In the main menu, click <b>Sales Entry (売上入力)</b> under <b>Orders / Sales (受注・売上)</b>.</p>
+<figure class="narrow" data-ann='[{"r":[44,366,402,70],"n":1,"b":[640,401]}]'>
+  <div class="frame"><img src="images/menu.png" alt="Main menu (メインメニュー)"></div>
+  <figcaption>Main menu (メインメニュー)</figcaption>
+</figure>
+<ol class="legend"><li>Click "Sales Entry (売上入力)".</li></ol>
+
+<h2><span class="no">2.</span>[When you have an order] Call up the order and turn it into a sale</h2>
+<p>Press <kbd>Space</kbd> in the <b>Order No. (受注No.) field</b> to open a list of orders that can be turned into sales (orders that are already sold or discontinued do not appear). If you know the order number, you can also enter it and press <kbd>Enter</kbd> to load it.</p>
+<figure class="mid" data-ann='[
+ {"r":[430,82,630,53],"n":1,"b":[1150,108]},
+ {"r":[30,229,1200,44],"n":2,"b":[1100,340]},
+ {"r":[30,828,183,52],"n":3,"b":[120,740]}]'>
+  <div class="frame"><img src="images/sales-02b-order-selected.png" alt="Order search (受注の検索)"></div>
+  <figcaption>Slip search for orders (伝票検索（受注）)</figcaption>
+</figure>
+<ol class="legend">
+  <li>You can narrow down by slip number, customer code or customer name.</li>
+  <li>Choose the order you want to turn into a sale (press <kbd>Enter</kbd> to move to the list, then press <kbd>Enter</kbd> again, or double-click).</li>
+  <li>Confirm with "Select (Enter) (選択（Enter）)".</li>
+</ol>
+
+<p>The contents of the order are filled into the detail lines. The quantity entered is <b>the remaining quantity of the order that has not yet been turned into a sale</b>, so if it differs from the quantity you delivered this time, correct the quantity (when delivering in parts, enter only the quantity delivered).</p>
+<figure data-ann='[
+ {"r":[124,193,228,53],"n":1},
+ {"r":[124,256,1341,53],"n":2},
+ {"r":[2,490,1921,58],"n":3,"b":[1000,760]},
+ {"r":[964,492,123,52],"n":4,"b":[1200,760]},
+ {"r":[2,1222,1920,36],"n":5,"b":[1100,1100]}]'>
+  <div class="frame"><img src="images/sales-03-from-order.png" alt="Sales Entry screen with an order loaded (受注を読み込んだ売上入力画面)"></div>
+  <figcaption>With an order loaded</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Order No. (受注No.)</b>: The number of the order you called up.</li>
+  <li><b>Customer (得意先)</b>: The customer of the order is filled in.</li>
+  <li><b>Detail lines (明細)</b>: The products and unit prices of the order are filled in.</li>
+  <li><b>Quantity (数量)</b>: Adjust it to the quantity actually delivered. You cannot register a quantity larger than the remaining quantity of the order.</li>
+  <li>When the order loads successfully, the message "Order No. XX was loaded (受注No. ○○ を読み込みました)" appears at the bottom of the screen.</li>
+</ol>
+<div class="note">Today's date is filled in as the sales date (売上日付). If the delivery date is a different day, correct the sales date.</div>
+
+<h2><span class="no">3.</span>[When there is no order] Enter directly</h2>
+<p>Leave the Order No. (受注No.) empty and enter <b>customer → product code → quantity</b> in that order, in the same way as <a href="order-entry.html">Order Entry (受注入力)</a> (confirm the customer and product with <kbd>Enter</kbd>; press <kbd>Space</kbd> to search if you do not know the code).</p>
+<figure data-ann='[
+ {"r":[124,256,228,53],"n":1},
+ {"r":[68,492,189,52],"n":2,"b":[160,760]},
+ {"r":[845,492,116,52],"n":3,"b":[903,760]},
+ {"r":[964,492,123,52],"n":4,"b":[1025,760]}]'>
+  <div class="frame"><img src="images/sales-01-empty.png" alt="Sales Entry screen, initial state (売上入力画面)"></div>
+  <figcaption>Sales Entry screen (売上入力画面) right after opening</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Customer (得意先)</b>: Enter the code and press <kbd>Enter</kbd>, or press <kbd>Space</kbd> to search. To change the addressee name just for this sale, overwrite the name field on the right.</li>
+  <li><b>Product code (商品コード)</b>: Code + <kbd>Enter</kbd>, or press <kbd>Space</kbd> to search for a product.</li>
+  <li><b>Type (区分)</b>: Normally this is "Sale (売上)". Switch it to "Return (返品)" or "Discount (値引)" here <b>only when you are entering a return or a discount</b>.</li>
+  <li><b>Quantity (数量)</b>: The delivered quantity. The unit price is filled in automatically (overwrite it directly if you want to change it).</li>
+</ol>
+<div class="warn">You cannot add return or discount lines to a sale that was called up from an order. To return goods from a sale that came from an order, call up the original sale slip and correct it (Chapter 5).</div>
+
+<h2><span class="no">4.</span>Save and issue the delivery note</h2>
+<p>Check the total and press <b>Save (保存)</b>.</p>
+<figure data-ann='[
+ {"r":[1385,1038,312,168],"n":1,"b":[1250,850]},
+ {"r":[1710,1038,192,49],"n":2,"b":[1806,850]},
+ {"r":[1710,1094,192,52],"n":3,"b":[1560,960]}]'>
+  <div class="frame"><img src="images/sales-03-from-order.png" alt="Save and print buttons (保存と印刷ボタン)"></div>
+  <figcaption>Bottom right of the screen</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Total (合計)</b>: The total amount including tax.</li>
+  <li><b>Save (保存) (F10)</b>: Registers the sale.</li>
+  <li><b>Print (印刷) (F11)</b>: Prints the delivery note when you have called up a registered sale (it cannot be pressed while entering a new sale).</li>
+</ol>
+<ol class="steps">
+  <li>Press <b>Save (保存) (F10)</b>.</li>
+  <li>You are asked "Issue the delivery note for Sales No. XX? (売上No. ○○ の納品書を発行しますか？)". If you need the delivery note now, choose <b>Yes (はい)</b>. A preview opens, and you print from there. If you will issue it later in a batch, choose No (いいえ) (you can issue it from "Bulk Delivery Note Issue (納品書一括発行)" in the menu).</li>
+  <li>The message "Registered. Sales No. XX (登録しました。売上No. ○○)" appears at the bottom of the screen, and the screen is cleared.</li>
+</ol>
+<div class="note">When you register a sale, the original order automatically becomes "Partially sold (一部売上)" or "Sale completed (売上完了)".</div>
+<div class="warn">For a closing-cycle customer, you cannot register a new sale dated on or before the <a href="billing-closing.html">date billing was closed</a> (that customer's last billing date). If the date is on or before the closed date, it is automatically changed to "the day after the closing". You also cannot register a sale dated in a month for which <a href="monthly-closing.html">Monthly Closing (月次締め)</a> has been done.</div>
+
+<h2><span class="no">5.</span>Common operations</h2>
+<table>
+  <tr><th>What you want to do</th><th>What to do</th></tr>
+  <tr><td>View or correct a registered sale</td><td>Enter the number in the Sales No. (売上No.) field and press <kbd>Enter</kbd>, or press <kbd>Space</kbd> and choose from the list. Correct it and save.</td></tr>
+  <tr><td>Cancel a sale</td><td>Call up the sale and press the <b>Cancel (Delete) (取消（削除）) button (F8)</b> at the bottom right. The slip is not deleted; it is put in the "Canceled (取消)" state.</td></tr>
+  <tr><td>Reissue a delivery note</td><td>Call up the sale and press <b>Print (印刷) (F11)</b>.</td></tr>
+  <tr><td>Register a sale with the same content as a past sale</td><td>Press <b>Copy (複写)</b> on the toolbar.</td></tr>
+  <tr><td>You cannot correct or cancel it</td><td>A sale cannot be changed if billing closing or monthly closing has been done for it, if a payment has been reconciled against it, and so on (edit lock). If you need to change it, you must go through a procedure such as releasing the closing.</td></tr>
+</table>
+
+
+<nav class="pager"><a href="order-entry.html">← Previous: Register an Order</a><a href="delivery-note-bulk.html">Next: Issue Delivery Notes in Bulk →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

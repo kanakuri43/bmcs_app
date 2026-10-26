@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edit the Menu (Administrator) - bmcs_app User Manual</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">User Manual</a> <span class="crumb">/ Edit the Menu (Administrator)</span></header>
+<main>
+
+<h1>Edit the Menu (Administrator)</h1>
+
+<div class="goal">
+  <b>When to use this</b><br>
+  Use this screen when you want to change the <b>names, order, and who can use</b> (permission level, 権限レベル) the items on the main menu.<br>
+  For example, if you do not want regular employees to use a certain function (you want it for administrators only), set its required permission level to 9.
+</div>
+
+<div class="warn"><b>This screen is for administrators only.</b> It appears in the menu only for employees with permission level 9. Changes take effect <b>the next time the main menu is started</b>.</div>
+
+<h2><span class="no">1.</span>Select an item, edit it, and save</h2>
+<p>In the main menu, open <b>Master Management (マスタ管理)</b>, then open <b>Menu Master Management (メニューマスタ管理)</b>. Click the item you want to change in the list on the left, and its details appear in "Edit (編集)" on the right.</p>
+<figure class="mid" data-ann='[{"r":[30,130,830,820],"n":1,"b":[880,952]},{"r":[30,388,833,44],"n":2,"b":[400,952]},{"r":[915,155,490,53],"n":3,"b":[1300,110]},{"r":[915,253,140,53],"n":4,"b":[1300,280]},{"r":[915,379,140,53],"n":5,"b":[1300,405]},{"r":[915,445,300,32],"n":6,"b":[1300,490]},{"r":[915,505,95,53],"n":7,"b":[1200,531]}]'>
+  <div class="frame"><img src="images/mmenu-01-selected.png" alt="Menu Configuration Master (メニュー構成マスタ)"></div>
+  <figcaption>Menu Configuration Master (メニュー構成マスタ) with "Billing Closing (請求締め処理)" selected</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>Menu list (メニューの一覧)</b>: Shows the categories (Orders &amp; Sales, Billing, ... / 受注・売上、請求、…) and the functions within each. "Required permission (必要権限)" is the permission level needed to use that function.</li>
+  <li>Click the item you want to change to select it.</li>
+  <li><b>Display name (表示名)</b>: The name shown on the main menu.</li>
+  <li><b>Display order (表示順)</b>: The sort order (smaller numbers appear higher).</li>
+  <li><b>Required permission level (必要権限レベル)</b> (functions only): <b>1 = general, 9 = administrators only</b>. The function is shown only to employees whose own permission level is this number or higher.</li>
+  <li><b>Open by default (初期状態で開く)</b> (categories only): Whether that category is shown expanded when the main menu is opened.</li>
+  <li><b>Save (保存)</b>: Changes are not applied unless you press this.</li>
+</ol>
+
+<h2><span class="no">2.</span>What you cannot do on this screen</h2>
+<ul>
+  <li>You cannot <b>add or delete</b> items, change a screen key, or change the parent-child relationship (which category an item belongs to). These require editing the system's configuration files (SQL) directly, so ask the developer in charge.</li>
+  <li>Menu settings may return to their initial values when the system is upgraded. If you make large changes, keep a record of what you changed.</li>
+</ul>
+
+<nav class="pager"><a href="master-copier.html">← Previous: Register Copiers</a><a href="master-query.html">Next: Run Queries (Administrator) →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bmcs_app User Manual (Getting Started)</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site">bmcs_app User Manual</header>
+<main>
+
+<h1>Getting Started: User Manual</h1>
+
+<p>This manual explains, step by step, "what screen to use and what to do" for each task. The <span style="color:#d9261c;font-weight:bold">red frames, numbers and arrows</span> in the screenshots show where to operate. Each number matches the explanation below the image.</p>
+
+<div class="note">The screenshots show the Japanese user interface. To help you find things on screen, each label in the text (menus, buttons, fields, columns) is followed by its Japanese original in parentheses.</div>
+
+<div class="warn">The screenshots show sample development data. The customers and amounts are different from your real data.</div>
+
+<h2>Workflow</h2>
+<p>There are two types of customers, and <b>they are billed differently</b>. First check which type your customer is.</p>
+<table>
+  <tr><th></th><th>Closing-cycle customers (締め取引)</th><th>Per-transaction billing customers (都度請求; government offices, schools, etc.)</th></tr>
+  <tr><th>Billing</th><td>An invoice is issued <b>once a month, in a batch</b>, on a closing day such as the 20th or the end of the month</td><td>An invoice is issued <b>for each delivery (every few deliveries)</b></td></tr>
+  <tr><th>1. Receive an order</th><td colspan="2" style="text-align:center"><a href="order-entry.html">Order Entry (受注入力)</a> (common)</td></tr>
+  <tr><th>2. Deliver goods</th><td colspan="2" style="text-align:center"><a href="sales-entry.html">Sales Entry (売上入力)</a> (common) / <a href="delivery-note-bulk.html">Bulk Delivery Note Issue (納品書一括発行)</a> / <a href="copier-csv-import.html">Copier Sales CSV Import (コピー機売上CSV取込)</a></td></tr>
+  <tr><th>3. Issue an invoice</th><td><a href="billing-closing.html">Billing Closing (請求締め処理)</a></td><td><a href="detail-invoice.html">Itemized Invoice Issue (明細請求書発行)</a></td></tr>
+  <tr><th>4. Receive a payment</th><td><a href="receipt-entry.html">Receipt Entry (入金入力)</a> (automatically applied to the oldest invoices first)</td><td><a href="detail-receipt.html">Itemized Receipt (明細入金)</a> (choose the sale or invoice to apply it to)</td></tr>
+  <tr><th>5. Check the balance</th><td colspan="2" style="text-align:center"><a href="customer-ledger.html">Customer Ledger (得意先元帳)</a> (common)</td></tr>
+  <tr><th>6. End of month</th><td colspan="2" style="text-align:center"><a href="monthly-closing.html">Monthly Closing (月次締め処理)</a> (common)</td></tr>
+</table>
+
+<h2>Contents</h2>
+<h3>Daily work</h3>
+<div class="cards">
+  <a href="order-entry.html"><b>Register an Order</b>When you receive an order, record it as a provisional slip</a>
+  <a href="sales-entry.html"><b>Register a Sale</b>When you deliver goods, record the sale and issue a delivery note</a>
+  <a href="delivery-note-bulk.html"><b>Issue Delivery Notes in Bulk</b>Print all delivery notes you have not issued yet, in one go</a>
+  <a href="copier-csv-import.html"><b>Import Copier Sales (CSV)</b>Register sales for each machine from the manufacturer's CSV file</a>
+  <a href="receipt-entry.html"><b>Register a Payment Receipt</b>Register payments from closing-cycle customers</a>
+  <a href="detail-receipt.html"><b>Register a Receipt for Per-Transaction Customers (Itemized Receipt)</b>Register a payment by choosing the sale or invoice it applies to</a>
+  <a href="customer-ledger.html"><b>Check a Customer's Balance (Customer Ledger)</b>See sales, payments and balance in date order</a>
+</div>
+<h3>Billing and closing (end-of-month work)</h3>
+<div class="cards">
+  <a href="billing-closing.html"><b>Close Billing (Create Monthly Invoices)</b>Create the monthly invoices for closing-cycle customers</a>
+  <a href="detail-invoice.html"><b>Issue an Itemized Invoice</b>Issue an invoice each time for per-transaction customers</a>
+  <a href="monthly-closing.html"><b>Perform Monthly Closing</b>Fix the accounts receivable balance at the end of the month</a>
+</div>
+<h3>Administrator tasks (permission level 9)</h3>
+<div class="cards">
+  <a href="billing-release.html"><b>Release a Billing Closing (Administrator)</b>Cancel a billing closing that was done by mistake</a>
+  <a href="monthly-release.html"><b>Release a Monthly Closing (Administrator)</b>Cancel a month that was closed by mistake</a>
+  <a href="master-company.html"><b>Register Company Information (Administrator)</b>Your company's name and registration number printed on invoices</a>
+  <a href="master-employee.html"><b>Register Employees (Administrator)</b>Decide who can use the system and their permission levels</a>
+  <a href="master-menu.html"><b>Edit the Menu (Administrator)</b>Menu names, order and who can use each item</a>
+  <a href="master-query.html"><b>Run Queries (Administrator)</b>Show the results of prepared searches and save them as CSV</a>
+</div>
+<h3>First setup (master registration)</h3>
+<p>Before you start using the system, it is easier if you register the following in this order (a guideline).</p>
+<ol class="steps">
+  <li><a href="master-company.html">Company Information (自社情報)</a> (administrator)</li>
+  <li><a href="master-bank.html">Bank accounts (銀行口座)</a>, <a href="master-deposit-method.html">payment methods (入金方法)</a> and <a href="master-employee.html">employees (社員)</a> (administrator)</li>
+  <li><a href="master-printer.html">Printer Settings (プリンタ設定)</a> (on each PC)</li>
+  <li><a href="master-product.html">Products (商品)</a> and <a href="master-customer.html">customers (得意先)</a> (when registering a customer, you can choose a bank and an employee only if you have registered them first)</li>
+  <li>As needed, <a href="master-price.html">prices and rates for each customer (得意先ごとの単価・掛率)</a> and <a href="master-copier.html">copiers (コピー機)</a></li>
+</ol>
+<div class="cards">
+  <a href="master-customer.html"><b>Register a Customer</b>Register or edit a business partner</a>
+  <a href="master-product.html"><b>Register a Product</b>Register or edit a product and its unit price</a>
+  <a href="master-price.html"><b>Set Customer-Specific Prices</b>Special prices and rates for each customer and product</a>
+  <a href="master-copier.html"><b>Register Copiers</b>Link machine numbers to customers</a>
+  <a href="master-bank.html"><b>Register Bank Accounts</b>Accounts for receiving payments and for the transfer destination on invoices</a>
+  <a href="master-deposit-method.html"><b>Register Payment Methods</b>Add or change choices such as cash and bank transfer</a>
+  <a href="master-printer.html"><b>Configure Printers</b>Choose the printer for each type of document</a>
+</div>
+
+<h2>Common keys</h2>
+<p>These keys work the same way on every input screen.</p>
+<table>
+  <tr><th>Key</th><th>What it does</th></tr>
+  <tr><td><kbd>Enter</kbd></td><td>Confirms the input and moves to the next field. In a code field, it looks up the name for that code</td></tr>
+  <tr><td><kbd>Space</kbd> (in a code field)</td><td>Opens the search screen (customer, product, slip number, person in charge)</td></tr>
+  <tr><td><kbd>F3</kbd></td><td>New (clears the screen)</td></tr>
+  <tr><td><kbd>F10</kbd></td><td>Save, confirm or issue</td></tr>
+  <tr><td><kbd>F11</kbd></td><td>Print</td></tr>
+  <tr><td><kbd>F8</kbd></td><td>Cancel, discontinue, delete or release (the name differs by screen)</td></tr>
+  <tr><td><kbd>Esc</kbd></td><td>Closes a search screen, etc.</td></tr>
+</table>
+
+<div class="note">If you close a screen without saving, nothing is registered. If you are unsure, press <kbd>F3</kbd> to clear the screen and start over.</div>
+
+</main>
+</body>
+</html>
