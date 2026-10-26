@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>売上を登録する - bmcs_app 操作マニュアル</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">操作マニュアル</a> <span class="crumb">／ 売上を登録する</span></header>
+<main>
+
+<h1>売上を登録する</h1>
+
+<div class="goal">
+  <b>こんなときに使います</b><br>
+  商品を納品した（売り上げた）ときに登録します。ここで登録した売上が、<b>納品書</b>と、あとで作る<b>請求書</b>のもとになります。<br>
+  やり方は2通りです。<br>
+  ① 先に<a href="order-entry.html">受注</a>を登録してある → <b>受注を呼び出して</b>売上にする（2章）<br>
+  ② 受注なしで、その場で売った → <b>直接入力</b>する（3章）
+</div>
+
+<h2><span class="no">1.</span>売上入力画面を開く</h2>
+<p>メインメニューの<b>「受注・売上」</b>の中の<b>「売上入力」</b>をクリックします。</p>
+<figure class="narrow" data-ann='[{"r":[44,366,402,70],"n":1,"b":[640,401]}]'>
+  <div class="frame"><img src="images/menu.png" alt="メインメニュー"></div>
+  <figcaption>メインメニュー</figcaption>
+</figure>
+<ol class="legend"><li>「売上入力」をクリックする</li></ol>
+
+<h2><span class="no">2.</span>【受注がある場合】受注を呼び出して売上にする</h2>
+<p>画面の<b>受注No.欄</b>で <kbd>Space</kbd> を押すと、売上にできる受注の一覧が開きます（売上済み・中止済みの受注は出ません）。受注No.がわかっているときは、番号を入力して <kbd>Enter</kbd> でも読み込めます。</p>
+<figure class="mid" data-ann='[
+ {"r":[430,82,630,53],"n":1,"b":[1150,108]},
+ {"r":[30,229,1200,44],"n":2,"b":[1100,340]},
+ {"r":[30,828,183,52],"n":3,"b":[120,740]}]'>
+  <div class="frame"><img src="images/sales-02b-order-selected.png" alt="受注の検索"></div>
+  <figcaption>伝票検索（受注）</figcaption>
+</figure>
+<ol class="legend">
+  <li>伝票番号・得意先コード・得意先名で絞り込めます。</li>
+  <li>売上にしたい受注を選びます（<kbd>Enter</kbd> を押して一覧へ移り、もう一度 <kbd>Enter</kbd>、またはダブルクリック）。</li>
+  <li>「選択（Enter）」で決定します。</li>
+</ol>
+
+<p>受注の内容が明細に入ります。<b>受注のうち、まだ売上にしていない残りの数量</b>が入るので、今回納品した数量と違うときは数量を直します（分けて納品するときは、納品した分だけにします）。</p>
+<figure data-ann='[
+ {"r":[124,193,228,53],"n":1},
+ {"r":[124,256,1341,53],"n":2},
+ {"r":[2,490,1921,58],"n":3,"b":[1000,760]},
+ {"r":[964,492,123,52],"n":4,"b":[1200,760]},
+ {"r":[2,1222,1920,36],"n":5,"b":[1100,1100]}]'>
+  <div class="frame"><img src="images/sales-03-from-order.png" alt="受注を読み込んだ売上入力画面"></div>
+  <figcaption>受注を読み込んだ状態</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>受注No.</b>：呼び出した受注の番号です。</li>
+  <li><b>得意先</b>：受注の得意先が入ります。</li>
+  <li><b>明細</b>：受注の商品・単価が入ります。</li>
+  <li><b>数量</b>：実際に納品した数量に合わせます。受注の残りより多い数量は登録できません。</li>
+  <li>読み込みに成功すると、画面下に「受注No. ○○ を読み込みました」と表示されます。</li>
+</ol>
+<div class="note">売上日付には今日の日付が入ります。納品日が別の日なら、売上日付を直してください。</div>
+
+<h2><span class="no">3.</span>【受注がない場合】直接入力する</h2>
+<p>受注No.は空のまま、<a href="order-entry.html">受注入力</a>と同じ要領で、<b>得意先 → 商品コード → 数量</b>の順に入力します（得意先・商品は <kbd>Enter</kbd> で確定、わからなければ <kbd>Space</kbd> で検索）。</p>
+<figure data-ann='[
+ {"r":[124,256,228,53],"n":1},
+ {"r":[68,492,189,52],"n":2,"b":[160,760]},
+ {"r":[845,492,116,52],"n":3,"b":[903,760]},
+ {"r":[964,492,123,52],"n":4,"b":[1025,760]}]'>
+  <div class="frame"><img src="images/sales-01-empty.png" alt="売上入力画面（初期状態）"></div>
+  <figcaption>売上入力画面（開いた直後）</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>得意先</b>：コードを入れて <kbd>Enter</kbd>、または <kbd>Space</kbd> で検索。宛名を今回だけ変えるときは、右の名称欄を直接書き換えます。</li>
+  <li><b>商品コード</b>：コード＋<kbd>Enter</kbd>、または <kbd>Space</kbd> で商品検索。</li>
+  <li><b>区分</b>：通常は「売上」です。<b>返品・値引きを入れるとき</b>だけ、ここで「返品」「値引」に切り替えます。</li>
+  <li><b>数量</b>：納品した数。単価は自動で入ります（変えたいときは直接書き換え）。</li>
+</ol>
+<div class="warn">受注から呼び出した売上に返品・値引きの行を足すことはできません。受注由来の売上を返品したいときは、元の売上伝票を呼び出して直します（5章）。</div>
+
+<h2><span class="no">4.</span>保存して納品書を出す</h2>
+<p>合計を確認して<b>保存</b>します。</p>
+<figure data-ann='[
+ {"r":[1385,1038,312,168],"n":1,"b":[1250,850]},
+ {"r":[1710,1038,192,49],"n":2,"b":[1806,850]},
+ {"r":[1710,1094,192,52],"n":3,"b":[1560,960]}]'>
+  <div class="frame"><img src="images/sales-03-from-order.png" alt="保存と印刷ボタン"></div>
+  <figcaption>画面右下</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>合計</b>：税込の合計金額です。</li>
+  <li><b>保存 (F10)</b>：売上を登録します。</li>
+  <li><b>印刷 (F11)</b>：登録済みの売上を呼び出したときに、納品書を印刷します（新規入力中は押せません）。</li>
+</ol>
+<ol class="steps">
+  <li><b>保存 (F10)</b> を押します。</li>
+  <li>「売上No. ○○ の納品書を発行しますか？」と聞かれます。今すぐ納品書が必要なら<b>「はい」</b>。プレビューが開くので、そこから印刷します。後でまとめて出すなら「いいえ」（メニューの「納品書一括発行」で出せます）。</li>
+  <li>画面下に「登録しました。売上No. ○○」と出て、画面は空に戻ります。</li>
+</ol>
+<div class="note">売上を登録すると、元になった受注は自動で「一部売上」または「売上完了」になります。</div>
+<div class="warn">締め取引の得意先は、<a href="billing-closing.html">請求を締めた日</a>（その得意先の最後の請求日）以前の日付では、売上を新しく登録できません。日付が締め済みの日以前のときは、自動で「締めの翌日」に直されます。また<a href="monthly-closing.html">月次締め</a>が済んだ月の日付でも登録できません。</div>
+
+<h2><span class="no">5.</span>よくある操作</h2>
+<table>
+  <tr><th>やりたいこと</th><th>操作</th></tr>
+  <tr><td>登録済みの売上を見る・直す</td><td>売上No.欄に番号を入れて <kbd>Enter</kbd>、または <kbd>Space</kbd> で一覧から選ぶ。直して保存。</td></tr>
+  <tr><td>売上を取り消す</td><td>売上を呼び出して、右下の<b>取消（削除）ボタン (F8)</b>。伝票は消さずに「取消」状態になります。</td></tr>
+  <tr><td>納品書を出し直す</td><td>売上を呼び出して<b>印刷 (F11)</b>。</td></tr>
+  <tr><td>過去の売上と同じ内容で登録したい</td><td>ツールバーの<b>「複写」</b>。</td></tr>
+  <tr><td>直せない・取り消せない</td><td>請求の締め処理や月次締めが済んでいる、入金の消込が済んでいる、などの売上は変更できません（編集ロック）。必要なときは締め解除などの手順が要ります。</td></tr>
+</table>
+
+
+<nav class="pager"><a href="order-entry.html">← 前：受注を登録する</a><a href="delivery-note-bulk.html">次：納品書をまとめて発行する →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>請求の締めを解除する（管理者） - bmcs_app 操作マニュアル</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">操作マニュアル</a> <span class="crumb">／ 請求の締めを解除する（管理者）</span></header>
+<main>
+
+<h1>請求の締めを解除する（管理者）</h1>
+
+<div class="goal">
+  <b>こんなときに使います</b><br>
+  <a href="billing-closing.html">請求締め</a>を<b>間違えて確定した</b>とき、または締めた後に売上を直す必要が出たときに、締めを取り消します。<br>
+  解除すると、対象の売上は「未請求」に戻り、訂正・取消ができるようになります。
+</div>
+
+<div class="warn"><b>管理者専用の画面です。</b>権限レベル9の社員にだけメニューに表示されます。一般の社員のメニューには出ません。</div>
+
+<h2><span class="no">1.</span>解除する請求日を選ぶ</h2>
+<p>メインメニューの<b>「請求」</b>の中の<b>「締め解除処理」</b>を開きます。<b>年</b>を4桁で入れ、<b>請求日</b>を選ぶと、その日に確定した請求データの一覧が出ます。</p>
+<figure data-ann='[
+ {"r":[65,82,105,53],"n":1},
+ {"r":[275,82,245,53],"n":2},
+ {"r":[30,159,1650,170],"n":3,"b":[900,520]},
+ {"r":[548,82,166,53],"n":4,"b":[900,200]}]'>
+  <div class="frame"><img src="images/brelease-01-main.png" alt="締め解除処理画面"></div>
+  <figcaption>締め解除処理画面</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>年</b>：4桁で入力。</li>
+  <li><b>請求日</b>：その年に請求を締めた日付から選びます。</li>
+  <li>解除の対象になる請求データ。<b>その請求日に確定したすべて</b>が対象です（得意先を選んで一部だけ解除はできません）。</li>
+  <li><b>解除実行 (F8)</b>：確認メッセージで「はい」を選ぶと解除します。</li>
+</ol>
+<p>一覧の右端の「備考」に理由が出ている行があるときは、<b>解除実行ボタンが押せません</b>。</p>
+
+<h2><span class="no">2.</span>解除できない場合</h2>
+<ul>
+  <li>得意先ごとに、<b>いちばん新しい締めだけ</b>解除できます。たとえば、9月分の後に10月分も締めてあるときは、<b>先に10月分を解除</b>してから9月分を解除します（新しい月から順に）。</li>
+  <li>対象のうち1件でも解除できないものがあると、<b>全部が解除されません</b>（一部だけ解除されることはありません）。</li>
+</ul>
+
+<h2><span class="no">3.</span>解除したあとの流れ</h2>
+<ol class="steps">
+  <li>解除実行 (F8) で解除する（対象の売上が「未請求」に戻ります）。</li>
+  <li>売上入力で、直したい売上を訂正・取消する。</li>
+  <li>必要なら<a href="receipt-entry.html">入金</a>の登録・訂正も行う。</li>
+  <li><a href="billing-closing.html">請求締め処理</a>で、もう一度締める（新しい請求番号が付きます）。</li>
+</ol>
+<div class="note">請求書は、解除すると一覧に出なくなります。すでに印刷・送付した請求書があれば、締め直したものと差し替えてください。</div>
+
+<nav class="pager"><a href="monthly-closing.html">← 前：月次締めをする</a><a href="monthly-release.html">次：月次締めを解除する（管理者） →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

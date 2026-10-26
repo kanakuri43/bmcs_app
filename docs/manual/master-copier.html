@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>コピー機を登録する - bmcs_app 操作マニュアル</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">操作マニュアル</a> <span class="crumb">／ コピー機を登録する</span></header>
+<main>
+
+<h1>コピー機を登録する（コピー機マスタ）</h1>
+
+<div class="goal">
+  <b>こんなときに使います</b><br>
+  コピー機の<b>機番</b>と、そのコピー機を使っている<b>得意先</b>を結びつけます。メーカーのCSVを<a href="copier-csv-import.html">取り込む</a>とき、機番からどの得意先の売上にするかを、ここで決まった内容で判断します。<br>
+  登録されていない機番の行は、取り込めません。
+</div>
+
+<h2><span class="no">1.</span>機番を登録する</h2>
+<p>メインメニューの<b>「マスタ管理」</b>の中の<b>「コピー機マスタ」</b>を開きます。<b>機番</b>を入れて <kbd>Enter</kbd>（登録済みなら内容が出ます。未登録なら新規登録として入力を続けます）。</p>
+<figure class="mid" data-ann='[
+ {"r":[157,124,350,52],"n":1,"b":[800,150]},
+ {"r":[157,190,350,53],"n":2,"b":[800,216]},
+ {"r":[157,257,933,52],"n":3,"b":[1050,330]},
+ {"r":[30,351,377,53],"n":4,"b":[600,377]}]'>
+  <div class="frame"><img src="images/mcopier-01-filled.png" alt="コピー機マスタ（入力例）"></div>
+  <figcaption>コピー機マスタ（入力例。機番は架空の値です）</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>機番</b>：CSVの「機番」と同じ番号を入れます。</li>
+  <li><b>得意先コード</b>：そのコピー機を使っている得意先。<kbd>Space</kbd> で検索できます。無効になっていない得意先だけ選べます。</li>
+  <li><b>備考</b>：設置場所などのメモ（任意）。</li>
+  <li><b>保存</b>で登録。使わなくなった機番は<b>無効化</b>します。</li>
+</ol>
+<div class="note">1つの得意先に、複数の機番を結びつけられます（機番ごとに1回ずつ登録します）。</div>
+<div class="note">CSV取込を使い始めるときは、このほかに、商品マスタへ汎用商品「COPYCHG」の登録が必要です。くわしくは<a href="copier-csv-import.html">コピー機の売上を取り込む</a>を見てください。</div>
+
+<nav class="pager"><a href="master-price.html">← 前：得意先ごとの単価を設定する</a><a href="master-menu.html">次：メニューを編集する（管理者） →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

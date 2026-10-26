@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>自社情報を登録する - bmcs_app 操作マニュアル</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">操作マニュアル</a> <span class="crumb">／ 自社情報を登録する（管理者）</span></header>
+<main>
+
+<h1>自社情報を登録する（管理者）</h1>
+
+<div class="goal">
+  <b>こんなときに使います</b><br>
+  請求書・明細請求書に印字する<b>自社の名称・住所・登録番号</b>を登録します。最初に1回登録すれば、あとは社名や住所が変わったときだけ直します。<br>
+  請求書は、インボイス制度に対応した<b>適格請求書</b>の記載事項（登録番号など）を満たす必要があるため、ここが空だと正しい請求書になりません。
+</div>
+
+<div class="warn"><b>管理者専用の画面です。</b>権限レベル9の社員にだけメニューに表示されます。自社情報は<b>1件だけ</b>です（コードで呼び出す必要はなく、開くとすぐ入力できます）。</div>
+
+<h2><span class="no">1.</span>入力して保存する</h2>
+<p>メインメニューの<b>「マスタ管理」</b>（最初は折りたたまれているので、クリックして開きます）の中の<b>「自社情報」</b>を開きます。登録済みの内容があれば、そのまま表示されます。</p>
+<figure class="mid" data-ann='[{"r":[156,124,794,52],"n":1,"b":[960,150]},{"r":[156,190,350,53],"n":2,"b":[700,216]},{"r":[156,257,794,185],"n":3,"b":[960,340]},{"r":[156,589,794,53],"n":4,"b":[960,615]},{"r":[30,750,94,53],"n":5,"b":[300,776]}]'>
+  <div class="frame"><img src="images/mcomp-01-filled.png" alt="自社情報（入力例）"></div>
+  <figcaption>自社情報（入力例。会社名・番号などは架空の値です）</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>会社名</b>：請求書の発行元として印字されます。</li>
+  <li><b>登録番号</b>：適格請求書発行事業者の<b>登録番号</b>（「T」＋13桁の数字）。請求書・明細請求書に印字されます。</li>
+  <li><b>郵便番号・住所・電話・FAX</b>：請求書の発行元として印字されます。</li>
+  <li><b>代表者名</b>：得意先マスタで「請求書に代表者印字する」にした得意先宛ての請求書に印字されます。</li>
+  <li><b>保存</b>：押さないと反映されません。</li>
+</ol>
+
+<nav class="pager"><a href="monthly-release.html">← 前：月次締めを解除する（管理者）</a><a href="master-employee.html">次：社員を登録する →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

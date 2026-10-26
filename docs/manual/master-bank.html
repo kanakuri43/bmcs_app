@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>銀行口座を登録する - bmcs_app 操作マニュアル</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">操作マニュアル</a> <span class="crumb">／ 銀行口座を登録する</span></header>
+<main>
+
+<h1>銀行口座を登録する（銀行マスタ）</h1>
+
+<div class="goal">
+  <b>こんなときに使います</b><br>
+  <b>自社の入金先の口座</b>を登録します。登録した口座は、次の2か所で使います。<br>
+  ・<a href="receipt-entry.html">入金入力</a>で、振込の<b>入金先口座</b>を選ぶとき<br>
+  ・<a href="master-customer.html">得意先マスタ</a>で、<b>請求書に印字する振込先</b>を選ぶとき（得意先ごとに最大2件）
+</div>
+
+<h2><span class="no">1.</span>口座を登録する</h2>
+<p>メインメニューの<b>「マスタ管理」</b>の中の<b>「銀行マスタ」</b>を開きます。<b>銀行口座コード</b>を入れて <kbd>Enter</kbd>（登録済みなら内容が出ます。未登録なら新規登録として入力を続けます）。</p>
+<figure class="mid" data-ann='[{"r":[178,124,280,52],"n":1,"b":[700,150]},{"r":[178,190,842,120],"n":2,"b":[1029,250]},{"r":[178,323,210,53],"n":3,"b":[600,349]},{"r":[178,390,280,52],"n":4,"b":[600,416]},{"r":[178,456,842,53],"n":5,"b":[1029,482]},{"r":[178,523,140,52],"n":6,"b":[600,549]},{"r":[30,617,377,53],"n":7,"b":[600,643]}]'>
+  <div class="frame"><img src="images/mbank-01-filled.png" alt="銀行マスタ（入力例）"></div>
+  <figcaption>銀行マスタ（入力例。銀行名・番号は架空の値です）</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>銀行口座コード</b>：必須。自社で付ける管理用のコードです。</li>
+  <li><b>銀行名・支店名</b>：請求書の振込先に印字されます。</li>
+  <li><b>口座種別</b>：普通・当座などを選びます。</li>
+  <li><b>口座番号</b>。</li>
+  <li><b>口座名義</b>：通帳どおりの名義（カナ）を入れます。</li>
+  <li><b>表示順</b>：一覧や選択肢に出る順番です（小さい数字が先）。</li>
+  <li><b>保存</b>で登録。使わなくなった口座は<b>無効化</b>します（過去の入金は残ります）。</li>
+</ol>
+
+<nav class="pager"><a href="master-employee.html">← 前：社員を登録する</a><a href="master-deposit-method.html">次：入金方法を登録する →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

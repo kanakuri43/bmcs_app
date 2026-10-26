@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>入金方法を登録する - bmcs_app 操作マニュアル</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">操作マニュアル</a> <span class="crumb">／ 入金方法を登録する</span></header>
+<main>
+
+<h1>入金方法を登録する（入金方法マスタ）</h1>
+
+<div class="goal">
+  <b>こんなときに使います</b><br>
+  入金入力の「入金方法」に出る選択肢（現金・振込・手形・相殺など）を、<b>追加したり名前を変えたり</b>するときに使います。プログラムの修正は要りません。<br>
+  たとえば「小切手」「クレジットカード」など、新しい入金方法を増やせます。
+</div>
+
+<h2><span class="no">1.</span>入金方法を登録する</h2>
+<p>メインメニューの<b>「マスタ管理」</b>の中の<b>「入金方法マスタ」</b>を開きます。<b>入金方法コード</b>を入れて <kbd>Enter</kbd>（登録済みなら内容が出ます。未登録なら新規登録として入力を続けます）。</p>
+<figure class="mid" data-ann='[{"r":[178,124,280,52],"n":1,"b":[700,150]},{"r":[178,190,842,53],"n":2,"b":[1029,216]},{"r":[178,256,520,36],"n":3,"b":[800,274]},{"r":[178,302,140,53],"n":4,"b":[600,328]},{"r":[30,397,377,52],"n":5,"b":[600,423]}]'>
+  <div class="frame"><img src="images/mdep-01-filled.png" alt="入金方法マスタ（入力例）"></div>
+  <figcaption>入金方法マスタ（入力例）</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>入金方法コード</b>：必須。自社で付けるコードです。</li>
+  <li><b>名称</b>：入金入力の選択肢に出る名前です。</li>
+  <li><b>付随項目</b>：この入金方法を選んだときに、<b>入力を必須にする項目</b>です。「入金先口座を必須にする」（例：振込）、「手形期日を必須にする」（例：手形）。どちらも付けなければ、金額だけで入金できます（例：現金）。</li>
+  <li><b>表示順</b>：選択肢に出る順番です（小さい数字が先）。</li>
+  <li><b>保存</b>で登録。使わなくなった入金方法は<b>無効化</b>します（過去の入金は残ります）。</li>
+</ol>
+<div class="note">「手形期日を必須にする」を付けた入金方法は、<a href="detail-receipt.html">明細入金</a>の選択肢には出ません（明細入金には手形期日を入れる欄がないためです）。</div>
+<div class="note">現在は「現金・振込・手形・相殺・振込手数料」が用意されています。「振込手数料」の扱い（手数料差額の運用）は未確定です。</div>
+
+<nav class="pager"><a href="master-bank.html">← 前：銀行口座を登録する</a><a href="master-printer.html">次：プリンタを設定する →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>
