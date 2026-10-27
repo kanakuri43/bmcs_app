@@ -97,73 +97,30 @@
     </Style>
 
     <!--
-        伝票ナビゲーション（前へ/次へ）ボタン。ジャーナル系画面（受注入力・売上入力）の
-        ヘッダーツールバーに置く「|◀」「▶|」の置き換え。文字のシェブロン
-        （‹›）は小さく視認性が低いため、太いストローク付きの
-        ベクターアイコン（Path）を使う。フォントに依存しないため機種差の心配もない。
-        通常時は薄いグレーの正方形、ホバー時のみアクセント色にする（26px）。
+        ファンクションキーボタン。登録画面のステータスバー直上に F1〜F12 を横並びで置く。
+        Tag にキー名（"F3" 等）、Content に機能名を指定し、キー名を上段に小さく控えめに表示する。
+        未割り当てのキーは Content を空にして IsEnabled="False" とする。
     -->
-    <Style x:Key="SlipNavButtonBaseStyle" TargetType="Button">
-        <Setter Property="Width" Value="26" />
-        <Setter Property="Height" Value="26" />
-        <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.Gray1}" />
-        <Setter Property="Background" Value="{DynamicResource MahApps.Brushes.Gray10}" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Cursor" Value="Hand" />
-    </Style>
-
-    <Style x:Key="SlipPrevButtonStyle" TargetType="Button" BasedOn="{StaticResource SlipNavButtonBaseStyle}">
-        <Setter Property="Template">
+    <Style x:Key="FunctionKeyButtonStyle" TargetType="Button" BasedOn="{StaticResource MahApps.Styles.Button}">
+        <Setter Property="Height" Value="44" />
+        <Setter Property="Margin" Value="1,0" />
+        <Setter Property="Padding" Value="2" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="mah:ControlsHelper.ContentCharacterCasing" Value="Normal" />
+        <Setter Property="ContentTemplate">
             <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="4">
-                        <Viewbox Width="10" Height="17" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Path Data="M 10,2 L 2,11 L 10,20"
-                                  Stroke="{TemplateBinding Foreground}"
-                                  StrokeThickness="3"
-                                  StrokeStartLineCap="Round"
-                                  StrokeEndLineCap="Round"
-                                  StrokeLineJoin="Round" />
-                        </Viewbox>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource MahApps.Brushes.Accent}" />
-                            <Setter Property="Foreground" Value="White" />
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <Style x:Key="SlipNextButtonStyle" TargetType="Button" BasedOn="{StaticResource SlipNavButtonBaseStyle}">
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="4">
-                        <Viewbox Width="10" Height="17" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Path Data="M 2,2 L 10,11 L 2,20"
-                                  Stroke="{TemplateBinding Foreground}"
-                                  StrokeThickness="3"
-                                  StrokeStartLineCap="Round"
-                                  StrokeEndLineCap="Round"
-                                  StrokeLineJoin="Round" />
-                        </Viewbox>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource MahApps.Brushes.Accent}" />
-                            <Setter Property="Foreground" Value="White" />
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
+                <DataTemplate>
+                    <StackPanel>
+                        <TextBlock Text="{Binding Tag, RelativeSource={RelativeSource AncestorType=Button}}"
+                                   FontSize="10"
+                                   FontWeight="Normal"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource MahApps.Brushes.Gray5}" />
+                        <TextBlock Text="{Binding}"
+                                   FontSize="13"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                </DataTemplate>
             </Setter.Value>
         </Setter>
     </Style>

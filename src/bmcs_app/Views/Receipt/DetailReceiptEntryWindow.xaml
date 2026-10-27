@@ -30,25 +30,14 @@
     <Grid beh:EnterKeyNavigationBehavior.IsEnabled="True"
           beh:ImeAwareSpaceKeyBindingBehavior.IsEnabled="True">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" /> <!-- ToolBar -->
             <RowDefinition Height="Auto" /> <!-- ヘッダー -->
             <RowDefinition Height="*" />    <!-- 入金登録 / 候補（2ペイン） -->
+            <RowDefinition Height="Auto" /> <!-- ファンクションキー -->
             <RowDefinition Height="Auto" /> <!-- StatusBar -->
         </Grid.RowDefinitions>
 
-        <!-- ===== ToolBar ===== -->
-        <ToolBar Grid.Row="0" ToolBarTray.IsLocked="True">
-            <Button Command="{Binding NewCommand}"
-                    Content="新規 (F3)"
-                    ToolTip="新規明細入金を作成します (F3)" />
-            <Separator />
-            <Button Command="{Binding DeleteSlipCommand}"
-                    Content="取消 (F8)"
-                    ToolTip="読み込んだ明細入金を取消します (F8)" />
-        </ToolBar>
-
         <!-- ===== ヘッダー ===== -->
-        <Border Grid.Row="1"
+        <Border Grid.Row="0"
                 Padding="12,8"
                 BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
                 BorderThickness="0,0,0,1"
@@ -136,7 +125,7 @@
         </Border>
 
         <!-- ===== 入金登録 / 売上伝票・明細請求書候補（2ペイン） ===== -->
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="1.1*" MinWidth="480" />
                 <ColumnDefinition Width="5"    />
@@ -192,28 +181,13 @@
                     </ItemsControl>
                 </ScrollViewer>
 
-                <!-- フッター: 合計 + 保存ボタン -->
-                <Grid Grid.Row="4" Margin="0,6,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"    />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="1" Margin="0,0,16,0" VerticalAlignment="Center">
-                        <TextBlock Text="《今回入金額》" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                        <TextBlock Text="{Binding ReceiptTotal, StringFormat={}{0:N0}}"
-                                   HorizontalAlignment="Right" FontWeight="Bold" FontSize="16"
-                                   Foreground="{DynamicResource MahApps.Brushes.Accent}" />
-                    </StackPanel>
-
-                    <Button Grid.Column="2"
-                            Content="保存 (F10)"
-                            Command="{Binding SaveCommand}"
-                            ToolTip="明細入金を保存します (F10)"
-                            Padding="16,6"
-                            Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" />
-                </Grid>
+                <!-- フッター: 合計 -->
+                <StackPanel Grid.Row="4" Margin="0,6,0,0" HorizontalAlignment="Right">
+                    <TextBlock Text="《今回入金額》" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Text="{Binding ReceiptTotal, StringFormat={}{0:N0}}"
+                               HorizontalAlignment="Right" FontWeight="Bold" FontSize="16"
+                               Foreground="{DynamicResource MahApps.Brushes.Accent}" />
+                </StackPanel>
             </Grid>
 
             <GridSplitter Grid.Column="1"
@@ -263,7 +237,6 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*"    />
-                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Margin="0,0,0,4" Text="明細請求書リスト（発行済・未入金）" FontWeight="Bold" />
@@ -282,14 +255,6 @@
                                     </GridView>
                                 </ListView.View>
                             </ListView>
-
-                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,4,0,0">
-                                <Button Content="選択した請求書を追加 ▶"
-                                        Command="{Binding AddLineCommand}"
-                                        CommandParameter="{Binding SelectedInvoiceCandidate}"
-                                        Padding="8,4"
-                                        ToolTip="請求書まるごと1行として取り込みます（金額は請求書合計額で固定）" />
-                            </StackPanel>
                         </Grid>
                     </TabItem>
                 </TabControl>
@@ -350,6 +315,46 @@
                                Text="参考表示（読み取り専用）。取込は上のリストから請求書単位で行います。" />
                 </Grid>
             </Grid>
+        </Grid>
+
+        <!-- ===== ファンクションキー（キーボードの配置に合わせ 4 個ずつ区切る） ===== -->
+        <Grid Grid.Row="2" Margin="8,4,8,6">
+            <Grid.Resources>
+                <Style TargetType="Button" BasedOn="{StaticResource FunctionKeyButtonStyle}" />
+            </Grid.Resources>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"  />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*"  />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*"  />
+            </Grid.ColumnDefinitions>
+
+            <UniformGrid Grid.Column="0" Rows="1">
+                <Button Tag="F1" IsEnabled="False" />
+                <Button Tag="F2" Content="追加" Command="{Binding AddLineCommand}"
+                        CommandParameter="{Binding SelectedPayableCandidate}"
+                        ToolTip="右ペインで選択中の売上明細行（売上伝票タブ）または明細請求書（明細請求書タブ。請求書まるごと1行・金額は請求書合計額で固定）を取り込みます" />
+                <Button Tag="F3" Content="新規" Command="{Binding NewCommand}"
+                        ToolTip="新規明細入金を作成します" />
+                <Button Tag="F4" IsEnabled="False" />
+            </UniformGrid>
+
+            <UniformGrid Grid.Column="2" Rows="1">
+                <Button Tag="F5" IsEnabled="False" />
+                <Button Tag="F6" IsEnabled="False" />
+                <Button Tag="F7" IsEnabled="False" />
+                <Button Tag="F8" Content="取消" Command="{Binding DeleteSlipCommand}"
+                        ToolTip="読み込んだ明細入金を取消します" />
+            </UniformGrid>
+
+            <UniformGrid Grid.Column="4" Rows="1">
+                <Button Tag="F9" IsEnabled="False" />
+                <Button Tag="F10" Content="保存" Command="{Binding SaveCommand}"
+                        ToolTip="明細入金を保存します" />
+                <Button Tag="F11" IsEnabled="False" />
+                <Button Tag="F12" IsEnabled="False" />
+            </UniformGrid>
         </Grid>
 
         <!-- ===== StatusBar ===== -->

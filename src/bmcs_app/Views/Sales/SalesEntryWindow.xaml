@@ -18,6 +18,9 @@
     -->
     <mah:MetroWindow.InputBindings>
         <KeyBinding Key="F3"  Command="{Binding NewCommand}" />
+        <KeyBinding Key="F5"  Command="{Binding PrevSlipCommand}" />
+        <KeyBinding Key="F6"  Command="{Binding NextSlipCommand}" />
+        <KeyBinding Key="F7"  Command="{Binding CopyFromPastSlipCommand}" />
         <KeyBinding Key="F8"  Command="{Binding DeleteSlipCommand}" />
         <KeyBinding Key="F10" Command="{Binding SaveCommand}" />
         <KeyBinding Key="F11" Command="{Binding PrintCommand}" />
@@ -26,34 +29,15 @@
     <Grid beh:EnterKeyNavigationBehavior.IsEnabled="True"
           beh:ImeAwareSpaceKeyBindingBehavior.IsEnabled="True">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />  <!-- ToolBar -->
             <RowDefinition Height="Auto" />  <!-- ヘッダー -->
             <RowDefinition Height="*"    />  <!-- 明細 -->
             <RowDefinition Height="Auto" />  <!-- フッター集計 -->
+            <RowDefinition Height="Auto" />  <!-- ファンクションキー -->
             <RowDefinition Height="Auto" />  <!-- StatusBar -->
         </Grid.RowDefinitions>
 
-        <!-- ===== ToolBar ===== -->
-        <ToolBar Grid.Row="0" ToolBarTray.IsLocked="True">
-            <Button Command="{Binding NewCommand}"
-                    Content="新規 (F3)"
-                    ToolTip="新規売上を作成します (F3)" />
-            <Separator />
-            <Button Command="{Binding PrevSlipCommand}"
-                    ToolTip="前の売上（伝票番号順）"
-                    Style="{StaticResource SlipPrevButtonStyle}" />
-            <Button Command="{Binding NextSlipCommand}"
-                    ToolTip="次の売上（最新の次は新規）"
-                    Style="{StaticResource SlipNextButtonStyle}" />
-            <Separator />
-            <Button Command="{Binding CopyFromPastSlipCommand}"
-                    Content="複写"
-                    ToolTip="過去の売上伝票を複写して新規登録します" />
-            <Separator />
-        </ToolBar>
-
         <!-- ===== 伝票ヘッダー ===== -->
-        <Border Grid.Row="1"
+        <Border Grid.Row="0"
                 Padding="12,8"
                 BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
                 BorderThickness="0,0,0,1"
@@ -258,7 +242,7 @@
         </Border>
 
         <!-- ===== 明細 ===== -->
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*"    />
@@ -314,8 +298,8 @@
             </ScrollViewer>
         </Grid>
 
-        <!-- ===== フッター: 集計 + 操作ボタン ===== -->
-        <Border Grid.Row="3"
+        <!-- ===== フッター: 集計 ===== -->
+        <Border Grid.Row="2"
                 Padding="12,8"
                 BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
                 BorderThickness="0,1,0,0">
@@ -325,7 +309,6 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*"    />
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
@@ -375,8 +358,7 @@
                 <Border Grid.Column="4"
                         BorderBrush="{DynamicResource MahApps.Brushes.Gray8}"
                         BorderThickness="1"
-                        Padding="8,4"
-                        Margin="0,0,8,0">
+                        Padding="8,4">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="60"  />
@@ -411,27 +393,50 @@
                                  Foreground="{DynamicResource MahApps.Brushes.Accent}" />
                     </Grid>
                 </Border>
-
-                <!-- 操作ボタン（縦並び: 保存 / 印刷 / 削除） -->
-                <StackPanel Grid.Column="5"
-                            Orientation="Vertical"
-                            VerticalAlignment="Center"
-                            Width="110">
-                    <Button Command="{Binding SaveCommand}"
-                            Content="保存 (F10)"
-                            ToolTip="売上を保存します (F10)"
-                            Margin="0,0,0,4"
-                            Style="{DynamicResource MahApps.Styles.Button.Square.Accent}" />
-                    <Button Command="{Binding PrintCommand}"
-                            Content="印刷 (F11)"
-                            ToolTip="納品書を発行します（既存伝票を読み込んでいる場合のみ。新規登録直後は保存時に確認します）"
-                            Margin="0,0,0,4" />
-                    <Button Command="{Binding DeleteSlipCommand}"
-                            Content="削除 (F8)"
-                            ToolTip="読み込んだ売上を取消します（編集ロック中は無効）" />
-                </StackPanel>
             </Grid>
         </Border>
+
+        <!-- ===== ファンクションキー（キーボードの配置に合わせ 4 個ずつ区切る） ===== -->
+        <Grid Grid.Row="3" Margin="8,4,8,6">
+            <Grid.Resources>
+                <Style TargetType="Button" BasedOn="{StaticResource FunctionKeyButtonStyle}" />
+            </Grid.Resources>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"  />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*"  />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*"  />
+            </Grid.ColumnDefinitions>
+
+            <UniformGrid Grid.Column="0" Rows="1">
+                <Button Tag="F1" IsEnabled="False" />
+                <Button Tag="F2" IsEnabled="False" />
+                <Button Tag="F3" Content="新規" Command="{Binding NewCommand}"
+                        ToolTip="新規売上を作成します" />
+                <Button Tag="F4" IsEnabled="False" />
+            </UniformGrid>
+
+            <UniformGrid Grid.Column="2" Rows="1">
+                <Button Tag="F5" Content="前伝票" Command="{Binding PrevSlipCommand}"
+                        ToolTip="前の売上（伝票番号順）" />
+                <Button Tag="F6" Content="次伝票" Command="{Binding NextSlipCommand}"
+                        ToolTip="次の売上（最新の次は新規）" />
+                <Button Tag="F7" Content="複写" Command="{Binding CopyFromPastSlipCommand}"
+                        ToolTip="過去の売上伝票を複写して新規登録します" />
+                <Button Tag="F8" Content="削除" Command="{Binding DeleteSlipCommand}"
+                        ToolTip="読み込んだ売上を取消します（編集ロック中は無効）" />
+            </UniformGrid>
+
+            <UniformGrid Grid.Column="4" Rows="1">
+                <Button Tag="F9" IsEnabled="False" />
+                <Button Tag="F10" Content="保存" Command="{Binding SaveCommand}"
+                        ToolTip="売上を保存します" />
+                <Button Tag="F11" Content="印刷" Command="{Binding PrintCommand}"
+                        ToolTip="納品書を発行します（既存伝票を読み込んでいる場合のみ。新規登録直後は保存時に確認します）" />
+                <Button Tag="F12" IsEnabled="False" />
+            </UniformGrid>
+        </Grid>
 
         <!-- ===== StatusBar ===== -->
         <StatusBar Grid.Row="4">
