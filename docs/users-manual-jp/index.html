@@ -3,31 +3,44 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>bmcs_app 操作マニュアル（はじめての方へ）</title>
+<title>操作マニュアル（はじめての方へ）</title>
 <link rel="stylesheet" href="manual.css">
 </head>
 <body>
-<header class="site">bmcs_app 操作マニュアル</header>
+<header class="site">操作マニュアル</header>
 <main>
 
-<h1>はじめての方へ：操作マニュアル</h1>
+<h1>操作マニュアル</h1>
 
 <p>このマニュアルは、「何をしたいときに、どの画面で、何を操作するか」を順番に説明します。画面の中の<span style="color:#d9261c;font-weight:bold">赤い枠・番号・矢印</span>が、操作する場所です。番号は、画像の下の説明と対応しています。</p>
 
 <div class="warn">画面は開発用データの表示例で、実際の得意先・金額とは異なります。</div>
 
 <h2>仕事の流れ</h2>
-<p>お客様には2種類あり、<b>請求のしかたが違います</b>。最初にどちらのお客様かを確認してください。</p>
-<table>
-  <tr><th></th><th>締め取引のお客様</th><th>都度請求のお客様（官公庁・学校など）</th></tr>
-  <tr><th>請求</th><td>20日締め・末日締めなど、<b>月ごとにまとめて</b>請求書を出す</td><td>納品の<b>都度（数件ごと）</b>に請求書を出す</td></tr>
-  <tr><th>1. 注文を受けた</th><td colspan="2" style="text-align:center"><a href="order-entry.html">受注入力</a>（共通）</td></tr>
-  <tr><th>2. 納品した</th><td colspan="2" style="text-align:center"><a href="sales-entry.html">売上入力</a>（共通）／ <a href="delivery-note-bulk.html">納品書一括発行</a> ／ <a href="copier-csv-import.html">コピー機CSV取込</a></td></tr>
-  <tr><th>3. 請求書を出す</th><td><a href="billing-closing.html">請求締め処理</a></td><td><a href="detail-invoice.html">明細請求書発行</a></td></tr>
-  <tr><th>4. 入金があった</th><td><a href="receipt-entry.html">入金入力</a>（古い請求から自動で消込）</td><td><a href="detail-receipt.html">明細入金</a>（売上または請求書を指定して消込）</td></tr>
-  <tr><th>5. 残高を確認する</th><td colspan="2" style="text-align:center"><a href="customer-ledger.html">得意先元帳</a>（共通）</td></tr>
-  <tr><th>6. 月末</th><td colspan="2" style="text-align:center"><a href="monthly-closing.html">月次締め処理</a>（共通）</td></tr>
-</table>
+<p>お客様には2種類あり、<b>請求のしかたが違います</b>。最初にどちらのお客様かを確認してください。四角をクリックすると、その画面の説明に移ります。</p>
+<div class="flowbox"><svg class="flow" viewBox="0 0 880 670" role="img" aria-label="仕事の流れ：受注、売上、お客様の種類で分岐（締め取引は請求締め→入金入力、都度請求は明細請求書→明細入金）、得意先元帳、月次締め">
+  <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker></defs>
+  <g class="ln" marker-end="url(#ar)">
+    <path d="M440,54 V84"/><path d="M440,128 V182"/>
+    <path d="M290,220 H170 V300"/><path d="M590,220 H710 V300"/>
+    <path d="M170,356 V400"/><path d="M710,356 V400"/>
+    <path d="M440,490 V520"/><path d="M440,564 V600"/>
+  </g>
+  <g class="ln"><path d="M170,456 V490 H710 V456"/><path d="M540,106 H600" stroke-dasharray="4 3"/></g>
+  <text x="230" y="210" class="s">締め取引のお客様</text><text x="650" y="210" class="s">都度請求のお客様</text>
+  <a href="order-entry.html"><rect class="node" x="340" y="10" width="200" height="44" rx="8"/><text x="440.0" y="38.0" class="t">受注入力</text></a>
+  <a href="sales-entry.html"><rect class="node" x="340" y="84" width="200" height="44" rx="8"/><text x="440.0" y="112.0" class="t">売上入力</text></a>
+  <rect class="aux" x="600" y="70" width="250" height="72" rx="8"/><text x="725" y="90" class="s">納品書をまとめて出す／CSVで取り込む</text>
+  <a href="delivery-note-bulk.html"><text x="725" y="112" class="t l">納品書一括発行</text></a>
+  <a href="copier-csv-import.html"><text x="725" y="134" class="t l">コピー機CSV取込</text></a>
+  <polygon class="dia" points="440,182 590,220 440,258 290,220"/><text x="440" y="226" class="t">お客様の種類は？</text>
+  <a href="billing-closing.html"><rect class="node" x="50" y="300" width="240" height="56" rx="8"/><text x="170.0" y="320" class="t">請求締め処理</text><text x="170.0" y="346" class="s">月ごとにまとめて請求書を出す</text></a>
+  <a href="receipt-entry.html"><rect class="node" x="50" y="400" width="240" height="56" rx="8"/><text x="170.0" y="420" class="t">入金入力</text><text x="170.0" y="446" class="s">古い請求から自動で消込</text></a>
+  <a href="detail-invoice.html"><rect class="node" x="590" y="300" width="240" height="56" rx="8"/><text x="710.0" y="320" class="t">明細請求書発行</text><text x="710.0" y="346" class="s">納品の都度（数件ごと）に請求書を出す</text></a>
+  <a href="detail-receipt.html"><rect class="node" x="590" y="400" width="240" height="56" rx="8"/><text x="710.0" y="420" class="t">明細入金</text><text x="710.0" y="446" class="s">売上または請求書を指定して消込</text></a>
+  <a href="customer-ledger.html"><rect class="node" x="340" y="520" width="200" height="44" rx="8"/><text x="440.0" y="548.0" class="t">得意先元帳</text></a>
+  <a href="monthly-closing.html"><rect class="node" x="340" y="600" width="200" height="44" rx="8"/><text x="440.0" y="628.0" class="t">月次締め処理</text></a>
+</svg></div>
 
 <h2>目次</h2>
 <h3>日々の業務</h3>
