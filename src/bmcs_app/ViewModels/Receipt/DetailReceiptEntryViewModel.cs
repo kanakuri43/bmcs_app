@@ -164,6 +164,9 @@ public partial class DetailReceiptEntryViewModel(
     /// </summary>
     private bool CanAddNewTarget => CanEdit && _loadedDetailReceiptNumber is null;
 
+    /// <summary>候補が選択されているときだけ追加できる（F2ボタンを未選択時に無効表示するため）。</summary>
+    private bool CanAddLine(object? candidate) => CanAddNewTarget && candidate is not null;
+
     private bool CanDeleteSlip => CanEdit && _loadedDetailReceiptNumber is not null && !IsEditLocked;
 
     [RelayCommand]
@@ -388,7 +391,7 @@ public partial class DetailReceiptEntryViewModel(
     /// 候補行を明細入金の明細行へ追加する（F2、または各リストの「入金」ボタン・Enter・ダブルクリック）。
     /// 訂正モードでは使用不可（<see cref="CanAddNewTarget"/>参照）。
     /// </summary>
-    [RelayCommand(CanExecute = nameof(CanAddNewTarget))]
+    [RelayCommand(CanExecute = nameof(CanAddLine))]
     private void AddLine(object? candidate)
     {
         switch (candidate)
