@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Windows;
 using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
 using bmcs_app.Application.Order;
@@ -977,6 +978,14 @@ public partial class OrderEntryViewModel(
     private Task DeleteSlipAsync() => RunBusyAsync(async () =>
     {
         if (_loadedOrderSlipNumber is null)
+        {
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            $"受注No. {_loadedOrderSlipNumber} を中止しますか？\n中止した受注は元に戻せません。",
+            "bmcs_app", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+        if (confirm != MessageBoxResult.Yes)
         {
             return;
         }
