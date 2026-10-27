@@ -1,7 +1,8 @@
 :root { --accent: #d9261c; --ink: #222; --muted: #666; --line: #d8dde3; --bg: #f5f7fa; --brand: #1f6fb5; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Yu Gothic UI", "Meiryo", sans-serif; line-height: 1.8; }
-header.site { background: var(--brand); color: #fff; padding: 14px 24px; }
+html { scroll-padding-top: 56px; }
+header.site { position: sticky; top: 0; z-index: 100; background: var(--brand); color: #fff; padding: 14px 24px; }
 header.site a { color: #fff; text-decoration: none; }
 header.site .crumb { font-size: 13px; opacity: .85; }
 main { max-width: 1040px; margin: 0 auto; padding: 24px; background: #fff; min-height: 100vh; }
@@ -37,7 +38,11 @@ th { background: var(--bg); white-space: nowrap; }
 .cards a { display: block; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; text-decoration: none; color: inherit; background: #fff; }
 .cards a:hover { border-color: var(--brand); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
 .cards b { display: block; color: var(--brand); font-size: 18px; }
-nav.pager { display: flex; justify-content: space-between; margin-top: 40px; font-size: 14px; }
+nav.pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; font-size: 15px; }
+nav.pager a { display: inline-block; padding: 12px 22px; border: 2px solid var(--brand); border-radius: 8px; background: #fff; color: var(--brand); font-weight: bold; text-decoration: none; }
+nav.pager a:hover { background: var(--brand); color: #fff; }
+nav.pager a:last-child:not(:first-child) { background: var(--brand); color: #fff; }
+nav.pager a:last-child:not(:first-child):hover { background: #17578f; border-color: #17578f; }
 .flowbox { margin: 12px 0; }
 svg.flow { width: 100%; max-width: 880px; height: auto; font-family: inherit; }
 svg.flow .ln { fill: none; stroke: #555; stroke-width: 2; }
