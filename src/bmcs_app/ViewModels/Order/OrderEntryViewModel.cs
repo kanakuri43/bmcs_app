@@ -165,6 +165,11 @@ public partial class OrderEntryViewModel(
     /// </summary>
     public decimal ExternalTaxTotal => _customer?.TaxUnit == TaxUnit.Line ? 0m : TaxTotal;
 
+    /// <summary>請求単位は請求締め時に税額を再計算するため、伝票上の税額は参考値であることを見出しで示す。</summary>
+    public string TaxTotalCaption => _customer?.TaxUnit == TaxUnit.Invoice ? "《消費税計（参考）》" : "《消費税計》";
+
+    public string ExternalTaxCaption => _customer?.TaxUnit == TaxUnit.Invoice ? "（外税・参考）" : "（外税）";
+
     public decimal GrandTotal => ComputeTaxSummary().TotalAmount;
 
     public decimal GrossProfit => TaxExcludedTotal - NonBlankLines.Sum(l => l.CostPrice * l.Quantity);
@@ -431,6 +436,8 @@ public partial class OrderEntryViewModel(
         OnPropertyChanged(nameof(TaxExcludedTotal));
         OnPropertyChanged(nameof(TaxTotal));
         OnPropertyChanged(nameof(ExternalTaxTotal));
+        OnPropertyChanged(nameof(TaxTotalCaption));
+        OnPropertyChanged(nameof(ExternalTaxCaption));
         OnPropertyChanged(nameof(GrandTotal));
         OnPropertyChanged(nameof(GrossProfit));
     }
