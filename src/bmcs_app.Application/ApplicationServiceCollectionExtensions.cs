@@ -1,3 +1,4 @@
+using bmcs_app.Application.Analysis;
 using bmcs_app.Application.Billing;
 using bmcs_app.Application.Closing;
 using bmcs_app.Application.Common;
@@ -70,6 +71,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<MonthlyClosingService>();
         services.AddScoped<MonthlyClosingReleaseService>();
         services.AddScoped<MonthlyClosingQueryService>();
+        services.AddScoped<EmployeeSalesQueryService>();
         services.AddScoped<BillingReleaseService>();
         services.AddScoped<BillingClosedDateService>();
         services.AddScoped<InvoiceService>();

@@ -5,6 +5,7 @@ using bmcs_app.Application.Common;
 using bmcs_app.Application.Master;
 using bmcs_app.Domain.Calculations;
 using bmcs_app.Services;
+using bmcs_app.ViewModels.Analysis;
 using bmcs_app.ViewModels.Billing;
 using bmcs_app.ViewModels.Closing;
 using bmcs_app.ViewModels.Ledger;
@@ -12,6 +13,7 @@ using bmcs_app.ViewModels.Master;
 using bmcs_app.ViewModels.Order;
 using bmcs_app.ViewModels.Receipt;
 using bmcs_app.ViewModels.Sales;
+using bmcs_app.Views.Analysis;
 using bmcs_app.Views.Billing;
 using bmcs_app.Views.Closing;
 using bmcs_app.Views.Ledger;
@@ -118,6 +120,9 @@ public partial class MainMenuViewModel(
                 break;
             case "monthly_release":
                 windowService.Show<MonthlyClosingReleaseWindow, MonthlyClosingReleaseViewModel>();
+                break;
+            case "employee_sales":
+                windowService.Show<EmployeeSalesWindow, EmployeeSalesViewModel>();
                 break;
             case "billing_release":
                 windowService.Show<BillingReleaseWindow, BillingReleaseViewModel>();

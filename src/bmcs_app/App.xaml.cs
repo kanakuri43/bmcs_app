@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using bmcs_app.Application;
 using bmcs_app.Reports;
 using bmcs_app.Services;
+using bmcs_app.ViewModels.Analysis;
 using bmcs_app.ViewModels.Billing;
 using bmcs_app.ViewModels.Closing;
 using bmcs_app.ViewModels.Common;
@@ -15,6 +16,7 @@ using bmcs_app.ViewModels.Menu;
 using bmcs_app.ViewModels.Order;
 using bmcs_app.ViewModels.Receipt;
 using bmcs_app.ViewModels.Sales;
+using bmcs_app.Views.Analysis;
 using bmcs_app.Views.Billing;
 using bmcs_app.Views.Closing;
 using bmcs_app.Views.Common;
@@ -232,6 +234,8 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<MonthlyClosingConfirmDialogViewModel>();
         builder.Services.AddScoped<MonthlyClosingReleaseWindow>();
         builder.Services.AddScoped<MonthlyClosingReleaseViewModel>();
+        builder.Services.AddScoped<EmployeeSalesWindow>();
+        builder.Services.AddScoped<EmployeeSalesViewModel>();
 
         builder.Services.AddScoped<BillingReleaseWindow>();
         builder.Services.AddScoped<BillingReleaseViewModel>();

@@ -1,0 +1,67 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Analysis.EmployeeSalesWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:beh="clr-namespace:bmcs_app.Behaviors"
+                 Title="bmcs_app - 担当者別売上・粗利"
+                 Height="560" Width="760"
+                 WindowStartupLocation="CenterScreen"
+                 WindowTransitionsEnabled="False">
+    <!--
+        暦月単位の担当者別売上・粗利を都度集計して表示する（保存しない）。
+        年・月を変えると自動で再取得する。担当者は伝票の担当者、未設定なら得意先の営業担当。
+    -->
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" /> <!-- 条件 -->
+            <RowDefinition Height="*" />    <!-- 一覧 -->
+            <RowDefinition Height="Auto" /> <!-- 合計 -->
+            <RowDefinition Height="Auto" /> <!-- StatusBar -->
+        </Grid.RowDefinitions>
+
+        <!-- ===== 条件 ===== -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="年" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBox Width="60" MaxLength="4" Margin="0,0,16,0"
+                     beh:FocusBehavior.IsInitialFocus="True"
+                     Text="{Binding YearText, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Text="月" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox Width="70"
+                      ItemsSource="{Binding MonthOptions}"
+                      SelectedItem="{Binding SelectedMonth}" />
+        </StackPanel>
+
+        <!-- ===== 一覧 ===== -->
+        <ListView Grid.Row="1" ItemsSource="{Binding Results}">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="担当者コード" Width="90" DisplayMemberBinding="{Binding EmployeeCode}" />
+                    <GridViewColumn Header="担当者名" Width="180" DisplayMemberBinding="{Binding EmployeeName}" />
+                    <GridViewColumn Header="売上額" Width="120" DisplayMemberBinding="{Binding SalesAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="原価" Width="120" DisplayMemberBinding="{Binding CostAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="粗利" Width="120" DisplayMemberBinding="{Binding GrossProfit, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="粗利率(%)" Width="80" DisplayMemberBinding="{Binding GrossProfitRate, StringFormat={}{0:N1}}" />
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <!-- ===== 合計 ===== -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
+            <TextBlock Text="売上額 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBlock Text="{Binding TotalSalesAmount, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,24,0" />
+            <TextBlock Text="原価 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBlock Text="{Binding TotalCostAmount, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,24,0" />
+            <TextBlock Text="粗利 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBlock Text="{Binding TotalGrossProfit, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" />
+            <TextBlock Text="処理中..." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="OrangeRed"
+                       Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </StackPanel>
+
+        <!-- ===== StatusBar ===== -->
+        <StatusBar Grid.Row="3">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" />
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</mah:MetroWindow>
