@@ -28,15 +28,13 @@
 
         <!-- ===== 条件 ===== -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
-            <TextBlock Text="年" VerticalAlignment="Center" Margin="0,0,8,0" />
             <TextBox Width="60" MaxLength="4" Margin="0,0,16,0"
                      beh:FocusBehavior.IsInitialFocus="True"
                      Text="{Binding YearText, UpdateSourceTrigger=PropertyChanged}" />
-            <TextBlock Text="集計年月" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <ComboBox Width="140" Margin="0,0,16,0"
+            <ComboBox Width="70" Margin="0,0,16,0"
                       ItemsSource="{Binding MonthOptions}"
                       SelectedItem="{Binding SelectedMonth}"
-                      DisplayMemberPath="Display" />
+                      DisplayMemberPath="Month" />
             <Button Content="解除実行 (F8)" Command="{Binding ReleaseCommand}" Padding="16,6" />
         </StackPanel>
 
