@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>得意先別・商品別の売上・粗利を見る - 操作マニュアル</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">操作マニュアル</a> <span class="crumb">／ 得意先別・商品別の売上・粗利を見る</span></header>
+<main>
+
+<h1>得意先別・商品別の売上・粗利を見る</h1>
+
+<div class="goal">
+  <b>こんなときに使います</b><br>
+  「今月、<b>どのお客様に</b>、あるいは<b>どの商品が</b>、いくら売れて利益が出たか」を確認します。<br>
+  月ごとに、売上額・原価・粗利・粗利率が出ます。見るだけの画面で、データは変わりません。
+</div>
+
+<h2><span class="no">1.</span>月を選んで表示する</h2>
+<p>メインメニューの<b>「分析」</b>の中の、見たいほうを開きます。</p>
+<table>
+  <tr><th>メニュー</th><th>集計の単位</th></tr>
+  <tr><td>得意先別売上・粗利</td><td>売上伝票の<b>得意先</b>ごと。得意先コード順に出ます。</td></tr>
+  <tr><td>商品別売上・粗利</td><td>売上の明細の<b>商品</b>ごと。商品コード順に出ます。</td></tr>
+</table>
+<p>開くと<b>今月</b>の集計が表示されます。ほかの月を見るときは、左上の<b>年</b>（4桁）と<b>月</b>の欄を変えると、すぐに表示し直します。月次締めをしていない月でも見られます。画面の下に、全体の<b>合計</b>（売上額・原価・粗利）が出ます。</p>
+
+<h2><span class="no">2.</span>数字の見かた</h2>
+<p><a href="employee-sales.html">担当者別の売上・粗利</a>と同じです。</p>
+<table>
+  <tr><th>項目</th><th>意味</th></tr>
+  <tr><td>売上額</td><td>その月の売上の<b>税抜</b>金額。返品・値引を差し引いた金額です。</td></tr>
+  <tr><td>原価</td><td>数量 × 原価単価 の合計。</td></tr>
+  <tr><td>粗利</td><td>売上額 − 原価。</td></tr>
+  <tr><td>粗利率(%)</td><td>粗利 ÷ 売上額。売上額が0のときは空欄です。</td></tr>
+</table>
+
+<h2><span class="no">3.</span>並べ替えとCSV保存</h2>
+<ul>
+  <li><b>並べ替え</b>：列の見出しをクリックすると、その列の小さい順（▲）に並びます。もう一度クリックすると大きい順（▼）になります。開いた直後は<b>粗利の大きい順</b>です。</li>
+  <li><b>CSV保存</b>：<b>「CSV保存」</b>ボタンを押して保存先を決めると、<b>画面に見えている並び順のまま</b>CSVファイルに保存できます。Excelで開けます。</li>
+</ul>
+
+<div class="note">集計は、画面を開くたび（年・月を変えるたび）にその時点の売上から計算し直します。取り消した売上は含みません。</div>
+<div class="note">請求の集約（支店の売上を本社にまとめて請求する設定）があっても、得意先別では売上伝票の得意先のまま集計します（本社にまとめません）。</div>
+
+<nav class="pager"><a href="employee-sales.html">← 前：担当者別の売上・粗利を見る</a><a href="billing-release.html">次：請求の締めを解除する（管理者） →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>
