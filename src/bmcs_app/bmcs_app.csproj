@@ -25,6 +25,8 @@
     -->
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('appsettings.Development.json')" />
+    <!-- 操作マニュアル（docs/user-manual-jp）を出力先の manual フォルダへコピーし、メニューのヘルプボタンから開く。 -->
+    <None Include="..\..\docs\user-manual-jp\**\*" Link="manual\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

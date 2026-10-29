@@ -25,6 +25,7 @@ dotnet publish src/bmcs_app -c Release -r win-x64 --no-self-contained -o <出力
 - 出力先の `appsettings.json`（ログレベル）は常に含まれる。
 - `appsettings.Development.json`（接続文字列）は、ビルド時に存在する場合だけ出力へコピーされる。**開発者の接続文字列を含んだまま配布しない。** 配布物からは削除し、配布先ごとに作成する。
 - 本番では `Development` 環境名に関係なく `appsettings.Development.json` が読み込まれる。ファイル名はそのままにする。
+- 操作マニュアル（`docs/user-manual-jp`）は、ビルド・publish のたびに出力先の `manual` フォルダへコピーされる。メインメニューのヘルプボタン（？アイコン）は `manual\index.html` を既定のブラウザで開くため、配布物から `manual` フォルダを除かない。マニュアルを直したら再ビルドして配り直す。
 
 ---
 

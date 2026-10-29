@@ -177,6 +177,52 @@ public partial class MainMenuViewModel(
                 break;
         }
     }
+
+    /// <summary>
+    /// exe と同じフォルダの manual\index.html を既定のブラウザの新しいウインドウで開く。
+    /// 既定のブラウザが特定できないときは、関連付けで開く（既存ウインドウのタブになりうる）。
+    /// </summary>
+    [RelayCommand]
+    private void OpenManual()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "manual", "index.html");
+        if (!File.Exists(path))
+        {
+            MessageBox.Show($"操作マニュアルが見つかりません。\n{path}", "bmcs_app", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var url = new Uri(path).AbsoluteUri;
+        var browser = GetDefaultBrowserPath();
+        // --new-window は Chrome・Edge・Firefox が共通して受け付ける。
+        var startInfo = browser is null
+            ? new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }
+            : new System.Diagnostics.ProcessStartInfo(browser) { ArgumentList = { "--new-window", url } };
+        System.Diagnostics.Process.Start(startInfo)?.Dispose();
+    }
+
+    /// <summary>http の関連付け（ユーザーが選んだ既定のブラウザ）から実行ファイルのパスを得る。</summary>
+    private static string? GetDefaultBrowserPath()
+    {
+        using var choice = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+            @"Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice");
+        if (choice?.GetValue("ProgId") is not string progId)
+        {
+            return null;
+        }
+
+        using var command = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey($@"{progId}\shell\open\command");
+        if (command?.GetValue(null) is not string commandLine)
+        {
+            return null;
+        }
+
+        // 例: "C:\Program Files\Google\Chrome\Application\chrome.exe" --single-argument %1
+        var exe = commandLine.StartsWith('"')
+            ? commandLine[1..Math.Max(1, commandLine.IndexOf('"', 1))]
+            : commandLine.Split(' ')[0];
+        return File.Exists(exe) ? exe : null;
+    }
 }
 
 /// <summary>メニューのカテゴリ（親）の表示用。<see cref="ColorIndex"/> は表示順に応じた色分け用インデックス。</summary>
