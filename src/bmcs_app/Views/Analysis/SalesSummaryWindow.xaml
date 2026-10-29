@@ -1,0 +1,92 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Analysis.SalesSummaryWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:beh="clr-namespace:bmcs_app.Behaviors"
+                 Title="bmcs_app"
+                 Height="560" Width="820"
+                 WindowStartupLocation="CenterScreen"
+                 WindowTransitionsEnabled="False">
+    <!--
+        暦月単位の得意先別・商品別売上・粗利を都度集計して表示する（保存しない）。軸はViewModelのKind。
+        年・月を変えると自動で再取得する。
+    -->
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" /> <!-- 条件 -->
+            <RowDefinition Height="*" />    <!-- 一覧 -->
+            <RowDefinition Height="Auto" /> <!-- 合計 -->
+            <RowDefinition Height="Auto" /> <!-- StatusBar -->
+        </Grid.RowDefinitions>
+
+        <!-- ===== 条件 ===== -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBox Width="60" MaxLength="4" Margin="0,0,16,0"
+                     beh:FocusBehavior.IsInitialFocus="True"
+                     Text="{Binding YearText, UpdateSourceTrigger=PropertyChanged}" />
+            <ComboBox Width="70"
+                      ItemsSource="{Binding MonthOptions}"
+                      SelectedItem="{Binding SelectedMonth}" />
+            <Button Content="CSV保存" Padding="16,4" Margin="24,0,0,0"
+                    Command="{Binding SaveCsvCommand}"
+                    CommandParameter="{Binding Items, ElementName=ResultList}" />
+        </StackPanel>
+
+        <!-- ===== 一覧 ===== -->
+        <ListView beh:GridViewSortBehavior.IsEnabled="True" beh:GridViewSortBehavior.InitialSortDescendingBy="GrossProfit" x:Name="ResultList" Grid.Row="1" ItemsSource="{Binding Results}">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn beh:GridViewSortBehavior.SortBy="Code" Header="コード" Width="100" DisplayMemberBinding="{Binding Code}" />
+                    <GridViewColumn beh:GridViewSortBehavior.SortBy="Name" Header="名称" Width="220" DisplayMemberBinding="{Binding Name}" />
+                    <GridViewColumn beh:GridViewSortBehavior.SortBy="SalesAmount" Header="売上額" Width="120" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding SalesAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn beh:GridViewSortBehavior.SortBy="CostAmount" Header="原価" Width="120" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding CostAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn beh:GridViewSortBehavior.SortBy="GrossProfit" Header="粗利" Width="120" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding GrossProfit, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn beh:GridViewSortBehavior.SortBy="GrossProfitRate" Header="粗利率(%)" Width="80" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding GrossProfitRate, StringFormat={}{0:N1}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <!-- ===== 合計 ===== -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
+            <TextBlock Text="売上額 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBlock Text="{Binding TotalSalesAmount, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,24,0" />
+            <TextBlock Text="原価 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBlock Text="{Binding TotalCostAmount, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,24,0" />
+            <TextBlock Text="粗利 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBlock Text="{Binding TotalGrossProfit, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" />
+            <TextBlock Text="処理中..." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="OrangeRed"
+                       Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </StackPanel>
+
+        <!-- ===== StatusBar ===== -->
+        <StatusBar Grid.Row="3">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" />
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</mah:MetroWindow>

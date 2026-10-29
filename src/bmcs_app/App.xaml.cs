@@ -236,6 +236,8 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<MonthlyClosingReleaseViewModel>();
         builder.Services.AddScoped<EmployeeSalesWindow>();
         builder.Services.AddScoped<EmployeeSalesViewModel>();
+        builder.Services.AddScoped<SalesSummaryWindow>();
+        builder.Services.AddScoped<SalesSummaryViewModel>();
 
         builder.Services.AddScoped<BillingReleaseWindow>();
         builder.Services.AddScoped<BillingReleaseViewModel>();

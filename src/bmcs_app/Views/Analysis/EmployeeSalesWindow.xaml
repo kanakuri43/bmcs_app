@@ -21,26 +21,51 @@
 
         <!-- ===== 条件 ===== -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
-            <TextBlock Text="年" VerticalAlignment="Center" Margin="0,0,8,0" />
             <TextBox Width="60" MaxLength="4" Margin="0,0,16,0"
                      beh:FocusBehavior.IsInitialFocus="True"
                      Text="{Binding YearText, UpdateSourceTrigger=PropertyChanged}" />
-            <TextBlock Text="月" VerticalAlignment="Center" Margin="0,0,8,0" />
             <ComboBox Width="70"
                       ItemsSource="{Binding MonthOptions}"
                       SelectedItem="{Binding SelectedMonth}" />
+            <Button Content="CSV保存" Padding="16,4" Margin="24,0,0,0"
+                    Command="{Binding SaveCsvCommand}"
+                    CommandParameter="{Binding Items, ElementName=ResultList}" />
         </StackPanel>
 
         <!-- ===== 一覧 ===== -->
-        <ListView Grid.Row="1" ItemsSource="{Binding Results}">
+        <ListView x:Name="ResultList" beh:GridViewSortBehavior.IsEnabled="True" beh:GridViewSortBehavior.InitialSortDescendingBy="GrossProfit" Grid.Row="1" ItemsSource="{Binding Results}">
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="担当者コード" Width="90" DisplayMemberBinding="{Binding EmployeeCode}" />
-                    <GridViewColumn Header="担当者名" Width="180" DisplayMemberBinding="{Binding EmployeeName}" />
-                    <GridViewColumn Header="売上額" Width="120" DisplayMemberBinding="{Binding SalesAmount, StringFormat={}{0:N0}}" />
-                    <GridViewColumn Header="原価" Width="120" DisplayMemberBinding="{Binding CostAmount, StringFormat={}{0:N0}}" />
-                    <GridViewColumn Header="粗利" Width="120" DisplayMemberBinding="{Binding GrossProfit, StringFormat={}{0:N0}}" />
-                    <GridViewColumn Header="粗利率(%)" Width="80" DisplayMemberBinding="{Binding GrossProfitRate, StringFormat={}{0:N1}}" />
+                    <GridViewColumn beh:GridViewSortBehavior.SortBy="EmployeeCode" Header="担当者コード" Width="90" DisplayMemberBinding="{Binding EmployeeCode}" />
+                    <GridViewColumn beh:GridViewSortBehavior.SortBy="EmployeeName" Header="担当者名" Width="180" DisplayMemberBinding="{Binding EmployeeName}" />
+                    <GridViewColumn beh:GridViewSortBehavior.SortBy="SalesAmount" Header="売上額" Width="120" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding SalesAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn beh:GridViewSortBehavior.SortBy="CostAmount" Header="原価" Width="120" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding CostAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn beh:GridViewSortBehavior.SortBy="GrossProfit" Header="粗利" Width="120" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding GrossProfit, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn beh:GridViewSortBehavior.SortBy="GrossProfitRate" Header="粗利率(%)" Width="80" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding GrossProfitRate, StringFormat={}{0:N1}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
                 </GridView>
             </ListView.View>
         </ListView>

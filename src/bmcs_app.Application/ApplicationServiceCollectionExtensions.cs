@@ -72,6 +72,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<MonthlyClosingReleaseService>();
         services.AddScoped<MonthlyClosingQueryService>();
         services.AddScoped<EmployeeSalesQueryService>();
+        services.AddScoped<SalesSummaryQueryService>();
         services.AddScoped<BillingReleaseService>();
         services.AddScoped<BillingClosedDateService>();
         services.AddScoped<InvoiceService>();

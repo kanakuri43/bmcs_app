@@ -37,6 +37,27 @@ public partial class EmployeeSalesViewModel(EmployeeSalesQueryService employeeSa
     [RelayCommand]
     private Task LoadAsync() => RefreshAsync();
 
+    /// <summary>表示中の一覧を、表示されている並び順のまま CSV に保存する（<paramref name="displayedRows"/> は一覧の <c>Items</c>）。</summary>
+    [RelayCommand]
+    private void SaveCsv(System.Collections.IEnumerable displayedRows)
+    {
+        try
+        {
+            var path = AnalysisCsvExporter.Save(
+                $"担当者別売上・粗利_{YearText}{SelectedMonth:00}.csv",
+                ["担当者コード", "担当者名", "売上額", "原価", "粗利", "粗利率(%)"],
+                displayedRows.Cast<EmployeeSalesItem>().Select(r => new object?[] { r.EmployeeCode, r.EmployeeName, r.SalesAmount, r.CostAmount, r.GrossProfit, r.GrossProfitRate }));
+            if (path is not null)
+            {
+                StatusMessage = $"CSVファイルを保存しました: {path}";
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"CSVを保存できません。\n{ex.Message}", "担当者別売上・粗利", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
+
     partial void OnYearTextChanged(string value) => _ = RefreshAsync();
 
     partial void OnSelectedMonthChanged(int value) => _ = RefreshAsync();
