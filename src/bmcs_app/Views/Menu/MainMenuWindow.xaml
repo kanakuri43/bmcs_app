@@ -131,6 +131,7 @@
             <TextBlock Text="石山商店" FontSize="12" Foreground="#FF8A93A3" />
             <TextBlock Text="販売管理システム" FontSize="24" FontWeight="Bold" Foreground="#FF1F2430" Margin="0,0,0,12" />
             -->
+            <StackPanel Orientation="Horizontal">
             <Border Background="White" CornerRadius="8" Padding="14,8" BorderBrush="#FFE3E6EA" BorderThickness="1"
                     HorizontalAlignment="Left">
                 <StackPanel Orientation="Horizontal">
@@ -144,6 +145,11 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
+            <Button Content="&#xE897;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                    Command="{Binding OpenManualCommand}" ToolTip="操作マニュアルをブラウザで開きます"
+                    AutomationProperties.Name="ヘルプ"
+                    VerticalAlignment="Center" Margin="10,0,0,0" Width="36" Height="36" />
+            </StackPanel>
         </StackPanel>
 
         <!-- メニュー本体（C案: リスト・アコーディオン型） -->

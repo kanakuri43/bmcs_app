@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>担当者別の売上・粗利を見る - 操作マニュアル</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<header class="site"><a href="index.html">操作マニュアル</a> <span class="crumb">／ 担当者別の売上・粗利を見る</span></header>
+<main>
+
+<h1>担当者別の売上・粗利を見る</h1>
+
+<div class="goal">
+  <b>こんなときに使います</b><br>
+  「今月、<b>誰がいくら売って、いくら利益が出たか</b>」を確認します。<br>
+  月ごとに、担当者別の売上額・原価・粗利・粗利率が出ます。見るだけの画面で、データは変わりません。
+</div>
+
+<h2><span class="no">1.</span>月を選んで表示する</h2>
+<p>メインメニューの<b>「分析」</b>の中の<b>「担当者別売上・粗利」</b>を開きます。開くと<b>今月</b>の集計が表示されます。ほかの月を見るときは、<b>年</b>（4桁）と<b>月</b>を変えると、すぐに表示し直します。</p>
+<figure data-ann='[
+ {"r":[30,82,325,53],"n":1,"b":[700,108]},
+ {"r":[30,156,1270,208],"n":2,"b":[1000,110]},
+ {"r":[30,371,1270,42],"n":3,"b":[400,560]},
+ {"r":[22,878,640,40],"n":4,"b":[900,800]}]'>
+  <div class="frame"><img src="images/esales-01-main.png" alt="担当者別売上・粗利"></div>
+  <figcaption>担当者別売上・粗利（2026年10月の例）</figcaption>
+</figure>
+<ol class="legend">
+  <li><b>年・月</b>：集計する月です。月次締めをしていない月でも見られます。</li>
+  <li><b>担当者ごとの集計</b>：担当者コード順に、売上額・原価・粗利・粗利率が並びます。</li>
+  <li><b>（担当者なし）</b>：担当者が決まらない売上をまとめた行です（下の「担当者の決まり方」参照）。いちばん下に出ます。</li>
+  <li><b>合計</b>：全担当者の売上額・原価・粗利の合計です。</li>
+</ol>
+
+<h2><span class="no">2.</span>数字の見かた</h2>
+<table>
+  <tr><th>項目</th><th>意味</th></tr>
+  <tr><td>売上額</td><td>その月の売上の<b>税抜</b>金額。返品・値引を差し引いた金額です。</td></tr>
+  <tr><td>原価</td><td>数量 × 原価単価 の合計。</td></tr>
+  <tr><td>粗利</td><td>売上額 − 原価。</td></tr>
+  <tr><td>粗利率(%)</td><td>粗利 ÷ 売上額。売上額が0のときは空欄です。</td></tr>
+</table>
+
+<h3>担当者の決まり方</h3>
+<ol class="steps">
+  <li>売上伝票の<b>担当者</b>欄に入っている人。</li>
+  <li>伝票の担当者が空なら、<a href="master-customer.html">得意先マスタ</a>の<b>営業担当</b>。</li>
+  <li>どちらも無ければ<b>「（担当者なし）」</b>。</li>
+</ol>
+
+<div class="note">集計は、画面を開くたび（年・月を変えるたび）にその時点の売上から計算し直します。取り消した売上は含みません。</div>
+<div class="note">請求の集約（支店の売上を本社にまとめて請求する設定）があっても、売上伝票の得意先のまま担当者に計上します。</div>
+
+<nav class="pager"><a href="monthly-closing.html">← 前：月次締めをする</a><a href="billing-release.html">次：請求の締めを解除する（管理者） →</a></nav>
+</main>
+<script src="manual.js"></script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>操作マニュアル（はじめての方へ）</title>
+<title>操作マニュアル</title>
 <link rel="stylesheet" href="manual.css">
 </head>
 <body>
@@ -18,7 +18,7 @@
 
 <h2>仕事の流れ</h2>
 <p>お客様には2種類あり、<b>請求のしかたが違います</b>。最初にどちらのお客様かを確認してください。四角をクリックすると、その画面の説明に移ります。</p>
-<div class="flowbox"><svg class="flow" viewBox="0 0 880 670" role="img" aria-label="仕事の流れ：受注、売上、お客様の種類で分岐（締め取引は請求締め→入金入力、都度請求は明細請求書→明細入金）、得意先元帳、月次締め">
+<div class="flowbox"><svg class="flow" viewBox="0 0 880 670" role="img" aria-label="仕事の流れ：受注、売上、お客様の種類で分岐（締め取引〔主に民間企業〕は請求締め→入金入力、都度請求〔主に学校・官公庁〕は明細請求書→明細入金）、得意先元帳、月次締め">
   <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker></defs>
   <g class="ln" marker-end="url(#ar)">
     <path d="M440,54 V84"/><path d="M440,128 V182"/>
@@ -28,6 +28,7 @@
   </g>
   <g class="ln"><path d="M170,456 V490 H710 V456"/><path d="M540,106 H600" stroke-dasharray="4 3"/></g>
   <text x="230" y="210" class="s">締め取引のお客様</text><text x="650" y="210" class="s">都度請求のお客様</text>
+  <text x="230" y="240" class="s">（主に民間企業）</text><text x="650" y="240" class="s">（主に学校・官公庁）</text>
   <a href="order-entry.html"><rect class="node" x="340" y="10" width="200" height="44" rx="8"/><text x="440.0" y="38.0" class="t">受注入力</text></a>
   <a href="sales-entry.html"><rect class="node" x="340" y="84" width="200" height="44" rx="8"/><text x="440.0" y="112.0" class="t">売上入力</text></a>
   <rect class="aux" x="600" y="70" width="250" height="72" rx="8"/><text x="725" y="90" class="s">納品書をまとめて出す／CSVで取り込む</text>
@@ -59,7 +60,11 @@
   <a href="detail-invoice.html"><b>明細請求書を発行する</b>都度請求のお客様の請求書をその都度出す</a>
   <a href="monthly-closing.html"><b>月次締めをする</b>月末の売掛残高を確定する</a>
 </div>
-<h3>管理者の作業（権限レベル9）</h3>
+<h3>分析</h3>
+<div class="cards">
+  <a href="employee-sales.html"><b>担当者別の売上・粗利を見る</b>月ごとに、誰がいくら売って利益が出たかを確認する</a>
+</div>
+<h3>管理者の作業</h3>
 <div class="cards">
   <a href="billing-release.html"><b>請求の締めを解除する</b>誤って締めた請求を取り消す</a>
   <a href="monthly-release.html"><b>月次締めを解除する</b>誤って締めた月を取り消す</a>
@@ -102,6 +107,15 @@
 
 <div class="note">入力を保存せずに画面を閉じても、データは登録されません。迷ったら <kbd>F3</kbd> で空に戻して、最初からやり直せます。</div>
 
+<h2>わからないときは</h2>
+<p>メインメニューの名前の右にある<b>「？」ボタン</b>を押すと、このマニュアルが新しいブラウザのウインドウで開きます。</p>
+<figure class="narrow" data-ann='[{"r":[324,108,63,63],"n":1,"b":[450,140]}]'>
+  <div class="frame"><img src="images/menu.png" alt="メインメニュー"></div>
+  <figcaption>メインメニュー</figcaption>
+</figure>
+<ol class="legend"><li>「？」ボタン（ヘルプ）</li></ol>
+
 </main>
+<script src="manual.js"></script>
 </body>
 </html>
