@@ -56,6 +56,7 @@ public class SalesService(
     {
         ValidateOrderLinkRestrictedToSalesType(lines);
         ValidateQuantityAmountSignConsistency(lines);
+        ValidateSignMatchesSlipType(lines);
 
         var dateCheck = await billingClosedDateService.CheckAsync(
             lines[0].CustomerCode, lines[0].SlipDate, "売上日付", cancellationToken);
@@ -149,6 +150,7 @@ public class SalesService(
     {
         ValidateOrderLinkRestrictedToSalesType(lines);
         ValidateQuantityAmountSignConsistency(lines);
+        ValidateSignMatchesSlipType(lines);
 
         var employeeCode = currentEmployeeContext.EmployeeCode;
         var now = DateTime.Now;
@@ -418,6 +420,15 @@ public class SalesService(
         if (lines.Any(l => l.OrderSlipNumber is not null && l.SlipType != SlipType.Sales))
         {
             throw new SalesOperationException("返品・値引行を受注に紐付けることはできません。");
+        }
+    }
+
+    private static void ValidateSignMatchesSlipType(IReadOnlyList<SalesEntity> lines)
+    {
+        // 返品・値引は数量・金額を負で保持する（SalesSlipTypeRules）。正のまま保存すると売上として加算されてしまう。
+        if (lines.Any(l => l.SlipType != SlipType.Sales && l.Quantity > 0m))
+        {
+            throw new SalesOperationException("返品・値引行の数量は負で保存する必要があります。");
         }
     }
 

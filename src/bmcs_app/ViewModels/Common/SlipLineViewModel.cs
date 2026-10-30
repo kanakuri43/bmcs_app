@@ -111,6 +111,19 @@ public partial class SlipLineViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(Amount))]
     public partial decimal Quantity { get; set; }
 
+    /// <summary>
+    /// 返品・値引を選んだ後に数量を入力した場合も、正の入力を負へ正規化する。
+    /// 区分変更時（<see cref="OnSlipTypeChanged"/>）だけでは、区分を先に選んで数量を後から入力すると
+    /// 正の数量のまま保存され、返品・値引が売上として加算されてしまう。
+    /// </summary>
+    partial void OnQuantityChanged(decimal value)
+    {
+        if (SlipType != SlipType.Sales && value > 0m)
+        {
+            Quantity = SalesSlipTypeRules.NormalizeQuantity(SlipType, value);
+        }
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Amount))]
     public partial decimal UnitPrice { get; set; }

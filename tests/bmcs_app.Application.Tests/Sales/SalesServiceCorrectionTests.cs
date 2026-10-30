@@ -277,6 +277,23 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
         Assert.Equal(0, persistedCount);
     }
 
+    [Theory]
+    [InlineData(SlipType.Return)]
+    [InlineData(SlipType.Discount)]
+    public async Task 返品値引行の数量が正のままだと拒否される(SlipType slipType)
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, salesService, _) = Resolve(scope);
+
+        // 区分を先に選んで数量を後から入力した場合に起きた、正の数量のままの返品・値引行
+        var line = NewSalesLine(quantity: 2m, slipType: slipType);
+
+        await Assert.ThrowsAsync<SalesOperationException>(() => salesService.CreateAsync([line], RoundingType.Floor));
+
+        var persistedCount = await dbContext.Sales.CountAsync(s => s.SalesSlipNumber == line.SalesSlipNumber);
+        Assert.Equal(0, persistedCount);
+    }
+
     [Fact]
     public async Task 返品値引行を受注に紐付けると拒否される()
     {
