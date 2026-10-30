@@ -210,7 +210,9 @@ public partial class OrderEntryViewModel(
     });
 
     [RelayCommand(CanExecute = nameof(CanChangeCustomer))]
-    private async Task OpenCustomerSearchAsync()
+    private Task OpenCustomerSearchAsync() => RunExclusiveAsync(OpenCustomerSearchCoreAsync);
+
+    private async Task OpenCustomerSearchCoreAsync()
     {
         var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>();
         if (customer is not null)
@@ -220,7 +222,9 @@ public partial class OrderEntryViewModel(
     }
 
     [RelayCommand(CanExecute = nameof(CanChangeCustomer))]
-    private async Task LookupCustomerByCodeAsync()
+    private Task LookupCustomerByCodeAsync() => RunExclusiveAsync(LookupCustomerByCodeCoreAsync);
+
+    private async Task LookupCustomerByCodeCoreAsync()
     {
         if (string.IsNullOrWhiteSpace(CustomerCode))
         {
@@ -341,7 +345,9 @@ public partial class OrderEntryViewModel(
     }
 
     [RelayCommand(CanExecute = nameof(CanEditEmployee))]
-    private async Task LookupEmployeeByCodeAsync()
+    private Task LookupEmployeeByCodeAsync() => RunExclusiveAsync(LookupEmployeeByCodeCoreAsync);
+
+    private async Task LookupEmployeeByCodeCoreAsync()
     {
         if (string.IsNullOrWhiteSpace(EmployeeCode) || EmployeeCode == _confirmedEmployeeCode)
         {
@@ -384,8 +390,8 @@ public partial class OrderEntryViewModel(
     private SlipLineViewModel CreateLine()
     {
         var line = new SlipLineViewModel(
-            onOpenProductLookup: OnOpenProductLookupAsync,
-            onLookupProductByCode: OnLookupProductByCodeAsync,
+            onOpenProductLookup: line => RunExclusiveAsync(() => OnOpenProductLookupAsync(line)),
+            onLookupProductByCode: line => RunExclusiveAsync(() => OnLookupProductByCodeAsync(line)),
             onDelete: OnDeleteLine)
         {
             IsSlipTypeVisible = false, // order_slip に伝票区分の概念がないため

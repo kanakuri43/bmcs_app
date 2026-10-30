@@ -256,7 +256,9 @@ public partial class SalesEntryViewModel(
     });
 
     [RelayCommand(CanExecute = nameof(CanEdit))]
-    private async Task OpenCustomerSearchAsync()
+    private Task OpenCustomerSearchAsync() => RunExclusiveAsync(OpenCustomerSearchCoreAsync);
+
+    private async Task OpenCustomerSearchCoreAsync()
     {
         var customer = windowService.ShowDialog<CustomerSearchDialog, CustomerSearchDialogViewModel, Customer>();
         if (customer is not null)
@@ -266,7 +268,9 @@ public partial class SalesEntryViewModel(
     }
 
     [RelayCommand(CanExecute = nameof(CanEdit))]
-    private async Task LookupCustomerByCodeAsync()
+    private Task LookupCustomerByCodeAsync() => RunExclusiveAsync(LookupCustomerByCodeCoreAsync);
+
+    private async Task LookupCustomerByCodeCoreAsync()
     {
         if (string.IsNullOrWhiteSpace(CustomerCode))
         {
@@ -415,7 +419,9 @@ public partial class SalesEntryViewModel(
     }
 
     [RelayCommand(CanExecute = nameof(CanEditEmployee))]
-    private async Task LookupEmployeeByCodeAsync()
+    private Task LookupEmployeeByCodeAsync() => RunExclusiveAsync(LookupEmployeeByCodeCoreAsync);
+
+    private async Task LookupEmployeeByCodeCoreAsync()
     {
         if (string.IsNullOrWhiteSpace(EmployeeCode) || EmployeeCode == _confirmedEmployeeCode)
         {
@@ -460,8 +466,8 @@ public partial class SalesEntryViewModel(
     private SlipLineViewModel CreateLine()
     {
         var line = new SlipLineViewModel(
-            onOpenProductLookup: OnOpenProductLookupAsync,
-            onLookupProductByCode: OnLookupProductByCodeAsync,
+            onOpenProductLookup: line => RunExclusiveAsync(() => OnOpenProductLookupAsync(line)),
+            onLookupProductByCode: line => RunExclusiveAsync(() => OnLookupProductByCodeAsync(line)),
             onDelete: OnDeleteLine);
 
         if (_customer is not null)
@@ -894,7 +900,7 @@ public partial class SalesEntryViewModel(
 
         if (!string.IsNullOrWhiteSpace(orderSlipNumber))
         {
-            _ = LoadOrderIntoLinesAsync(orderSlipNumber);
+            _ = RunBusyAsync(() => LoadOrderIntoLinesAsync(orderSlipNumber));
         }
     }
 
@@ -1103,7 +1109,7 @@ public partial class SalesEntryViewModel(
 
         if (!string.IsNullOrWhiteSpace(salesSlipNumber))
         {
-            _ = LoadSalesSlipForCorrectionAsync(salesSlipNumber);
+            _ = RunBusyAsync(() => LoadSalesSlipForCorrectionAsync(salesSlipNumber));
         }
     }
 
@@ -1264,7 +1270,9 @@ public partial class SalesEntryViewModel(
     private bool CanPrint => _loadedSalesSlipNumber is not null;
 
     [RelayCommand(CanExecute = nameof(CanPrint))]
-    private async Task PrintAsync()
+    private Task PrintAsync() => RunExclusiveAsync(PrintCoreAsync);
+
+    private async Task PrintCoreAsync()
     {
         if (_loadedSalesSlipNumber is null)
         {
