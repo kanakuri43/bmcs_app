@@ -82,6 +82,102 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
         }
     }
 
+    // 開発DBに無い CUS001/PRD001 ではFKに触れるため、受注日付チェックのテストは実在マスタを使う。
+    private const string RealCustomerCode = "1001";
+    private const string RealProductCode = "1003";
+
+    private static async Task<SalesEntity> NewRealSalesLineAsync(
+        BmcsDbContext dbContext, decimal quantity, string orderSlipNumber, DateOnly slipDate)
+    {
+        var line = NewSalesLine(quantity, orderSlipNumber: orderSlipNumber, orderLineNumber: 1, slipDate: slipDate);
+        line.CustomerCode = RealCustomerCode;
+        line.TaxUnit = (await dbContext.Customers.AsNoTracking().SingleAsync(c => c.CustomerCode == RealCustomerCode)).TaxUnit;
+        line.ProductCode = RealProductCode;
+        return line;
+    }
+
+    [Fact]
+    public async Task 売上日付が受注日より前だと拒否され売上も受注の数量も変化しない()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, salesService, _) = Resolve(scope);
+        const string orderSlipNumber = "__TESTORD_DATE01";
+        var orderDate = DateOnly.FromDateTime(DateTime.Today);
+        await InsertOrderLineAsync(dbContext, orderSlipNumber, 10m, RealCustomerCode, RealProductCode, orderDate);
+
+        var line = await NewRealSalesLineAsync(dbContext, 4m, orderSlipNumber, orderDate.AddDays(-1));
+        try
+        {
+            var ex = await Assert.ThrowsAsync<SalesOperationException>(() => salesService.CreateAsync([line], RoundingType.Floor));
+            Assert.Contains(orderSlipNumber, ex.Message);
+
+            Assert.Equal(0, await dbContext.Sales.CountAsync(s => s.OrderSlipNumber == orderSlipNumber));
+            Assert.Equal(0m, (await ReloadOrderAsync(dbContext, orderSlipNumber)).SalesConfirmedQuantity);
+        }
+        finally
+        {
+            // 検査が効かず売上が登録されてしまった場合でも、受注を消せる（FK）ように受注番号で先に売上を消す。
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM dbo.sales WHERE order_slip_number = {orderSlipNumber}");
+            await CleanupAsync(dbContext, salesSlipNumber: null, orderSlipNumber);
+        }
+    }
+
+    [Fact]
+    public async Task 売上日付が受注日と同日なら登録できる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, salesService, _) = Resolve(scope);
+        const string orderSlipNumber = "__TESTORD_DATE02";
+        var orderDate = DateOnly.FromDateTime(DateTime.Today);
+        await InsertOrderLineAsync(dbContext, orderSlipNumber, 10m, RealCustomerCode, RealProductCode, orderDate);
+
+        var line = await NewRealSalesLineAsync(dbContext, 4m, orderSlipNumber, orderDate);
+        string? salesSlipNumber = null;
+        try
+        {
+            salesSlipNumber = await salesService.CreateAsync([line], RoundingType.Floor);
+            Assert.Equal(4m, (await ReloadOrderAsync(dbContext, orderSlipNumber)).SalesConfirmedQuantity);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, salesSlipNumber, orderSlipNumber);
+        }
+    }
+
+    [Fact]
+    public async Task 訂正で売上日付を受注日より前に変えると拒否され元の日付のまま残る()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, salesService, _) = Resolve(scope);
+        const string orderSlipNumber = "__TESTORD_DATE03";
+        var orderDate = DateOnly.FromDateTime(DateTime.Today);
+        await InsertOrderLineAsync(dbContext, orderSlipNumber, 10m, RealCustomerCode, RealProductCode, orderDate);
+
+        var createLine = await NewRealSalesLineAsync(dbContext, 4m, orderSlipNumber, orderDate);
+        string? salesSlipNumber = null;
+        try
+        {
+            salesSlipNumber = await salesService.CreateAsync([createLine], RoundingType.Floor);
+
+            var loaded = await dbContext.Sales.Where(s => s.SalesSlipNumber == salesSlipNumber).ToListAsync();
+            var loadedLineNumbers = loaded.Select(l => l.LineNumber).ToList();
+
+            var updated = await NewRealSalesLineAsync(dbContext, 4m, orderSlipNumber, orderDate.AddDays(-1));
+            updated.LineNumber = loaded[0].LineNumber;
+
+            await Assert.ThrowsAsync<SalesOperationException>(
+                () => salesService.UpdateAsync(salesSlipNumber, [updated], RoundingType.Floor, loadedLineNumbers));
+
+            var persisted = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == salesSlipNumber);
+            Assert.Equal(orderDate, persisted.SlipDate);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, salesSlipNumber, orderSlipNumber);
+        }
+    }
+
     [Fact]
     public async Task 担当者は全行に複写して保存され訂正で変更も解除もできる()
     {
@@ -693,16 +789,18 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
         scope.ServiceProvider.GetRequiredService<SalesService>(),
         scope.ServiceProvider.GetRequiredService<OrderStatusService>());
 
-    private static async Task InsertOrderLineAsync(BmcsDbContext dbContext, string orderSlipNumber, decimal orderQuantity)
+    private static async Task InsertOrderLineAsync(
+        BmcsDbContext dbContext, string orderSlipNumber, decimal orderQuantity,
+        string customerCode = CustomerCode, string productCode = ProductCode, DateOnly? orderDate = null)
     {
         dbContext.OrderSlips.Add(new OrderSlip
         {
             OrderSlipNumber = orderSlipNumber,
             LineNumber = 1,
-            OrderDate = DateOnly.FromDateTime(DateTime.Today),
-            CustomerCode = CustomerCode,
+            OrderDate = orderDate ?? DateOnly.FromDateTime(DateTime.Today),
+            CustomerCode = customerCode,
             CustomerName = "テスト用得意先",
-            ProductCode = ProductCode,
+            ProductCode = productCode,
             ProductName = "テスト用商品",
             OrderQuantity = orderQuantity,
             UnitPrice = 1000m,

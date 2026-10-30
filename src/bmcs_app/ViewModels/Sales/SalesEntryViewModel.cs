@@ -737,6 +737,14 @@ public partial class SalesEntryViewModel(
             return;
         }
 
+        var orderDateReason = await salesService.CheckSlipDateAgainstOrdersAsync(
+            nonBlankLines.Select(l => l.OrderSlipNumber), ParseSlipDate());
+        if (orderDateReason is not null)
+        {
+            StatusMessage = orderDateReason;
+            return;
+        }
+
         if (!await EnsureEmployeeConfirmedAsync())
         {
             RequestFocus("EmployeeCode");

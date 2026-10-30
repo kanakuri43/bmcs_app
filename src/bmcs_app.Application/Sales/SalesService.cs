@@ -47,7 +47,8 @@ public class SalesService(
     /// <param name="roundingType">得意先マスタの端数区分。税額計算に使う。</param>
     /// <param name="beforeSave">採番後・SaveChangesAsync の直前に伝票番号を渡して呼ぶ。同一 DbContext に追加した連携行（コピー機取込履歴など）を売上と同一トランザクションで保存するために使う。</param>
     /// <exception cref="SalesOperationException">
-    /// 返品・値引行が受注に紐付けられている場合、または伝票日付が請求締め済み期間（design_document.md 25章）の場合。
+    /// 返品・値引行が受注に紐付けられている場合、伝票日付が請求締め済み期間（design_document.md 25章）の場合、
+    /// または伝票日付が紐づく受注の受注日より前の場合（8-1章）。
     /// </exception>
     public async Task<string> CreateAsync(
         IReadOnlyList<SalesEntity> lines, RoundingType roundingType, CancellationToken cancellationToken = default,
@@ -68,6 +69,13 @@ public class SalesService(
         if (monthlyClosedReason is not null)
         {
             throw new SalesOperationException(monthlyClosedReason);
+        }
+
+        var orderDateReason = await CheckSlipDateAgainstOrdersAsync(
+            lines.Select(l => l.OrderSlipNumber), lines[0].SlipDate, cancellationToken);
+        if (orderDateReason is not null)
+        {
+            throw new SalesOperationException(orderDateReason);
         }
 
         var employeeCode = currentEmployeeContext.EmployeeCode;
@@ -173,6 +181,20 @@ public class SalesService(
         if (incomingKept.Any(l => !currentByLineNumber.ContainsKey(l.LineNumber)))
         {
             throw new SalesOperationException("存在しない明細行番号が指定されています。");
+        }
+
+        // 売上日付が紐づく受注の受注日より前にならないことを、行の更新（ChangeTrackerの変更）より先に確認する。
+        // 全行削除（lines が空）の訂正は比較する日付が無いので対象外。
+        if (lines.Count > 0)
+        {
+            var orderDateReason = await CheckSlipDateAgainstOrdersAsync(
+                incomingKept.Select(l => l.OrderSlipNumber ?? currentByLineNumber[l.LineNumber].OrderSlipNumber)
+                    .Concat(incomingNew.Select(l => l.OrderSlipNumber)),
+                lines[0].SlipDate, cancellationToken);
+            if (orderDateReason is not null)
+            {
+                throw new SalesOperationException(orderDateReason);
+            }
         }
 
         var deltaContributions = new List<(string? OrderSlipNumber, short? OrderLineNumber, decimal Delta)>();
@@ -365,6 +387,32 @@ public class SalesService(
     /// 「売上」行のみであり（<see cref="SignedQuantity"/>）、返品・値引による受注消化の取消は
     /// 元の売上行を直接訂正することで行う。
     /// </summary>
+    /// <summary>
+    /// 売上日付が、紐づく受注の受注日より前でないかを検証する（受注日と同日は可）。
+    /// 受注に紐づく行が無い（都度売上）場合は常に問題なし。違反なら画面に出せるメッセージを、問題なければ null を返す。
+    /// 新規登録・訂正の入口（<see cref="CreateAsync"/>・<see cref="UpdateAsync"/>）と、売上入力画面の保存前チェックが使う。
+    /// </summary>
+    public async Task<string?> CheckSlipDateAgainstOrdersAsync(
+        IEnumerable<string?> orderSlipNumbers, DateOnly slipDate, CancellationToken cancellationToken = default)
+    {
+        var slipNumbers = orderSlipNumbers.OfType<string>().Distinct().ToList();
+        if (slipNumbers.Count == 0)
+        {
+            return null;
+        }
+
+        var latest = await dbContext.OrderSlips
+            .AsNoTracking()
+            .Where(o => slipNumbers.Contains(o.OrderSlipNumber) && o.OrderDate > slipDate)
+            .OrderByDescending(o => o.OrderDate)
+            .Select(o => new { o.OrderSlipNumber, o.OrderDate })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return latest is null
+            ? null
+            : $"売上日付は受注日（{latest.OrderDate:yyyy/MM/dd}・受注No. {latest.OrderSlipNumber}）以降を指定してください。";
+    }
+
     private static void ValidateOrderLinkRestrictedToSalesType(IReadOnlyList<SalesEntity> lines)
     {
         if (lines.Any(l => l.OrderSlipNumber is not null && l.SlipType != SlipType.Sales))
