@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>販売管理システム リーフレット（まじめ風）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4 portrait; margin: 0 }
+  * { box-sizing: border-box; margin: 0; padding: 0 }
+  :root { --navy: #1b2a4a; --navy2: #2d4470; --gray: #5d6573; --line: #c9ced8; --pale: #f3f5f8; --gold: #a88a4a }
+  body { font-family: "Noto Sans JP", sans-serif; color: #222; font-size: 9.5pt; line-height: 1.75; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+  .page { width: 210mm; height: 297mm; overflow: hidden; position: relative; padding: 14mm 16mm 14mm; page-break-after: always; break-after: page; background: #fff }
+  .page:last-child { page-break-after: auto; break-after: auto }
+  .serif { font-family: "Noto Serif JP", serif }
+  h2 { font-family: "Noto Serif JP", serif; font-weight: 700; font-size: 13pt; color: var(--navy); border-bottom: 1.2pt solid var(--navy); padding-bottom: 1.2mm; margin-bottom: 3.5mm; display: flex; align-items: baseline; gap: 3mm }
+  h2 small { font-family: "Noto Sans JP"; font-size: 8pt; color: var(--gray); font-weight: 400; letter-spacing: .15em }
+  h2 small { font-size: 9pt }
+
+  /* 表面 */
+  .topbar { display: flex; justify-content: space-between; align-items: center; border-bottom: .6pt solid var(--line); padding-bottom: 3mm; font-size: 9pt; color: var(--gray); letter-spacing: .2em }
+  .topbar b { color: var(--navy); font-weight: 700 }
+  .catch { margin-top: 8mm }
+  .catch .lead { font-size: 11pt; color: var(--gold); letter-spacing: .3em; font-weight: 500 }
+  .catch h1 { font-family: "Noto Serif JP", serif; font-weight: 900; color: var(--navy); font-size: 28pt; line-height: 1.38; margin-top: 3mm; letter-spacing: .02em }
+  .catch p { margin-top: 5mm; font-size: 10.5pt; color: #333; line-height: 1.9 }
+  .visual { margin-top: 6mm; border: .6pt solid var(--line); padding: 3mm; background: var(--pale) }
+  .visual img { display: block; width: 100%; border: .6pt solid var(--line) }
+  .visual figcaption { font-size: 9pt; color: var(--gray); margin-top: 2mm; text-align: right }
+  .points { margin-top: 5mm; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1.2pt solid var(--navy); border-bottom: .6pt solid var(--line) }
+  .points div { padding: 3mm 4mm 3mm 0 }
+  .points div + div { padding-left: 4mm; border-left: .6pt solid var(--line) }
+  .points .no { font-family: "Noto Serif JP"; font-size: 9pt; color: var(--gold); letter-spacing: .2em }
+  .points h3 { font-family: "Noto Serif JP"; font-size: 12pt; color: var(--navy); margin: 1mm 0 1.5mm; line-height: 1.45 }
+  .points p { font-size: 9pt; line-height: 1.7; color: #333 }
+  .foot { position: absolute; left: 16mm; right: 16mm; bottom: 12mm; display: flex; justify-content: space-between; font-size: 9pt; color: var(--gray); border-top: .6pt solid var(--line); padding-top: 2.5mm }
+  .foot b { font-family: "Noto Serif JP"; color: var(--navy); font-size: 11pt; letter-spacing: .15em }
+
+  /* 裏面 */
+  .flow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2mm; margin-bottom: 7mm }
+  .flow div { border: .6pt solid var(--navy2); text-align: center; padding: 2.5mm 1mm; position: relative; background: #fff }
+  .flow div:not(:last-child)::after { content: ""; position: absolute; right: -2mm; top: 50%; width: 2mm; border-top: .8pt solid var(--navy2) }
+  .flow b { display: block; font-family: "Noto Serif JP"; color: var(--navy); font-size: 11pt }
+  .flow span { font-size: 9pt; color: var(--gray); line-height: 1.5; display: block }
+  .flow div:last-child { background: var(--navy); }
+  .flow div:last-child b, .flow div:last-child span { color: #fff }
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 7mm }
+  th, td { border: .6pt solid var(--line); padding: 2mm 3mm; vertical-align: top; line-height: 1.65 }
+  thead th { background: var(--navy); color: #fff; font-weight: 500; text-align: center }
+  tbody th { background: var(--pale); color: var(--navy); font-weight: 700; width: 24mm; text-align: left }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8mm }
+  dl.func { font-size: 9pt; margin-bottom: 7mm }
+  dl.func div { display: grid; grid-template-columns: 22mm 1fr; border-bottom: .6pt dotted var(--line); padding: 1.3mm 0 }
+  dl.func dt { color: var(--navy); font-weight: 700 }
+  ul.safe { list-style: none; font-size: 9pt }
+  ul.safe li { padding: 1.3mm 0 1.3mm 5mm; border-bottom: .6pt dotted var(--line); position: relative; line-height: 1.65 }
+  ul.safe li::before { content: ""; position: absolute; left: 0; top: 3.1mm; width: 2mm; height: 2mm; background: var(--navy) }
+  ul.safe b { color: var(--navy) }
+  .env { border: .6pt solid var(--line); font-size: 9pt }
+  .env div { padding: 2mm 3mm; display: grid; grid-template-columns: 24mm 1fr }
+  .env div + div { border-top: .6pt solid var(--line) }
+  .env b { color: var(--navy); font-family: "Noto Serif JP" }
+  .points { border-bottom: none !important }
+  .flow, table { margin-bottom: 9mm }
+  .safe { margin-bottom: 8mm }
+</style>
+</head>
+<body>
+
+<!-- 表面 -->
+<section class="page">
+  <div class="topbar"><span><b>OBISAN</b>　基幹業務システム</span><span>SALES MANAGEMENT SYSTEM</span></div>
+
+  <div class="catch">
+    <div class="lead">販売管理システム</div>
+    <h1>受注から月次締めまで、<br>ひとつの流れで、正確に。</h1>
+    <p>受注・売上・請求・入金・元帳・月次締め。<br>販売にかかわる一連の業務を、ひとつのシステムでつなぎます。<br>締め日でまとめて請求する企業さまも、納品ごとに請求する官公庁・学校さまも、<br>それぞれの業務の流れのままお使いいただけます。</p>
+  </div>
+
+  <figure class="visual">
+    <img src="images/menu.png" alt="メインメニュー画面">
+    <figcaption>メインメニュー　業務ごとに整理された画面から、必要な機能をすぐに開けます</figcaption>
+  </figure>
+
+  <div class="points">
+    <div><div class="no">POINT 01</div><h3>2つの請求方式に<br>そのまま対応</h3><p>締め請求と都度の明細請求を、取引先ごとに使い分けられます。</p></div>
+    <div><div class="no">POINT 02</div><h3>インボイス制度に<br>対応した請求書</h3><p>税率ごとの対価・消費税額を記載し、再発行しても同じ金額を再現します。</p></div>
+    <div><div class="no">POINT 03</div><h3>売上と粗利を<br>すぐに確認</h3><p>担当者別・得意先別・商品別に、月ごとの売上と粗利を集計できます。</p></div>
+  </div>
+
+  <div class="foot"><b>OBISAN</b><span>裏面に業務の流れと機能の一覧があります</span></div>
+</section>
+
+<!-- 裏面 -->
+<section class="page">
+  <h2>業務の流れ<small>WORKFLOW</small></h2>
+  <div class="flow">
+    <div><b>受注</b><span>受注入力<br>仮伝票</span></div>
+    <div><b>売上</b><span>売上入力<br>納品書発行</span></div>
+    <div><b>請求</b><span>締め処理<br>明細請求書</span></div>
+    <div><b>入金</b><span>入金入力<br>消込</span></div>
+    <div><b>元帳</b><span>得意先元帳<br>残高照会</span></div>
+    <div><b>月次締め</b><span>月次確定<br>業績集計</span></div>
+  </div>
+
+  <h2>2種類の取引先に対応<small>CUSTOMER TYPES</small></h2>
+  <table>
+    <thead><tr><th></th><th>締め取引（一般企業）</th><th>都度取引（官公庁・学校など）</th></tr></thead>
+    <tbody>
+      <tr><th>請求</th><td>20日締め・末日締めなど、締め日ごとに1か月分の売上をまとめて請求書を発行</td><td>納品1件〜数件ごとに明細請求書を発行。売上入力時の即時発行も、後でまとめての発行も可能</td></tr>
+      <tr><th>入金</th><td>締め単位でまとめて消込</td><td>明細（伝票）単位で消込</td></tr>
+      <tr><th>宛名</th><td>得意先マスタの宛名で発行。複数の得意先をまとめて1つの請求書にする「請求集約」にも対応</td><td>学校のクラス・先生など、得意先とは別の宛名を都度指定可能</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cols">
+    <div>
+      <h2>主な機能<small>FUNCTIONS</small></h2>
+      <dl class="func">
+        <div><dt>受注・売上</dt><dd>受注入力／売上入力／納品書一括発行／コピー機売上CSV取込</dd></div>
+        <div><dt>請求</dt><dd>請求締め処理／締め解除処理／明細請求書発行</dd></div>
+        <div><dt>入金</dt><dd>入金入力／明細入金</dd></div>
+        <div><dt>元帳</dt><dd>得意先元帳</dd></div>
+        <div><dt>月次</dt><dd>月次締め処理／月次締め解除処理</dd></div>
+        <div><dt>分析</dt><dd>売上・粗利分析（担当者別・得意先別・商品別）</dd></div>
+        <div><dt>マスタ</dt><dd>得意先／商品／社員／銀行／入金方法／コピー機／単価・掛率</dd></div>
+        <div><dt>システム</dt><dd>プリンタ設定／メニュー管理／自社情報／Flex Query</dd></div>
+      </dl>
+    </div>
+    <div>
+      <h2>安心の仕組み<small>RELIABILITY</small></h2>
+      <ul class="safe">
+        <li><b>消費税・端数処理</b>　得意先ごとの税区分（請求単位・伝票単位・内税明細単位）と端数区分を厳密に適用</li>
+        <li><b>締め後の伝票を保護</b>　請求締め・月次締めで確定した伝票は編集不可。解除は管理者権限のみ</li>
+        <li><b>同時編集の競合を検知</b>　複数の端末で同じ伝票を更新しても、上書きによる食い違いを防止</li>
+        <li><b>権限レベルで操作を制御</b>　社員ごとの権限に応じて、使えるメニューを切り替え</li>
+        <li><b>帳票はA4で印刷・PDF保存</b>　納品書・請求書・元帳をレーザープリンタへ直接印刷</li>
+      </ul>
+      <h2>動作環境<small>ENVIRONMENT</small></h2>
+      <div class="env">
+        <div><b>端末</b>Windows 11 以降</div>
+        <div><b>データベース</b>SQL Server（社内サーバー）</div>
+        <div><b>出力</b>A4レーザープリンタ／PDF保存</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><b>OBISAN</b><span>販売管理システム　ご利用・操作のご相談はOBISANまで</span></div>
+</section>
+
+</body>
+</html>

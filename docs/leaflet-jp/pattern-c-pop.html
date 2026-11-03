@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>販売管理システム リーフレット（POP）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4 portrait; margin: 0 }
+  * { box-sizing: border-box; margin: 0; padding: 0 }
+  :root { --yellow: #ffd23f; --pink: #ff5d8f; --blue: #2b6fff; --ink: #1d1d3b; --cream: #fff8e1 }
+  body { font-family: "M PLUS Rounded 1c", sans-serif; color: var(--ink); font-size: 9.5pt; line-height: 1.7; font-weight: 500; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+  .page { width: 210mm; height: 297mm; overflow: hidden; position: relative; padding: 14mm 15mm; page-break-after: always; break-after: page; background: var(--cream) }
+  .page:last-child { page-break-after: auto; break-after: auto }
+  .deco { position: absolute; pointer-events: none }
+  .z { position: relative }
+  .dots { background-image: radial-gradient(rgba(29, 29, 59, .12) 1.1px, transparent 1.3px); background-size: 4mm 4mm }
+
+  /* 表面 */
+  .slash1 { left: -20mm; top: 54mm; width: 260mm; height: 120mm; background: var(--blue); transform: rotate(-9deg) }
+  .slash2 { left: -20mm; top: 164mm; width: 260mm; height: 16mm; background: var(--pink); transform: rotate(-9deg) }
+  .tag { display: inline-block; background: var(--ink); color: var(--yellow); font-weight: 900; font-size: 11pt; padding: 1mm 5mm; border-radius: 99px; transform: rotate(-3deg) }
+  .catch h1 { font-weight: 900; font-size: 42pt; line-height: 1.22; margin-top: 4mm; letter-spacing: -.01em }
+  .catch h1 .hl { background: linear-gradient(transparent 58%, var(--yellow) 58%) }
+  .catch h1 .pk { color: var(--pink) }
+  .shot { margin: 12mm 4mm 0; transform: rotate(-4deg); background: #fff; border: 1.4mm solid var(--ink); border-radius: 5mm; padding: 2.5mm; box-shadow: 3mm 3mm 0 var(--yellow) }
+  .shot img { display: block; width: 100%; border-radius: 2.5mm }
+  .badge { position: absolute; width: 38mm; height: 38mm; border-radius: 50%; background: var(--pink); color: #fff; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-weight: 900; font-size: 13pt; line-height: 1.25; border: 1.2mm solid #fff; box-shadow: 0 0 0 1mm var(--ink); transform: rotate(10deg) }
+  .badge small { display: block; font-size: 9pt; font-weight: 800; margin-top: 1mm }
+  .bubbles { margin-top: 14mm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm }
+  .bub { background: #fff; border: .9mm solid var(--ink); border-radius: 5mm; padding: 3mm 3.5mm; position: relative; font-size: 9.5pt; line-height: 1.55 }
+  .bub::after { content: ""; position: absolute; left: 7mm; top: -3.6mm; width: 5mm; height: 5mm; background: #fff; border-left: .9mm solid var(--ink); border-top: .9mm solid var(--ink); transform: rotate(45deg) }
+  .bub b { display: block; font-size: 12.5pt; font-weight: 900; color: var(--blue); line-height: 1.35; margin-bottom: 1mm }
+  .bub:nth-child(2) b { color: var(--pink) }
+  .six { margin-top: 10mm; background: var(--ink); color: #fff; border-radius: 6mm; padding: 4mm 5mm; display: flex; align-items: center; gap: 4mm; transform: rotate(-1.5deg) }
+  .six .big { font-weight: 900; font-size: 22pt; line-height: 1.15; color: var(--yellow); flex: none }
+  .six .big em { font-style: normal; color: var(--pink); font-size: 30pt }
+  .six ol { list-style: none; display: flex; flex-wrap: wrap; gap: 1.5mm 1mm; align-items: center; font-weight: 900; font-size: 11pt }
+  .six li { background: #fff; color: var(--ink); border-radius: 99px; padding: .3mm 3mm }
+  .six li + li::before { content: "→"; color: var(--yellow); margin: 0 1.2mm 0 -2.2mm; position: relative; left: -1mm }
+  .front-foot { position: absolute; left: 15mm; right: 15mm; bottom: 12mm; display: flex; justify-content: space-between; align-items: center; font-weight: 900 }
+  .front-foot b { font-size: 15pt }
+  .front-foot span { background: var(--ink); color: #fff; padding: 1mm 4mm; border-radius: 99px; font-size: 10pt }
+
+  /* 裏面 */
+  .band { left: -20mm; top: -30mm; width: 260mm; height: 62mm; background: var(--yellow); transform: rotate(-4deg) }
+  h2 { display: inline-block; font-weight: 900; font-size: 16pt; background: var(--ink); color: #fff; padding: .5mm 5mm; border-radius: 3mm; transform: rotate(-2deg); margin-bottom: 3mm }
+  h2.pk { background: var(--pink) }
+  h2.bl { background: var(--blue) }
+  .flow { display: flex; gap: 1mm; margin-bottom: 6mm }
+  .flow div { flex: 1; background: var(--blue); color: #fff; text-align: center; padding: 2.5mm 0 2.5mm 3mm; clip-path: polygon(0 0, 88% 0, 100% 50%, 88% 100%, 0 100%, 12% 50%); font-weight: 900; font-size: 12pt; line-height: 1.3 }
+  .flow div:first-child { clip-path: polygon(0 0, 88% 0, 100% 50%, 88% 100%, 0 100%); padding-left: 0 }
+  .flow div:nth-child(even) { background: var(--pink) }
+  .flow small { display: block; font-size: 9pt; font-weight: 700 }
+  .types { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; margin-bottom: 6.5mm }
+  .type { background: #fff; border: .9mm solid var(--ink); border-radius: 6mm; padding: 4mm 4.5mm; box-shadow: 2mm 2mm 0 var(--blue) }
+  .type.b { box-shadow: 2mm 2mm 0 var(--pink) }
+  .type h3 { font-size: 14pt; font-weight: 900; line-height: 1.3 }
+  .type h3 span { font-size: 9.5pt; font-weight: 800; background: var(--yellow); padding: .3mm 2.5mm; border-radius: 99px; margin-left: 2mm; vertical-align: middle }
+  .type ul { list-style: none; margin-top: 2mm }
+  .type li { padding-left: 5mm; position: relative; margin-bottom: 1mm; line-height: 1.6 }
+  .type li::before { content: "★"; position: absolute; left: 0; color: var(--blue) }
+  .type.b li::before { color: var(--pink) }
+  .funcs { display: flex; flex-wrap: wrap; gap: 2mm; margin-bottom: 6mm }
+  .funcs span { background: #fff; border: .7mm solid var(--ink); border-radius: 99px; padding: .8mm 3.5mm; font-weight: 800; font-size: 9.5pt }
+  .funcs span:nth-child(3n+1) { background: var(--yellow) }
+  .funcs span:nth-child(3n+2) { background: #ffe0ea }
+  .bottom { display: grid; grid-template-columns: 1.4fr 1fr; gap: 6mm; align-items: start }
+  .safe { list-style: none; background: #fff; border: .9mm solid var(--ink); border-radius: 6mm; padding: 3.5mm 4.5mm }
+  .safe li { padding: .9mm 0 .9mm 8mm; position: relative; line-height: 1.55; border-bottom: .4mm dashed #c9c3a8 }
+  .safe li:last-child { border-bottom: none }
+  .safe li::before { content: "OK"; position: absolute; left: 0; top: 1.6mm; background: var(--pink); color: #fff; font-size: 7pt; font-weight: 900; width: 6mm; height: 4.2mm; border-radius: 1mm; display: grid; place-items: center; line-height: 1 }
+  .safe b { color: var(--blue); font-weight: 900 }
+  .env { background: var(--blue); color: #fff; border-radius: 6mm; padding: 4mm 4.5mm; transform: rotate(2deg); border: .9mm solid var(--ink) }
+  .env h3 { font-weight: 900; font-size: 13pt; color: var(--yellow) }
+  .env dl div { display: flex; gap: 2mm; padding: 1mm 0; border-bottom: .4mm dashed rgba(255, 255, 255, .5); font-size: 9.5pt }
+  .env dl div:last-child { border-bottom: none }
+  .env dt { font-weight: 900; width: 21mm; flex: none }
+  .back-foot { position: absolute; left: 15mm; right: 15mm; bottom: 12mm; display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 9.5pt }
+  .back-foot b { font-size: 15pt; font-weight: 900 }
+</style>
+</head>
+<body>
+
+<!-- 表面 -->
+<section class="page">
+  <div class="deco dots" style="inset:0"></div>
+  <div class="deco slash1"></div>
+  <div class="deco slash2"></div>
+
+  <div class="z">
+    <div class="catch">
+      <span class="tag">OBISANの販売管理システム</span>
+      <h1><span class="hl">受注</span>から<span class="hl">月次締め</span>まで、<br><span class="pk">ぜんぶ</span>おまかせ！</h1>
+    </div>
+
+    <div class="shot"><img src="images/menu.png" alt="メインメニュー画面"></div>
+    <div class="badge" style="right:2mm;top:58mm">インボイス<br>対応<small>適格請求書OK</small></div>
+
+    <div class="bubbles">
+      <div class="bub"><b>締め請求も<br>都度請求も！</b>取引先ごとに、いつもの請求スタイルのまま使えます。</div>
+      <div class="bub"><b>受注→売上→<br>請求→入金</b>入力したデータがつながって、二度打ちいらず。</div>
+      <div class="bub"><b>売上・粗利が<br>ひと目でわかる</b>担当者別・得意先別・商品別に月ごとに集計。</div>
+    </div>
+
+    <div class="six">
+      <div class="big"><em>6</em>つの業務が<br>ひとつに！</div>
+      <ol><li>受注</li><li>売上</li><li>請求</li><li>入金</li><li>元帳</li><li>月次締め</li></ol>
+    </div>
+  </div>
+
+  <div class="front-foot"><b>OBISAN</b><span>うらめんもチェック！ →</span></div>
+</section>
+
+<!-- 裏面 -->
+<section class="page">
+  <div class="deco dots" style="inset:0"></div>
+  <div class="deco band"></div>
+
+  <div class="z">
+    <h2>業務の流れ</h2>
+    <div class="flow">
+      <div>受注<small>受注入力</small></div>
+      <div>売上<small>納品書</small></div>
+      <div>請求<small>締め・明細</small></div>
+      <div>入金<small>消込</small></div>
+      <div>元帳<small>残高照会</small></div>
+      <div>月次<small>締め・集計</small></div>
+    </div>
+
+    <h2 class="pk">2つの取引スタイル</h2>
+    <div class="types">
+      <div class="type">
+        <h3>締め取引<span>一般企業</span></h3>
+        <ul>
+          <li>20日締め・末日締めなど、締め日ごとに1か月分をまとめて請求</li>
+          <li>入金は締め単位でまとめて消込</li>
+          <li>複数の得意先を1枚の請求書にまとめる「請求集約」もOK</li>
+        </ul>
+      </div>
+      <div class="type b">
+        <h3>都度取引<span>官公庁・学校など</span></h3>
+        <ul>
+          <li>納品1件〜数件ごとに明細請求書を発行（すぐ出す・後でまとめる、どちらもOK）</li>
+          <li>入金は明細（伝票）単位で消込</li>
+          <li>クラス・先生など、宛名を都度指定できる</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 class="bl">できること</h2>
+    <div class="funcs">
+      <span>受注入力</span><span>売上入力</span><span>納品書一括発行</span><span>コピー機売上CSV取込</span>
+      <span>請求締め処理</span><span>締め解除処理</span><span>明細請求書発行</span><span>入金入力</span>
+      <span>明細入金</span><span>得意先元帳</span><span>月次締め処理</span><span>月次締め解除処理</span>
+      <span>売上・粗利分析</span><span>得意先マスタ</span><span>商品マスタ</span><span>社員マスタ</span>
+      <span>銀行マスタ</span><span>入金方法マスタ</span><span>コピー機マスタ</span><span>単価・掛率マスタ</span>
+      <span>プリンタ設定</span><span>メニュー管理</span><span>自社情報</span><span>Flex Query</span>
+    </div>
+
+    <div class="bottom">
+      <div>
+        <h2>ここが安心！</h2>
+        <ul class="safe">
+          <li><b>消費税もバッチリ</b>　得意先ごとの税区分・端数区分で正しく計算</li>
+          <li><b>締めたら守る</b>　確定した伝票は編集不可。解除は管理者だけ</li>
+          <li><b>同時編集もへっちゃら</b>　複数の端末からの更新の食い違いを防止</li>
+          <li><b>権限でメニュー切替</b>　社員ごとに使える機能を設定</li>
+          <li><b>印刷・PDFもかんたん</b>　納品書・請求書・元帳をA4で出力</li>
+        </ul>
+      </div>
+      <div style="padding-top:13mm">
+        <div class="env">
+          <h3>動作環境</h3>
+          <dl>
+          <div><dt>端末</dt><dd>Windows 11 以降</dd></div>
+          <div><dt>データベース</dt><dd>SQL Server</dd></div>
+          <div><dt>出力</dt><dd>A4プリンタ／PDF</dd></div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="back-foot"><b>OBISAN</b><span>ご利用・操作のご相談はOBISANまで！</span></div>
+</section>
+
+</body>
+</html>

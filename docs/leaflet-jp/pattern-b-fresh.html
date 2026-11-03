@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>販売管理システム リーフレット（さわやか）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4 portrait; margin: 0 }
+  * { box-sizing: border-box; margin: 0; padding: 0 }
+  :root { --sky: #3aa0d8; --mint: #4cc3a6; --ink: #29435a; --soft: #eef8fb; --mintsoft: #e9f8f3; --sun: #ffd36b }
+  body { font-family: "Zen Maru Gothic", sans-serif; color: var(--ink); font-size: 9.5pt; line-height: 1.8; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+  .page { width: 210mm; height: 297mm; overflow: hidden; position: relative; padding: 15mm 16mm; page-break-after: always; break-after: page; background: #fff }
+  .page:last-child { page-break-after: auto; break-after: auto }
+  .deco { position: absolute; pointer-events: none }
+  .z { position: relative }
+
+  /* 表面 */
+  .wave-top { left: 0; top: 0; width: 210mm; height: 128mm }
+  .wave-bottom { left: 0; bottom: 0; width: 210mm; height: 40mm }
+  .bubble { border-radius: 50%; opacity: .5 }
+  .brand { display: inline-flex; align-items: center; gap: 2.5mm; background: #fff; border-radius: 99px; padding: 1.2mm 5mm 1.2mm 1.5mm; font-weight: 700; font-size: 10pt; color: var(--sky); box-shadow: 0 1mm 3mm rgba(41, 67, 90, .12) }
+  .brand i { width: 7mm; height: 7mm; border-radius: 50%; background: linear-gradient(135deg, var(--sky), var(--mint)); display: inline-block }
+  .catch { margin-top: 14mm; color: #fff }
+  .catch .lead { font-size: 12pt; font-weight: 500; letter-spacing: .1em }
+  .catch h1 { font-weight: 900; font-size: 30pt; line-height: 1.4; margin-top: 2mm; letter-spacing: .03em }
+  .catch h1 em { font-style: normal; color: var(--sun) }
+  .shot { margin-top: 12mm; background: #fff; border-radius: 6mm; padding: 3mm; box-shadow: 0 3mm 9mm rgba(41, 67, 90, .22) }
+  .shot img { display: block; width: 100%; border-radius: 4mm }
+  .about { margin-top: 13mm; display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; align-items: center }
+  .about p { font-size: 10pt; line-height: 1.95 }
+  .about p b { color: var(--sky) }
+  .chips { display: grid; gap: 2.5mm }
+  .chip { display: flex; align-items: center; gap: 3mm; background: var(--soft); border-radius: 99px; padding: 1.8mm 4mm 1.8mm 2mm; font-weight: 700; font-size: 10pt }
+  .chip svg { width: 8mm; height: 8mm; flex: none }
+  .chip:nth-child(2) { background: var(--mintsoft) }
+  .front-foot { position: absolute; left: 16mm; right: 16mm; bottom: 13mm; display: flex; justify-content: space-between; align-items: center; color: #fff; font-size: 9pt }
+  .front-foot b { font-size: 13pt; letter-spacing: .1em }
+
+  /* 裏面 */
+  h2 { font-size: 14pt; font-weight: 900; display: flex; align-items: center; gap: 2.5mm; margin-bottom: 3.5mm }
+  h2::before { content: ""; width: 5mm; height: 5mm; border-radius: 50%; background: linear-gradient(135deg, var(--sky), var(--mint)) }
+  .flow { display: flex; align-items: center; justify-content: space-between; background: var(--soft); border-radius: 8mm; padding: 3.5mm 5mm; margin-bottom: 6mm }
+  .step { text-align: center; width: 22mm }
+  .step .c { width: 15mm; height: 15mm; border-radius: 50%; background: #fff; margin: 0 auto 1.5mm; display: grid; place-items: center; box-shadow: 0 .8mm 2mm rgba(41, 67, 90, .1) }
+  .step .c svg { width: 8mm; height: 8mm }
+  .step b { display: block; font-size: 10.5pt }
+  .step span { font-size: 9pt; line-height: 1.4; display: block; color: #4f6a80 }
+  .arrow { color: var(--sky); font-size: 11pt; font-weight: 900 }
+  .types { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin-bottom: 6mm }
+  .type { border-radius: 6mm; padding: 4.5mm 5mm; border: .8mm solid var(--soft) }
+  .type.b { border-color: var(--mintsoft) }
+  .type h3 { font-size: 12pt; font-weight: 900; color: var(--sky); line-height: 1.4 }
+  .type.b h3 { color: #2fa286 }
+  .type .who { font-size: 9pt; color: #4f6a80; margin-bottom: 1.2mm }
+  .type ul { list-style: none }
+  .type li { padding-left: 4.5mm; position: relative; font-size: 9.5pt; line-height: 1.65; margin-bottom: .6mm }
+  .type li::before { content: ""; position: absolute; left: 0; top: 2.1mm; width: 2.2mm; height: 2.2mm; border-radius: 50%; background: var(--sky) }
+  .type.b li::before { background: var(--mint) }
+  .funcs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin-bottom: 6mm }
+  .func { background: var(--soft); border-radius: 4mm; padding: 3mm 3.5mm }
+  .func:nth-child(even) { background: var(--mintsoft) }
+  .func b { display: block; font-size: 10.5pt }
+  .func span { font-size: 9pt; line-height: 1.6; display: block; color: #3d5870 }
+  .bottom { display: grid; grid-template-columns: 1.35fr 1fr; gap: 6mm }
+  .safe { list-style: none }
+  .safe li { display: flex; gap: 2.5mm; font-size: 9.5pt; line-height: 1.65; margin-bottom: 1.2mm }
+  .safe li::before { content: "✓"; flex: none; width: 5mm; height: 5mm; border-radius: 50%; background: var(--mint); color: #fff; font-size: 8pt; display: grid; place-items: center; margin-top: .6mm; font-weight: 900 }
+  .env { background: linear-gradient(135deg, var(--sky), var(--mint)); color: #fff; border-radius: 6mm; padding: 5mm }
+  .env h2 { color: #fff }
+  .env h2::before { background: #fff }
+  .env dl div { display: flex; gap: 3mm; font-size: 9.5pt; padding: 1.2mm 0; border-bottom: .3mm dashed rgba(255, 255, 255, .6) }
+  .env dt { font-weight: 700; width: 25mm; flex: none }
+  .back-foot { position: absolute; left: 16mm; right: 16mm; bottom: 12mm; text-align: center; font-size: 9pt; color: #4f6a80 }
+  .back-foot b { color: var(--sky); font-size: 11pt; margin-right: 3mm }
+</style>
+</head>
+<body>
+
+<!-- 表面 -->
+<section class="page">
+  <svg class="deco wave-top" viewBox="0 0 210 128" preserveAspectRatio="none">
+    <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3aa0d8"/><stop offset="1" stop-color="#4cc3a6"/></linearGradient></defs>
+    <path d="M0 0H210V100C170 128 120 92 70 108C40 118 18 112 0 104Z" fill="url(#g1)"/>
+    <path d="M0 112C30 122 55 112 85 116C120 121 160 126 210 108V118C160 132 120 126 85 124C55 120 30 130 0 120Z" fill="#4cc3a6" opacity=".25"/>
+  </svg>
+  <div class="deco bubble" style="right:-14mm;top:-12mm;width:58mm;height:58mm;background:#fff;opacity:.12"></div>
+  <div class="deco bubble" style="right:30mm;top:24mm;width:12mm;height:12mm;background:#fff;opacity:.25"></div>
+  <div class="deco bubble" style="left:-10mm;top:70mm;width:30mm;height:30mm;background:#fff;opacity:.1"></div>
+  <svg class="deco wave-bottom" viewBox="0 0 210 40" preserveAspectRatio="none">
+    <path d="M0 16C40 4 80 20 120 12C160 4 185 8 210 14V40H0Z" fill="url(#g1)"/>
+  </svg>
+
+  <div class="z">
+    <div class="brand"><i></i>OBISAN 販売管理システム</div>
+    <div class="catch">
+      <div class="lead">毎日の販売業務を、もっと軽やかに。</div>
+      <h1>受注から月次締めまで<br><em>すっきり</em>ひとつながり。</h1>
+    </div>
+    <div class="shot"><img src="images/menu.png" alt="メインメニュー画面"></div>
+
+    <div class="about">
+      <p>受注・売上・請求・入金・元帳・月次締めを、<b>ひとつのシステム</b>でつなぎます。締め日でまとめて請求する企業さまも、納品ごとに請求する官公庁・学校さまも、<b>いつもの流れのまま</b>扱えます。</p>
+      <div class="chips">
+        <div class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#3aa0d8"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>締め請求も、都度請求も</div>
+        <div class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#4cc3a6"/><path d="M7 12.5l3.2 3.2L17 9" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>インボイス制度に対応</div>
+        <div class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#3aa0d8"/><path d="M7 17V13M12 17V9M17 17V6" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>売上と粗利がすぐわかる</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="front-foot"><b>OBISAN</b><span>くわしくは裏面へ →</span></div>
+</section>
+
+<!-- 裏面 -->
+<section class="page">
+  <div class="deco bubble" style="right:-20mm;top:-20mm;width:60mm;height:60mm;background:#e9f8f3;opacity:1"></div>
+  <div class="deco bubble" style="left:-16mm;bottom:-16mm;width:46mm;height:46mm;background:#eef8fb;opacity:1"></div>
+
+  <div class="z">
+    <h2>業務の流れ</h2>
+    <div class="flow">
+      <div class="step"><div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="#3aa0d8" stroke-width="2" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></div><b>受注</b><span>受注入力</span></div>
+      <div class="arrow">›</div>
+      <div class="step"><div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="#4cc3a6" stroke-width="2" stroke-linecap="round"><path d="M3 7h12v10H3zM15 10h4l2 3v4h-6"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg></div><b>売上</b><span>納品書発行</span></div>
+      <div class="arrow">›</div>
+      <div class="step"><div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="#3aa0d8" stroke-width="2" stroke-linecap="round"><path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6"/></svg></div><b>請求</b><span>締め・明細</span></div>
+      <div class="arrow">›</div>
+      <div class="step"><div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="#4cc3a6" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M9 8l3 4 3-4M12 12v5M9 13h6"/></svg></div><b>入金</b><span>入金・消込</span></div>
+      <div class="arrow">›</div>
+      <div class="step"><div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="#3aa0d8" stroke-width="2" stroke-linecap="round"><path d="M4 5h7v15H4zM13 5h7v15h-7"/></svg></div><b>元帳</b><span>残高照会</span></div>
+      <div class="arrow">›</div>
+      <div class="step"><div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="#4cc3a6" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9h16M8 3v4M16 3v4M9 14l2 2 4-4"/></svg></div><b>月次締め</b><span>業績集計</span></div>
+    </div>
+
+    <h2>2つの取引スタイルに対応</h2>
+    <div class="types">
+      <div class="type">
+        <h3>締め取引</h3><div class="who">一般企業さま</div>
+        <ul>
+          <li>20日締め・末日締めなど、締め日ごとに1か月分をまとめて請求書発行</li>
+          <li>入金は締め単位でまとめて消込</li>
+          <li>複数の得意先を1つの請求書にまとめる「請求集約」にも対応</li>
+        </ul>
+      </div>
+      <div class="type b">
+        <h3>都度取引</h3><div class="who">官公庁・学校・都度のお取引先さま</div>
+        <ul>
+          <li>納品1件〜数件ごとに明細請求書を発行（その場で・後でまとめて、どちらも可）</li>
+          <li>入金は明細（伝票）単位で消込</li>
+          <li>クラス・先生など、宛名を都度指定できる</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>主な機能</h2>
+    <div class="funcs">
+      <div class="func"><b>受注・売上</b><span>受注入力・売上入力・納品書一括発行・コピー機売上CSV取込</span></div>
+      <div class="func"><b>請求</b><span>請求締め処理・締め解除処理・明細請求書発行</span></div>
+      <div class="func"><b>入金・元帳</b><span>入金入力・明細入金・得意先元帳</span></div>
+      <div class="func"><b>月次</b><span>月次締め処理・月次締め解除処理</span></div>
+      <div class="func"><b>分析</b><span>担当者別・得意先別・商品別の売上・粗利分析</span></div>
+      <div class="func"><b>マスタ</b><span>得意先・商品・社員・銀行・入金方法・コピー機</span></div>
+      <div class="func"><b>単価・掛率</b><span>得意先と商品の組み合わせごとの単価・掛率</span></div>
+      <div class="func"><b>システム</b><span>プリンタ設定・メニュー管理・自社情報・Flex Query</span></div>
+    </div>
+
+    <div class="bottom">
+      <div>
+        <h2>安心して使える仕組み</h2>
+        <ul class="safe">
+          <li>得意先ごとの税区分・端数区分で、消費税を正しく計算</li>
+          <li>締めで確定した伝票は編集できないよう保護（解除は管理者のみ）</li>
+          <li>複数の端末で同じ伝票を同時に更新しても、食い違いを防止</li>
+          <li>社員ごとの権限レベルで、使えるメニューを切り替え</li>
+          <li>納品書・請求書・元帳はA4で印刷、PDF保存もかんたん</li>
+        </ul>
+      </div>
+      <div class="env">
+        <h2>動作環境</h2>
+        <dl>
+          <div><dt>端末</dt><dd>Windows 11 以降</dd></div>
+          <div><dt>データベース</dt><dd>SQL Server</dd></div>
+          <div><dt>出力</dt><dd>A4プリンタ／PDF</dd></div>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="back-foot"><b>OBISAN</b>販売管理システム　ご利用・操作のご相談はOBISANまで</div>
+</section>
+
+</body>
+</html>
