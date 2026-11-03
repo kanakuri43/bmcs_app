@@ -3,24 +3,32 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
-                 Title="bmcs_app"
+                 Title="bmcs_app - 売上・粗利分析"
                  Height="560" Width="820"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
-        暦月単位の得意先別・商品別売上・粗利を都度集計して表示する（保存しない）。軸はViewModelのKind。
-        年・月を変えると自動で再取得する。
+        暦月単位の担当者別・得意先別・商品別売上・粗利を都度集計して表示する（保存しない）。軸はタブ（ViewModelのSelectedTabIndex）。
+        年・月・タブを変えると自動で再取得する。タブは見出しだけで、下の条件・一覧は全タブ共通。
     -->
     <Grid Margin="16">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" /> <!-- タブ -->
             <RowDefinition Height="Auto" /> <!-- 条件 -->
             <RowDefinition Height="*" />    <!-- 一覧 -->
             <RowDefinition Height="Auto" /> <!-- 合計 -->
             <RowDefinition Height="Auto" /> <!-- StatusBar -->
         </Grid.RowDefinitions>
 
+        <!-- ===== タブ（担当者別・得意先別・商品別） ===== -->
+        <TabControl Grid.Row="0" Margin="0,0,0,12" SelectedIndex="{Binding SelectedTabIndex}">
+            <TabItem Header="担当者別" mah:HeaderedControlHelper.HeaderFontSize="18" />
+            <TabItem Header="得意先別" mah:HeaderedControlHelper.HeaderFontSize="18" />
+            <TabItem Header="商品別" mah:HeaderedControlHelper.HeaderFontSize="18" />
+        </TabControl>
+
         <!-- ===== 条件 ===== -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
             <TextBox Width="60" MaxLength="4" Margin="0,0,16,0"
                      beh:FocusBehavior.IsInitialFocus="True"
                      Text="{Binding YearText, UpdateSourceTrigger=PropertyChanged}" />
@@ -33,7 +41,7 @@
         </StackPanel>
 
         <!-- ===== 一覧 ===== -->
-        <ListView beh:GridViewSortBehavior.IsEnabled="True" beh:GridViewSortBehavior.InitialSortDescendingBy="GrossProfit" x:Name="ResultList" Grid.Row="1" ItemsSource="{Binding Results}">
+        <ListView beh:GridViewSortBehavior.IsEnabled="True" beh:GridViewSortBehavior.InitialSortDescendingBy="GrossProfit" x:Name="ResultList" Grid.Row="2" ItemsSource="{Binding Results}">
             <ListView.View>
                 <GridView>
                     <GridViewColumn beh:GridViewSortBehavior.SortBy="Code" Header="コード" Width="100" DisplayMemberBinding="{Binding Code}" />
@@ -71,7 +79,7 @@
         </ListView>
 
         <!-- ===== 合計 ===== -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,12,0,0">
             <TextBlock Text="売上額 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
             <TextBlock Text="{Binding TotalSalesAmount, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,24,0" />
             <TextBlock Text="原価 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -83,7 +91,7 @@
         </StackPanel>
 
         <!-- ===== StatusBar ===== -->
-        <StatusBar Grid.Row="3">
+        <StatusBar Grid.Row="4">
             <StatusBarItem>
                 <TextBlock Text="{Binding StatusMessage}" />
             </StatusBarItem>

@@ -120,14 +120,8 @@ public partial class MainMenuViewModel(
             case "monthly_release":
                 windowService.Show<MonthlyClosingReleaseWindow, MonthlyClosingReleaseViewModel>();
                 break;
-            case "employee_sales":
-                windowService.Show<EmployeeSalesWindow, EmployeeSalesViewModel>();
-                break;
-            case "customer_sales":
-                windowService.Show<SalesSummaryWindow, SalesSummaryViewModel>(vm => vm.Kind = SalesSummaryKind.Customer);
-                break;
-            case "product_sales":
-                windowService.Show<SalesSummaryWindow, SalesSummaryViewModel>(vm => vm.Kind = SalesSummaryKind.Product);
+            case "sales_analysis":
+                windowService.Show<SalesSummaryWindow, SalesSummaryViewModel>();
                 break;
             case "billing_release":
                 windowService.Show<BillingReleaseWindow, BillingReleaseViewModel>();
