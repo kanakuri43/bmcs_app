@@ -10,7 +10,7 @@ public class MenuServiceTests(DevDatabaseFixture fixture) : IClassFixture<DevDat
     private const string ParentCode = "MNU_MASTER";
 
     [Fact]
-    public async Task メニューを読み込め初期展開の列も取得できる()
+    public async Task メニューを読み込め初期展開の列もエンティティと対応している()
     {
         await using var scope = fixture.Services.CreateAsyncScope();
         var service = scope.ServiceProvider.GetRequiredService<MenuService>();
@@ -27,7 +27,7 @@ public class MenuServiceTests(DevDatabaseFixture fixture) : IClassFixture<DevDat
         var original = await GetAsync(ChildCode);
         try
         {
-            var updated = await UpdateAsync(ChildCode, "更新テスト", original.DisplayOrder, 9, true, original.RowVersion!);
+            var updated = await UpdateAsync(ChildCode, "更新テスト", original.DisplayOrder, 9, original.RowVersion!);
 
             Assert.Equal("更新テスト", updated.MenuName);
             Assert.Equal((byte)9, (await GetAsync(ChildCode)).RequiredPermissionLevel);
@@ -35,24 +35,7 @@ public class MenuServiceTests(DevDatabaseFixture fixture) : IClassFixture<DevDat
         finally
         {
             var current = await GetAsync(ChildCode);
-            await UpdateAsync(ChildCode, original.MenuName, original.DisplayOrder, original.RequiredPermissionLevel, true, current.RowVersion!);
-        }
-    }
-
-    [Fact]
-    public async Task 親の初期展開を更新でき元に戻せる()
-    {
-        var original = await GetAsync(ParentCode);
-        try
-        {
-            await UpdateAsync(ParentCode, original.MenuName, original.DisplayOrder, null, !original.IsDefaultExpanded, original.RowVersion!);
-
-            Assert.Equal(!original.IsDefaultExpanded, (await GetAsync(ParentCode)).IsDefaultExpanded);
-        }
-        finally
-        {
-            var current = await GetAsync(ParentCode);
-            await UpdateAsync(ParentCode, original.MenuName, original.DisplayOrder, null, original.IsDefaultExpanded, current.RowVersion!);
+            await UpdateAsync(ChildCode, original.MenuName, original.DisplayOrder, original.RequiredPermissionLevel, current.RowVersion!);
         }
     }
 
@@ -62,15 +45,15 @@ public class MenuServiceTests(DevDatabaseFixture fixture) : IClassFixture<DevDat
         var original = await GetAsync(ChildCode);
         try
         {
-            await UpdateAsync(ChildCode, original.MenuName, original.DisplayOrder, original.RequiredPermissionLevel, true, original.RowVersion!);
+            await UpdateAsync(ChildCode, original.MenuName, original.DisplayOrder, original.RequiredPermissionLevel, original.RowVersion!);
 
             await Assert.ThrowsAsync<MenuConcurrencyException>(() =>
-                UpdateAsync(ChildCode, original.MenuName, original.DisplayOrder, original.RequiredPermissionLevel, true, original.RowVersion!));
+                UpdateAsync(ChildCode, original.MenuName, original.DisplayOrder, original.RequiredPermissionLevel, original.RowVersion!));
         }
         finally
         {
             var current = await GetAsync(ChildCode);
-            await UpdateAsync(ChildCode, original.MenuName, original.DisplayOrder, original.RequiredPermissionLevel, true, current.RowVersion!);
+            await UpdateAsync(ChildCode, original.MenuName, original.DisplayOrder, original.RequiredPermissionLevel, current.RowVersion!);
         }
     }
 
@@ -86,7 +69,7 @@ public class MenuServiceTests(DevDatabaseFixture fixture) : IClassFixture<DevDat
         var original = await GetAsync(menuCode);
 
         await Assert.ThrowsAsync<MenuValidationException>(() =>
-            UpdateAsync(menuCode, name, order, (byte?)level, true, original.RowVersion!));
+            UpdateAsync(menuCode, name, order, (byte?)level, original.RowVersion!));
     }
 
     private async Task<Domain.Entities.Menu> GetAsync(string menuCode)
@@ -97,10 +80,10 @@ public class MenuServiceTests(DevDatabaseFixture fixture) : IClassFixture<DevDat
     }
 
     private async Task<Domain.Entities.Menu> UpdateAsync(
-        string menuCode, string name, short order, byte? level, bool expanded, byte[] rowVersion)
+        string menuCode, string name, short order, byte? level, byte[] rowVersion)
     {
         await using var scope = fixture.Services.CreateAsyncScope();
         var service = scope.ServiceProvider.GetRequiredService<MenuService>();
-        return await service.UpdateAsync(menuCode, name, order, level, expanded, rowVersion);
+        return await service.UpdateAsync(menuCode, name, order, level, rowVersion);
     }
 }

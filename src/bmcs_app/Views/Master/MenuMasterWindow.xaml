@@ -31,9 +31,7 @@
             <TextBox Text="{Binding DisplayOrderText}" Width="80" HorizontalAlignment="Left" Margin="0,0,0,8" />
             <TextBlock Text="必要権限レベル（機能のみ。1＝一般、9＝管理者専用）" TextWrapping="Wrap" Margin="0,0,0,2" />
             <TextBox Text="{Binding PermissionLevelText}" IsEnabled="{Binding IsChildSelected}"
-                     Width="80" HorizontalAlignment="Left" Margin="0,0,0,8" />
-            <CheckBox Content="初期状態で開く（分類のみ）" IsChecked="{Binding IsDefaultExpanded}"
-                      IsEnabled="{Binding IsParentSelected}" Margin="0,0,0,16" />
+                     Width="80" HorizontalAlignment="Left" Margin="0,0,0,16" />
 
             <StackPanel Orientation="Horizontal">
                 <Button Content="保存" Command="{Binding SaveCommand}" Padding="16,6" Margin="0,0,12,0" />

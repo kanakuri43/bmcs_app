@@ -704,11 +704,11 @@ EF Coreの例外型を漏らさない」と規定している。`BillingClosingS
 ### 14-2. メニュー構成マスタの編集範囲
 
 「メニューマスタ管理」画面（管理者専用、`screen_key="menu_master"`、`MenuMasterWindow`／`MenuMasterViewModel`、
-更新は`MenuService.UpdateAsync`）から編集できるのは、既存項目の**表示名・表示順・必要権限レベル（子のみ）・
-初期展開（親のみ）**だけ。項目の追加・削除、`screen_key`・親子関係の変更は画面から行わず、
+更新は`MenuService.UpdateAsync`）から編集できるのは、既存項目の**表示名・表示順・必要権限レベル（子のみ）**
+だけ。項目の追加・削除、`screen_key`・親子関係の変更は画面から行わず、
 `scripts/`のSQLへ直接記述する運用（`screen_key`は`OpenMenuItemCommand`の`switch`に対応するコードが要るため）。
 更新は`row_version`による楽観的排他で、変更はメインメニューの次回起動時に反映される。
-初期展開はタイル型では使われない（全項目を常時表示するため。列と編集欄は残している）。
+`menus.is_default_expanded`（初期展開）はタイル型では使わないため画面から編集せず、DBの列だけ残している。
 `014`を再適用すると画面での編集内容は`014`の値に戻る。
 実データは`scripts/014_seed_menu_structure.sql`が投入する（開発用テストデータの
 `scripts/seed_dev_data.sql`とは分離。menuは実運用でも使う本物の構成データのため）。
