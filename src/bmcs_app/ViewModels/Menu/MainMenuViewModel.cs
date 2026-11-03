@@ -84,13 +84,12 @@ public partial class MainMenuViewModel(
         var tree = MenuTreeBuilder.Build(menuRows, PermissionLevel);
 
         Categories.Clear();
-        for (var i = 0; i < tree.Count; i++)
+        foreach (var category in tree)
         {
-            var category = tree[i];
             var items = category.Items
-                .Select(item => new MenuItemDisplayItem(item.MenuName, item.ScreenKey, i))
+                .Select(item => new MenuItemDisplayItem(item.MenuName, item.ScreenKey))
                 .ToList();
-            Categories.Add(new MenuCategoryDisplayItem(category.MenuName, i, items, category.IsDefaultExpanded));
+            Categories.Add(new MenuCategoryDisplayItem(category.MenuName, items));
         }
     });
 
@@ -231,9 +230,8 @@ public partial class MainMenuViewModel(
     }
 }
 
-/// <summary>メニューのカテゴリ（親）の表示用。<see cref="ColorIndex"/> は表示順に応じた色分け用インデックス。</summary>
-public sealed record MenuCategoryDisplayItem(
-    string MenuName, int ColorIndex, IReadOnlyList<MenuItemDisplayItem> Items, bool IsExpanded);
+/// <summary>メニューのカテゴリ（親）の表示用。</summary>
+public sealed record MenuCategoryDisplayItem(string MenuName, IReadOnlyList<MenuItemDisplayItem> Items);
 
 /// <summary>メニュー項目（子・リーフ）の表示用。</summary>
-public sealed record MenuItemDisplayItem(string MenuName, string ScreenKey, int ColorIndex);
+public sealed record MenuItemDisplayItem(string MenuName, string ScreenKey);
