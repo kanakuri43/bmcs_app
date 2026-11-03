@@ -8,7 +8,7 @@ namespace bmcs_app.ViewModels.Master;
 
 /// <summary>
 /// メニュー構成マスタ画面（管理者専用、メニュー単位の権限レベル判定）。編集できるのは既存項目の
-/// 表示名・表示順・必要権限レベル（子のみ）・初期展開（親のみ）だけで、項目の追加・削除や
+/// 表示名・表示順・必要権限レベル（子のみ）だけで、項目の追加・削除や
 /// screen_key・親子関係の変更は scripts/ の SQL で行う。
 /// </summary>
 public partial class MenuMasterViewModel(MenuService menuService) : ViewModelBase
@@ -27,13 +27,7 @@ public partial class MenuMasterViewModel(MenuService menuService) : ViewModelBas
     [ObservableProperty]
     public partial string PermissionLevelText { get; set; } = string.Empty;
 
-    [ObservableProperty]
-    public partial bool IsDefaultExpanded { get; set; }
-
-    /// <summary>選択中が分類（親）か。親は初期展開だけ、子は必要権限レベルだけを持つ。</summary>
-    [ObservableProperty]
-    public partial bool IsParentSelected { get; set; }
-
+    /// <summary>選択中が機能（子）か。必要権限レベルは子だけが持つ。</summary>
     [ObservableProperty]
     public partial bool IsChildSelected { get; set; }
 
@@ -42,12 +36,10 @@ public partial class MenuMasterViewModel(MenuService menuService) : ViewModelBas
 
     partial void OnSelectedItemChanged(MenuListItem? value)
     {
-        IsParentSelected = value is { IsParent: true };
         IsChildSelected = value is { IsParent: false };
         MenuName = value?.MenuName ?? string.Empty;
         DisplayOrderText = value?.DisplayOrder.ToString() ?? string.Empty;
         PermissionLevelText = value?.RequiredPermissionLevel?.ToString() ?? string.Empty;
-        IsDefaultExpanded = value?.IsDefaultExpanded ?? false;
     }
 
     /// <summary>画面表示時に全メニューを読み込む（Window の Loaded から呼ばれる）。</summary>
@@ -100,7 +92,7 @@ public partial class MenuMasterViewModel(MenuService menuService) : ViewModelBas
 
         try
         {
-            await menuService.UpdateAsync(selected.MenuCode, MenuName, displayOrder, permissionLevel, IsDefaultExpanded, rowVersion);
+            await menuService.UpdateAsync(selected.MenuCode, MenuName, displayOrder, permissionLevel, rowVersion);
             await ReloadAsync(selected.MenuCode);
             StatusMessage = "保存しました。メインメニューへは次回起動時に反映されます。";
         }
@@ -125,7 +117,6 @@ public sealed record MenuListItem(
     short DisplayOrder,
     byte? RequiredPermissionLevel,
     string? ScreenKey,
-    bool IsDefaultExpanded,
     bool IsParent,
     byte[]? RowVersion)
 {
@@ -133,5 +124,5 @@ public sealed record MenuListItem(
 
     public static MenuListItem From(bmcs_app.Domain.Entities.Menu menu, bool isParent) => new(
         menu.MenuCode, menu.MenuName, menu.DisplayOrder, menu.RequiredPermissionLevel,
-        menu.ScreenKey, menu.IsDefaultExpanded, isParent, menu.RowVersion);
+        menu.ScreenKey, isParent, menu.RowVersion);
 }

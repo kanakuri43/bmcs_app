@@ -9,25 +9,52 @@ namespace bmcs_app.ViewModels.Analysis;
 /// <summary>集計の軸。</summary>
 public enum SalesSummaryKind
 {
+    Employee,
     Customer,
     Product,
 }
 
 /// <summary>
-/// 得意先別・商品別売上・粗利画面（軸は <see cref="Kind"/> で切り替える。<c>WindowService.Show</c> の configure で設定する）。
-/// 年（4桁入力）と月を選ぶと、その暦月の売上を都度集計して表示する（<see cref="SalesSummaryQueryService"/>）。
+/// 売上・粗利分析画面。担当者別・得意先別・商品別をタブ（<see cref="SelectedTabIndex"/>＝<see cref="SalesSummaryKind"/>）で切り替える。
+/// 年（4桁入力）と月を選ぶと、その暦月の売上を都度集計して表示する（<see cref="EmployeeSalesQueryService"/>・<see cref="SalesSummaryQueryService"/>）。
 /// </summary>
-public partial class SalesSummaryViewModel(SalesSummaryQueryService salesSummaryQueryService) : ViewModelBase
+public partial class SalesSummaryViewModel(
+    SalesSummaryQueryService salesSummaryQueryService,
+    EmployeeSalesQueryService employeeSalesQueryService) : ViewModelBase
 {
-    public SalesSummaryKind Kind { get; set; }
+    /// <summary>選択中のタブ（<see cref="SalesSummaryKind"/> の値）。</summary>
+    [ObservableProperty]
+    public partial int SelectedTabIndex { get; set; }
 
-    public string Title => Kind == SalesSummaryKind.Customer ? "得意先別売上・粗利" : "商品別売上・粗利";
+    public SalesSummaryKind Kind => (SalesSummaryKind)SelectedTabIndex;
 
-    public string CodeHeader => Kind == SalesSummaryKind.Customer ? "得意先コード" : "商品コード";
+    public string Title => Kind switch
+    {
+        SalesSummaryKind.Employee => "担当者別売上・粗利",
+        SalesSummaryKind.Customer => "得意先別売上・粗利",
+        _ => "商品別売上・粗利",
+    };
 
-    public string NameHeader => Kind == SalesSummaryKind.Customer ? "得意先名" : "商品名";
+    public string CodeHeader => Kind switch
+    {
+        SalesSummaryKind.Employee => "担当者コード",
+        SalesSummaryKind.Customer => "得意先コード",
+        _ => "商品コード",
+    };
 
-    private string UnitLabel => Kind == SalesSummaryKind.Customer ? "得意先" : "商品";
+    public string NameHeader => Kind switch
+    {
+        SalesSummaryKind.Employee => "担当者名",
+        SalesSummaryKind.Customer => "得意先名",
+        _ => "商品名",
+    };
+
+    private string UnitLabel => Kind switch
+    {
+        SalesSummaryKind.Employee => "名",
+        SalesSummaryKind.Customer => "得意先",
+        _ => "商品",
+    };
 
     [ObservableProperty]
     public partial string YearText { get; set; } = DateTime.Today.Year.ToString();
@@ -75,13 +102,20 @@ public partial class SalesSummaryViewModel(SalesSummaryQueryService salesSummary
         }
     }
 
+    /// <summary>タブを切り替えたら、前のタブの行を消して新しい軸で取り直す。</summary>
+    partial void OnSelectedTabIndexChanged(int value)
+    {
+        Results.Clear();
+        _ = RefreshAsync();
+    }
+
     partial void OnYearTextChanged(string value) => _ = RefreshAsync();
 
     partial void OnSelectedMonthChanged(int value) => _ = RefreshAsync();
 
     private bool _refreshRequested;
 
-    /// <summary>一覧の再取得。実行中に来た要求は終了後に最新の条件で取り直す（<c>EmployeeSalesViewModel</c>と同じ）。</summary>
+    /// <summary>一覧の再取得。実行中に来た要求は終了後に最新の条件で取り直す（<c>MonthlyClosingViewModel</c>と同じ）。</summary>
     private async Task RefreshAsync()
     {
         if (IsBusy)
@@ -111,9 +145,14 @@ public partial class SalesSummaryViewModel(SalesSummaryQueryService salesSummary
 
         try
         {
-            var results = Kind == SalesSummaryKind.Customer
-                ? await salesSummaryQueryService.GetByCustomerAsync(year, SelectedMonth)
-                : await salesSummaryQueryService.GetByProductAsync(year, SelectedMonth);
+            var results = Kind switch
+            {
+                SalesSummaryKind.Employee => (await employeeSalesQueryService.GetByMonthAsync(year, SelectedMonth))
+                    .Select(e => new SalesSummaryItem(e.EmployeeCode ?? string.Empty, e.EmployeeName, e.SalesAmount, e.CostAmount))
+                    .ToList(),
+                SalesSummaryKind.Customer => await salesSummaryQueryService.GetByCustomerAsync(year, SelectedMonth),
+                _ => await salesSummaryQueryService.GetByProductAsync(year, SelectedMonth),
+            };
 
             Results.Clear();
             foreach (var result in results)

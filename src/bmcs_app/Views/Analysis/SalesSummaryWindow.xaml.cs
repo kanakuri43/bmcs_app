@@ -4,7 +4,7 @@ using MahApps.Metro.Controls;
 
 namespace bmcs_app.Views.Analysis;
 
-/// <summary>得意先別・商品別売上・粗利画面。タイトルと列見出しは軸（<see cref="SalesSummaryViewModel.Kind"/>）に合わせて設定する。</summary>
+/// <summary>売上・粗利分析画面（担当者別・得意先別・商品別のタブ）。列見出しは選択中の軸（<see cref="SalesSummaryViewModel.Kind"/>）に合わせて設定する。</summary>
 public partial class SalesSummaryWindow : MetroWindow
 {
     public SalesSummaryWindow()
@@ -15,12 +15,23 @@ public partial class SalesSummaryWindow : MetroWindow
         {
             if (DataContext is SalesSummaryViewModel viewModel)
             {
-                Title = $"bmcs_app - {viewModel.Title}";
-                var columns = ((GridView)ResultList.View).Columns;
-                columns[0].Header = viewModel.CodeHeader;
-                columns[1].Header = viewModel.NameHeader;
+                SetHeaders(viewModel);
+                viewModel.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName == nameof(SalesSummaryViewModel.SelectedTabIndex))
+                    {
+                        SetHeaders(viewModel);
+                    }
+                };
                 await viewModel.LoadCommand.ExecuteAsync(null);
             }
         };
+    }
+
+    private void SetHeaders(SalesSummaryViewModel viewModel)
+    {
+        var columns = ((GridView)ResultList.View).Columns;
+        columns[0].Header = viewModel.CodeHeader;
+        columns[1].Header = viewModel.NameHeader;
     }
 }

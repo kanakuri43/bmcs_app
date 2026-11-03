@@ -191,6 +191,7 @@ ViewModel が `DbContext` を直接触らず、DB アクセスは必ず Applicat
 - **`DbContext` はスレッドセーフではない。** 同一の `DbContext` に対する複数の操作を `Task.WhenAll` で並行実行してはいけない。並行させたい場合はスコープを分ける。
 - **`CancellationToken` を実際に呼び出し元から渡して積極的にキャンセルさせるのは、当面は長時間処理（請求締め・月次締め・帳票の一括発行）にのみ限定する。** 単票の登録・参照でキャンセル導線をUIに設けることはしない（実装量に対して得るものが小さい）。ただし Application 層の非同期メソッドは `CancellationToken cancellationToken = default` を引数に持たせることを既定のシグネチャとする（`SalesService`／`OrderService`等、全サービス）。値を渡さず既定値で呼ぶだけなら追加コストがなく、将来キャンセル導線を追加する際にシグネチャ変更が要らないため。
 - 1秒を超える可能性のある処理は進捗表示を出す。共通の仕組みは `ViewModelBase.RunBusyAsync`（処理中は `IsBusy` が立つ）を使う。
+- **同じ画面のDB操作は `ViewModelBase` のゲートで1つずつ実行する。** `DbContext` はウィンドウ単位で共有されるため、画面内で非同期処理が重なると競合する（`DbContext` はスレッドセーフでない）。`RunBusyAsync` は多重実行を無視し、実行はゲートを通る。処理中表示や多重実行の抑止が要らない照会・検索の入口（コード欄のEnter／Space、商品コードの照会など）は `RunExclusiveAsync` で包み、前の処理が終わるまで待って順番に実行する。ゲートは再入不可なので、`RunBusyAsync`／`RunExclusiveAsync` の中から、これらを経由するコマンドを呼ばない（内部処理は通常のメソッドを呼ぶ）。
 
 ## 9. 楽観的排他制御（rowversion）の適用単位
 
