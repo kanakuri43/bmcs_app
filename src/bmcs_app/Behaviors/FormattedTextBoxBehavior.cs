@@ -51,9 +51,11 @@ public static class FormattedTextBoxBehavior
         textBox.GotFocus -= OnGotFocus;
         textBox.LostFocus -= OnLostFocus;
         textBox.PreviewKeyDown -= OnPreviewKeyDown;
+        textBox.TextChanged -= OnTextChanged;
 
         if (e.NewValue is FormattedTextBoxKind)
         {
+            textBox.TextChanged += OnTextChanged;
             textBox.Loaded += OnLoaded;
             textBox.GotFocus += OnGotFocus;
             textBox.LostFocus += OnLostFocus;
@@ -83,6 +85,20 @@ public static class FormattedTextBoxBehavior
     }
 
     private static void OnLoaded(object sender, RoutedEventArgs e) => Reformat((TextBox)sender);
+
+    /// <summary>
+    /// フォーカスが無い間にソース側から値が書き換わった場合（商品選択で単価が転記されるなど）も整形する。
+    /// そのままだと decimal の小数桁（例: 638.0000）が表示される。入力中（フォーカス内）は触らない。
+    /// 整形後の Text は同じ値なので再入しても変化せず、ループしない。
+    /// </summary>
+    private static void OnTextChanged(object sender, TextChangedEventArgs e)
+    {
+        var textBox = (TextBox)sender;
+        if (!textBox.IsKeyboardFocusWithin)
+        {
+            Reformat(textBox);
+        }
+    }
 
     private static void OnLostFocus(object sender, RoutedEventArgs e)
     {
