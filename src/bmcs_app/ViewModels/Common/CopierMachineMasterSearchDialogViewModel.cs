@@ -10,10 +10,11 @@ namespace bmcs_app.ViewModels.Common;
 /// コピー機マスタ画面向けの機番検索モーダル。
 /// <see cref="BankAccountMasterSearchDialogViewModel"/>と同じく、マスタ全件ロード後にメモリで絞り込む。
 /// </summary>
-public partial class CopierMachineMasterSearchDialogViewModel(CopierMachineService copierMachineService)
+public partial class CopierMachineMasterSearchDialogViewModel(CopierMachineService copierMachineService, CustomerService customerService)
     : DialogViewModelBase<CopierMachine>
 {
     private List<CopierMachine> _allMachines = [];
+    private Dictionary<string, string> _customerNames = [];
 
     public ObservableCollection<CopierMachineSearchItem> Results { get; } = [];
 
@@ -27,6 +28,7 @@ public partial class CopierMachineMasterSearchDialogViewModel(CopierMachineServi
     private Task LoadAsync() => RunBusyAsync(async () =>
     {
         _allMachines = await copierMachineService.GetCopierMachinesAsync();
+        _customerNames = (await customerService.GetCustomersAsync()).ToDictionary(c => c.CustomerCode, c => c.CustomerName);
         ApplyFilter();
     });
 
@@ -41,20 +43,24 @@ public partial class CopierMachineMasterSearchDialogViewModel(CopierMachineServi
 
         var filtered = keywords.Length == 0
             ? _allMachines
-            : _allMachines.Where(m => keywords.All(k => Matches(m, k)));
+            : _allMachines.Where(m => keywords.All(k => Matches(m, CustomerNameOf(m), k)));
 
         Results.Clear();
         foreach (var machine in filtered)
         {
-            Results.Add(CopierMachineSearchItem.FromEntity(machine));
+            Results.Add(CopierMachineSearchItem.FromEntity(machine, CustomerNameOf(machine)));
         }
 
         SelectedIndex = Results.Count > 0 ? 0 : -1;
     }
 
-    private static bool Matches(CopierMachine machine, string keyword) =>
+    private string CustomerNameOf(CopierMachine machine) =>
+        _customerNames.GetValueOrDefault(machine.CustomerCode, "（該当なし）");
+
+    private static bool Matches(CopierMachine machine, string customerName, string keyword) =>
         Contains(machine.MachineNo, keyword)
         || Contains(machine.CustomerCode, keyword)
+        || Contains(customerName, keyword)
         || Contains(machine.Remarks, keyword);
 
     private static bool Contains(string? source, string keyword) =>
