@@ -44,6 +44,35 @@ public partial class App : System.Windows.Application
 {
     private IHost? _host;
 
+    /// <summary>
+    /// メインメニュー表示までの間（ホスト構築・DI解決で数秒かかることがある）に出す起動中表示。
+    /// メインの UI スレッドはその間ふさがり ProgressRing が止まるため、専用の UI スレッドで表示する。
+    /// </summary>
+    private SplashWindow? _splash;
+    private readonly ManualResetEventSlim _splashShown = new();
+
+    public App()
+    {
+        var thread = new Thread(() =>
+        {
+            _splash = new SplashWindow();
+            _splash.Closed += (_, _) => Dispatcher.CurrentDispatcher.InvokeShutdown();
+            _splash.Show();
+            _splashShown.Set();
+            Dispatcher.Run();
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.IsBackground = true;
+        thread.Start();
+    }
+
+    private void CloseSplash()
+    {
+        // 表示前に閉じに来た場合でも取り残さないよう、表示完了を待ってから閉じる。
+        _splashShown.Wait();
+        _splash!.Dispatcher.BeginInvoke(_splash.Close);
+    }
+
     /// <summary>ログの出力先。端末ローカルに置き、DB では管理しない。</summary>
     private static string LogDirectory =>
         Path.Combine(
@@ -80,9 +109,13 @@ public partial class App : System.Windows.Application
             _host.Services
                 .GetRequiredService<WindowService>()
                 .Show<MainMenuWindow, MainMenuViewModel>();
+            CloseSplash();
         }
         catch (Exception ex)
         {
+            // 最前面のスプラッシュでエラーダイアログが隠れないよう先に閉じる。
+            CloseSplash();
+
             // 起動処理中の失敗はロガーが未構成の可能性があるため、直接表示して終了する。
             MessageBox.Show(
                 $"起動に失敗しました。{Environment.NewLine}{Environment.NewLine}{ex.Message}",

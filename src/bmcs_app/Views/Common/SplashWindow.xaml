@@ -1,0 +1,26 @@
+<Window x:Class="bmcs_app.Views.Common.SplashWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+        Width="480" Height="240"
+        WindowStyle="None" ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False" ShowActivated="False" Topmost="True"
+        Background="White" BorderBrush="#FFC0C0C0" BorderThickness="1">
+    <!--
+        起動中表示。App.xaml.cs が専用の UI スレッドで表示する（メインの UI スレッドは
+        ホスト構築中ふさがっており、同じスレッドでは ProgressRing が止まるため）。
+        別スレッドからは Application.Resources（MahApps のテーマ）を参照できないので、
+        色は直接指定する。
+    -->
+    <Grid>
+        <Border Height="8" VerticalAlignment="Top" Background="#FF116AC6" />
+        <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="販売管理システム" HorizontalAlignment="Center"
+                       FontFamily="Yu Gothic UI" FontSize="32" FontWeight="Bold" Foreground="#FF333333" />
+            <mah:ProgressRing Width="40" Height="40" Margin="0,20,0,12" Foreground="#FF116AC6" />
+            <TextBlock Text="起動しています…" HorizontalAlignment="Center"
+                       FontFamily="Yu Gothic UI" FontSize="14" Foreground="#FF777777" />
+        </StackPanel>
+    </Grid>
+</Window>
