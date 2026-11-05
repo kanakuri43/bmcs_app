@@ -4,7 +4,7 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="bmcs_app - 請求締め処理"
-                 Height="640" Width="980"
+                 Height="640" Width="1160"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <!--
@@ -70,11 +70,41 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
                     <GridViewColumn Header="締め年月" Width="80" DisplayMemberBinding="{Binding ClosingYearMonth}" />
-                    <GridViewColumn Header="前回残高" Width="95" DisplayMemberBinding="{Binding PreviousBalance, StringFormat={}{0:N0}}" />
-                    <GridViewColumn Header="入金額" Width="95" DisplayMemberBinding="{Binding ReceiptAmount, StringFormat={}{0:N0}}" />
-                    <GridViewColumn Header="売上額" Width="95" DisplayMemberBinding="{Binding SalesAmount, StringFormat={}{0:N0}}" />
-                    <GridViewColumn Header="消費税" Width="85" DisplayMemberBinding="{Binding TaxAmount, StringFormat={}{0:N0}}" />
-                    <GridViewColumn Header="今回請求額" Width="105" DisplayMemberBinding="{Binding CurrentBillingAmount, StringFormat={}{0:N0}}" />
+                    <GridViewColumn Header="前回残高" Width="95" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding PreviousBalance, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="入金額" Width="95" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ReceiptAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="売上額" Width="95" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding SalesAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="消費税" Width="85" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding TaxAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="今回請求額" Width="105" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding CurrentBillingAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
                     <GridViewColumn Header="確定日時" Width="130" DisplayMemberBinding="{Binding ConfirmedAt, StringFormat={}{0:yyyy/MM/dd HH:mm}}" />
                 </GridView>
             </ListView.View>
