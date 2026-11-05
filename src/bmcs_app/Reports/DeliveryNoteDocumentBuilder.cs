@@ -271,7 +271,7 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
             line.ProductCode,
             productName,
             line.Quantity.ToString("N0"),
-            line.UnitPrice.ToString("N4"),
+            line.UnitPrice.ToString("#,##0.####"),
             line.Amount.ToString("N0"),
             $"{line.TaxRate:N0}%",
             line.LineRemarks,

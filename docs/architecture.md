@@ -305,10 +305,11 @@ MahApps.Metro を導入し、共通スタイルは `src/bmcs_app/Styles/`、書�
   四捨五入＝`MidpointRounding.AwayFromZero`）。** 単価等の内部精度（`decimal(15,4)`等）はそのまま
   保持し、画面表示のみ丸める。
   帳票（納品書・請求書・明細請求書）も数量は同様に0桁（`N0`）に統一する。ただし**単価は帳票側のみ
-  `N4`（小数4桁）を維持する**（画面の単価欄はマスタ入力用の丸め表示、帳票の単価は明細金額の
-  根拠を示す表示という役割の違いによる）。
+  末尾の0を省いた最大小数4桁（`#,##0.####`）で表示する**（1,000.0000→1,000、12.5→12.5。
+  帳票の単価は明細金額の根拠を示す表示のため、小数がある単価は桁を残す）。得意先元帳の単価も同じ書式。
   対象: `DeliveryNoteDocumentBuilder`／`InvoiceDocumentBuilder`／`DetailInvoiceDocumentBuilder`の
-  `Quantity.ToString("N0")`、`UnitPrice.ToString("N4")`。
+  `Quantity.ToString("N0")`、`UnitPrice.ToString("#,##0.####")`、`CustomerLedgerDocumentBuilder`の
+  `UnitPrice?.ToString("#,##0.####")`。
 - 数値として解釈できない入力はそのまま残す（このビヘイビアは書式のみを担当し、値の妥当性検証は
   ViewModel の責務とする。11章）。
 - **入力欄の高さ統一（全画面デザイン統一）**: `TextBox`/`ComboBox`/`DatePicker` の暗黙スタイルに

@@ -59,7 +59,7 @@ public sealed class CustomerLedgerDocumentBuilder(CustomerLedgerReportData data)
             (new("課税区分", 46, ReportColumnAlign.Left),
                 l => l.Entry.TaxCategory is { } c ? (string)EnumDisplay.Convert(c, typeof(string), null!, CultureInfo.CurrentCulture) : null),
             (new("数量", 44, ReportColumnAlign.Right), l => l.Entry.Quantity?.ToString("#,0.###")),
-            (new("単価", 52, ReportColumnAlign.Right), l => l.Entry.UnitPrice?.ToString("N0")),
+            (new("単価", 52, ReportColumnAlign.Right), l => l.Entry.UnitPrice?.ToString("#,##0.####")),
             (new("売上額", 66, ReportColumnAlign.Right), l => l.Entry.DebitAmount?.ToString("N0")),
             (new("請求", 26, ReportColumnAlign.Left), l => l.BilledMark),
         ]);
