@@ -223,8 +223,20 @@
                                     <GridView>
                                         <GridViewColumn Header="伝票No." Width="110" DisplayMemberBinding="{Binding SalesSlipNumber}" />
                                         <GridViewColumn Header="売上日" Width="85" DisplayMemberBinding="{Binding SlipDate, StringFormat={}{0:yyyy/MM/dd}}" />
-                                        <GridViewColumn Header="件数" Width="55" DisplayMemberBinding="{Binding LineCount}" />
-                                        <GridViewColumn Header="残額" Width="90" DisplayMemberBinding="{Binding TotalAmount, StringFormat={}{0:N0}}" />
+                                        <GridViewColumn Header="件数" Width="55" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding LineCount}" HorizontalAlignment="Right" />
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                        <GridViewColumn Header="残額" Width="90" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding TotalAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
                                     </GridView>
                                 </ListView.View>
                             </ListView>
@@ -250,8 +262,20 @@
                                         <GridViewColumn Header="請求書No." Width="110" DisplayMemberBinding="{Binding DetailInvoiceNumber}" />
                                         <GridViewColumn Header="請求日" Width="85" DisplayMemberBinding="{Binding IssueDate, StringFormat={}{0:yyyy/MM/dd}}" />
                                         <GridViewColumn Header="宛名" Width="140" DisplayMemberBinding="{Binding AddresseeName}" />
-                                        <GridViewColumn Header="件数" Width="50" DisplayMemberBinding="{Binding LineCount}" />
-                                        <GridViewColumn Header="金額" Width="90" DisplayMemberBinding="{Binding TotalAmount, StringFormat={}{0:N0}}" />
+                                        <GridViewColumn Header="件数" Width="50" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding LineCount}" HorizontalAlignment="Right" />
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                        <GridViewColumn Header="金額" Width="90" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding TotalAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
                                     </GridView>
                                 </ListView.View>
                             </ListView>
@@ -284,9 +308,27 @@
                             <GridView>
                                 <GridViewColumn Header="商品コード" Width="90" DisplayMemberBinding="{Binding ProductCode}" />
                                 <GridViewColumn Header="商品名" Width="140" DisplayMemberBinding="{Binding ProductName}" />
-                                <GridViewColumn Header="数量" Width="55" DisplayMemberBinding="{Binding Quantity, StringFormat={}{0:N0}}" />
-                                <GridViewColumn Header="単価" Width="70" DisplayMemberBinding="{Binding UnitPrice, StringFormat={}{0:N0}}" />
-                                <GridViewColumn Header="残額" Width="90" DisplayMemberBinding="{Binding RemainingAmount, StringFormat={}{0:N0}}" />
+                                <GridViewColumn Header="数量" Width="55" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Quantity, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="単価" Width="70" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding UnitPrice, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="残額" Width="90" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding RemainingAmount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                             </GridView>
                         </ListView.View>
                     </ListView>
@@ -300,9 +342,27 @@
                             <GridView>
                                 <GridViewColumn Header="商品コード" Width="90" DisplayMemberBinding="{Binding ProductCode}" />
                                 <GridViewColumn Header="商品名" Width="140" DisplayMemberBinding="{Binding ProductName}" />
-                                <GridViewColumn Header="数量" Width="55" DisplayMemberBinding="{Binding Quantity, StringFormat={}{0:N0}}" />
-                                <GridViewColumn Header="単価" Width="70" DisplayMemberBinding="{Binding UnitPrice, StringFormat={}{0:N0}}" />
-                                <GridViewColumn Header="金額（税込）" Width="95" DisplayMemberBinding="{Binding Amount, StringFormat={}{0:N0}}" />
+                                <GridViewColumn Header="数量" Width="55" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Quantity, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="単価" Width="70" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding UnitPrice, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="金額（税込）" Width="95" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Amount, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                             </GridView>
                         </ListView.View>
                     </ListView>
