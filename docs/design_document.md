@@ -434,7 +434,8 @@ current_billing_amount = previous_balance - receipt_amount + sales_amount + tax_
 と同型。プレビューが無い分、何も見えない状態での即DB書き込みを避ける）。
 
 一覧は拡張選択（`SelectionMode="Extended"`、Ctrl/Shiftクリック。チェックボックス列は持たない）
-で複数行を選べる。選択した行はまとめて1つの`FixedDocument`に連結して
+で複数行を選べる。条件行の「すべて選択」「選択解除」ボタンで全行の選択・解除もできる
+（`ListView.SelectAll()`／`UnselectAll()`をコードビハインドから呼ぶ。選択状態はView→VM一方向同期のため）。選択した行はまとめて1つの`FixedDocument`に連結して
 1回のプレビューダイアログで印刷でき、これが請求書の再発行手段になる
 （`PagedReportDocumentBuilder.BuildInto`、`BillingClosingViewModel.PrintCommand`）。
 F11／ボタン／行のダブルクリック・Enter（`RowActivationBehavior`）のいずれからも「選択中の

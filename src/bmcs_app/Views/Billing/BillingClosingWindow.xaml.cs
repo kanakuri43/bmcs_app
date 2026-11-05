@@ -1,3 +1,4 @@
+using System.Windows;
 using bmcs_app.ViewModels.Billing;
 using MahApps.Metro.Controls;
 
@@ -17,5 +18,18 @@ public partial class BillingClosingWindow : MetroWindow
                 await viewModel.LoadCommand.ExecuteAsync(null);
             }
         };
+    }
+
+    // フォーカスを一覧へ戻す（非アクティブな選択表示は薄いグレーになり、選択されたか分かりにくいため）。
+    private void SelectAll_Click(object sender, RoutedEventArgs e)
+    {
+        ResultsList.SelectAll();
+        ResultsList.Focus();
+    }
+
+    private void ClearSelection_Click(object sender, RoutedEventArgs e)
+    {
+        ResultsList.UnselectAll();
+        ResultsList.Focus();
     }
 }

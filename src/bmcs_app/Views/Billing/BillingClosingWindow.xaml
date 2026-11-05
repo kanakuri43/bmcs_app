@@ -45,10 +45,14 @@
                       ItemsSource="{Binding BillingDates}"
                       SelectedItem="{Binding ClosingDate}"
                       ItemStringFormat="yyyy/MM/dd" />
+
+            <!-- 印刷対象の一括選択。選択状態はView→VM一方向同期のため、ListViewを直接操作する。 -->
+            <Button DockPanel.Dock="Left" Content="すべて選択" Click="SelectAll_Click" Padding="12,6" Margin="16,0,0,0" />
+            <Button DockPanel.Dock="Left" Content="選択解除" Click="ClearSelection_Click" Padding="12,6" Margin="8,0,0,0" />
         </DockPanel>
 
         <!-- ===== 一覧 ===== -->
-        <ListView Grid.Row="1"
+        <ListView x:Name="ResultsList" Grid.Row="1"
                   ItemsSource="{Binding Results}"
                   SelectionMode="Extended"
                   beh:MultiSelectionBehavior.SelectedItems="{Binding SelectedResults}"
