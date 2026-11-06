@@ -209,6 +209,8 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<CustomerProductPriceMasterWindow>();
         builder.Services.AddScoped<CustomerProductPriceMasterViewModel>();
+        builder.Services.AddScoped<ProductSupplierCostMasterWindow>();
+        builder.Services.AddScoped<ProductSupplierCostMasterViewModel>();
 
 
         builder.Services.AddScoped<DepositMethodMasterWindow>();

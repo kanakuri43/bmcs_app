@@ -165,6 +165,9 @@ public partial class MainMenuViewModel(
             case "copier_machine_master":
                 windowService.Show<CopierMachineMasterWindow, CopierMachineMasterViewModel>();
                 break;
+            case "product_supplier_cost_master":
+                windowService.Show<ProductSupplierCostMasterWindow, ProductSupplierCostMasterViewModel>();
+                break;
             case "customer_product_price_master":
                 windowService.Show<CustomerProductPriceMasterWindow, CustomerProductPriceMasterViewModel>();
                 break;

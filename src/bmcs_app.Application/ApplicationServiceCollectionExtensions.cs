@@ -54,6 +54,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<DepositMethodService>();
         services.AddScoped<CopierMachineService>();
         services.AddScoped<CustomerProductPriceService>();
+        services.AddScoped<ProductSupplierCostService>();
         services.AddScoped<MenuService>();
         services.AddScoped<TaxRateService>();
         services.AddScoped<QueryRunnerService>();
