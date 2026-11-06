@@ -32,8 +32,12 @@ public partial class OrderEntryViewModel(
     OrderQueryService orderQueryService,
     OrderStatusService orderStatusService,
     WindowService windowService,
-    UnitPriceService unitPriceService) : ViewModelBase
+    UnitPriceService unitPriceService,
+    SupplierService supplierService,
+    ProductSupplierCostService productSupplierCostService) : ViewModelBase
 {
+    private readonly SlipLineSupplierHelper _supplierHelper = new(supplierService, productSupplierCostService, windowService);
+
     private Customer? _customer;
     private IReadOnlyList<TaxRateMaster> _taxRateMasters = [];
 
@@ -392,6 +396,8 @@ public partial class OrderEntryViewModel(
         var line = new SlipLineViewModel(
             onOpenProductLookup: line => RunExclusiveAsync(() => OnOpenProductLookupAsync(line)),
             onLookupProductByCode: line => RunExclusiveAsync(() => OnLookupProductByCodeAsync(line)),
+            onOpenSupplierLookup: line => RunExclusiveAsync(() => _supplierHelper.OpenLookupAsync(line)),
+            onLookupSupplierByCode: line => RunExclusiveAsync(() => OnLookupSupplierByCodeAsync(line)),
             onDelete: OnDeleteLine)
         {
             IsSlipTypeVisible = false, // order_slip に伝票区分の概念がないため
@@ -491,7 +497,6 @@ public partial class OrderEntryViewModel(
             product.Specification,
             product.UnitName,
             unitPriceResolver.Resolve(product),
-            product.StandardCostPrice,
             product.TaxCategory,
             ProductSelectionSource.Master);
 
@@ -505,7 +510,7 @@ public partial class OrderEntryViewModel(
     /// 商品検索モーダルの選択結果（最大6件）を行へ展開する。1件目は呼び出した行、
     /// 残りは後続の空行を埋め、足りなければ直後に挿入する。
     /// </summary>
-    private Task ApplySelectionsAsync(SlipLineViewModel invokingLine, IReadOnlyList<ProductSelection> selections)
+    private async Task ApplySelectionsAsync(SlipLineViewModel invokingLine, IReadOnlyList<ProductSelection> selections)
     {
         var orderDate = ParseOrderDate();
         var roundingType = _customer?.RoundingType ?? RoundingType.Floor;
@@ -538,11 +543,13 @@ public partial class OrderEntryViewModel(
             line.Specification = selection.Specification;
             line.UnitName = selection.UnitName;
             line.UnitPrice = selection.UnitPrice;
-            line.CostPrice = selection.CostPrice;
             line.TaxCategory = selection.TaxCategory;
             line.TaxRate = taxRate;
             line.RoundingType = roundingType;
             line.RaiseAmountChanged();
+
+            // 仕入先は商品の主仕入先に戻し、原価はその仕入先の原価（なければ標準原価）にする。
+            await _supplierHelper.ApplyDefaultAsync(line);
 
             if (line.Quantity == 0)
             {
@@ -553,8 +560,29 @@ public partial class OrderEntryViewModel(
         EnsureTrailingBlankLine();
         RenumberLines();
         invokingLine.RequestMoveToQuantity();
+    }
 
-        return Task.CompletedTask;
+    /// <summary>仕入先欄で Enter を押したとき、入力した仕入先コードを確定して原価を引き直す（空欄は標準原価）。</summary>
+    private async Task OnLookupSupplierByCodeAsync(SlipLineViewModel line)
+    {
+        var error = await _supplierHelper.ConfirmAsync(line);
+        StatusMessage = error ?? string.Empty;
+    }
+
+    /// <summary>保存前に、Enterで確定していない仕入先コードを全行確定する。見つからない行があれば <c>false</c>。</summary>
+    private async Task<bool> EnsureLineSuppliersConfirmedAsync(IEnumerable<SlipLineViewModel> lines)
+    {
+        foreach (var line in lines)
+        {
+            var error = await _supplierHelper.ConfirmAsync(line);
+            if (error is not null)
+            {
+                StatusMessage = $"{line.LineNumber}行目: {error}";
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void OnDeleteLine(SlipLineViewModel line)
@@ -680,7 +708,7 @@ public partial class OrderEntryViewModel(
             line.UnitName = source.UnitName;
             line.Quantity = source.OrderQuantity;
             line.UnitPrice = source.UnitPrice;
-            line.CostPrice = source.CostPrice;
+            await _supplierHelper.RestoreAsync(line, source.SupplierCode, source.CostPrice);
             line.TaxCategory = source.TaxCategory;
             line.TaxRate = taxRate;
             line.RoundingType = customer.RoundingType;
@@ -808,7 +836,7 @@ public partial class OrderEntryViewModel(
                 line.UnitName = source.UnitName;
                 line.Quantity = source.OrderQuantity;
                 line.UnitPrice = source.UnitPrice;
-                line.CostPrice = source.CostPrice;
+                await _supplierHelper.RestoreAsync(line, source.SupplierCode, source.CostPrice);
                 line.TaxCategory = source.TaxCategory;
                 line.TaxRate = source.TaxRate;
                 line.RoundingType = customer.RoundingType;
@@ -858,6 +886,11 @@ public partial class OrderEntryViewModel(
         if (!await EnsureEmployeeConfirmedAsync())
         {
             RequestFocus("EmployeeCode");
+            return;
+        }
+
+        if (!await EnsureLineSuppliersConfirmedAsync(nonBlankLines))
+        {
             return;
         }
 
@@ -964,6 +997,7 @@ public partial class OrderEntryViewModel(
         UnitPrice = line.UnitPrice,
         Amount = line.Amount,
         CostPrice = line.CostPrice,
+        SupplierCode = line.ConfirmedSupplierCode,
         TaxCategory = line.TaxCategory,
         TaxRate = line.TaxRate,
         AllocatedQuantity = 0m,

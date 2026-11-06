@@ -179,6 +179,46 @@ public class SalesServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
     }
 
     [Fact]
+    public async Task 仕入先コードは保存され訂正で変更も解除もできる()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, salesService, _) = Resolve(scope);
+        const string supplierCode = "__TSUP01";
+        var now = DateTime.Now;
+        dbContext.Suppliers.Add(new Supplier
+        {
+            SupplierCode = supplierCode, SupplierName = "テスト仕入先",
+            CreatedBy = "TEST", CreatedAt = now, UpdatedBy = "TEST", UpdatedAt = now,
+        });
+        await dbContext.SaveChangesAsync();
+
+        var line = NewSalesLine(quantity: 2m);
+        line.SupplierCode = supplierCode;
+        line.CostPrice = 650m;
+        string? salesSlipNumber = null;
+        try
+        {
+            salesSlipNumber = await salesService.CreateAsync([line], RoundingType.Floor);
+            var saved = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == salesSlipNumber);
+            Assert.Equal(supplierCode, saved.SupplierCode);
+            Assert.Equal(650m, saved.CostPrice);
+
+            // 訂正で仕入先を外し、原価を標準原価へ戻す。
+            var cleared = NewSalesLine(quantity: 2m);
+            cleared.LineNumber = saved.LineNumber;
+            await salesService.UpdateAsync(salesSlipNumber, [cleared], RoundingType.Floor, [saved.LineNumber]);
+            var after = await dbContext.Sales.AsNoTracking().SingleAsync(s => s.SalesSlipNumber == salesSlipNumber);
+            Assert.Null(after.SupplierCode);
+            Assert.Equal(700m, after.CostPrice);
+        }
+        finally
+        {
+            await CleanupAsync(dbContext, salesSlipNumber, orderSlipNumber: null);
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.suppliers WHERE supplier_code = {supplierCode}");
+        }
+    }
+
+    [Fact]
     public async Task 担当者は全行に複写して保存され訂正で変更も解除もできる()
     {
         await using var scope = fixture.Services.CreateAsyncScope();

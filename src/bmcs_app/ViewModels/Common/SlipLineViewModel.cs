@@ -13,6 +13,8 @@ public partial class SlipLineViewModel : ObservableObject
 {
     private readonly Func<SlipLineViewModel, Task> _onOpenProductLookup;
     private readonly Func<SlipLineViewModel, Task> _onLookupProductByCode;
+    private readonly Func<SlipLineViewModel, Task> _onOpenSupplierLookup;
+    private readonly Func<SlipLineViewModel, Task> _onLookupSupplierByCode;
     private readonly Action<SlipLineViewModel> _onDelete;
 
     /// <summary>商品確定後に数量欄へフォーカスを移動するよう要求するイベント（View コードビハインドがハンドル）。</summary>
@@ -21,10 +23,14 @@ public partial class SlipLineViewModel : ObservableObject
     public SlipLineViewModel(
         Func<SlipLineViewModel, Task> onOpenProductLookup,
         Func<SlipLineViewModel, Task> onLookupProductByCode,
+        Func<SlipLineViewModel, Task> onOpenSupplierLookup,
+        Func<SlipLineViewModel, Task> onLookupSupplierByCode,
         Action<SlipLineViewModel> onDelete)
     {
         _onOpenProductLookup = onOpenProductLookup;
         _onLookupProductByCode = onLookupProductByCode;
+        _onOpenSupplierLookup = onOpenSupplierLookup;
+        _onLookupSupplierByCode = onLookupSupplierByCode;
         _onDelete = onDelete;
     }
 
@@ -128,9 +134,35 @@ public partial class SlipLineViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(Amount))]
     public partial decimal UnitPrice { get; set; }
 
-    /// <summary>粗利計算用。商品マスタの標準原価を転記する（表示のみ、上書き不可）。</summary>
+    /// <summary>
+    /// 粗利計算用。仕入先の原価（なければ商品マスタの標準原価）を転記する（表示のみ、上書き不可）。
+    /// 仕入先を変えると、その仕入先の原価に引き直される。
+    /// </summary>
     [ObservableProperty]
     public partial decimal CostPrice { get; set; }
+
+    /// <summary>仕入先欄の入力文字。Enter（または保存時）に確定するまでは <see cref="ConfirmedSupplierCode"/> と異なりうる。</summary>
+    [ObservableProperty]
+    public partial string SupplierCode { get; set; } = string.Empty;
+
+    /// <summary>確定済みの仕入先の名称（ツールチップ用）。</summary>
+    [ObservableProperty]
+    public partial string SupplierName { get; set; } = string.Empty;
+
+    /// <summary>確定済みの仕入先コード。<c>null</c> は仕入先なし。保存・原価の転記はこの値を使う。</summary>
+    public string? ConfirmedSupplierCode { get; private set; }
+
+    /// <summary>仕入先欄の入力文字が確定済みのコードと一致している（Enter または保存での確定が不要）。</summary>
+    public bool IsSupplierConfirmed => SupplierCode.Trim() == (ConfirmedSupplierCode ?? string.Empty);
+
+    /// <summary>仕入先と原価をまとめて確定する（商品選択・仕入先の変更・保存済み明細の読込で使う）。</summary>
+    public void ApplySupplier(string? supplierCode, string? supplierName, decimal costPrice)
+    {
+        ConfirmedSupplierCode = supplierCode;
+        SupplierCode = supplierCode ?? string.Empty;
+        SupplierName = supplierName ?? string.Empty;
+        CostPrice = costPrice;
+    }
 
     [ObservableProperty]
     public partial TaxCategory TaxCategory { get; set; }
@@ -167,6 +199,12 @@ public partial class SlipLineViewModel : ObservableObject
 
     [RelayCommand]
     private Task LookupProductByCodeAsync() => _onLookupProductByCode(this);
+
+    [RelayCommand]
+    private Task OpenSupplierLookupAsync() => _onOpenSupplierLookup(this);
+
+    [RelayCommand]
+    private Task LookupSupplierByCodeAsync() => _onLookupSupplierByCode(this);
 
     [RelayCommand]
     private void Delete() => _onDelete(this);

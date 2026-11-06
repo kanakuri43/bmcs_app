@@ -168,7 +168,6 @@ public partial class ProductSearchDialogViewModel(
             searchItem.Specification,
             searchItem.UnitName,
             searchItem.UnitPrice,
-            searchItem.CostPrice,
             searchItem.TaxCategory,
             ProductSelectionSource.Master));
     }
@@ -182,17 +181,12 @@ public partial class ProductSearchDialogViewModel(
             return;
         }
 
-        // 原価は履歴軸でも商品マスタの標準原価を転記する（暫定。docs/database-schema.md 参照）。
-        // 過去の売上行が保持する原価は当時のスナップショットであり、粗利計算には現在の標準原価を使う方針のため。
-        var costPrice = _allProducts.FirstOrDefault(p => p.ProductCode == searchItem.ProductCode)?.StandardCostPrice ?? 0m;
-
         AddToBasket(new ProductSelection(
             searchItem.ProductCode,
             searchItem.ProductName,
             searchItem.Specification,
             searchItem.UnitName,
             searchItem.UnitPrice,
-            costPrice,
             searchItem.TaxCategory,
             ProductSelectionSource.History));
     }

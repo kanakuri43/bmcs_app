@@ -19,6 +19,57 @@ public class ProductSupplierCostService(
     private const decimal MaxCostPrice = 99_999_999_999.9999m;
 
     /// <summary>
+    /// 伝票明細で商品を選んだときの仕入先と原価の初期値。仕入先は商品の主仕入先（なければ <c>null</c>）で、
+    /// 原価はその仕入先の原価（有効な行がなければ商品マスタの標準原価）。
+    /// </summary>
+    public async Task<(string? SupplierCode, decimal CostPrice)> ResolveDefaultAsync(
+        string productCode, CancellationToken cancellationToken = default)
+    {
+        var product = await dbContext.Products
+            .AsNoTracking()
+            .Where(p => p.ProductCode == productCode)
+            .Select(p => new { p.MainSupplierCode, p.StandardCostPrice })
+            .SingleOrDefaultAsync(cancellationToken)
+            ?? throw new ProductSupplierCostValidationException($"商品コード「{productCode}」は見つかりません。");
+
+        var costPrice = await ResolveAsync(productCode, product.MainSupplierCode, product.StandardCostPrice, cancellationToken);
+        return (product.MainSupplierCode, costPrice);
+    }
+
+    /// <summary>
+    /// 指定した仕入先の原価。<paramref name="supplierCode"/> が <c>null</c>、またはその仕入先の有効な原価行がなければ、
+    /// 商品マスタの標準原価。
+    /// </summary>
+    public async Task<decimal> ResolveCostAsync(
+        string productCode, string? supplierCode, CancellationToken cancellationToken = default)
+    {
+        var standardCost = await dbContext.Products
+            .AsNoTracking()
+            .Where(p => p.ProductCode == productCode)
+            .Select(p => (decimal?)p.StandardCostPrice)
+            .SingleOrDefaultAsync(cancellationToken)
+            ?? throw new ProductSupplierCostValidationException($"商品コード「{productCode}」は見つかりません。");
+
+        return await ResolveAsync(productCode, supplierCode, standardCost, cancellationToken);
+    }
+
+    private async Task<decimal> ResolveAsync(
+        string productCode, string? supplierCode, decimal standardCost, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(supplierCode))
+        {
+            return standardCost;
+        }
+
+        var supplierCost = await dbContext.ProductSupplierCosts
+            .AsNoTracking()
+            .Where(c => c.ProductCode == productCode && c.SupplierCode == supplierCode && !c.IsDeleted)
+            .Select(c => (decimal?)c.CostPrice)
+            .SingleOrDefaultAsync(cancellationToken);
+        return supplierCost ?? standardCost;
+    }
+
+    /// <summary>
     /// 有効な商品の全件に、仕入先の原価を付けて返す。無効化済みの行の原価は null（未登録扱い）で、
     /// RowVersion だけ持たせる（登録時の競合検出と、無効化済みの行の復活に使う）。
     /// </summary>

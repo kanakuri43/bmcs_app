@@ -50,6 +50,52 @@ public class OrderServiceCorrectionTests(DevDatabaseFixture fixture) : IClassFix
     }
 
     [Fact]
+    public async Task 仕入先コードの変更と解除が反映される()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var (dbContext, service) = Resolve(scope);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        // 開発DBの実マスタに依存しないよう、フィクスチャが保証する CUS001／PRD001 を使う。
+        static OrderSlip FixtureLine(string orderSlipNumber)
+        {
+            var line = NewLine(orderSlipNumber, orderQuantity: 10m, unitPrice: 1000m);
+            line.CustomerCode = "CUS001";
+            line.ProductCode = "PRD001";
+            return line;
+        }
+
+        try
+        {
+            const string orderSlipNumber = "__TESTORDCORR_SUP";
+            var now = DateTime.Now;
+            dbContext.Suppliers.Add(new Supplier
+            {
+                SupplierCode = "__TSUP01", SupplierName = "テスト仕入先",
+                CreatedBy = "TEST", CreatedAt = now, UpdatedBy = "TEST", UpdatedAt = now,
+            });
+            await dbContext.SaveChangesAsync();
+            await InsertLineAsync(dbContext, FixtureLine(orderSlipNumber));
+            Assert.Null((await ReloadAsync(dbContext, orderSlipNumber, 1)).SupplierCode);
+
+            var withSupplier = FixtureLine(orderSlipNumber);
+            withSupplier.SupplierCode = "__TSUP01";
+            withSupplier.CostPrice = 650m;
+            await service.UpdateAsync(orderSlipNumber, [withSupplier], loadedLineNumbers: [1]);
+            var persisted = await ReloadAsync(dbContext, orderSlipNumber, 1);
+            Assert.Equal("__TSUP01", persisted.SupplierCode);
+            Assert.Equal(650m, persisted.CostPrice);
+
+            var cleared = FixtureLine(orderSlipNumber);
+            await service.UpdateAsync(orderSlipNumber, [cleared], loadedLineNumbers: [1]);
+            Assert.Null((await ReloadAsync(dbContext, orderSlipNumber, 1)).SupplierCode);
+        }
+        finally
+        {
+            await transaction.RollbackAsync();
+        }
+    }
+
+    [Fact]
     public async Task 行追加がMax行番号1増しで採番される()
     {
         await using var scope = fixture.Services.CreateAsyncScope();

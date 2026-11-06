@@ -129,6 +129,50 @@ public class ProductSupplierCostServiceTests(DevDatabaseFixture fixture) : IClas
         Assert.Equal(150m, after.Single(s => s.ProductCode == ReferenceProduct).CostPrice);
     });
 
+    [Fact]
+    public Task 仕入先の有効な原価があればそれを_なければ標準原価を解決する() => RunAsync(async sp =>
+    {
+        var service = sp.GetRequiredService<ProductSupplierCostService>();
+        var dbContext = sp.GetRequiredService<BmcsDbContext>();
+        var standard = (await dbContext.Products.AsNoTracking().SingleAsync(p => p.ProductCode == ReferenceProduct)).StandardCostPrice;
+
+        // 仕入先なし・原価行なしは標準原価。
+        Assert.Equal(standard, await service.ResolveCostAsync(ReferenceProduct, null));
+        Assert.Equal(standard, await service.ResolveCostAsync(ReferenceProduct, SupplierCode));
+
+        await service.SaveSettingsAsync(SupplierCode, [new ProductSupplierCostChange(ReferenceProduct, 123.5m, null)]);
+        Assert.Equal(123.5m, await service.ResolveCostAsync(ReferenceProduct, SupplierCode));
+        Assert.Equal(standard, await service.ResolveCostAsync(ReferenceProduct, null)); // 仕入先なしは標準原価のまま
+
+        // 原価を空欄にして無効化すると標準原価に戻る。
+        var loaded = await GetAsync(service, ReferenceProduct);
+        await service.SaveSettingsAsync(SupplierCode, [new ProductSupplierCostChange(ReferenceProduct, null, loaded.RowVersion)]);
+        Assert.Equal(standard, await service.ResolveCostAsync(ReferenceProduct, SupplierCode));
+
+        await Assert.ThrowsAsync<ProductSupplierCostValidationException>(() => service.ResolveCostAsync("__NOPRD", null));
+    });
+
+    [Fact]
+    public Task 初期値は主仕入先とその原価_主仕入先なしは仕入先なしの標準原価() => RunAsync(async sp =>
+    {
+        var service = sp.GetRequiredService<ProductSupplierCostService>();
+        var dbContext = sp.GetRequiredService<BmcsDbContext>();
+        var product = await dbContext.Products.SingleAsync(p => p.ProductCode == ReferenceProduct);
+        var standard = product.StandardCostPrice;
+
+        product.MainSupplierCode = null;
+        await dbContext.SaveChangesAsync();
+        Assert.Equal((null, standard), await service.ResolveDefaultAsync(ReferenceProduct));
+
+        // 主仕入先に原価行がなければ、仕入先は主仕入先のまま原価は標準原価。
+        product.MainSupplierCode = SupplierCode;
+        await dbContext.SaveChangesAsync();
+        Assert.Equal((SupplierCode, standard), await service.ResolveDefaultAsync(ReferenceProduct));
+
+        await service.SaveSettingsAsync(SupplierCode, [new ProductSupplierCostChange(ReferenceProduct, 99m, null)]);
+        Assert.Equal((SupplierCode, 99m), await service.ResolveDefaultAsync(ReferenceProduct));
+    });
+
     private static async Task<ProductSupplierCostSetting> GetAsync(ProductSupplierCostService service, string productCode)
         => (await service.GetSettingsAsync(SupplierCode)).Single(s => s.ProductCode == productCode);
 

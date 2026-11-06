@@ -29,6 +29,9 @@ public class OrderSlipConfiguration : IEntityTypeConfiguration<OrderSlip>
         builder.Property(e => e.UnitPrice).HasPrecision(15, 4);
         builder.Property(e => e.Amount).HasPrecision(15, 2);
         builder.Property(e => e.CostPrice).HasPrecision(15, 4);
+        builder.Property(e => e.SupplierCode).HasMaxLength(10).IsUnicode(false);
+        builder.HasOne<Supplier>().WithMany()
+            .HasForeignKey(e => e.SupplierCode).OnDelete(DeleteBehavior.NoAction);
         builder.Property(e => e.TaxRate).HasPrecision(5, 2);
         builder.Property(e => e.AllocatedQuantity).HasPrecision(13, 3);
         builder.Property(e => e.SalesConfirmedQuantity).HasPrecision(13, 3);

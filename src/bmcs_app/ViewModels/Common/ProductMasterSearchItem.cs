@@ -11,7 +11,6 @@ public sealed record ProductMasterSearchItem(
     string? Specification,
     string? UnitName,
     decimal UnitPrice,
-    decimal CostPrice,
     TaxCategory TaxCategory,
     string TaxCategoryDisplay)
 {
@@ -23,7 +22,6 @@ public sealed record ProductMasterSearchItem(
         product.Specification,
         product.UnitName,
         unitPrice,
-        product.StandardCostPrice,
         product.TaxCategory,
         TaxCategoryDisplayOf(product.TaxCategory));
 
