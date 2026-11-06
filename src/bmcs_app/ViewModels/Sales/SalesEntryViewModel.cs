@@ -42,7 +42,7 @@ public partial class SalesEntryViewModel(
     SupplierService supplierService,
     ProductSupplierCostService productSupplierCostService) : ViewModelBase
 {
-    private readonly SlipLineSupplierHelper _supplierHelper = new(supplierService, productSupplierCostService, windowService);
+    private readonly SlipLineSupplierHelper _supplierHelper = new(supplierService, productSupplierCostService);
 
     private Customer? _customer;
     private IReadOnlyList<TaxRateMaster> _taxRateMasters = [];
@@ -472,8 +472,6 @@ public partial class SalesEntryViewModel(
         var line = new SlipLineViewModel(
             onOpenProductLookup: line => RunExclusiveAsync(() => OnOpenProductLookupAsync(line)),
             onLookupProductByCode: line => RunExclusiveAsync(() => OnLookupProductByCodeAsync(line)),
-            onOpenSupplierLookup: line => RunExclusiveAsync(() => _supplierHelper.OpenLookupAsync(line)),
-            onLookupSupplierByCode: line => RunExclusiveAsync(() => OnLookupSupplierByCodeAsync(line)),
             onDelete: OnDeleteLine);
 
         if (_customer is not null)
@@ -565,12 +563,17 @@ public partial class SalesEntryViewModel(
         }
 
         var unitPriceResolver = await unitPriceService.CreateResolverAsync(_customer, ParseSlipDate());
+        // 検索モーダルを通らない直接入力は、商品の主仕入先とその原価（なければ標準原価）にする。
+        var (supplierCode, supplierName, costPrice) = await _supplierHelper.ResolveDefaultAsync(product.ProductCode);
         var selection = new ProductSelection(
             product.ProductCode,
             product.ProductName,
             product.Specification,
             product.UnitName,
             unitPriceResolver.Resolve(product),
+            supplierCode,
+            supplierName,
+            costPrice,
             product.TaxCategory,
             ProductSelectionSource.Master);
 
@@ -582,7 +585,7 @@ public partial class SalesEntryViewModel(
     /// 商品検索モーダルの選択結果（最大6件）を行へ展開する。1件目は呼び出した行、
     /// 残りは後続の空行を埋め、足りなければ直後に挿入する。
     /// </summary>
-    private async Task ApplySelectionsAsync(SlipLineViewModel invokingLine, IReadOnlyList<ProductSelection> selections)
+    private Task ApplySelectionsAsync(SlipLineViewModel invokingLine, IReadOnlyList<ProductSelection> selections)
     {
         var slipDate = ParseSlipDate();
         var roundingType = _customer?.RoundingType ?? RoundingType.Floor;
@@ -620,8 +623,8 @@ public partial class SalesEntryViewModel(
             line.RoundingType = roundingType;
             line.RaiseAmountChanged();
 
-            // 仕入先は商品の主仕入先に戻し、原価はその仕入先の原価（なければ標準原価）にする。
-            await _supplierHelper.ApplyDefaultAsync(line);
+            // 仕入先と原価は、検索で選んだ行（または直接入力の主仕入先）の値をそのまま入れる。
+            line.ApplySupplier(selection.SupplierCode, selection.SupplierName, selection.CostPrice);
 
             if (line.Quantity == 0)
             {
@@ -632,29 +635,8 @@ public partial class SalesEntryViewModel(
         EnsureTrailingBlankLine();
         RenumberLines();
         invokingLine.RequestMoveToQuantity();
-    }
 
-    /// <summary>仕入先欄で Enter を押したとき、入力した仕入先コードを確定して原価を引き直す（空欄は標準原価）。</summary>
-    private async Task OnLookupSupplierByCodeAsync(SlipLineViewModel line)
-    {
-        var error = await _supplierHelper.ConfirmAsync(line);
-        StatusMessage = error ?? string.Empty;
-    }
-
-    /// <summary>保存前に、Enterで確定していない仕入先コードを全行確定する。見つからない行があれば <c>false</c>。</summary>
-    private async Task<bool> EnsureLineSuppliersConfirmedAsync(IEnumerable<SlipLineViewModel> lines)
-    {
-        foreach (var line in lines)
-        {
-            var error = await _supplierHelper.ConfirmAsync(line);
-            if (error is not null)
-            {
-                StatusMessage = $"{line.LineNumber}行目: {error}";
-                return false;
-            }
-        }
-
-        return true;
+        return Task.CompletedTask;
     }
 
     private void OnDeleteLine(SlipLineViewModel line)
@@ -785,11 +767,6 @@ public partial class SalesEntryViewModel(
             return;
         }
 
-        if (!await EnsureLineSuppliersConfirmedAsync(nonBlankLines))
-        {
-            return;
-        }
-
         try
         {
             if (_loadedSalesSlipNumber is null)
@@ -905,7 +882,7 @@ public partial class SalesEntryViewModel(
         UnitPrice = line.UnitPrice,
         Amount = line.Amount,
         CostPrice = SalesSlipTypeRules.NormalizeCostPrice(line.SlipType, line.CostPrice),
-        SupplierCode = line.ConfirmedSupplierCode,
+        SupplierCode = line.SupplierCode,
         TaxCategory = line.TaxCategory,
         TaxRate = line.TaxRate,
         // SlipTaxAmount / TaxAmount は設定しない。SalesService が SalesTaxAmountAssigner で確定する。

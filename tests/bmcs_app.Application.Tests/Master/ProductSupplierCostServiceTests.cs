@@ -173,6 +173,51 @@ public class ProductSupplierCostServiceTests(DevDatabaseFixture fixture) : IClas
         Assert.Equal((SupplierCode, 99m), await service.ResolveDefaultAsync(ReferenceProduct));
     });
 
+    [Fact]
+    public Task 選択できる原価は有効な原価行と有効な仕入先だけで_商品_仕入先の順に並ぶ() => RunAsync(async sp =>
+    {
+        var service = sp.GetRequiredService<ProductSupplierCostService>();
+        var suppliers = sp.GetRequiredService<SupplierService>();
+        await suppliers.CreateAsync(NewSupplier("__SUP02", null));
+        await suppliers.CreateAsync(NewSupplier("__SUP03", null));
+
+        await service.SaveSettingsAsync("__SUP02", [
+            new ProductSupplierCostChange(OtherProduct, 20m, null),
+            new ProductSupplierCostChange(ReferenceProduct, 12m, null)]);
+        await service.SaveSettingsAsync(SupplierCode, [new ProductSupplierCostChange(ReferenceProduct, 11m, null)]);
+        await service.SaveSettingsAsync("__SUP03", [new ProductSupplierCostChange(ReferenceProduct, 13m, null)]);
+
+        // 原価行が無効（空欄で登録）のものは出ない。
+        var sup03 = (await service.GetSettingsAsync("__SUP03")).Single(s => s.ProductCode == ReferenceProduct);
+        await service.SaveSettingsAsync("__SUP03", [new ProductSupplierCostChange(ReferenceProduct, null, sup03.RowVersion)]);
+
+        // 仕入先が無効のものは出ない。
+        var sup02 = await suppliers.GetByCodeAsync("__SUP02");
+        await suppliers.DeactivateAsync(NewSupplier("__SUP02", sup02!.RowVersion));
+
+        var rows = (await service.GetSelectableCostsAsync()).Where(r => r.SupplierCode.StartsWith("__SUP")).ToList();
+        Assert.Equal([(ReferenceProduct, SupplierCode, 11m)], rows.Select(r => (r.ProductCode, r.SupplierCode, r.CostPrice)));
+        Assert.Equal("テスト仕入先", rows[0].SupplierName);
+    });
+
+    [Fact]
+    public Task 選択できる原価は商品コード順_同じ商品は仕入先コード順で返る() => RunAsync(async sp =>
+    {
+        var service = sp.GetRequiredService<ProductSupplierCostService>();
+        var suppliers = sp.GetRequiredService<SupplierService>();
+        await suppliers.CreateAsync(NewSupplier("__SUP00", null));
+
+        await service.SaveSettingsAsync(SupplierCode, [
+            new ProductSupplierCostChange(OtherProduct, 2m, null),
+            new ProductSupplierCostChange(ReferenceProduct, 1m, null)]);
+        await service.SaveSettingsAsync("__SUP00", [new ProductSupplierCostChange(ReferenceProduct, 3m, null)]);
+
+        var rows = (await service.GetSelectableCostsAsync()).Where(r => r.SupplierCode.StartsWith("__SUP")).ToList();
+        Assert.Equal(
+            [(ReferenceProduct, "__SUP00"), (ReferenceProduct, SupplierCode), (OtherProduct, SupplierCode)],
+            rows.Select(r => (r.ProductCode, r.SupplierCode)));
+    });
+
     private static async Task<ProductSupplierCostSetting> GetAsync(ProductSupplierCostService service, string productCode)
         => (await service.GetSettingsAsync(SupplierCode)).Single(s => s.ProductCode == productCode);
 

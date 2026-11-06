@@ -18,12 +18,16 @@ namespace bmcs_app.ViewModels.Common;
 public partial class ProductSearchDialogViewModel(
     ProductService productService,
     ProductHistoryQueryService historyQueryService,
-    UnitPriceService unitPriceService)
+    UnitPriceService unitPriceService,
+    ProductSupplierCostService productSupplierCostService,
+    SupplierService supplierService)
     : DialogViewModelBase<IReadOnlyList<ProductSelection>>
 {
     public const int MaxBasketSize = 6;
 
     private List<Product> _allProducts = [];
+    private List<SelectableSupplierCost> _supplierCosts = [];
+    private Dictionary<string, string> _supplierNames = [];
     private List<ProductHistoryHit> _historyHits = [];
     private bool _historyLoaded;
 
@@ -80,6 +84,7 @@ public partial class ProductSearchDialogViewModel(
     private Task LoadMasterAsync() => RunBusyAsync(async () =>
     {
         _allProducts = await productService.GetProductsAsync();
+        _supplierCosts = await productSupplierCostService.GetSelectableCostsAsync();
         _unitPriceResolver = await unitPriceService.CreateResolverAsync(TargetCustomer, TargetSlipDate);
         ApplyMasterFilter();
     });
@@ -96,6 +101,7 @@ public partial class ProductSearchDialogViewModel(
         }
 
         _historyHits = await historyQueryService.SearchAsync(TargetCustomerCode!);
+        _supplierNames = (await supplierService.GetSuppliersAsync()).ToDictionary(s => s.SupplierCode, s => s.SupplierName);
         _historyLoaded = true;
         ApplyHistoryFilter();
     });
@@ -108,19 +114,32 @@ public partial class ProductSearchDialogViewModel(
     {
         var keywords = SplitKeywords(MasterSearchKeyword);
 
+        // 商品マスタに仕入先別原価を LEFT JOIN した行を、商品→仕入先の順に並べる（_allProducts・_supplierCosts は取得時にコード順）。
+        // 原価がある商品は仕入先ごとの行のみ、無い商品は仕入先なし（標準原価）の1行。
+        var costsByProduct = _supplierCosts.ToLookup(c => c.ProductCode);
+        var rows = _allProducts.SelectMany(product =>
+        {
+            var costs = costsByProduct[product.ProductCode].ToList();
+            return costs.Count == 0
+                ? [(Product: product, Cost: (SelectableSupplierCost?)null)]
+                : costs.Select(c => (Product: product, Cost: (SelectableSupplierCost?)c));
+        });
+
         var filtered = keywords.Length == 0
-            ? _allProducts
-            : _allProducts.Where(p => keywords.All(k =>
-                Contains(p.ProductCode, k)
-                || Contains(p.ProductName, k)
-                || Contains(p.JanCode, k)
-                || Contains(p.ProductNameKana, k)
-                || Contains(p.Specification, k)));
+            ? rows
+            : rows.Where(r => keywords.All(k =>
+                Contains(r.Product.ProductCode, k)
+                || Contains(r.Product.ProductName, k)
+                || Contains(r.Product.JanCode, k)
+                || Contains(r.Product.ProductNameKana, k)
+                || Contains(r.Product.Specification, k)
+                || Contains(r.Cost?.SupplierCode, k)
+                || Contains(r.Cost?.SupplierName, k)));
 
         MasterResults.Clear();
-        foreach (var product in filtered)
+        foreach (var (product, cost) in filtered)
         {
-            MasterResults.Add(ProductMasterSearchItem.FromEntity(product, _unitPriceResolver!.Resolve(product)));
+            MasterResults.Add(ProductMasterSearchItem.FromEntity(product, _unitPriceResolver!.Resolve(product), cost));
         }
 
         MasterSelectedIndex = MasterResults.Count > 0 ? 0 : -1;
@@ -136,15 +155,44 @@ public partial class ProductSearchDialogViewModel(
             : _historyHits.Where(h => keywords.All(k =>
                 Contains(h.ProductCode, k)
                 || Contains(h.ProductName, k)
-                || Contains(h.Specification, k)));
+                || Contains(h.Specification, k)
+                || Contains(h.SupplierCode, k)
+                || Contains(h.SupplierCode is null ? null : _supplierNames.GetValueOrDefault(h.SupplierCode), k)));
 
         HistoryResults.Clear();
         foreach (var hit in filtered)
         {
-            HistoryResults.Add(ProductHistorySearchItem.FromHit(hit));
+            HistoryResults.Add(ToHistoryItem(hit));
         }
 
         HistorySelectedIndex = HistoryResults.Count > 0 ? 0 : -1;
+    }
+
+    /// <summary>
+    /// 履歴行を一覧行にする。仕入先は前回の売上行の仕入先を引き継ぎ、原価は現在の仕入先別原価から決める。
+    /// 前回の仕入先に、いま有効な原価（有効な仕入先の有効な原価行）が無ければ、仕入先なしにして標準原価にする。
+    /// </summary>
+    private ProductHistorySearchItem ToHistoryItem(ProductHistoryHit hit)
+    {
+        var supplierCost = hit.SupplierCode is null
+            ? null
+            : _supplierCosts.FirstOrDefault(c => c.ProductCode == hit.ProductCode && c.SupplierCode == hit.SupplierCode);
+        var costPrice = supplierCost?.CostPrice
+            ?? _allProducts.FirstOrDefault(p => p.ProductCode == hit.ProductCode)?.StandardCostPrice
+            ?? 0m;
+
+        return new ProductHistorySearchItem(
+            hit.ProductCode,
+            hit.ProductName,
+            hit.Specification,
+            hit.UnitName,
+            hit.LastUnitPrice,
+            supplierCost?.SupplierCode,
+            supplierCost?.SupplierName,
+            costPrice,
+            hit.LastSlipDate.ToString("yyyy/MM/dd"),
+            hit.TaxCategory,
+            ProductMasterSearchItem.TaxCategoryDisplayOf(hit.TaxCategory));
     }
 
     private static string[] SplitKeywords(string keyword) =>
@@ -168,6 +216,9 @@ public partial class ProductSearchDialogViewModel(
             searchItem.Specification,
             searchItem.UnitName,
             searchItem.UnitPrice,
+            searchItem.SupplierCode,
+            searchItem.SupplierName,
+            searchItem.CostPrice,
             searchItem.TaxCategory,
             ProductSelectionSource.Master));
     }
@@ -187,15 +238,21 @@ public partial class ProductSearchDialogViewModel(
             searchItem.Specification,
             searchItem.UnitName,
             searchItem.UnitPrice,
+            searchItem.SupplierCode,
+            searchItem.SupplierName,
+            searchItem.CostPrice,
             searchItem.TaxCategory,
             ProductSelectionSource.History));
     }
 
     private void AddToBasket(ProductSelection selection)
     {
-        if (Basket.Any(b => b.ProductCode == selection.ProductCode))
+        // 同じ商品でも仕入先が違えば別の行として選べる（仕入先ごとに原価が違うため）。
+        if (Basket.Any(b => b.ProductCode == selection.ProductCode && b.SupplierCode == selection.SupplierCode))
         {
-            StatusMessage = $"{selection.ProductCode} は既に選択されています。";
+            StatusMessage = selection.SupplierCode is null
+                ? $"{selection.ProductCode} は既に選択されています。"
+                : $"{selection.ProductCode}（仕入先 {selection.SupplierCode}）は既に選択されています。";
             return;
         }
 

@@ -70,6 +70,18 @@ public class ProductSupplierCostService(
     }
 
     /// <summary>
+    /// 商品検索モーダル（マスタ軸）が商品マスタに LEFT JOIN する、選択できる仕入先別原価の全件（商品コード・仕入先コード順）。
+    /// 有効な原価行のうち、有効な仕入先のものだけ。無効な仕入先の行は、明細に指定できない仕入先なので出さない。
+    /// </summary>
+    public Task<List<SelectableSupplierCost>> GetSelectableCostsAsync(CancellationToken cancellationToken = default)
+        => (from c in dbContext.ProductSupplierCosts.AsNoTracking()
+            join s in dbContext.Suppliers.AsNoTracking() on c.SupplierCode equals s.SupplierCode
+            where !c.IsDeleted && !s.IsDeleted
+            orderby c.ProductCode, c.SupplierCode
+            select new SelectableSupplierCost(c.ProductCode, c.SupplierCode, s.SupplierName, c.CostPrice))
+            .ToListAsync(cancellationToken);
+
+    /// <summary>
     /// 有効な商品の全件に、仕入先の原価を付けて返す。無効化済みの行の原価は null（未登録扱い）で、
     /// RowVersion だけ持たせる（登録時の競合検出と、無効化済みの行の復活に使う）。
     /// </summary>
@@ -251,6 +263,9 @@ public sealed record ProductSupplierCostSetting(
     decimal StandardCostPrice,
     decimal? CostPrice,
     byte[]? RowVersion);
+
+/// <summary>商品検索で選べる仕入先別原価の1行。</summary>
+public sealed record SelectableSupplierCost(string ProductCode, string SupplierCode, string SupplierName, decimal CostPrice);
 
 /// <summary>原価の変更。<paramref name="CostPrice"/> が <c>null</c> なら無効化。<paramref name="RowVersion"/> は読込時の値。</summary>
 public sealed record ProductSupplierCostChange(string ProductCode, decimal? CostPrice, byte[]? RowVersion);

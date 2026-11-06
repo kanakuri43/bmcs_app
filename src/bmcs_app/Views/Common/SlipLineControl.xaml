@@ -93,18 +93,14 @@
                      Text="{Binding UnitPrice}"
                      Margin="{StaticResource SlipLineCellMargin}" />
 
-            <!-- 仕入先（Tab順の対象外。Spaceで検索・Enterで確定。変えると、その仕入先の原価に引き直す。空欄は標準原価） -->
-            <TextBox Grid.Column="6"
-                     Text="{Binding SupplierCode, UpdateSourceTrigger=PropertyChanged}"
-                     ToolTip="{Binding SupplierName}"
-                     mah:TextBoxHelper.Watermark="仕入先"
-                     IsTabStop="False"
-                     Margin="{StaticResource SlipLineCellMargin}">
-                <TextBox.InputBindings>
-                    <KeyBinding Key="Space"  Command="{Binding OpenSupplierLookupCommand}" />
-                    <KeyBinding Key="Return" Command="{Binding LookupSupplierByCodeCommand}" />
-                </TextBox.InputBindings>
-            </TextBox>
+            <!-- 仕入先（表示のみ。商品検索で選んだ行の仕入先が入る。変えるときは商品を選び直す） -->
+            <TextBlock Grid.Column="6"
+                       Text="{Binding SupplierCode}"
+                       ToolTip="{Binding SupplierName}"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource MahApps.Brushes.Gray3}"
+                       TextTrimming="CharacterEllipsis"
+                       Padding="4,0" />
 
             <!-- 原価（表示のみ） -->
             <TextBlock Grid.Column="7"

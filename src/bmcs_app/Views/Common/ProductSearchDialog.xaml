@@ -4,7 +4,7 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="bmcs_app - 商品検索"
-                 Height="640" Width="960"
+                 Height="640" Width="1120"
                  WindowStartupLocation="CenterOwner"
                  ShowInTaskbar="False"
                  WindowTransitionsEnabled="False">
@@ -30,7 +30,7 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="検索（コード・名称・カナ・規格）" VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <TextBlock Text="検索（コード・名称・カナ・規格・仕入先）" VerticalAlignment="Center" Margin="0,0,12,0" />
                         <TextBox x:Name="MasterSearchKeywordTextBox"
                                  Text="{Binding MasterSearchKeyword, UpdateSourceTrigger=PropertyChanged}" Width="280" />
                     </StackPanel>
@@ -49,6 +49,14 @@
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding UnitPrice, StringFormat=N0}" HorizontalAlignment="Right" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="仕入先" Width="110" DisplayMemberBinding="{Binding SupplierName}" />
+                                <GridViewColumn Header="原価" Width="80" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding CostPrice, StringFormat=N0}" HorizontalAlignment="Right" />
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
@@ -93,6 +101,14 @@
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
                                 <GridViewColumn Header="前回売上日" Width="90" DisplayMemberBinding="{Binding LastSlipDateDisplay}" />
+                                <GridViewColumn Header="仕入先" Width="110" DisplayMemberBinding="{Binding SupplierName}" />
+                                <GridViewColumn Header="原価" Width="80" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding CostPrice, StringFormat=N0}" HorizontalAlignment="Right" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                             </GridView>
                         </ListView.View>
                     </ListView>
@@ -120,6 +136,7 @@
                         <StackPanel Margin="0,2">
                             <TextBlock Text="{Binding ProductCode}" FontWeight="Bold" />
                             <TextBlock Text="{Binding ProductName}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding SupplierName}" Foreground="Gray" />
                             <TextBlock Text="{Binding UnitPrice, StringFormat=N0}" HorizontalAlignment="Right" />
                         </StackPanel>
                     </DataTemplate>
