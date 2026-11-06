@@ -17,6 +17,7 @@
                 <ColumnDefinition Width="68"  />  <!-- 区分 -->
                 <ColumnDefinition Width="72"  />  <!-- 数量 -->
                 <ColumnDefinition Width="88"  />  <!-- 単価 -->
+                <ColumnDefinition Width="110" />  <!-- 仕入先 -->
                 <ColumnDefinition Width="80"  />  <!-- 原価 -->
                 <ColumnDefinition Width="96"  />  <!-- 金額 -->
                 <ColumnDefinition Width="56"  />  <!-- 税率 -->
@@ -92,8 +93,17 @@
                      Text="{Binding UnitPrice}"
                      Margin="{StaticResource SlipLineCellMargin}" />
 
-            <!-- 原価（表示のみ） -->
+            <!-- 仕入先（表示のみ。商品検索で選んだ行の仕入先の名称が入る。変えるときは商品を選び直す） -->
             <TextBlock Grid.Column="6"
+                       Text="{Binding SupplierName}"
+                       ToolTip="{Binding SupplierName}"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource MahApps.Brushes.Gray3}"
+                       TextTrimming="CharacterEllipsis"
+                       Padding="4,0" />
+
+            <!-- 原価（表示のみ） -->
+            <TextBlock Grid.Column="7"
                        Text="{Binding CostPrice, StringFormat={}{0:N0}}"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Right"
@@ -101,7 +111,7 @@
                        Padding="4,0" />
 
             <!-- 金額（表示のみ） -->
-            <TextBlock Grid.Column="7"
+            <TextBlock Grid.Column="8"
                        Text="{Binding Amount, StringFormat={}{0:N0}}"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Right"
@@ -109,20 +119,20 @@
                        Padding="4,0" />
 
             <!-- 税率（表示のみ） -->
-            <TextBlock Grid.Column="8"
+            <TextBlock Grid.Column="9"
                        Text="{Binding TaxRateDisplay}"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Right"
                        Padding="4,0" />
 
             <!-- 行摘要 -->
-            <TextBox Grid.Column="9"
+            <TextBox Grid.Column="10"
                      Text="{Binding LineRemarks, UpdateSourceTrigger=PropertyChanged}"
                      mah:TextBoxHelper.Watermark="行摘要"
                      Margin="{StaticResource SlipLineCellMargin}" />
 
             <!-- 行削除ボタン -->
-            <Button Grid.Column="10"
+            <Button Grid.Column="11"
                     Command="{Binding DeleteCommand}"
                     Content="×"
                     IsTabStop="False"

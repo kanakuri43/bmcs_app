@@ -30,5 +30,8 @@ public class Product : AuditableEntity
     /// <summary>定価（税抜）。得意先／商品／定価掛率マスタで単価を算出するときの基準。未設定は 0（掛率があっても単価は 0）。</summary>
     public decimal CatalogPrice { get; set; }
 
+    /// <summary>主仕入先（任意）。伝票明細で商品を選んだときの仕入先の初期値。</summary>
+    public string? MainSupplierCode { get; set; }
+
     public required TaxCategory TaxCategory { get; set; }
 }

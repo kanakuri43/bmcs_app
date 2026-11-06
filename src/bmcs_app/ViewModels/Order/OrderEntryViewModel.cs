@@ -32,8 +32,12 @@ public partial class OrderEntryViewModel(
     OrderQueryService orderQueryService,
     OrderStatusService orderStatusService,
     WindowService windowService,
-    UnitPriceService unitPriceService) : ViewModelBase
+    UnitPriceService unitPriceService,
+    SupplierService supplierService,
+    ProductSupplierCostService productSupplierCostService) : ViewModelBase
 {
+    private readonly SlipLineSupplierHelper _supplierHelper = new(supplierService, productSupplierCostService);
+
     private Customer? _customer;
     private IReadOnlyList<TaxRateMaster> _taxRateMasters = [];
 
@@ -485,13 +489,17 @@ public partial class OrderEntryViewModel(
         }
 
         var unitPriceResolver = await unitPriceService.CreateResolverAsync(_customer, ParseOrderDate());
+        // 検索モーダルを通らない直接入力は、商品の主仕入先とその原価（なければ標準原価）にする。
+        var (supplierCode, supplierName, costPrice) = await _supplierHelper.ResolveDefaultAsync(product.ProductCode);
         var selection = new ProductSelection(
             product.ProductCode,
             product.ProductName,
             product.Specification,
             product.UnitName,
             unitPriceResolver.Resolve(product),
-            product.StandardCostPrice,
+            supplierCode,
+            supplierName,
+            costPrice,
             product.TaxCategory,
             ProductSelectionSource.Master);
 
@@ -538,11 +546,13 @@ public partial class OrderEntryViewModel(
             line.Specification = selection.Specification;
             line.UnitName = selection.UnitName;
             line.UnitPrice = selection.UnitPrice;
-            line.CostPrice = selection.CostPrice;
             line.TaxCategory = selection.TaxCategory;
             line.TaxRate = taxRate;
             line.RoundingType = roundingType;
             line.RaiseAmountChanged();
+
+            // 仕入先と原価は、検索で選んだ行（または直接入力の主仕入先）の値をそのまま入れる。
+            line.ApplySupplier(selection.SupplierCode, selection.SupplierName, selection.CostPrice);
 
             if (line.Quantity == 0)
             {
@@ -680,7 +690,7 @@ public partial class OrderEntryViewModel(
             line.UnitName = source.UnitName;
             line.Quantity = source.OrderQuantity;
             line.UnitPrice = source.UnitPrice;
-            line.CostPrice = source.CostPrice;
+            await _supplierHelper.RestoreAsync(line, source.SupplierCode, source.CostPrice);
             line.TaxCategory = source.TaxCategory;
             line.TaxRate = taxRate;
             line.RoundingType = customer.RoundingType;
@@ -808,7 +818,7 @@ public partial class OrderEntryViewModel(
                 line.UnitName = source.UnitName;
                 line.Quantity = source.OrderQuantity;
                 line.UnitPrice = source.UnitPrice;
-                line.CostPrice = source.CostPrice;
+                await _supplierHelper.RestoreAsync(line, source.SupplierCode, source.CostPrice);
                 line.TaxCategory = source.TaxCategory;
                 line.TaxRate = source.TaxRate;
                 line.RoundingType = customer.RoundingType;
@@ -964,6 +974,7 @@ public partial class OrderEntryViewModel(
         UnitPrice = line.UnitPrice,
         Amount = line.Amount,
         CostPrice = line.CostPrice,
+        SupplierCode = line.SupplierCode,
         TaxCategory = line.TaxCategory,
         TaxRate = line.TaxRate,
         AllocatedQuantity = 0m,

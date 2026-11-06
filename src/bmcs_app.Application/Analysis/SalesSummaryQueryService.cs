@@ -47,6 +47,29 @@ public class SalesSummaryQueryService(BmcsDbContext dbContext)
         return rows.Select(r => new SalesSummaryItem(r.Code, names.GetValueOrDefault(r.Code, r.Code), r.SalesAmount, r.CostAmount)).ToList();
     }
 
+    /// <summary>
+    /// 指定した暦月の仕入先別売上・粗利を、仕入先コード順に返す。仕入先なしの明細（コード空文字）は末尾に「（仕入先なし）」として出す。
+    /// 名称は無効化済みの仕入先も含めて引く。
+    /// </summary>
+    public async Task<List<SalesSummaryItem>> GetBySupplierAsync(int year, int month, CancellationToken cancellationToken = default)
+    {
+        var rows = await SumByAsync(year, month, s => s.SupplierCode ?? string.Empty, cancellationToken);
+
+        var codes = rows.Select(r => r.Code).ToList();
+        var names = await dbContext.Suppliers.AsNoTracking()
+            .Where(s => codes.Contains(s.SupplierCode))
+            .ToDictionaryAsync(s => s.SupplierCode, s => s.SupplierName, cancellationToken);
+
+        return rows
+            .OrderBy(r => r.Code.Length == 0) // 空文字（仕入先なし）を末尾へ。同じ並びのものはコード順のまま
+            .Select(r => new SalesSummaryItem(
+                r.Code,
+                r.Code.Length == 0 ? "（仕入先なし）" : names.GetValueOrDefault(r.Code, r.Code),
+                r.SalesAmount,
+                r.CostAmount))
+            .ToList();
+    }
+
     // 金額は明細行の値。伝票単位の値（slip_tax_amount 等）は SUM しない（database-schema.md 2.8節）。
     private async Task<List<(string Code, decimal SalesAmount, decimal CostAmount)>> SumByAsync(
         int year, int month, Expression<Func<SalesEntity, string>> key, CancellationToken cancellationToken)

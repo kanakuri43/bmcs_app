@@ -62,7 +62,7 @@
 </div>
 <h3>分析</h3>
 <div class="cards">
-  <a href="sales-analysis.html"><b>売上・粗利を分析する</b>月ごとに、担当者・お客様・商品別の売上と利益を確認する</a>
+  <a href="sales-analysis.html"><b>売上・粗利を分析する</b>月ごとに、担当者・お客様・商品・仕入先別の売上と利益を確認する</a>
 </div>
 <h3>管理者の作業</h3>
 <div class="cards">
@@ -71,25 +71,28 @@
   <a href="master-company.html"><b>自社情報を登録する</b>請求書に印字する自社の名称・登録番号</a>
   <a href="master-employee.html"><b>社員を登録する</b>使う人と権限レベルを決める</a>
   <a href="master-menu.html"><b>メニューを編集する</b>メニューの名前・並び順・使える人</a>
+  <a href="master-tax.html"><b>消費税率を登録する</b>税率が変わるときに、新しい税率と施行日を登録</a>
   <a href="master-query.html"><b>クエリを実行する</b>用意した検索の結果を表示・CSV保存</a>
 </div>
 <h3>最初の準備（マスタ登録）</h3>
 <p>使い始める前に、次の順に登録しておくと進めやすくなります（目安）。</p>
 <ol class="steps">
   <li><a href="master-company.html">自社情報</a>（管理者）</li>
-  <li><a href="master-bank.html">銀行口座</a>・<a href="master-deposit-method.html">入金方法</a>・<a href="master-employee.html">社員</a>（管理者）</li>
+  <li><a href="master-employee.html">社員</a>・<a href="master-bank.html">銀行口座</a>・<a href="master-deposit-method.html">入金方法</a>（管理者）</li>
   <li><a href="master-printer.html">プリンタ設定</a>（パソコンごと）</li>
-  <li><a href="master-product.html">商品</a>、<a href="master-customer.html">得意先</a>（得意先は、銀行・社員を先に登録しておくと選べます）</li>
-  <li>必要に応じて、<a href="master-price.html">得意先ごとの単価・掛率</a>、<a href="master-copier.html">コピー機</a></li>
+  <li><a href="master-supplier.html">仕入先</a>（仕入先ごとの原価を使うとき。商品の主仕入先に選ぶので、商品より先に）、<a href="master-product.html">商品</a>、<a href="master-customer.html">得意先</a>（得意先は、銀行・社員を先に登録しておくと選べます）</li>
+  <li>必要に応じて、<a href="master-price.html">得意先ごとの単価・掛率</a>、<a href="master-supplier-cost.html">仕入先ごとの原価</a>、<a href="master-copier.html">コピー機</a></li>
 </ol>
 <div class="cards">
-  <a href="master-customer.html"><b>得意先を登録する</b>新しい取引先を登録・修正する</a>
-  <a href="master-product.html"><b>商品を登録する</b>新しい商品と単価を登録・修正する</a>
-  <a href="master-price.html"><b>得意先ごとの単価を設定する</b>得意先×商品の特別単価・掛率</a>
-  <a href="master-copier.html"><b>コピー機を登録する</b>機番と得意先を結びつける</a>
   <a href="master-bank.html"><b>銀行口座を登録する</b>入金先・請求書の振込先の口座</a>
   <a href="master-deposit-method.html"><b>入金方法を登録する</b>現金・振込などの選択肢を追加・変更</a>
   <a href="master-printer.html"><b>プリンタを設定する</b>帳票ごとのプリンタを決める</a>
+  <a href="master-supplier.html"><b>仕入先を登録する</b>商品を仕入れる取引先を登録・修正する</a>
+  <a href="master-product.html"><b>商品を登録する</b>新しい商品と単価を登録・修正する</a>
+  <a href="master-customer.html"><b>得意先を登録する</b>新しい取引先を登録・修正する</a>
+  <a href="master-price.html"><b>得意先ごとの単価を設定する</b>得意先×商品の特別単価・掛率</a>
+  <a href="master-supplier-cost.html"><b>仕入先ごとの原価を設定する</b>仕入先×商品ごとの原価</a>
+  <a href="master-copier.html"><b>コピー機を登録する</b>機番と得意先を結びつける</a>
 </div>
 
 <h2>共通のキー操作</h2>
@@ -97,7 +100,7 @@
 <table>
   <tr><th>キー</th><th>できること</th></tr>
   <tr><td><kbd>Enter</kbd></td><td>入力を確定して次の欄へ進む。コード欄ならそのコードの名称を引く</td></tr>
-  <tr><td><kbd>Space</kbd>（コード欄で）</td><td>検索画面を開く（得意先・商品・伝票番号・担当者）</td></tr>
+  <tr><td><kbd>Space</kbd>（コード欄で）</td><td>検索画面を開く（得意先・商品・伝票番号・担当者・仕入先）</td></tr>
   <tr><td><kbd>F3</kbd></td><td>新規（画面を空にする）</td></tr>
   <tr><td><kbd>F10</kbd></td><td>保存・確定・発行</td></tr>
   <tr><td><kbd>F11</kbd></td><td>印刷</td></tr>

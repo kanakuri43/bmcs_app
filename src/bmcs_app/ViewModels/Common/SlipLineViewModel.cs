@@ -128,9 +128,27 @@ public partial class SlipLineViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(Amount))]
     public partial decimal UnitPrice { get; set; }
 
-    /// <summary>粗利計算用。商品マスタの標準原価を転記する（表示のみ、上書き不可）。</summary>
+    /// <summary>
+    /// 粗利計算用。商品検索で選んだ行の仕入先の原価（仕入先なしなら商品マスタの標準原価）を転記する（表示のみ、上書き不可）。
+    /// </summary>
     [ObservableProperty]
     public partial decimal CostPrice { get; set; }
+
+    /// <summary>仕入先コード。<c>null</c> は仕入先なし。商品検索で決まり、保存される（明細の画面には名称を表示する）。</summary>
+    [ObservableProperty]
+    public partial string? SupplierCode { get; set; }
+
+    /// <summary>仕入先の名称。明細の仕入先欄に表示する（表示のみ）。</summary>
+    [ObservableProperty]
+    public partial string? SupplierName { get; set; }
+
+    /// <summary>仕入先と原価をまとめて設定する（商品選択・保存済み明細の読込で使う）。</summary>
+    public void ApplySupplier(string? supplierCode, string? supplierName, decimal costPrice)
+    {
+        SupplierCode = supplierCode;
+        SupplierName = supplierName;
+        CostPrice = costPrice;
+    }
 
     [ObservableProperty]
     public partial TaxCategory TaxCategory { get; set; }

@@ -1,6 +1,7 @@
 using bmcs_app.Application.Billing;
 using bmcs_app.Application.Closing;
 using bmcs_app.Application.Common;
+using bmcs_app.Application.Master;
 using bmcs_app.Domain.Calculations;
 using bmcs_app.Domain.Entities;
 using bmcs_app.Domain.Enums;
@@ -55,6 +56,7 @@ public sealed record CopierImportResultRow(CopierImportPreviewRow Row, string? S
 public class CopierSalesImportService(
     BmcsDbContext dbContext,
     SalesService salesService,
+    ProductSupplierCostService productSupplierCostService,
     BillingClosedDateService billingClosedDateService,
     MonthlyClosedService monthlyClosedService,
     ICurrentEmployeeContext currentEmployeeContext,
@@ -167,6 +169,9 @@ public class CopierSalesImportService(
             ? TaxRounding.RoundToYen(src.AmountExcludingTax * (1m + taxRate / 100m), customer.RoundingType)
             : src.AmountExcludingTax;
 
+        // 原価・仕入先は、他の入力画面と同じく商品の主仕入先の原価（なければ標準原価）を転記する。
+        var (supplierCode, costPrice) = await productSupplierCostService.ResolveDefaultAsync(product.ProductCode, cancellationToken);
+
         var employeeCode = currentEmployeeContext.EmployeeCode;
         var now = DateTime.Now;
         var line = new SalesEntity
@@ -185,7 +190,8 @@ public class CopierSalesImportService(
             Quantity = 1m,
             UnitPrice = unitPrice,
             Amount = ConsumptionTaxCalculator.CalculateLineAmount(1m, unitPrice, customer.RoundingType),
-            CostPrice = SalesSlipTypeRules.NormalizeCostPrice(SlipType.Sales, product.StandardCostPrice),
+            CostPrice = SalesSlipTypeRules.NormalizeCostPrice(SlipType.Sales, costPrice),
+            SupplierCode = supplierCode,
             TaxCategory = product.TaxCategory,
             TaxRate = taxRate,
             DeliveryNoteIssueCount = 0,

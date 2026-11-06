@@ -25,6 +25,7 @@
             <TabItem Header="担当者別" mah:HeaderedControlHelper.HeaderFontSize="18" />
             <TabItem Header="得意先別" mah:HeaderedControlHelper.HeaderFontSize="18" />
             <TabItem Header="商品別" mah:HeaderedControlHelper.HeaderFontSize="18" />
+            <TabItem Header="仕入先別" mah:HeaderedControlHelper.HeaderFontSize="18" />
         </TabControl>
 
         <!-- ===== 条件 ===== -->

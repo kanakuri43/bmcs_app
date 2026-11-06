@@ -12,10 +12,11 @@ public enum SalesSummaryKind
     Employee,
     Customer,
     Product,
+    Supplier,
 }
 
 /// <summary>
-/// 売上・粗利分析画面。担当者別・得意先別・商品別をタブ（<see cref="SelectedTabIndex"/>＝<see cref="SalesSummaryKind"/>）で切り替える。
+/// 売上・粗利分析画面。担当者別・得意先別・商品別・仕入先別をタブ（<see cref="SelectedTabIndex"/>＝<see cref="SalesSummaryKind"/>）で切り替える。
 /// 年（4桁入力）と月を選ぶと、その暦月の売上を都度集計して表示する（<see cref="EmployeeSalesQueryService"/>・<see cref="SalesSummaryQueryService"/>）。
 /// </summary>
 public partial class SalesSummaryViewModel(
@@ -32,28 +33,32 @@ public partial class SalesSummaryViewModel(
     {
         SalesSummaryKind.Employee => "担当者別売上・粗利",
         SalesSummaryKind.Customer => "得意先別売上・粗利",
-        _ => "商品別売上・粗利",
+        SalesSummaryKind.Product => "商品別売上・粗利",
+        _ => "仕入先別売上・粗利",
     };
 
     public string CodeHeader => Kind switch
     {
         SalesSummaryKind.Employee => "担当者コード",
         SalesSummaryKind.Customer => "得意先コード",
-        _ => "商品コード",
+        SalesSummaryKind.Product => "商品コード",
+        _ => "仕入先コード",
     };
 
     public string NameHeader => Kind switch
     {
         SalesSummaryKind.Employee => "担当者名",
         SalesSummaryKind.Customer => "得意先名",
-        _ => "商品名",
+        SalesSummaryKind.Product => "商品名",
+        _ => "仕入先名",
     };
 
     private string UnitLabel => Kind switch
     {
         SalesSummaryKind.Employee => "名",
         SalesSummaryKind.Customer => "得意先",
-        _ => "商品",
+        SalesSummaryKind.Product => "商品",
+        _ => "仕入先",
     };
 
     [ObservableProperty]
@@ -151,7 +156,8 @@ public partial class SalesSummaryViewModel(
                     .Select(e => new SalesSummaryItem(e.EmployeeCode ?? string.Empty, e.EmployeeName, e.SalesAmount, e.CostAmount))
                     .ToList(),
                 SalesSummaryKind.Customer => await salesSummaryQueryService.GetByCustomerAsync(year, SelectedMonth),
-                _ => await salesSummaryQueryService.GetByProductAsync(year, SelectedMonth),
+                SalesSummaryKind.Product => await salesSummaryQueryService.GetByProductAsync(year, SelectedMonth),
+                _ => await salesSummaryQueryService.GetBySupplierAsync(year, SelectedMonth),
             };
 
             Results.Clear();

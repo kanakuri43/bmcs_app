@@ -196,15 +196,21 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<MenuMasterWindow>();
         builder.Services.AddScoped<MenuMasterViewModel>();
+        builder.Services.AddScoped<TaxRateMasterWindow>();
+        builder.Services.AddScoped<TaxRateMasterViewModel>();
 
         builder.Services.AddScoped<BankAccountMasterWindow>();
         builder.Services.AddScoped<BankAccountMasterViewModel>();
+        builder.Services.AddScoped<SupplierMasterWindow>();
+        builder.Services.AddScoped<SupplierMasterViewModel>();
 
         builder.Services.AddScoped<CopierMachineMasterWindow>();
         builder.Services.AddScoped<CopierMachineMasterViewModel>();
 
         builder.Services.AddScoped<CustomerProductPriceMasterWindow>();
         builder.Services.AddScoped<CustomerProductPriceMasterViewModel>();
+        builder.Services.AddScoped<ProductSupplierCostMasterWindow>();
+        builder.Services.AddScoped<ProductSupplierCostMasterViewModel>();
 
 
         builder.Services.AddScoped<DepositMethodMasterWindow>();
@@ -230,6 +236,8 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<BankAccountMasterSearchDialog>();
         builder.Services.AddScoped<BankAccountMasterSearchDialogViewModel>();
+        builder.Services.AddScoped<SupplierMasterSearchDialog>();
+        builder.Services.AddScoped<SupplierMasterSearchDialogViewModel>();
 
         builder.Services.AddScoped<CopierMachineMasterSearchDialog>();
         builder.Services.AddScoped<CopierMachineMasterSearchDialogViewModel>();

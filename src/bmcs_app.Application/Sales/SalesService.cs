@@ -465,6 +465,7 @@ public class SalesService(
         current.UnitPrice = incoming.UnitPrice;
         current.Amount = incoming.Amount;
         current.CostPrice = incoming.CostPrice;
+        current.SupplierCode = incoming.SupplierCode;
         current.TaxCategory = incoming.TaxCategory;
         current.TaxRate = incoming.TaxRate;
         current.OrderSlipNumber = incoming.OrderSlipNumber;

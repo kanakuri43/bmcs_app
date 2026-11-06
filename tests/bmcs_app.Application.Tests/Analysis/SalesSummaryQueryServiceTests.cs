@@ -66,9 +66,57 @@ public class SalesSummaryQueryServiceTests(DevDatabaseFixture fixture) : IClassF
         }
     }
 
+    [Fact]
+    public async Task 仕入先別に集計し_仕入先なしは末尾に出し_無効化した仕入先も名称を引く()
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<BmcsDbContext>();
+        var query = scope.ServiceProvider.GetRequiredService<SalesSummaryQueryService>();
+        var now = DateTime.Now;
+
+        try
+        {
+            await InsertCustomerAsync(db, CustomerA, TaxUnit.Invoice);
+            db.Suppliers.AddRange(
+                new Supplier { SupplierCode = "__TSTSSP1", SupplierName = "仕入先A", CreatedBy = "TEST", CreatedAt = now, UpdatedBy = "TEST", UpdatedAt = now },
+                new Supplier { SupplierCode = "__TSTSSP2", SupplierName = "仕入先B（無効）", IsDeleted = true, CreatedBy = "TEST", CreatedAt = now, UpdatedBy = "TEST", UpdatedAt = now });
+            await db.SaveChangesAsync();
+
+            // 開発DBの実データに依存しないよう、フィクスチャが保証する PRD001 を使う。
+            db.Sales.AddRange(
+                NewLine("__TSTSS-1", 1, CustomerA, TaxUnit.Invoice, "PRD001", new(2020, 4, 1), 2m, 1000m, 300m, supplierCode: "__TSTSSP2"),
+                NewLine("__TSTSS-2", 1, CustomerA, TaxUnit.Invoice, "PRD001", new(2020, 4, 2), 1m, 500m, 100m, supplierCode: "__TSTSSP1"),
+                NewLine("__TSTSS-3", 1, CustomerA, TaxUnit.Invoice, "PRD001", new(2020, 4, 3), 1m, 200m, 50m, supplierCode: "__TSTSSP1"),
+                // 仕入先なし（コード空文字）は末尾の1行に集約される。
+                NewLine("__TSTSS-4", 1, CustomerA, TaxUnit.Invoice, "PRD001", new(2020, 4, 4), 1m, 700m, 400m),
+                // 取消済み・対象月外は含めない。
+                NewLine("__TSTSS-5", 1, CustomerA, TaxUnit.Invoice, "PRD001", new(2020, 4, 5), 1m, 9999m, 0m, isDeleted: true, supplierCode: "__TSTSSP1"),
+                NewLine("__TSTSS-6", 1, CustomerA, TaxUnit.Invoice, "PRD001", new(2020, 5, 1), 1m, 9999m, 0m, supplierCode: "__TSTSSP1"));
+            await db.SaveChangesAsync();
+
+            var rows = (await query.GetBySupplierAsync(2020, 4)).ToList();
+            Assert.Equal(["__TSTSSP1", "__TSTSSP2", ""], rows.Select(r => r.Code));
+            Assert.Equal("仕入先A", rows[0].Name);
+            Assert.Equal(700m, rows[0].SalesAmount);   // 500 + 200
+            Assert.Equal(150m, rows[0].CostAmount);    // 100 + 50
+            Assert.Equal("仕入先B（無効）", rows[1].Name);
+            Assert.Equal(1000m, rows[1].SalesAmount);  // 金額は明細行の値（数量2・金額1000）
+            Assert.Equal(600m, rows[1].CostAmount);    // 2×300
+            Assert.Equal("（仕入先なし）", rows[2].Name);
+            Assert.Equal(700m, rows[2].SalesAmount);
+        }
+        finally
+        {
+            await db.Database.ExecuteSqlRawAsync("DELETE FROM dbo.sales WHERE sales_slip_number LIKE '\\_\\_TSTSS-%' ESCAPE '\\'");
+            await db.Database.ExecuteSqlRawAsync("DELETE FROM dbo.suppliers WHERE supplier_code LIKE '\\_\\_TSTSSP%' ESCAPE '\\'");
+            await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.customers WHERE customer_code = {CustomerA}");
+        }
+    }
+
     private static SalesEntity NewLine(
         string slipNumber, short lineNumber, string customerCode, TaxUnit taxUnit, string productCode, DateOnly slipDate,
-        decimal quantity, decimal amount, decimal costPrice, decimal? taxAmount = null, bool isDeleted = false)
+        decimal quantity, decimal amount, decimal costPrice, decimal? taxAmount = null, bool isDeleted = false,
+        string? supplierCode = null)
     {
         var now = DateTime.Now;
         return new SalesEntity
@@ -86,6 +134,7 @@ public class SalesSummaryQueryServiceTests(DevDatabaseFixture fixture) : IClassF
             UnitPrice = amount / quantity,
             Amount = amount,
             CostPrice = costPrice,
+            SupplierCode = supplierCode,
             TaxCategory = TaxCategory.Standard,
             TaxRate = 10m,
             TaxAmount = taxAmount,

@@ -15,7 +15,10 @@ namespace bmcs_app.ViewModels.Master;
 /// コード欄で Space を押して検索モーダル（<see cref="ProductMasterSearchDialog"/>）を呼び出して対象を選ぶ
 /// （得意先マスタ画面と同じ SPACEで検索／Enter読込のパターンに揃える）。
 /// </summary>
-public partial class ProductMasterViewModel(ProductService productService, WindowService windowService) : ViewModelBase
+public partial class ProductMasterViewModel(
+    ProductService productService,
+    SupplierService supplierService,
+    WindowService windowService) : ViewModelBase
 {
     [ObservableProperty]
     public partial string ProductCode { get; set; } = string.Empty;
@@ -50,6 +53,13 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
     [ObservableProperty]
     public partial TaxCategory TaxCategory { get; set; } = TaxCategory.Standard;
 
+    /// <summary>主仕入先コード（空欄＝なし）。伝票明細で商品を選んだときの仕入先の初期値。</summary>
+    [ObservableProperty]
+    public partial string MainSupplierCodeText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string MainSupplierLabel { get; set; } = string.Empty;
+
     /// <summary>税種別区分の選択肢。</summary>
     public static IReadOnlyList<TaxCategory> TaxCategoryOptions { get; } = Enum.GetValues<TaxCategory>();
 
@@ -71,15 +81,15 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
 
     /// <summary>コード欄で Space を押したときに検索モーダルを開く。</summary>
     [RelayCommand]
-    private void OpenProductSearch()
+    private Task OpenProductSearchAsync() => RunBusyAsync(async () =>
     {
         var product = windowService.ShowDialog<ProductMasterSearchDialog, ProductMasterSearchDialogViewModel, Product>();
         if (product is not null)
         {
-            ApplyProduct(product);
+            await ApplyProductAsync(product);
             RequestFocus("Name");
         }
-    }
+    });
 
     /// <summary>コード欄で Enter を押したときに、入力済みコードで直接読み込む。</summary>
     [RelayCommand]
@@ -101,10 +111,38 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
             return;
         }
 
-        ApplyProduct(product);
+        await ApplyProductAsync(product);
     });
 
-    private void ApplyProduct(Product product)
+    /// <summary>主仕入先欄で Space を押したときに検索モーダルを開く。</summary>
+    [RelayCommand]
+    private void OpenMainSupplierSearch()
+    {
+        var supplier = windowService.ShowDialog<SupplierMasterSearchDialog, SupplierMasterSearchDialogViewModel, Supplier>();
+        if (supplier is not null)
+        {
+            MainSupplierCodeText = supplier.SupplierCode;
+            MainSupplierLabel = supplier.SupplierName;
+        }
+    }
+
+    /// <summary>主仕入先欄で Enter を押したときに、入力済みコードの仕入先名を照会する。</summary>
+    [RelayCommand]
+    private Task LookupMainSupplierByCodeAsync() => RunBusyAsync(RefreshMainSupplierLabelAsync);
+
+    private async Task RefreshMainSupplierLabelAsync()
+    {
+        if (string.IsNullOrWhiteSpace(MainSupplierCodeText))
+        {
+            MainSupplierLabel = string.Empty;
+            return;
+        }
+
+        var supplier = await supplierService.GetByCodeAsync(MainSupplierCodeText.Trim());
+        MainSupplierLabel = supplier is null ? "（該当なし）" : supplier.SupplierName;
+    }
+
+    private async Task ApplyProductAsync(Product product)
     {
         ProductCode = product.ProductCode;
         ProductName = product.ProductName;
@@ -117,10 +155,13 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
         StandardCostPrice = product.StandardCostPrice;
         CatalogPrice = product.CatalogPrice;
         TaxCategory = product.TaxCategory;
+        MainSupplierCodeText = product.MainSupplierCode ?? string.Empty;
+        MainSupplierLabel = string.Empty;
 
         _loadedRowVersion = product.RowVersion;
         IsNew = false;
         StatusMessage = string.Empty;
+        await RefreshMainSupplierLabelAsync();
     }
 
     [RelayCommand]
@@ -151,6 +192,7 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
             StandardCostPrice = StandardCostPrice,
             CatalogPrice = CatalogPrice,
             TaxCategory = TaxCategory,
+            MainSupplierCode = NullIfEmpty(MainSupplierCodeText)?.Trim(),
             RowVersion = _loadedRowVersion,
             CreatedBy = string.Empty,
             CreatedAt = default,
@@ -249,6 +291,8 @@ public partial class ProductMasterViewModel(ProductService productService, Windo
         StandardCostPrice = 0;
         CatalogPrice = 0;
         TaxCategory = TaxCategory.Standard;
+        MainSupplierCodeText = string.Empty;
+        MainSupplierLabel = string.Empty;
         _loadedRowVersion = null;
     }
 

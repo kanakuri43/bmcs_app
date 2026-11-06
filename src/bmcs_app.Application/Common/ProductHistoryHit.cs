@@ -4,7 +4,7 @@ namespace bmcs_app.Application.Common;
 
 /// <summary>
 /// 商品検索モーダルの「過去の取引履歴から」軸の1件。
-/// 得意先ごとに商品別の最新売上行から作る。
+/// 得意先ごとに商品×仕入先別の最新売上行から作る。
 /// </summary>
 public sealed record ProductHistoryHit(
     string ProductCode,
@@ -13,4 +13,5 @@ public sealed record ProductHistoryHit(
     string? UnitName,
     DateOnly LastSlipDate,
     decimal LastUnitPrice,
-    TaxCategory TaxCategory);
+    TaxCategory TaxCategory,
+    string? SupplierCode);

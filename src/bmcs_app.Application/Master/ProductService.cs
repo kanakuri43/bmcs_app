@@ -34,6 +34,8 @@ public class ProductService(
             throw new ProductValidationException($"商品コード「{product.ProductCode}」は既に登録されています。");
         }
 
+        await ValidateMainSupplierAsync(product.MainSupplierCode, cancellationToken);
+
         var employeeCode = currentEmployeeContext.EmployeeCode;
         var now = DateTime.Now;
         product.CreatedBy = employeeCode;
@@ -58,6 +60,14 @@ public class ProductService(
         if (!current.RowVersion!.SequenceEqual(product.RowVersion!))
         {
             throw new ProductConcurrencyException("他のユーザーが更新しました。再読み込みしてください。");
+        }
+
+        if (current.MainSupplierCode != product.MainSupplierCode)
+        {
+            // 変更した場合のみ検証する。既存の指定をそのまま保存し直すだけなら、
+            // 指定先が後から無効化されていても拒否しない（仕入先の無効化は主仕入先参照中は拒否されるため通常起きない）。
+            await ValidateMainSupplierAsync(product.MainSupplierCode, cancellationToken);
+            current.MainSupplierCode = product.MainSupplierCode;
         }
 
         current.ProductName = product.ProductName;
@@ -111,6 +121,23 @@ public class ProductService(
         }
 
         logger.LogInformation("商品を無効化しました。ProductCode={ProductCode}", product.ProductCode);
+    }
+
+    /// <summary>主仕入先は、指定するなら有効な仕入先でなければならない（空はなし）。</summary>
+    private async Task ValidateMainSupplierAsync(string? supplierCode, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(supplierCode))
+        {
+            return;
+        }
+
+        var isActive = await dbContext.Suppliers
+            .AsNoTracking()
+            .AnyAsync(s => s.SupplierCode == supplierCode && !s.IsDeleted, cancellationToken);
+        if (!isActive)
+        {
+            throw new ProductValidationException($"主仕入先コード「{supplierCode}」は登録されていないか、無効です。");
+        }
     }
 }
 

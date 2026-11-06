@@ -36,6 +36,9 @@ public class OrderSlip : AuditableEntity
 
     public required decimal CostPrice { get; set; }
 
+    /// <summary>仕入先コードのスナップショット（NULL＝仕入先なし）。<see cref="CostPrice"/> はこの仕入先の原価（なければ標準原価）。</summary>
+    public string? SupplierCode { get; set; }
+
     public required TaxCategory TaxCategory { get; set; }
 
     public required decimal TaxRate { get; set; }

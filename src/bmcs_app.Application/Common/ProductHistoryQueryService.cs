@@ -29,11 +29,11 @@ public class ProductHistoryQueryService(BmcsDbContext dbContext)
             .Take(MaxSourceRows)
             .ToListAsync(cancellationToken);
 
-        // 商品ごとの最新売上行だけを残す。「商品ごとの最新行」をEF Core（SQL）側で
-        // 素直に組めないため、直近 MaxSourceRows 件をメモリに読み、そこで商品コード
-        // ごとに重複を除く（得意先1件あたりの取引件数は限られる想定）。
+        // 商品×仕入先ごとの最新売上行だけを残す（同じ商品を別の仕入先から買った履歴は別の行）。
+        // 「商品×仕入先ごとの最新行」をEF Core（SQL）側で素直に組めないため、直近 MaxSourceRows 件を
+        // メモリに読み、そこで重複を除く（得意先1件あたりの取引件数は限られる想定）。
         return rows
-            .DistinctBy(x => x.ProductCode)
+            .DistinctBy(x => (x.ProductCode, x.SupplierCode))
             .Select(x => new ProductHistoryHit(
                 x.ProductCode,
                 x.ProductName,
@@ -41,7 +41,8 @@ public class ProductHistoryQueryService(BmcsDbContext dbContext)
                 x.UnitName,
                 x.SlipDate,
                 x.UnitPrice,
-                x.TaxCategory))
+                x.TaxCategory,
+                x.SupplierCode))
             .ToList();
     }
 }

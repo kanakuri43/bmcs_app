@@ -22,6 +22,7 @@ public class CopierSalesImportServiceTests(DevDatabaseFixture fixture) : IClassF
     private const string Slip = "__TCI02";      // 外税・伝票単位（端数 四捨五入）
     private const string Line = "__TCI03";      // 内税・明細単位
     private const string Closed = "__TCI04";    // 請求締め済み（確定請求 2026-09-30）
+    private const string TestSupplier = "__TCISUP";
     private static readonly DateOnly Date = new(2026, 9, 20);
 
     [Fact]
@@ -150,6 +151,34 @@ public class CopierSalesImportServiceTests(DevDatabaseFixture fixture) : IClassF
         Assert.Equal(1234m, line.TaxAmount);
     });
 
+    [Fact]
+    public Task 原価と仕入先はCOPYCHGの主仕入先とその原価が転記される() => RunAsync(async (sp, db) =>
+    {
+        var now = DateTime.Now;
+        db.Suppliers.Add(new Supplier
+        {
+            SupplierCode = TestSupplier, SupplierName = "テスト仕入先",
+            CreatedBy = "TEST", CreatedAt = now, UpdatedBy = "TEST", UpdatedAt = now,
+        });
+        await db.SaveChangesAsync();
+        db.ProductSupplierCosts.Add(new ProductSupplierCost
+        {
+            ProductCode = CopierSalesImportService.ProductCode, SupplierCode = TestSupplier, CostPrice = 321m,
+            CreatedBy = "TEST", CreatedAt = now, UpdatedBy = "TEST", UpdatedAt = now,
+        });
+        (await db.Products.SingleAsync(p => p.ProductCode == CopierSalesImportService.ProductCode)).MainSupplierCode = TestSupplier;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var service = sp.GetRequiredService<CopierSalesImportService>();
+        var result = (await service.ImportAsync(await service.PreviewAsync([Row("__TCIM1", 5000m)])))[0];
+        Assert.True(result.IsSuccess, result.Error);
+
+        var line = await SingleLineAsync(db, result.SalesSlipNumber!);
+        Assert.Equal(TestSupplier, line.SupplierCode);
+        Assert.Equal(321m, line.CostPrice);
+    });
+
     // ── 準備と後始末 ──────────────────────────────
 
     private static CopierCsvRow Row(string machineNo, decimal amount) => new(
@@ -249,6 +278,10 @@ public class CopierSalesImportServiceTests(DevDatabaseFixture fixture) : IClassF
     {
         await db.Database.ExecuteSqlRawAsync("DELETE FROM dbo.copier_import_histories WHERE machine_no LIKE '[_][_]TCIM%'");
         await db.Database.ExecuteSqlRawAsync("DELETE FROM dbo.sales WHERE customer_code LIKE '[_][_]TCI0%'");
+        // 仕入先は売上（supplier_code の FK）を消した後に、商品の主仕入先・原価行・仕入先の順に片付ける。
+        await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE dbo.products SET main_supplier_code = NULL WHERE main_supplier_code = {TestSupplier}");
+        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.product_supplier_costs WHERE supplier_code = {TestSupplier}");
+        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM dbo.suppliers WHERE supplier_code = {TestSupplier}");
         await db.Database.ExecuteSqlRawAsync("DELETE FROM dbo.copier_machines WHERE machine_no LIKE '[_][_]TCIM%'");
         await db.Database.ExecuteSqlRawAsync("DELETE FROM dbo.billings WHERE billing_number = '__TCIBIL'");
         await db.Database.ExecuteSqlRawAsync("DELETE FROM dbo.customers WHERE customer_code LIKE '[_][_]TCI0%'");

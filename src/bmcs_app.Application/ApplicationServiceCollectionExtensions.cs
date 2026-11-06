@@ -50,10 +50,13 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<EmployeeService>();
         services.AddScoped<CompanyInfoService>();
         services.AddScoped<BankAccountService>();
+        services.AddScoped<SupplierService>();
         services.AddScoped<DepositMethodService>();
         services.AddScoped<CopierMachineService>();
         services.AddScoped<CustomerProductPriceService>();
+        services.AddScoped<ProductSupplierCostService>();
         services.AddScoped<MenuService>();
+        services.AddScoped<TaxRateService>();
         services.AddScoped<QueryRunnerService>();
         services.AddScoped<ProductHistoryQueryService>();
         services.AddScoped<TaxRateQueryService>();
