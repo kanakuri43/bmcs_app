@@ -153,6 +153,9 @@ public partial class MainMenuViewModel(
             case "menu_master":
                 windowService.Show<MenuMasterWindow, MenuMasterViewModel>();
                 break;
+            case "tax_rate_master":
+                windowService.Show<TaxRateMasterWindow, TaxRateMasterViewModel>();
+                break;
             case "bank_account_master":
                 windowService.Show<BankAccountMasterWindow, BankAccountMasterViewModel>();
                 break;

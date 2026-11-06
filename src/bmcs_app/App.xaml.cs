@@ -196,6 +196,8 @@ public partial class App : System.Windows.Application
 
         builder.Services.AddScoped<MenuMasterWindow>();
         builder.Services.AddScoped<MenuMasterViewModel>();
+        builder.Services.AddScoped<TaxRateMasterWindow>();
+        builder.Services.AddScoped<TaxRateMasterViewModel>();
 
         builder.Services.AddScoped<BankAccountMasterWindow>();
         builder.Services.AddScoped<BankAccountMasterViewModel>();
