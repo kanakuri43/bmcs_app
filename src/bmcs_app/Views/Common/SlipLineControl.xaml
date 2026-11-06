@@ -17,7 +17,7 @@
                 <ColumnDefinition Width="68"  />  <!-- 区分 -->
                 <ColumnDefinition Width="72"  />  <!-- 数量 -->
                 <ColumnDefinition Width="88"  />  <!-- 単価 -->
-                <ColumnDefinition Width="72"  />  <!-- 仕入先 -->
+                <ColumnDefinition Width="110" />  <!-- 仕入先 -->
                 <ColumnDefinition Width="80"  />  <!-- 原価 -->
                 <ColumnDefinition Width="96"  />  <!-- 金額 -->
                 <ColumnDefinition Width="56"  />  <!-- 税率 -->
@@ -93,9 +93,9 @@
                      Text="{Binding UnitPrice}"
                      Margin="{StaticResource SlipLineCellMargin}" />
 
-            <!-- 仕入先（表示のみ。商品検索で選んだ行の仕入先が入る。変えるときは商品を選び直す） -->
+            <!-- 仕入先（表示のみ。商品検索で選んだ行の仕入先の名称が入る。変えるときは商品を選び直す） -->
             <TextBlock Grid.Column="6"
-                       Text="{Binding SupplierCode}"
+                       Text="{Binding SupplierName}"
                        ToolTip="{Binding SupplierName}"
                        VerticalAlignment="Center"
                        Foreground="{DynamicResource MahApps.Brushes.Gray3}"

@@ -134,11 +134,11 @@ public partial class SlipLineViewModel : ObservableObject
     [ObservableProperty]
     public partial decimal CostPrice { get; set; }
 
-    /// <summary>仕入先コード（表示のみ）。<c>null</c> は仕入先なし。商品検索で決まり、保存される。</summary>
+    /// <summary>仕入先コード。<c>null</c> は仕入先なし。商品検索で決まり、保存される（明細の画面には名称を表示する）。</summary>
     [ObservableProperty]
     public partial string? SupplierCode { get; set; }
 
-    /// <summary>仕入先の名称（表示のみ。ツールチップ用）。</summary>
+    /// <summary>仕入先の名称。明細の仕入先欄に表示する（表示のみ）。</summary>
     [ObservableProperty]
     public partial string? SupplierName { get; set; }
 
