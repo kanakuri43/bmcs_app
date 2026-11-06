@@ -50,6 +50,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<EmployeeService>();
         services.AddScoped<CompanyInfoService>();
         services.AddScoped<BankAccountService>();
+        services.AddScoped<SupplierService>();
         services.AddScoped<DepositMethodService>();
         services.AddScoped<CopierMachineService>();
         services.AddScoped<CustomerProductPriceService>();
