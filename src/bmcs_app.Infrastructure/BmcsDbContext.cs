@@ -39,6 +39,10 @@ public class BmcsDbContext(DbContextOptions<BmcsDbContext> options) : DbContext(
 
     public DbSet<CustomerProductRate> CustomerProductRates => Set<CustomerProductRate>();
 
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+
+    public DbSet<ProductSupplierCost> ProductSupplierCosts => Set<ProductSupplierCost>();
+
     public DbSet<Menu> Menus => Set<Menu>();
 
     public DbSet<OrderSlip> OrderSlips => Set<OrderSlip>();

@@ -24,6 +24,10 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(e => e.StandardCostPrice).HasPrecision(15, 4);
         builder.Property(e => e.CatalogPrice).HasPrecision(15, 4);
 
+        builder.Property(e => e.MainSupplierCode).HasMaxLength(10).IsUnicode(false);
+        builder.HasOne<Supplier>().WithMany()
+            .HasForeignKey(e => e.MainSupplierCode).OnDelete(DeleteBehavior.NoAction);
+
         builder.Property(e => e.TaxCategory).HasConversion<byte>();
 
         builder.ConfigureAuditColumns();

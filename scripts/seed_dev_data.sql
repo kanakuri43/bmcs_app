@@ -48,7 +48,9 @@ DELETE FROM dbo.billings WHERE billing_number IN (N'BIL_INV001', N'BIL_INV002', 
 DELETE FROM dbo.orders WHERE order_slip_number IN (N'ORD001', N'ORD002', N'ORD003', N'ORD004');
 DELETE FROM dbo.monthly_closings WHERE closing_date IN ('2026-01-31', '2026-02-28');
 DELETE FROM dbo.customers WHERE customer_code IN (N'CUS001', N'CUS002', N'CUS003', N'CUS004');
+DELETE FROM dbo.product_supplier_costs WHERE supplier_code IN (N'SUP001', N'SUP002');
 DELETE FROM dbo.products WHERE product_code IN (N'PRD001', N'PRD002', N'PRD003');
+DELETE FROM dbo.suppliers WHERE supplier_code IN (N'SUP001', N'SUP002');
 DELETE FROM dbo.bank_accounts WHERE bank_account_code IN (N'BNK001');
 DELETE FROM dbo.company_infos WHERE company_info_id = 1;
 DELETE FROM dbo.employees WHERE employee_code IN (N'EMP001', N'EMP002');
@@ -94,18 +96,35 @@ VALUES
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
--- 商品: 税種別区分3種を1つずつ網羅
-INSERT INTO dbo.products
-    (product_code, product_name, product_name_kana, specification, unit_name,
-     standard_unit_price_excl_tax, standard_unit_price_incl_tax, standard_cost_price, tax_category,
+-- 仕入先
+INSERT INTO dbo.suppliers
+    (supplier_code, supplier_name, supplier_name_kana, phone_number,
      created_by, created_at, updated_by, updated_at)
 VALUES
-    (N'PRD001', N'事務用品セット', N'ｼﾞﾑﾖｳﾋﾝｾｯﾄ', N'A4', N'セット', 1000.0000, 1100.0000, 700.0000, 1,
+    (N'SUP001', N'東西商事', N'ﾄｳｻﾞｲｼｮｳｼﾞ', N'03-0000-0001', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    (N'SUP002', N'南北物産', N'ﾅﾝﾎﾞｸﾌﾞｯｻﾝ', N'03-0000-0002', N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
+GO
+
+-- 商品: 税種別区分3種を1つずつ網羅（PRD001・PRD002 は主仕入先あり、PRD003 はなし）
+INSERT INTO dbo.products
+    (product_code, product_name, product_name_kana, specification, unit_name,
+     standard_unit_price_excl_tax, standard_unit_price_incl_tax, standard_cost_price, tax_category, main_supplier_code,
+     created_by, created_at, updated_by, updated_at)
+VALUES
+    (N'PRD001', N'事務用品セット', N'ｼﾞﾑﾖｳﾋﾝｾｯﾄ', N'A4', N'セット', 1000.0000, 1100.0000, 700.0000, 1, N'SUP001',
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    (N'PRD002', N'給食用食材', N'ｷｭｳｼｮｸﾖｳｼｮｸｻﾞｲ', N'1kg', N'袋', 500.0000, 540.0000, 350.0000, 2,
+    (N'PRD002', N'給食用食材', N'ｷｭｳｼｮｸﾖｳｼｮｸｻﾞｲ', N'1kg', N'袋', 500.0000, 540.0000, 350.0000, 2, N'SUP002',
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
-    (N'PRD003', N'商品券', N'ｼｮｳﾋﾝｹﾝ', NULL, N'枚', 1000.0000, 1000.0000, 1000.0000, 3,
+    (N'PRD003', N'商品券', N'ｼｮｳﾋﾝｹﾝ', NULL, N'枚', 1000.0000, 1000.0000, 1000.0000, 3, NULL,
      N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
+GO
+
+-- 仕入先別原価: PRD001 は主仕入先（SUP001）と別の仕入先（SUP002）の両方、PRD002 は標準原価にフォールバックする組み合わせを残す
+INSERT INTO dbo.product_supplier_costs
+    (product_code, supplier_code, cost_price, created_by, created_at, updated_by, updated_at)
+VALUES
+    (N'PRD001', N'SUP001', 650.0000, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME()),
+    (N'PRD001', N'SUP002', 680.0000, N'SEED', SYSDATETIME(), N'SEED', SYSDATETIME());
 GO
 
 -- 銀行口座

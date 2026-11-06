@@ -13,6 +13,7 @@
 --   employees, customers, products, bank_accounts,
 --   copier_machines, copier_import_histories,
 --   customer_product_prices, customer_product_rates,
+--   product_supplier_costs, suppliers,
 --   orders, sales, receipts, receipt_allocations, detail_receipts,
 --   billings, detail_invoices, detail_invoice_sales_lines, monthly_closings
 --
@@ -57,8 +58,10 @@ DELETE FROM dbo.copier_import_histories;
 DELETE FROM dbo.copier_machines;
 DELETE FROM dbo.customer_product_rates;
 DELETE FROM dbo.customer_product_prices;
+DELETE FROM dbo.product_supplier_costs;
 DELETE FROM dbo.customers;
 DELETE FROM dbo.products;
+DELETE FROM dbo.suppliers;
 DELETE FROM dbo.bank_accounts;
 DELETE FROM dbo.employees;
 GO
