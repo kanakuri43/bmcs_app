@@ -1,0 +1,151 @@
+<mah:MetroWindow x:Class="bmcs_app.Views.Master.ProductExcelImportWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:beh="clr-namespace:bmcs_app.Behaviors"
+                 Title="bmcs_app - 商品マスタExcel取込"
+                 Height="640" Width="1200"
+                 WindowStartupLocation="CenterScreen"
+                 WindowTransitionsEnabled="False"
+                 AllowDrop="True" DragOver="Window_DragOver" Drop="Window_Drop">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal">
+            <Button Content="ファイル選択" Command="{Binding SelectFileCommand}"
+                    beh:FocusBehavior.IsInitialFocus="True" Padding="16,6" Margin="0,0,12,0" />
+            <TextBlock Text="{Binding FilePath}" VerticalAlignment="Center" Foreground="Gray" />
+        </StackPanel>
+
+        <TextBlock Grid.Row="1" Text="{Binding FileError}" Foreground="OrangeRed" FontWeight="Bold" Margin="0,8,0,0">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding FileError}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+
+        <!-- コピー機売上CSV取込と同じ ListView／GridView。1行おきに薄いグレー。 -->
+        <ListView Grid.Row="2" ItemsSource="{Binding Rows}" Margin="0,12,0,0"
+                  SelectionMode="Single" AlternationCount="2">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem" BasedOn="{StaticResource {x:Type ListViewItem}}">
+                    <Style.Triggers>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="ItemsControl.AlternationIndex" Value="1" />
+                                <Condition Property="IsSelected" Value="False" />
+                                <Condition Property="IsMouseOver" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <Setter Property="Background" Value="#F2F2F2" />
+                        </MultiTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="行" Width="50" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Row.RowNumber}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="商品コード" Width="100" DisplayMemberBinding="{Binding Row.ProductCode}" />
+                    <GridViewColumn Header="商品名" Width="360" DisplayMemberBinding="{Binding Row.ProductName}" />
+                    <GridViewColumn Header="JANコード" Width="120" DisplayMemberBinding="{Binding Row.JanCode}" />
+                    <GridViewColumn Header="標準原価" Width="90" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Row.CostPrice, StringFormat={}{0:#,##0.####}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="定価" Width="90" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Row.CatalogPrice, StringFormat={}{0:#,##0.####}}" HorizontalAlignment="Right" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="状態" Width="70">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding StateText}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="FontWeight" Value="Bold" />
+                                            <Setter Property="Foreground" Value="SeaGreen" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Row.Status}" Value="Update">
+                                                    <Setter Property="Foreground" Value="SteelBlue" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Row.Status}" Value="Error">
+                                                    <Setter Property="Foreground" Value="Crimson" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="理由" Width="300" DisplayMemberBinding="{Binding Reason}" />
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <Border Grid.Row="2" Margin="0,12,0,0" BorderBrush="Gray" BorderThickness="2" CornerRadius="8"
+                IsHitTestVisible="False">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Rows.Count}" Value="0">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Border.Background>
+                <SolidColorBrush Color="{DynamicResource MahApps.Colors.ThemeBackground}" />
+            </Border.Background>
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="&#xE8E5;" FontFamily="Segoe MDL2 Assets" FontSize="64" Foreground="Gray"
+                           HorizontalAlignment="Center" Margin="0,0,0,12" />
+                <TextBlock Text="ここにExcelファイル（.xlsx）をドラッグ＆ドロップ&#10;（または「ファイル選択」ボタン）"
+                           FontSize="20" Foreground="Gray" TextAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="3" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding SummaryText}" VerticalAlignment="Center" FontWeight="Bold" />
+                <TextBlock Text="処理中..." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="OrangeRed"
+                           Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </StackPanel>
+            <Button Grid.Column="1" Content="取込実行" Command="{Binding ImportCommand}" Padding="16,6" />
+        </Grid>
+
+        <StatusBar Grid.Row="4">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" />
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</mah:MetroWindow>

@@ -177,6 +177,9 @@ public partial class MainMenuViewModel(
             case "query_runner":
                 windowService.Show<QueryRunnerWindow, QueryRunnerViewModel>();
                 break;
+            case "product_excel_import":
+                windowService.Show<ProductExcelImportWindow, ProductExcelImportViewModel>();
+                break;
             case "printer_settings":
                 windowService.Show<PrinterSettingsWindow, PrinterSettingsViewModel>();
                 break;
