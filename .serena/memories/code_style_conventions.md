@@ -30,7 +30,7 @@
 - 暫定設定を採用した場合は必ず`docs/`に「暫定」と明記して記録する（TODO.md）。
 - 画面番号（SCR-xxx等）は暫定のため使わず、画面は名称で参照する。
 
-## テスト（2026-09-15時点。件数は変動するため`dotnet test`の実行結果を都度確認すること）
+## テスト（件数は変動するため`dotnet test`の実行結果を都度確認すること。開発DBでは`Application.Tests`の一部が変更前から失敗する。suggested_commands参照）
 - `tests/bmcs_app.Domain.Tests/`（xUnit v2、DB不要）: 消費税計算・単価決定・税額分岐・伝票区分正規化・編集ロック判定・消込配分ロジック等の単体テスト。
 - `tests/bmcs_app.Application.Tests/`（DB結合テスト）: `DevDatabaseFixture`経由で開発用ライブDB（`172.16.3.171`/`bmcs_db`）に実接続。採番・各画面の登録/訂正/取消・消込・フェーズレビューの結合テスト。テスト内で作成した行は`__`接頭辞のキーを使い、テスト内で物理削除して後始末する（本番運用の「物理削除しない」方針とは別、検証データの後始末）。
 - **重要**: 自前で`BeginTransactionAsync`→`SaveChangesAsync`→`CommitAsync`を行うユースケースメソッド（`SalesService`/`OrderService`/`ReceiptEntryService`/`DetailReceiptEntryService`等の新規登録・訂正・取消系）を呼ぶ結合テストは「外側をトランザクションで包み`RollbackAsync`する」方式が使えない（ネストした`BeginTransactionAsync`はEF Coreが例外を投げる）。この場合は使い捨てデータをコミットし`finally`で物理削除する方式を使う。一方`SettlementService.RecalculateForBillingGroupAsync`のようにトランザクションを開始しないメソッドは、外側を`BeginTransactionAsync`→`RollbackAsync`で包む方式が使える（`SettlementServiceTests`）。
@@ -38,4 +38,5 @@
 
 ## 作業ルール（重要）
 - **指示が矛盾している場合は必ずユーザーに確認する**（自分の解釈で片方を選んで進めない）。対象は (1)過去の確定済み決定との矛盾 (2)CLAUDE.md/docsの方針との矛盾 (3)一つの指示内で両立しない要求。単なる曖昧さ（どの解釈でも成立する）は確認せず進めてよい。
-- **git commit のメッセージは日本語で書く**（CLAUDE.md、2026-09-10追加）。
+- **git commit のメッセージは日本語で書く**（CLAUDE.md、2026-09-10追加）。作業は`main`から切った作業ブランチ（`feature/…`・`fix/…`・`docs/…`）で行い、1コミット1目的（機能・不具合修正・文書・スキーマ変更を混ぜない）。詳細は`CLAUDE.md`の「Git 運用」。
+- 画面は名称で参照し、画面番号（`SCR-xxx`等）は使わない。docsには日付・決定ID・Phase番号・TODO項番・経緯を書かない（なぜそうしたかは`docs/decisions.md`）。

@@ -16,16 +16,16 @@
 sqlcmdは `go-sqlcmd`（v1.9.0系）。認証情報は `src/bmcs_app/appsettings.Development.json` 参照（sa / 要パスワード）。
 
 - スキーマ変更の適用（新しい連番ファイルを追加した後）:
-  `sqlcmd -S 172.16.3.171 -U sa -P '<password>' -d bmcs_db -C -i scripts/00N_xxx.sql`
-- 開発用シードデータの投入（何度でも再実行可、既存データをDELETEしてから再投入）:
-  `sqlcmd -S 172.16.3.171 -U sa -P '<password>' -d bmcs_db -C -i scripts/seed_dev_data.sql`
+  `sqlcmd -S 172.16.3.171 -U sa -P '<password>' -d bmcs_db -C -I -i scripts/0NN_xxx.sql`（`-I`＝`QUOTED_IDENTIFIER ON`。フィルタ付き一意インデックスに必要なので常に付ける。連番は現在043まで）
+- 開発用シードデータの投入（既存データをDELETEしてから再投入する**破壊的**スクリプト）。**共有開発DBは独自データで運用中なので、ユーザーの明示的な指示なしに流さない**（流すと実データが消える。本番へは絶対に流さない）:
+  `sqlcmd -S 172.16.3.171 -U sa -P '<password>' -d bmcs_db -C -I -i scripts/seed_dev_data.sql`
 - スキーマ確認（乖離チェック）:
   `sqlcmd ... -Q "SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('dbo.<table>')"` 等
 - テスト後の残留データ確認（`__`接頭辞のテスト用customer_codeが残っていないか）:
   `sqlcmd -S 172.16.3.171 -d bmcs_db -U sa -P '<password>' -C -Q "SELECT COUNT(*) FROM dbo.customers WHERE customer_code LIKE '\_\_TST%' ESCAPE '\'"`
 
 **開発DB・環境の落とし穴（2026-09-30確認）**
-- 開発DBは独自データ運用で、`seed_dev_data.sql`のマスタ（EMP001・PRD001・CUS001・BNK001等）が存在しない（社員101〜103、商品1001〜、得意先1001等、銀行口座1・2、入金方法CASH/TRANSFER等）。そのため既存の結合テストは約127件が外部キー違反で**変更前から失敗**する（変更前後で失敗の顔ぶれを比較して回帰確認する）。新規の結合テストは実在するマスタ（商品`1001`・入金方法`TRANSFER`・銀行口座`1`・営業担当社員はNULL）を使い、`__TST*`得意先を作って後始末で物理削除する。実データが無い2020年等の月だけを対象にすると、全得意先を対象にするサービス（月次締め）でも既存データに触れない。
+- 開発DBは独自データ運用で、`seed_dev_data.sql`のマスタ（EMP001・PRD001・CUS001・BNK001等）が存在しない（社員101〜103、商品1001〜、得意先1001等、銀行口座1・2、入金方法CASH/TRANSFER等）。そのため既存の結合テストの一部（2026-11-06時点で53件失敗・258件成功）が外部キー違反で**変更前から失敗**する（変更前後で失敗テスト名の集合を比較して回帰確認する。変更前コミットは`git worktree add`で別に出し、`appsettings.Development.json`を両方に置く）。新規の結合テストは`DevDatabaseFixture`が保証する参照データ（`CUS001`・`PRD001`・`PRD002`・`EMP001`）を使い、`__TST*`得意先を作って後始末で物理削除する。`menus.menu_code`は最大20文字。実データが無い2020年等の月だけを対象にすると、全得意先を対象にするサービス（月次締め）でも既存データに触れない。
 - テーブル名は複数形（019で改名済み。`dbo.menus`・`dbo.monthly_closings`・`dbo.receipts`等）。`scripts/014_seed_menu_structure.sql`は再実行安全（menusを全件削除して再投入）。
 - **Bashツールは日本語を含むパスの`cd`直後のheredocや`ls`が文字化けで失敗することがある**（`cd C:/Users/User3292/source/repos/石山商店/bmcs_app && ...`のように`&&`でつなぐと動く場合もある）。ファイル作成は`Write`ツール、編集は`Edit`か`python`（`open(..., encoding='utf-8')`）を使う。日本語を含むファイル名でなくても、日本語のテストメソッド名に全角の`・`は使えない（C#識別子エラー）。
 - go-sqlcmd に `-f 65001` は無い。パスワードは `-P` で渡す。
