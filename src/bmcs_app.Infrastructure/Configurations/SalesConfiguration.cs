@@ -22,7 +22,7 @@ public class SalesConfiguration : IEntityTypeConfiguration<Sales>
         builder.Property(e => e.TaxUnit).HasConversion<byte>();
         builder.Property(e => e.CustomerName).HasMaxLength(60);
         builder.Property(e => e.ProductCode).HasMaxLength(20).IsUnicode(false);
-        builder.Property(e => e.ProductName).HasMaxLength(60);
+        builder.Property(e => e.ProductName).HasMaxLength(200);
         builder.Property(e => e.Specification).HasMaxLength(60);
         builder.Property(e => e.UnitName).HasMaxLength(10);
         builder.Property(e => e.OrderSlipNumber).HasMaxLength(20).IsUnicode(false);

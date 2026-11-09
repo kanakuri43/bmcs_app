@@ -98,8 +98,8 @@ public partial class SlipLineViewModel : ObservableObject
         ProductName = ProductName[..Math.Min(ProductName.Length, ProductNameMaxLength - EditedNameMarker.Length)] + EditedNameMarker;
     }
 
-    /// <summary>商品名のDB列長（<c>product_name nvarchar(60)</c>）。</summary>
-    public const int ProductNameMaxLength = 60;
+    /// <summary>商品名のDB列長（<c>product_name nvarchar(200)</c>）。</summary>
+    public const int ProductNameMaxLength = 200;
 
     [ObservableProperty]
     public partial string? Specification { get; set; }

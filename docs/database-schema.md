@@ -200,8 +200,8 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | カラム | 型 | NULL | 内容 |
 |---|---|---|---|
 | `product_code` | `varchar(20)` | PK | 社内商品コード（JAN コードは `jan_code` に別持ち） |
-| `product_name` | `nvarchar(60)` | × | |
-| `product_name_kana` | `nvarchar(60)` | ○ | 共通検索モーダルの検索対象 |
+| `product_name` | `nvarchar(200)` | × | |
+| `product_name_kana` | `nvarchar(200)` | ○ | 共通検索モーダルの検索対象 |
 | `jan_code` | `varchar(13)` | ○ | JAN コード。商品検索モーダル（マスタから）の検索対象。重複は許容 |
 | `specification` | `nvarchar(60)` | ○ | 規格 |
 | `unit_name` | `nvarchar(10)` | ○ | 単位（個・本・ケース等） |
@@ -485,7 +485,7 @@ DBスキーマは、各画面仕様書が実際に前提としている業務要
 | `customer_name` | `nvarchar(60)` | × | 得意先名称の**スナップショット** |
 | `slip_type` | `tinyint` | × | `1`＝売上／`2`＝返品／`3`＝値引 |
 | `product_code` | `varchar(20)` | × | |
-| `product_name` | `nvarchar(60)` | × | 商品名の**スナップショット** |
+| `product_name` | `nvarchar(200)` | × | 商品名の**スナップショット** |
 | `specification` | `nvarchar(60)` | ○ | 規格のスナップショット |
 | `unit_name` | `nvarchar(10)` | ○ | 単位のスナップショット |
 | `quantity` | `decimal(13,3)` | × | 数量。返品・値引はマイナス |
@@ -714,7 +714,7 @@ OR
 | `customer_name` | `nvarchar(60)` | × | スナップショット |
 | `sub_customer_id` | `varchar(20)` | ○ | 子得意先（学校のクラス・先生等）の指定 |
 | `product_code` | `varchar(20)` | × | |
-| `product_name` | `nvarchar(60)` | × | スナップショット |
+| `product_name` | `nvarchar(200)` | × | スナップショット |
 | `specification` | `nvarchar(60)` | ○ | スナップショット |
 | `unit_name` | `nvarchar(10)` | ○ | スナップショット |
 | `order_quantity` | `decimal(13,3)` | × | 受注数量 |
