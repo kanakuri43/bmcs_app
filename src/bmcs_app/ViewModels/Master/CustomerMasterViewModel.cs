@@ -126,6 +126,12 @@ public partial class CustomerMasterViewModel(
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
 
+    /// <summary>コード欄の横に出す「未登録コード→新規登録」の通知。コードを編集したら消える。</summary>
+    [ObservableProperty]
+    public partial string NewCodeMessage { get; set; } = string.Empty;
+
+    partial void OnCustomerCodeChanged(string value) => NewCodeMessage = string.Empty;
+
     private byte[]? _loadedRowVersion;
 
     [RelayCommand]
@@ -164,7 +170,8 @@ public partial class CustomerMasterViewModel(
             ClearForm();
             CustomerCode = enteredCode;
             IsNew = true;
-            StatusMessage = $"得意先コード「{enteredCode}」は未登録です。新規登録として入力してください。";
+            NewCodeMessage = "未登録のコードです。新規登録として入力してください。";
+            RequestFocus("Name");
             return;
         }
 
