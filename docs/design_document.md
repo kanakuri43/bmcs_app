@@ -125,6 +125,7 @@
 | 項目 | 状態 | 理由 |
 |---|---|---|
 | 受注日付・得意先（コード+名称、Space/Enter対応）・明細行・フッター集計・保存(F10)・新規(F3) | **実装済み** | `orders` に対応する列があり、既存の `ConsumptionTaxCalculator`／`IUnitPriceCalculator`／`SlipNumberService` を再利用できる |
+| フッターの粗利 | **実装済み** | 粗利（税抜金額 − 原価×数量の合計）がマイナスのとき赤字で表示する（`IsGrossProfitNegative`）。0は通常色 |
 | 受注No. | 新規入力時は採番前のため空欄（ウォーターマーク「自動採番（SPACEで検索）」）で、**採番は保存時にトランザクション内で1回だけ**行う。既存受注は、受注No.を入力して`Enter`で読み込むか、`Space`で伝票検索モーダル（8-0章）から選ぶ（読み込み・修正・複写は24章・26章） | 採番は保存時にトランザクション内で1回だけ行う方針（`docs/architecture.md` 6章）であり、画面を開いた時点や入力中に採番しない |
 | 得意先名の編集 | **実装済み**。得意先コード検索後、名称を直接書き換えられる（宛名の都度書き換え方式。`sub_customer_id`行を参照） | 学校のクラス・先生等の宛名の柔軟性を、子得意先マスタではなく名称欄の都度上書きで実現する |
 | 得意先名の編集（諸口得意先） | **未実装** | `Customer` に「諸口」相当のフラグがない |
@@ -151,6 +152,7 @@
 | 項目 | 状態 | 理由 |
 |---|---|---|
 | 売上日付・得意先（コード+名称、Space/Enter対応）・明細行・フッター集計・保存(F10)・新規(F3) | **実装済み** | `sales` に対応する列があり、既存の `ConsumptionTaxCalculator`／`IUnitPriceCalculator`／`SlipNumberService`／`SlipLineViewModel` を再利用できる |
+| フッターの粗利 | **実装済み** | 粗利（税抜金額 − 原価×数量の合計）がマイナスのとき赤字で表示する（`IsGrossProfitNegative`）。0は通常色 |
 | 得意先名称の上書き | **実装済み**（TwoWay、保存は`this.CustomerName`） | 宛名の都度書き換え方式。受注入力画面と同じ仕組み |
 | 受注No. | **実装済み**。`Space`で受注検索モーダル、`Return`で受注No.直接読込（8-1章） | `sales.order_slip_number`／`order_line_number`列で受注行に紐付ける |
 | 請求状態・消込状態の表示 | **実装済み**。新規入力中は固定表示「未請求」「未消込」、既存伝票を読み込んだ場合は実際の状態を表示 | 新規登録では`BillingStatus=Unbilled`／`SettlementStatus=Unsettled`が常に正しい。請求状態・消込状態の枠は、伝票の状態カラム（`BillingStatus`／`SettlementStatus`）に対応させている |
@@ -2050,7 +2052,7 @@ DBスキーマ（`scripts/020_add_billing_customer_code.sql`）・エンティ�
 - **仕入先別**: 売上明細の`supplier_code`（明細に保存した仕入先のスナップショット）単位。仕入先コード順で、仕入先なしの明細は「（仕入先なし）」（コードは空）として末尾に1行で出す。名称は仕入先マスタの現在の名称で、無効化した仕入先も引く（無ければコード）。仕入先を持たない既存の明細は「（仕入先なし）」に集計される。値引の行は仕入先を保持し、原価が0でマイナスの売上額としてその仕入先に計上される。
 - 全得意先（全商品・全仕入先）の合計は、33章の全担当者の合計と一致する。
 
-- **一覧の操作（分析の3画面共通）**: 列見出しのクリックでその列の昇順／降順に並べ替える（見出しに▲▼を表示）。初期表示は粗利の降順。「CSV保存」は表示されている並び順のまま、ヘッダー付き・Shift_JISで保存する（金額は桁区切りなしの数値、粗利率は小数1桁。売上額0の粗利率は空欄）。
+- **一覧の操作（分析の3画面共通）**: 列見出しのクリックでその列の昇順／降順に並べ替える（見出しに▲▼を表示）。初期表示は粗利の降順。粗利がマイナスの行は、粗利・粗利率を赤字で表示する（合計の粗利も同様。CSV保存には影響しない）。「CSV保存」は表示されている並び順のまま、ヘッダー付き・Shift_JISで保存する（金額は桁区切りなしの数値、粗利率は小数1桁。売上額0の粗利率は空欄）。
 
 実装: `SalesSummaryQueryService`（`Application/Analysis`）、`SalesSummaryWindow`／`SalesSummaryViewModel`（`Analysis`。軸は選択中のタブ`SelectedTabIndex`＝`SalesSummaryKind`で、担当者別は`EmployeeSalesQueryService`の結果を`SalesSummaryItem`へ変換して同じ一覧に載せる。列見出しは軸に合わせてコードビハインドで差し替える）。仕入先別のクエリは`SalesSummaryQueryService.GetBySupplierAsync`。メニューは`scripts/035`・`036`で分類「分析」に3項目を作り、`scripts/038_merge_analysis_menus.sql`で`MNU_SALES_ANALYSIS`（権限レベル1、`sales_analysis`）の1項目にまとめた。
 
