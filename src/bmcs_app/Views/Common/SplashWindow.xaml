@@ -6,21 +6,62 @@
         WindowStyle="None" ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="False" ShowActivated="False" Topmost="True"
-        Background="White" BorderBrush="#FFC0C0C0" BorderThickness="1">
+        BorderBrush="#FF0A3F7D" BorderThickness="1">
     <!--
         起動中表示。App.xaml.cs が専用の UI スレッドで表示する（メインの UI スレッドは
         ホスト構築中ふさがっており、同じスレッドでは ProgressRing が止まるため）。
         別スレッドからは Application.Resources（MahApps のテーマ）を参照できないので、
         色は直接指定する。
     -->
-    <Grid>
-        <Border Height="8" VerticalAlignment="Top" Background="#FF116AC6" />
-        <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="販売管理システム" HorizontalAlignment="Center"
-                       FontFamily="Yu Gothic UI" FontSize="32" FontWeight="Bold" Foreground="#FF333333" />
-            <mah:ProgressRing Width="40" Height="40" Margin="0,20,0,12" Foreground="#FF116AC6" />
-            <TextBlock Text="起動しています…" HorizontalAlignment="Center"
-                       FontFamily="Yu Gothic UI" FontSize="14" Foreground="#FF777777" />
+    <Window.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FF0A3F7D" Offset="0" />
+            <GradientStop Color="#FF116AC6" Offset="0.6" />
+            <GradientStop Color="#FF2B8DE3" Offset="1" />
+        </LinearGradientBrush>
+    </Window.Background>
+
+    <Grid ClipToBounds="True">
+        <!-- 右側の飾りの円 -->
+        <Ellipse Width="300" Height="300" Margin="0,-90,-110,0" HorizontalAlignment="Right" VerticalAlignment="Top"
+                 Fill="#14FFFFFF" />
+        <Ellipse Width="180" Height="180" Margin="0,0,-40,-70" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                 Fill="#10FFFFFF" />
+        <Ellipse Width="120" Height="120" Margin="0,-30,60,0" HorizontalAlignment="Right" VerticalAlignment="Top"
+                 Stroke="#22FFFFFF" StrokeThickness="1" />
+
+        <StackPanel x:Name="TitlePanel" Margin="40,44,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Opacity="0">
+            <StackPanel.RenderTransform>
+                <TranslateTransform x:Name="TitleOffset" Y="8" />
+            </StackPanel.RenderTransform>
+            <TextBlock Text="S A L E S   M A N A G E M E N T   S Y S T E M"
+                       FontFamily="Segoe UI" FontSize="11" FontWeight="SemiBold" Foreground="#B3FFFFFF" />
+            <TextBlock Text="販売管理システム" Margin="0,6,0,0"
+                       FontFamily="Yu Gothic UI" FontSize="32" FontWeight="Bold" Foreground="White" />
+            <Border Width="56" Height="3" Margin="0,12,0,0" HorizontalAlignment="Left" CornerRadius="1.5" Background="#FF7FD3FF" />
+        </StackPanel>
+
+        <StackPanel Margin="40,0,0,30" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Left">
+            <mah:ProgressRing Width="20" Height="20" Foreground="White" />
+            <TextBlock Text="起動しています…" Margin="12,0,0,0" VerticalAlignment="Center"
+                       FontFamily="Yu Gothic UI" FontSize="13" Foreground="#CCFFFFFF" />
         </StackPanel>
     </Grid>
+
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard>
+                <Storyboard>
+                    <DoubleAnimation Storyboard.TargetName="TitlePanel" Storyboard.TargetProperty="Opacity"
+                                     To="1" Duration="0:0:0.5" />
+                    <DoubleAnimation Storyboard.TargetName="TitleOffset" Storyboard.TargetProperty="Y"
+                                     To="0" Duration="0:0:0.5">
+                        <DoubleAnimation.EasingFunction>
+                            <CubicEase EasingMode="EaseOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </Window.Triggers>
 </Window>
