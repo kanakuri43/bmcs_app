@@ -63,7 +63,7 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
                     <GridViewColumn Header="商品コード" Width="100" DisplayMemberBinding="{Binding Row.ProductCode}" />
-                    <GridViewColumn Header="商品名" Width="360" DisplayMemberBinding="{Binding Row.ProductName}" />
+                    <GridViewColumn Header="商品名" Width="320" DisplayMemberBinding="{Binding Row.ProductName}" />
                     <GridViewColumn Header="JANコード" Width="120" DisplayMemberBinding="{Binding Row.JanCode}" />
                     <GridViewColumn Header="標準原価" Width="90" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
                         <GridViewColumn.CellTemplate>
@@ -101,7 +101,7 @@
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="理由" Width="300" DisplayMemberBinding="{Binding Reason}" />
+                    <GridViewColumn Header="理由" Width="270" DisplayMemberBinding="{Binding Reason}" />
                 </GridView>
             </ListView.View>
         </ListView>
