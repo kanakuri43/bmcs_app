@@ -35,6 +35,12 @@ public partial class EmployeeMasterViewModel(EmployeeService employeeService, Wi
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
 
+    /// <summary>コード欄の横に出す「未登録コード→新規登録」の通知。コードを編集したら消える。</summary>
+    [ObservableProperty]
+    public partial string NewCodeMessage { get; set; } = string.Empty;
+
+    partial void OnEmployeeCodeChanged(string value) => NewCodeMessage = string.Empty;
+
     private byte[]? _loadedRowVersion;
 
     [RelayCommand]
@@ -73,7 +79,8 @@ public partial class EmployeeMasterViewModel(EmployeeService employeeService, Wi
             ClearForm();
             EmployeeCode = enteredCode;
             IsNew = true;
-            StatusMessage = $"社員コード「{enteredCode}」は未登録です。新規登録として入力してください。";
+            NewCodeMessage = "未登録のコードです。新規登録として入力してください。";
+            RequestFocus("Name");
             return;
         }
 

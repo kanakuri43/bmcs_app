@@ -26,17 +26,20 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="銀行口座コード" Margin="0,0,12,8" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="0" Grid.Column="1"
-                             beh:FocusBehavior.IsInitialFocus="True"
-                             Text="{Binding BankAccountCode, UpdateSourceTrigger=PropertyChanged}"
-                             mah:TextBoxHelper.Watermark="コード（SPACEで検索）"
-                             ToolTip="銀行口座コードを直接入力してEnterで読み込む。未登録のコードは新規登録として扱う。Spaceで検索モーダルを開く"
-                             HorizontalAlignment="Left" Width="160" Margin="0,0,0,8">
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Space"  Command="{Binding OpenBankAccountSearchCommand}" />
-                            <KeyBinding Key="Return" Command="{Binding LookupBankAccountByCodeCommand}" />
-                        </TextBox.InputBindings>
-                    </TextBox>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBox beh:FocusBehavior.IsInitialFocus="True"
+                                 Text="{Binding BankAccountCode, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.Watermark="コード（SPACEで検索）"
+                                 ToolTip="銀行口座コードを直接入力してEnterで読み込む。未登録のコードは新規登録として扱う。Spaceで検索モーダルを開く"
+                                 Width="160">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Space"  Command="{Binding OpenBankAccountSearchCommand}" />
+                                <KeyBinding Key="Return" Command="{Binding LookupBankAccountByCodeCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <TextBlock Text="{Binding NewCodeMessage}" Margin="12,0,0,0" VerticalAlignment="Center"
+                                   FontWeight="Bold" Foreground="OrangeRed" />
+                    </StackPanel>
 
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="銀行名" Margin="0,0,12,8" VerticalAlignment="Center" />
                     <TextBox Grid.Row="1" Grid.Column="1" beh:FocusBehavior.FocusKey="Name" Text="{Binding BankName}" Margin="0,0,0,8" />
