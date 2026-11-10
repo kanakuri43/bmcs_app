@@ -4,7 +4,7 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  Title="bmcs_app - 納品書一括発行"
-                 Height="640" Width="1000"
+                 Height="640" Width="1120"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
     <Grid Margin="16">
