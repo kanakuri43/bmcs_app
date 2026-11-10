@@ -97,6 +97,16 @@
     </Style>
 
     <!--
+        ListView。既定では ScrollViewer.CanContentScroll が False（ピクセル単位スクロール）になり、
+        WPF の UI 仮想化が効かず全件の行を生成する（商品1000件で描画に1〜2秒かかっていた）。
+        行単位スクロールにして仮想化を有効にする。MahApps は ListView の暗黙スタイルを持たないため BasedOn は付けない
+        （テンプレートは従来どおり既定のテーマスタイルのものが使われる）。
+    -->
+    <Style TargetType="ListView">
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+    </Style>
+
+    <!--
         ファンクションキーボタン。登録画面のステータスバー直上に F1〜F12 を横並びで置く。
         Tag にキー名（"F3" 等）、Content に機能名を指定し、キー名を上段に小さく控えめに表示する。
         未割り当てのキーは Content を空にして IsEnabled="False" とする。
