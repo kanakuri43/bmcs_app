@@ -17,7 +17,7 @@ public class OrderSlipConfiguration : IEntityTypeConfiguration<OrderSlip>
         builder.Property(e => e.CustomerName).HasMaxLength(60);
         builder.Property(e => e.SubCustomerId).HasMaxLength(20).IsUnicode(false);
         builder.Property(e => e.ProductCode).HasMaxLength(20).IsUnicode(false);
-        builder.Property(e => e.ProductName).HasMaxLength(60);
+        builder.Property(e => e.ProductName).HasMaxLength(200);
         builder.Property(e => e.Specification).HasMaxLength(60);
         builder.Property(e => e.UnitName).HasMaxLength(10);
         builder.Property(e => e.SlipRemarks).HasMaxLength(200);
