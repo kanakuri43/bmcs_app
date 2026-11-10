@@ -57,6 +57,16 @@ public partial class CustomerMasterViewModel(
     [NotifyPropertyChangedFor(nameof(IsClosingTransaction))]
     public partial TransactionType TransactionType { get; set; } = TransactionType.OneOff;
 
+    /// <summary>都度取引は請求集約できない（空欄＝自分自身で固定）ので、請求集約欄を非表示にして入力済みの値を消す。</summary>
+    partial void OnTransactionTypeChanged(TransactionType value)
+    {
+        if (value == TransactionType.OneOff)
+        {
+            BillingCustomerCodeText = string.Empty;
+            BillingCustomerName = string.Empty;
+        }
+    }
+
     /// <summary>締め取引かどうか（締日・税区分の入力欄の表示切替に使う）。</summary>
     public bool IsClosingTransaction => TransactionType == TransactionType.Closing;
 

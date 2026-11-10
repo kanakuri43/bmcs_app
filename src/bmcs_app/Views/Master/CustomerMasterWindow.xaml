@@ -119,8 +119,10 @@
                     </Grid>
                 </StackPanel>
 
-                <TextBlock Text="請求集約" FontWeight="Bold" Margin="0,16,0,8" />
-                <Grid IsEnabled="{Binding IsBillingCustomerEditable}">
+                <TextBlock Text="請求集約" FontWeight="Bold" Margin="0,16,0,8"
+                           Visibility="{Binding IsClosingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <Grid IsEnabled="{Binding IsBillingCustomerEditable}"
+                      Visibility="{Binding IsClosingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
