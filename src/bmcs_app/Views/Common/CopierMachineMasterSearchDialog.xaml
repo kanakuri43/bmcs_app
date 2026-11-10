@@ -3,7 +3,7 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
-                 Title="bmcs_app - コピー機検索"
+                 Title="コピー機検索"
                  Height="480" Width="840"
                  WindowStartupLocation="CenterOwner"
                  ShowInTaskbar="False"

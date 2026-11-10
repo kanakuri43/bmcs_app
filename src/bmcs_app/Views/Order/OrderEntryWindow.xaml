@@ -4,7 +4,7 @@
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  xmlns:common="clr-namespace:bmcs_app.Views.Common"
-                 Title="bmcs_app - 受注入力"
+                 Title="受注入力"
                  Height="720" Width="1100"
                  ResizeMode="CanMinimize"
                  WindowStartupLocation="CenterScreen"

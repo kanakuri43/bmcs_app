@@ -57,7 +57,7 @@ public partial class ReceiptEntryViewModel(
     public bool IsPreviewMode => PreviewSlipNumber is not null;
 
     /// <summary>ウィンドウタイトル。</summary>
-    public string WindowTitle => IsPreviewMode ? "bmcs_app - 入金入力（プレビュー・編集不可）" : "bmcs_app - 入金入力";
+    public string WindowTitle => IsPreviewMode ? "入金入力（プレビュー・編集不可）" : "入金入力";
 
     public ObservableCollection<BankAccount> BankAccounts { get; } = [];
 

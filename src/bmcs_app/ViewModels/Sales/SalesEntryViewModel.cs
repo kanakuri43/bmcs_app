@@ -177,7 +177,7 @@ public partial class SalesEntryViewModel(
     public bool IsEditable => !IsPreviewMode;
 
     /// <summary>ウィンドウタイトル。</summary>
-    public string WindowTitle => IsPreviewMode ? "bmcs_app - 売上入力（プレビュー・編集不可）" : "bmcs_app - 売上入力";
+    public string WindowTitle => IsPreviewMode ? "売上入力（プレビュー・編集不可）" : "売上入力";
 
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;

@@ -3,7 +3,7 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
-                 Title="bmcs_app - コピー機売上CSV取込"
+                 Title="コピー機売上CSV取込"
                  Height="640" Width="1320"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False"
