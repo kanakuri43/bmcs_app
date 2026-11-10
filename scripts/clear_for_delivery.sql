@@ -14,6 +14,10 @@
 --               customer_product_prices, customer_product_rates,
 --               product_supplier_costs（products へのFKがあるため一緒に消す）
 --
+-- クリア後に追加する:
+--   products: コピー機売上CSV取込用の汎用商品 COPYCHG（コピー機利用料・通常税率・課税・単価/原価0）。
+--             取込画面は COPYCHG が無いと取込できないため、products を空にした直後に1件入れ直す。
+--
 -- クリアしない:
 --   employees（社員）, company_infos（自社情報）, bank_accounts（銀行）, menus（メニュー）,
 --   suppliers（仕入先）, tax_rates（税率）, deposit_methods（入金方法）
@@ -53,7 +57,14 @@ DELETE FROM dbo.product_supplier_costs;
 DELETE FROM dbo.customers;
 DELETE FROM dbo.products;
 
--- 3. 採番リセット
+-- 3. コピー機売上CSV取込用の汎用商品（docs/operations.md 7.1節。tax_category 1 = 通常税率）
+INSERT INTO dbo.products
+    (product_code, product_name, standard_unit_price_excl_tax, standard_unit_price_incl_tax,
+     standard_cost_price, tax_category, created_by, created_at, updated_by, updated_at)
+VALUES
+    (N'COPYCHG', N'コピー機利用料', 0, 0, 0, 1, N'CLEAR', SYSDATETIME(), N'CLEAR', SYSDATETIME());
+
+-- 4. 採番リセット
 UPDATE dbo.slip_number_sequences SET current_value = 0;
 
 COMMIT TRANSACTION;
