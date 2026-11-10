@@ -339,7 +339,17 @@
                              TextAlignment="Right"
                              FontWeight="Bold"
                              FontSize="14"
-                             Width="120" />
+                             Width="120">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsGrossProfitNegative}" Value="True">
+                                        <Setter Property="Foreground" Value="Red" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
                 </StackPanel>
 
                 <!-- 消費税計 -->

@@ -26,6 +26,7 @@
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <conv:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
+            <conv:NegativeToRedBrushConverter x:Key="NegativeToRedBrushConverter" />
             <conv:EnumDisplayConverter x:Key="EnumDisplayConverter" />
             <!-- 行・数量・金額系の列はヘッダーも右詰めにする（セルは CellTemplate の TextBlock を HorizontalAlignment="Right" にする） -->
             <Style x:Key="RightAlignedColumnHeaderStyle" TargetType="{x:Type GridViewColumnHeader}"

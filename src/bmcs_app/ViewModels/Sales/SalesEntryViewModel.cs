@@ -208,6 +208,9 @@ public partial class SalesEntryViewModel(
     public decimal GrossProfit => TaxExcludedTotal
         - NonBlankLines.Sum(l => SalesSlipTypeRules.NormalizeCostPrice(l.SlipType, l.CostPrice) * l.Quantity);
 
+    /// <summary>粗利がマイナスのとき true（フッタの粗利を赤字表示するため）。</summary>
+    public bool IsGrossProfitNegative => GrossProfit < 0;
+
     private IEnumerable<SlipLineViewModel> NonBlankLines => Lines.Where(l => !l.IsBlank);
 
     /// <summary>
@@ -524,6 +527,7 @@ public partial class SalesEntryViewModel(
         OnPropertyChanged(nameof(ExternalTaxCaption));
         OnPropertyChanged(nameof(GrandTotal));
         OnPropertyChanged(nameof(GrossProfit));
+        OnPropertyChanged(nameof(IsGrossProfitNegative));
     }
 
     private async Task OnOpenProductLookupAsync(SlipLineViewModel line)

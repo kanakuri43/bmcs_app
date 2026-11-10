@@ -64,14 +64,16 @@
                     <GridViewColumn beh:GridViewSortBehavior.SortBy="GrossProfit" Header="粗利" Width="120" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding GrossProfit, StringFormat={}{0:N0}}" HorizontalAlignment="Right" />
+                                <TextBlock Text="{Binding GrossProfit, StringFormat={}{0:N0}}" HorizontalAlignment="Right"
+                                           Foreground="{Binding GrossProfit, Converter={StaticResource NegativeToRedBrushConverter}}" />
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
                     <GridViewColumn beh:GridViewSortBehavior.SortBy="GrossProfitRate" Header="粗利率(%)" Width="80" HeaderContainerStyle="{StaticResource RightAlignedColumnHeaderStyle}">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding GrossProfitRate, StringFormat={}{0:N1}}" HorizontalAlignment="Right" />
+                                <TextBlock Text="{Binding GrossProfitRate, StringFormat={}{0:N1}}" HorizontalAlignment="Right"
+                                           Foreground="{Binding GrossProfit, Converter={StaticResource NegativeToRedBrushConverter}}" />
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
@@ -86,7 +88,8 @@
             <TextBlock Text="原価 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
             <TextBlock Text="{Binding TotalCostAmount, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,24,0" />
             <TextBlock Text="粗利 合計:" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <TextBlock Text="{Binding TotalGrossProfit, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold" />
+            <TextBlock Text="{Binding TotalGrossProfit, StringFormat={}{0:N0}}" VerticalAlignment="Center" FontWeight="Bold"
+                       Foreground="{Binding TotalGrossProfit, Converter={StaticResource NegativeToRedBrushConverter}}" />
             <TextBlock Text="処理中..." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="OrangeRed"
                        Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
         </StackPanel>
