@@ -1,4 +1,3 @@
-using bmcs_app.ViewModels.Closing;
 using MahApps.Metro.Controls;
 
 namespace bmcs_app.Views.Closing;
@@ -9,13 +8,5 @@ public partial class MonthlyClosingConfirmDialog : MetroWindow
     public MonthlyClosingConfirmDialog()
     {
         InitializeComponent();
-
-        Loaded += (_, _) =>
-        {
-            if (DataContext is MonthlyClosingConfirmDialogViewModel viewModel)
-            {
-                viewModel.LoadCommand.Execute(null);
-            }
-        };
     }
 }
