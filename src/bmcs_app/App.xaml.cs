@@ -106,9 +106,18 @@ public partial class App : System.Windows.Application
             var logger = _host.Services.GetRequiredService<ILogger<App>>();
             logger.LogInformation("アプリケーションを起動しました。");
 
-            _host.Services
+            var menu = _host.Services
                 .GetRequiredService<WindowService>()
                 .Show<MainMenuWindow, MainMenuViewModel>();
+
+            // メニュー構成の読込（Loaded → LoadCommand）が終わり操作可能になるまでスプラッシュを残す。
+            // 最初のウィンドウの Loaded は Show の中で同期的に発火するため、Show から戻った時点で
+            // LoadCommand は開始済みであり、その ExecutionTask を待てばよい。
+            if (((MainMenuViewModel)menu.DataContext).LoadCommand.ExecutionTask is { } load)
+            {
+                await load;
+            }
+
             CloseSplash();
         }
         catch (Exception ex)
