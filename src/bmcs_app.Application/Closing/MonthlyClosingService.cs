@@ -29,8 +29,10 @@ public class MonthlyClosingService(
     /// 指定した年月（暦月）を全得意先について確定する。独自のトランザクションを開くため、
     /// 呼び出し側が既にトランザクションを開いていると EF が例外を投げる（<c>BillingClosingService</c>と同じ）。
     /// </summary>
+    /// <param name="progress">得意先1件ごとの進み具合（処理済み件数, 対象件数）。UIの進捗バー用。</param>
     public async Task<IReadOnlyList<MonthlyClosingTarget>> ConfirmAsync(
-        int year, int month, CancellationToken cancellationToken = default)
+        int year, int month, CancellationToken cancellationToken = default,
+        IProgress<(int Processed, int Total)>? progress = null)
     {
         var closingDate = MonthEnd(year, month);
         var periodFrom = new DateOnly(year, month, 1);
@@ -64,6 +66,7 @@ public class MonthlyClosingService(
 
         foreach (var customer in customers)
         {
+            progress?.Report((results.Count, customers.Count));
             currentRows.TryGetValue(customer.CustomerCode, out var currentRow);
             previousRows.TryGetValue(customer.CustomerCode, out var previousRow);
 

@@ -20,6 +20,9 @@ public abstract partial class DialogViewModelBase<TResult> : ViewModelBase
         CloseRequested?.Invoke();
     }
 
-    [RelayCommand]
+    /// <summary>キャンセル可否。長時間の確定処理中に閉じさせたくないダイアログが上書きする。</summary>
+    protected virtual bool CanCancel => true;
+
+    [RelayCommand(CanExecute = nameof(CanCancel))]
     private void Cancel() => CloseWith(default);
 }

@@ -29,6 +29,30 @@ public partial class MonthlyClosingConfirmDialogViewModel(MonthlyClosingService 
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
 
+    /// <summary>締め実行中（確認後〜完了）。進捗バーの表示と、実行中の操作ロックに使う。</summary>
+    [ObservableProperty]
+    public partial bool IsExecuting { get; set; }
+
+    protected override bool CanCancel => !IsExecuting;
+
+    partial void OnIsExecutingChanged(bool value) => CancelCommand.NotifyCanExecuteChanged();
+
+    [ObservableProperty]
+    public partial int ProgressValue { get; set; }
+
+    [ObservableProperty]
+    public partial int ProgressMax { get; set; } = 1;
+
+    [ObservableProperty]
+    public partial string ProgressText { get; set; } = string.Empty;
+
+    private void ReportProgress((int Processed, int Total) p)
+    {
+        ProgressMax = Math.Max(p.Total, 1);
+        ProgressValue = p.Processed;
+        ProgressText = $"{p.Processed:N0} / {p.Total:N0} 件";
+    }
+
     [RelayCommand]
     private Task ExecuteAsync() => RunBusyAsync(async () =>
     {
@@ -55,9 +79,13 @@ public partial class MonthlyClosingConfirmDialogViewModel(MonthlyClosingService 
             return;
         }
 
+        IsExecuting = true;
+        ProgressValue = 0;
+        ProgressText = string.Empty;
         try
         {
-            var results = await monthlyClosingService.ConfirmAsync(month.Year, month.Month);
+            var progress = new Progress<(int Processed, int Total)>(ReportProgress);
+            var results = await monthlyClosingService.ConfirmAsync(month.Year, month.Month, progress: progress);
             var confirmedCount = results.Count(r => r.SkipReason is null);
 
             CloseWith(new MonthlyClosingOutcome(month.Year, month.Month, confirmedCount, results.Count - confirmedCount));
@@ -65,6 +93,10 @@ public partial class MonthlyClosingConfirmDialogViewModel(MonthlyClosingService 
         catch (Exception ex)
         {
             StatusMessage = $"確定エラー: {ex.Message}";
+        }
+        finally
+        {
+            IsExecuting = false;
         }
     });
 }

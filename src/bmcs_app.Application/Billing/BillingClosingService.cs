@@ -52,28 +52,31 @@ public class BillingClosingService(
     /// 請求日（<c>billing_date</c>）としてもそのまま使う（
     /// 「請求日でいつ締め切るか決まる」ため、締め切り日と請求日を別入力にしない）。
     /// </param>
+    /// <param name="progress">得意先1件ごとの集計の進み具合（処理済み件数, 対象件数）。UIの進捗バー用。</param>
     public Task<IReadOnlyList<BillingClosingTarget>> ConfirmAsync(
-        byte closingDay, DateOnly closingDate, CancellationToken cancellationToken = default)
-        => ConfirmCoreAsync(closingDay, null, closingDate, cancellationToken);
+        byte closingDay, DateOnly closingDate, CancellationToken cancellationToken = default,
+        IProgress<(int Processed, int Total)>? progress = null)
+        => ConfirmCoreAsync(closingDay, null, closingDate, cancellationToken, progress);
 
     /// <summary>
     /// 個別指定の締め。対象は<paramref name="customerCodes"/>の得意先（締め得意先かつ請求集約先のもののみ。
     /// 該当しないコードは無視する）。締め日区分は問わない。それ以外は締め日区分指定と同じ。
     /// </summary>
     public Task<IReadOnlyList<BillingClosingTarget>> ConfirmAsync(
-        IReadOnlyCollection<string> customerCodes, DateOnly closingDate, CancellationToken cancellationToken = default)
-        => ConfirmCoreAsync(null, customerCodes, closingDate, cancellationToken);
+        IReadOnlyCollection<string> customerCodes, DateOnly closingDate, CancellationToken cancellationToken = default,
+        IProgress<(int Processed, int Total)>? progress = null)
+        => ConfirmCoreAsync(null, customerCodes, closingDate, cancellationToken, progress);
 
     private async Task<IReadOnlyList<BillingClosingTarget>> ConfirmCoreAsync(
         byte? closingDay, IReadOnlyCollection<string>? customerCodes, DateOnly closingDate,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, IProgress<(int Processed, int Total)>? progress)
     {
         var employeeCode = currentEmployeeContext.EmployeeCode;
         var now = DateTime.Now;
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-        var candidates = await BuildCandidatesAsync(closingDay, customerCodes, closingDate, tracking: true, cancellationToken);
+        var candidates = await BuildCandidatesAsync(closingDay, customerCodes, closingDate, tracking: true, cancellationToken, progress);
         var results = new List<BillingClosingTarget>();
 
         foreach (var candidate in candidates)
@@ -157,7 +160,7 @@ public class BillingClosingService(
     /// </summary>
     private async Task<List<BillingClosingCandidate>> BuildCandidatesAsync(
         byte? closingDay, IReadOnlyCollection<string>? customerCodes, DateOnly closingDate, bool tracking,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, IProgress<(int Processed, int Total)>? progress = null)
     {
         var closingYearMonth = $"{closingDate.Year:D4}{closingDate.Month:D2}";
 
@@ -178,8 +181,10 @@ public class BillingClosingService(
 
         var candidates = new List<BillingClosingCandidate>();
 
+        // 処理時間の大半はこの得意先ごとの集計（個別クエリ）のため、進捗はここで通知する。
         foreach (var customer in customers)
         {
+            progress?.Report((candidates.Count, customers.Count));
             candidates.Add(await BuildCandidateAsync(
                 customer, closingDate, closingYearMonth, tracking, cancellationToken));
         }

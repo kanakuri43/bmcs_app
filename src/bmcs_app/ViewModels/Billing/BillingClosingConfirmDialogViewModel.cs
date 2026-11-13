@@ -52,6 +52,30 @@ public partial class BillingClosingConfirmDialogViewModel(
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = string.Empty;
 
+    /// <summary>締め実行中（確認後〜完了）。進捗バーの表示と、実行中の操作ロックに使う。</summary>
+    [ObservableProperty]
+    public partial bool IsExecuting { get; set; }
+
+    protected override bool CanCancel => !IsExecuting;
+
+    partial void OnIsExecutingChanged(bool value) => CancelCommand.NotifyCanExecuteChanged();
+
+    [ObservableProperty]
+    public partial int ProgressValue { get; set; }
+
+    [ObservableProperty]
+    public partial int ProgressMax { get; set; } = 1;
+
+    [ObservableProperty]
+    public partial string ProgressText { get; set; } = string.Empty;
+
+    private void ReportProgress((int Processed, int Total) p)
+    {
+        ProgressMax = Math.Max(p.Total, 1);
+        ProgressValue = p.Processed;
+        ProgressText = $"{p.Processed:N0} / {p.Total:N0} 件";
+    }
+
     [RelayCommand]
     private Task LoadAsync() => RunBusyAsync(async () =>
     {
@@ -132,12 +156,16 @@ public partial class BillingClosingConfirmDialogViewModel(
             return;
         }
 
+        IsExecuting = true;
+        ProgressValue = 0;
+        ProgressText = string.Empty;
         try
         {
             var closingDate = DateOnly.FromDateTime(date);
+            var progress = new Progress<(int Processed, int Total)>(ReportProgress);
             var results = IsIndividual
-                ? await billingClosingService.ConfirmAsync(SelectedCustomerCodes.ToList(), closingDate)
-                : await billingClosingService.ConfirmAsync(SelectedClosingDay!.Value, closingDate);
+                ? await billingClosingService.ConfirmAsync(SelectedCustomerCodes.ToList(), closingDate, progress: progress)
+                : await billingClosingService.ConfirmAsync(SelectedClosingDay!.Value, closingDate, progress: progress);
 
             CloseWith(new BillingClosingOutcome(
                 date, results.Count(r => r.SkipReason is null), results.Count(r => r.SkipReason is not null)));
@@ -145,6 +173,10 @@ public partial class BillingClosingConfirmDialogViewModel(
         catch (Exception ex)
         {
             StatusMessage = $"確定エラー: {ex.Message}";
+        }
+        finally
+        {
+            IsExecuting = false;
         }
     });
 }
