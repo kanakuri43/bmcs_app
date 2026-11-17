@@ -198,6 +198,8 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<ProductMasterViewModel>();
         builder.Services.AddScoped<ProductExcelImportWindow>();
         builder.Services.AddScoped<ProductExcelImportViewModel>();
+        builder.Services.AddScoped<CustomerExcelImportWindow>();
+        builder.Services.AddScoped<CustomerExcelImportViewModel>();
 
         builder.Services.AddScoped<EmployeeMasterWindow>();
         builder.Services.AddScoped<EmployeeMasterViewModel>();
