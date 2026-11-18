@@ -5,7 +5,7 @@
                  xmlns:beh="clr-namespace:bmcs_app.Behaviors"
                  xmlns:common="clr-namespace:bmcs_app.Views.Common"
                  Title="受注入力"
-                 Height="720" Width="1100"
+                 Height="720" Width="1180"
                  ResizeMode="CanMinimize"
                  WindowStartupLocation="CenterScreen"
                  WindowTransitionsEnabled="False">
