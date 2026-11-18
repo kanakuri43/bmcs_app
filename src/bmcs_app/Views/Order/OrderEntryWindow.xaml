@@ -226,6 +226,7 @@
                         <ColumnDefinition Width="88"  />
                         <ColumnDefinition Width="110" />
                         <ColumnDefinition Width="80"  />
+                        <ColumnDefinition Width="80"  />
                         <ColumnDefinition Width="96"  />
                         <ColumnDefinition Width="56"  />
                         <ColumnDefinition Width="130" />
@@ -239,9 +240,10 @@
                     <TextBlock Grid.Column="5" Text="単価"      HorizontalAlignment="Right" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                     <TextBlock Grid.Column="6" Text="仕入先"    Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                     <TextBlock Grid.Column="7" Text="原価"      HorizontalAlignment="Right" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="8" Text="金額"      HorizontalAlignment="Right" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="9" Text="税率"      HorizontalAlignment="Right" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
-                    <TextBlock Grid.Column="10" Text="行摘要" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="8" Text="定価"      HorizontalAlignment="Right" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="9" Text="金額"      HorizontalAlignment="Right" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="10" Text="税率"      HorizontalAlignment="Right" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
+                    <TextBlock Grid.Column="11" Text="行摘要" Padding="2,0" FontSize="11" Foreground="{DynamicResource MahApps.Brushes.Gray3}" />
                 </Grid>
             </Border>
 

@@ -134,6 +134,10 @@ public partial class SlipLineViewModel : ObservableObject
     [ObservableProperty]
     public partial decimal CostPrice { get; set; }
 
+    /// <summary>商品マスタの定価（税抜）。参考表示のみで保存しない。商品選択・保存済み明細の読込時に商品マスタから引く。</summary>
+    [ObservableProperty]
+    public partial decimal CatalogPrice { get; set; }
+
     /// <summary>仕入先コード。<c>null</c> は仕入先なし。商品検索で決まり、保存される（明細の画面には名称を表示する）。</summary>
     [ObservableProperty]
     public partial string? SupplierCode { get; set; }

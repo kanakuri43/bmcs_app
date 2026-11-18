@@ -8,6 +8,7 @@ namespace bmcs_app.ViewModels.Common;
 /// 検索モーダルを通らない経路（商品コードの直接入力＝主仕入先、保存済み明細の読込）だけ。
 /// </summary>
 public sealed class SlipLineSupplierHelper(
+    ProductService productService,
     SupplierService supplierService,
     ProductSupplierCostService costService)
 {
@@ -20,7 +21,14 @@ public sealed class SlipLineSupplierHelper(
 
     /// <summary>保存済みの明細（受注から売上化・複写・訂正の読込）の仕入先と原価をそのまま行へ設定する。原価は引き直さない。</summary>
     public async Task RestoreAsync(SlipLineViewModel line, string? supplierCode, decimal costPrice)
-        => line.ApplySupplier(supplierCode, await FindNameAsync(supplierCode), costPrice);
+    {
+        line.ApplySupplier(supplierCode, await FindNameAsync(supplierCode), costPrice);
+        await LoadCatalogPriceAsync(line);
+    }
+
+    /// <summary>行の商品の定価（商品マスタの現在値）を設定する。商品が見つからなければ 0。</summary>
+    public async Task LoadCatalogPriceAsync(SlipLineViewModel line)
+        => line.CatalogPrice = (await productService.GetByCodeAsync(line.ProductCode))?.CatalogPrice ?? 0m;
 
     // 無効化済みの仕入先も名称を引く（訂正で読み込んだ明細の表示用）。
     private async Task<string?> FindNameAsync(string? supplierCode)
