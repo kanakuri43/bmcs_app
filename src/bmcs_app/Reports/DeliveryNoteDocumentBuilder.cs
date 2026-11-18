@@ -44,6 +44,13 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
     // ── 3段複写のセクション定義。ミシン目で3等分された用紙に、上から順にこのタイトルで印字する ──
     private static readonly string[] SectionTitles = ["納品書（控）", "請求書", "納品書"];
 
+    /// <summary>
+    /// 左端パンチ穴（紙端から穴中心10mm・直径6mm＝穴の右端13mm）を避けるための右シフト量。
+    /// 幅は変えずに全体を平行移動するため、左余白は約18mm、右余白は約7mmになる。
+    /// 実機で穴にかかる・右端が切れる場合はこの値で調整する。
+    /// </summary>
+    private const double PunchHoleShiftX = 20.0;
+
     private const double SectionGap = 12.0;
     private const double SectionHeight = (ContentHeight - 2 * SectionGap) / 3;
 
@@ -94,7 +101,7 @@ public sealed class DeliveryNoteDocumentBuilder(DeliveryNoteData data) : ReportD
             root.Children.Add(BuildSection(SectionTitles[i], lines, isFirst, isLast, pageNumber, totalPages));
         }
 
-        FixedPage.SetLeft(root, MarginX);
+        FixedPage.SetLeft(root, MarginX + PunchHoleShiftX);
         FixedPage.SetTop(root, MarginY);
         fixedPage.Children.Add(root);
 
