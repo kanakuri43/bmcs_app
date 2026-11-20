@@ -36,7 +36,7 @@ public partial class OrderEntryViewModel(
     SupplierService supplierService,
     ProductSupplierCostService productSupplierCostService) : ViewModelBase
 {
-    private readonly SlipLineSupplierHelper _supplierHelper = new(supplierService, productSupplierCostService);
+    private readonly SlipLineSupplierHelper _supplierHelper = new(productService, supplierService, productSupplierCostService);
 
     private Customer? _customer;
     private IReadOnlyList<TaxRateMaster> _taxRateMasters = [];
@@ -517,7 +517,7 @@ public partial class OrderEntryViewModel(
     /// 商品検索モーダルの選択結果（最大6件）を行へ展開する。1件目は呼び出した行、
     /// 残りは後続の空行を埋め、足りなければ直後に挿入する。
     /// </summary>
-    private Task ApplySelectionsAsync(SlipLineViewModel invokingLine, IReadOnlyList<ProductSelection> selections)
+    private async Task ApplySelectionsAsync(SlipLineViewModel invokingLine, IReadOnlyList<ProductSelection> selections)
     {
         var orderDate = ParseOrderDate();
         var roundingType = _customer?.RoundingType ?? RoundingType.Floor;
@@ -557,6 +557,7 @@ public partial class OrderEntryViewModel(
 
             // 仕入先と原価は、検索で選んだ行（または直接入力の主仕入先）の値をそのまま入れる。
             line.ApplySupplier(selection.SupplierCode, selection.SupplierName, selection.CostPrice);
+            await _supplierHelper.LoadCatalogPriceAsync(line);
 
             if (line.Quantity == 0)
             {
@@ -567,8 +568,6 @@ public partial class OrderEntryViewModel(
         EnsureTrailingBlankLine();
         RenumberLines();
         invokingLine.RequestMoveToQuantity();
-
-        return Task.CompletedTask;
     }
 
     private void OnDeleteLine(SlipLineViewModel line)
