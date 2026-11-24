@@ -186,6 +186,9 @@ public partial class MainMenuViewModel(
             case "copier_excel_import":
                 windowService.Show<CopierExcelImportWindow, CopierExcelImportViewModel>();
                 break;
+            case "supplier_excel_import":
+                windowService.Show<SupplierExcelImportWindow, SupplierExcelImportViewModel>();
+                break;
             case "customer_product_price_excel_import":
                 windowService.Show<CustomerProductPriceExcelImportWindow, CustomerProductPriceExcelImportViewModel>();
                 break;

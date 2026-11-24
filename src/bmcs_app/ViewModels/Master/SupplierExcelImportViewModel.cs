@@ -1,0 +1,134 @@
+using System.Collections.ObjectModel;
+using System.Windows;
+using bmcs_app.Application.Master;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.Win32;
+
+namespace bmcs_app.ViewModels.Master;
+
+/// <summary>プレビュー・結果一覧の1行。取込実行後は <see cref="StateText"/> を結果で更新する。</summary>
+public sealed partial class SupplierImportRowItem(SupplierImportRow row) : ObservableObject
+{
+    public SupplierImportRow Row { get; } = row;
+
+    [ObservableProperty]
+    public partial string StateText { get; set; } = row.Status switch
+    {
+        SupplierImportStatus.New => "新規",
+        SupplierImportStatus.Update => "更新",
+        _ => "エラー",
+    };
+
+    public string Reason { get; } = row.Reason ?? string.Empty;
+}
+
+/// <summary>
+/// 仕入先マスタExcel取込画面（docs/design_document.md 40章）。ファイル選択→プレビュー→取込実行。
+/// 取込は <see cref="SupplierExcelImportService"/> が全件を1トランザクションで行う。
+/// </summary>
+public partial class SupplierExcelImportViewModel(SupplierExcelImportService importService) : ViewModelBase
+{
+    public ObservableCollection<SupplierImportRowItem> Rows { get; } = [];
+
+    [ObservableProperty]
+    public partial string FilePath { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string? FileError { get; set; }
+
+    [ObservableProperty]
+    public partial string SummaryText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string StatusMessage { get; set; } = string.Empty;
+
+    /// <summary>取込を実行済みか（同じ読込結果で二重に実行させない）。</summary>
+    private bool _imported;
+
+    [RelayCommand]
+    private Task SelectFileAsync()
+    {
+        var dialog = new OpenFileDialog { Filter = "Excelファイル (*.xlsx)|*.xlsx", Title = "仕入先マスタのExcelを選択" };
+        return dialog.ShowDialog() == true ? LoadFileAsync(dialog.FileName) : Task.CompletedTask;
+    }
+
+    /// <summary>Excelを読み込んでプレビューを表示する。ボタン選択とファイルD&amp;Dの共通入口。</summary>
+    public Task LoadFileAsync(string path) => RunBusyAsync(async () =>
+    {
+        FilePath = path;
+        FileError = null;
+        Rows.Clear();
+        _imported = false;
+        try
+        {
+            var result = await importService.ReadAsync(path);
+            FileError = result.FileError;
+            foreach (var row in result.Rows)
+            {
+                Rows.Add(new SupplierImportRowItem(row));
+            }
+
+            StatusMessage = "プレビューを表示しました。";
+        }
+        catch (Exception ex)
+        {
+            // ClosedXML は壊れた・xlsx でないファイルで様々な例外を投げるため、まとめて読込エラーにする。
+            FileError = $"ファイルを読み込めません: {ex.Message}";
+            StatusMessage = string.Empty;
+        }
+
+        SummaryText = $"新規 {Count(SupplierImportStatus.New)}件 / 更新 {Count(SupplierImportStatus.Update)}件 / エラー {Count(SupplierImportStatus.Error)}件";
+    });
+
+    private int Count(SupplierImportStatus status) => Rows.Count(r => r.Row.Status == status);
+
+    /// <summary>処理中（<see cref="ViewModelBase.IsBusy"/>）が終わったとき取込実行の有効状態を再評価する。</summary>
+    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.PropertyName == nameof(IsBusy))
+        {
+            ImportCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private bool CanImport => !IsBusy && !_imported && Rows.Any(r => r.Row.Status != SupplierImportStatus.Error);
+
+    [RelayCommand(CanExecute = nameof(CanImport))]
+    private async Task ImportAsync()
+    {
+        var targets = Rows.Where(r => r.Row.Status != SupplierImportStatus.Error).ToList();
+        var errors = Rows.Count - targets.Count;
+        var confirm = MessageBox.Show(
+            $"{targets.Count}件を仕入先マスタへ取り込みます（新規 {Count(SupplierImportStatus.New)}件・更新 {Count(SupplierImportStatus.Update)}件）。よろしいですか？\n" +
+            "更新は、登録済みの仕入先コードの全項目を上書きします（空欄の項目は空になります。無効の仕入先は有効に戻します）。" +
+            (errors > 0 ? $"\nエラーの{errors}件は取り込みません。" : string.Empty),
+            "bmcs_app", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        await RunBusyAsync(async () =>
+        {
+            StatusMessage = "取込中...";
+            try
+            {
+                var (inserted, updated) = await importService.ImportAsync(targets.Select(t => t.Row).ToList());
+                foreach (var item in targets)
+                {
+                    item.StateText = "取込済";
+                }
+
+                _imported = true;
+                StatusMessage = $"取込が完了しました（新規 {inserted}件・更新 {updated}件）。";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"取込エラー（1件も反映していません）: {ex.InnerException?.Message ?? ex.Message}";
+            }
+        });
+        ImportCommand.NotifyCanExecuteChanged();
+    }
+}

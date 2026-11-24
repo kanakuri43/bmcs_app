@@ -50,6 +50,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ProductExcelImportService>();
         services.AddScoped<CustomerExcelImportService>();
         services.AddScoped<CopierExcelImportService>();
+        services.AddScoped<SupplierExcelImportService>();
         services.AddScoped<CustomerProductPriceExcelImportService>();
         services.AddScoped<EmployeeService>();
         services.AddScoped<CompanyInfoService>();
