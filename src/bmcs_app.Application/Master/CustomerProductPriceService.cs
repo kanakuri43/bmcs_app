@@ -16,11 +16,11 @@ public class CustomerProductPriceService(
     ILogger<CustomerProductPriceService> logger)
 {
     /// <summary>decimal(15,4) に収まる最大値。</summary>
-    private const decimal MaxUnitPrice = 99_999_999_999.9999m;
+    internal const decimal MaxUnitPrice = 99_999_999_999.9999m;
 
-    private const int MinRate = 0;
+    internal const int MinRate = 0;
 
-    private const int MaxRate = 100;
+    internal const int MaxRate = 100;
 
     /// <summary>
     /// 有効な商品の全件に、得意先の単価・掛率を付けて返す。無効化済みの行の値は null（未登録扱い）で、

@@ -183,6 +183,12 @@ public partial class MainMenuViewModel(
             case "customer_excel_import":
                 windowService.Show<CustomerExcelImportWindow, CustomerExcelImportViewModel>();
                 break;
+            case "copier_excel_import":
+                windowService.Show<CopierExcelImportWindow, CopierExcelImportViewModel>();
+                break;
+            case "customer_product_price_excel_import":
+                windowService.Show<CustomerProductPriceExcelImportWindow, CustomerProductPriceExcelImportViewModel>();
+                break;
             case "printer_settings":
                 windowService.Show<PrinterSettingsWindow, PrinterSettingsViewModel>();
                 break;
