@@ -200,6 +200,12 @@ public partial class App : System.Windows.Application
         builder.Services.AddScoped<ProductExcelImportViewModel>();
         builder.Services.AddScoped<CustomerExcelImportWindow>();
         builder.Services.AddScoped<CustomerExcelImportViewModel>();
+        builder.Services.AddScoped<CopierExcelImportWindow>();
+        builder.Services.AddScoped<CopierExcelImportViewModel>();
+        builder.Services.AddScoped<SupplierExcelImportWindow>();
+        builder.Services.AddScoped<SupplierExcelImportViewModel>();
+        builder.Services.AddScoped<CustomerProductPriceExcelImportWindow>();
+        builder.Services.AddScoped<CustomerProductPriceExcelImportViewModel>();
 
         builder.Services.AddScoped<EmployeeMasterWindow>();
         builder.Services.AddScoped<EmployeeMasterViewModel>();

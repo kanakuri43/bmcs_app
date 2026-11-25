@@ -107,20 +107,9 @@ public class CustomerExcelImportService(
     public static CustomerImportReadResult Parse(Stream stream)
     {
         using var workbook = new XLWorkbook(stream);
-        foreach (var sheet in workbook.Worksheets)
-        {
-            var columns = sheet.Row(1).CellsUsed()
-                .Select(c => (Header: Clean(c), c.Address.ColumnNumber))
-                .Where(h => h.Header.Length > 0)
-                .GroupBy(h => h.Header)
-                .ToDictionary(g => g.Key, g => g.First().ColumnNumber);
-            if (RequiredHeaders.All(columns.ContainsKey))
-            {
-                return new CustomerImportReadResult(null, ParseRows(sheet, columns));
-            }
-        }
-
-        return new CustomerImportReadResult($"見出し（{string.Join("・", RequiredHeaders)}）が揃ったシートがありません。", []);
+        return ExcelImportReader.FindSheet(workbook, RequiredHeaders) is var (sheet, columns)
+            ? new CustomerImportReadResult(null, ParseRows(sheet, columns))
+            : new CustomerImportReadResult(ExcelImportReader.MissingHeadersMessage(RequiredHeaders), []);
     }
 
     private static List<CustomerImportRow> ParseRows(IXLWorksheet sheet, Dictionary<string, int> columns)
@@ -131,7 +120,7 @@ public class CustomerExcelImportService(
         for (var r = FirstDataRow; r <= lastRow; r++)
         {
             // 見出しの無い任意列は空として扱う。
-            string Text(string header) => columns.TryGetValue(header, out var c) ? Clean(sheet.Cell(r, c)) : string.Empty;
+            string Text(string header) => ExcelImportReader.Text(sheet, columns, r, header);
             string? Opt(string header) => Text(header) is { Length: > 0 } t ? t : null;
 
             var code = Text("得意先コード");
@@ -196,17 +185,6 @@ public class CustomerExcelImportService(
     /// <summary>整数文字列を範囲内で解析する。範囲外・整数でなければ null。</summary>
     private static int? ParseInt(string text, int min, int max)
         => int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var v) && v >= min && v <= max ? v : null;
-
-    /// <summary>セルの値を文字列にして前後の空白（全角含む）を除く。数値は指数表記にしない。</summary>
-    private static string Clean(IXLCell cell)
-    {
-        var value = cell.Value;
-        var text = value.IsNumber ? ((decimal)value.GetNumber()).ToString("0.####", CultureInfo.InvariantCulture)
-            : value.IsBlank ? string.Empty
-            : value.IsText ? value.GetText()
-            : value.ToString();
-        return text.Trim(' ', '　');
-    }
 
     /// <summary>
     /// DBとの突き合わせ（コードの登録済み・社員・口座・請求集約リンク）。解析でエラーでない行だけを見て、
