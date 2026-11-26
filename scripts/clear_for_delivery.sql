@@ -12,7 +12,8 @@
 --   採番:       slip_number_sequences（行は残し current_value を0に戻す）
 --   マスタ:     customers, products, copier_machines,
 --               customer_product_prices, customer_product_rates,
---               product_supplier_costs（products へのFKがあるため一緒に消す）
+--               product_supplier_costs（products・suppliers へのFKがあるため一緒に消す）,
+--               suppliers
 --
 -- クリア後に追加する:
 --   products: コピー機売上CSV取込用の汎用商品 COPYCHG（コピー機利用料・通常税率・課税・単価/原価0）。
@@ -20,7 +21,7 @@
 --
 -- クリアしない:
 --   employees（社員）, company_infos（自社情報）, bank_accounts（銀行）, menus（メニュー）,
---   suppliers（仕入先）, tax_rates（税率）, deposit_methods（入金方法）
+--   tax_rates（税率）, deposit_methods（入金方法）
 --   プリンタ設定は端末ローカルの bmcs_config.json に保存しておりDBには無い。
 --
 -- 全体を1トランザクションで実行し、途中で失敗したら全て戻す。
@@ -56,6 +57,7 @@ DELETE FROM dbo.customer_product_prices;
 DELETE FROM dbo.product_supplier_costs;
 DELETE FROM dbo.customers;
 DELETE FROM dbo.products;
+DELETE FROM dbo.suppliers;
 
 -- 3. コピー機売上CSV取込用の汎用商品（docs/operations.md 7.1節。tax_category 1 = 通常税率）
 INSERT INTO dbo.products
