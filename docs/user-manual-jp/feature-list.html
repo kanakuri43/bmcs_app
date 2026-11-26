@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>機能一覧 - 操作マニュアル</title>
+<link rel="stylesheet" href="manual.css">
+<style>
+  .star { color: var(--accent); font-weight: bold; }
+  td.name { width: 200px; font-weight: bold; }
+  td.name a { font-weight: normal; font-size: 12px; display: block; }
+  td.shot { width: 230px; }
+  td.shot a { display: block; line-height: 0; border: 1px solid #b9c2cc; }
+  td.shot img { width: 220px; display: block; }
+  td.shot a:hover { box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+  .cmp { display: grid; grid-template-columns: 1fr 1.6fr; gap: 12px; margin: 10px 0; }
+  .cmp > div { border-radius: 6px; padding: 10px 14px; font-size: 14.5px; }
+  .cmp .pkg { background: #f4f4f4; border: 1px solid #ddd; }
+  .cmp .ours { background: #eaf4ff; border: 1px solid #b9d9f7; }
+  .cmp .lbl { display: block; font-weight: bold; font-size: 13px; margin-bottom: 4px; }
+  .cmp .pkg .lbl { color: var(--muted); }
+  .cmp .ours .lbl { color: var(--brand); }
+  .cmp ul, .cmp ol { margin: 4px 0; padding-left: 1.3em; }
+  nav.toc { background: var(--bg); border-radius: 6px; padding: 10px 18px; font-size: 14.5px; }
+  nav.toc ol { margin: 4px 0; }
+  @media (max-width: 760px) { .cmp { grid-template-columns: 1fr; } td.shot { width: auto; } }
+</style>
+</head>
+<body>
+<header class="site"><a href="index.html">操作マニュアル</a> <span class="crumb">／ 機能一覧</span></header>
+<main>
+
+<h1>機能一覧</h1>
+
+<div class="goal"><b>このページでわかること</b>　このシステムにどんな機能があるか、どんなときに使うか。また、市販の一般的な販売管理ソフトと考え方が違うところ。</div>
+
+<p>機能はメインメニューの分類ごとに並べています。「操作説明」を押すと、その画面の操作のしかたのページに移ります。画面の画像をクリックすると、拡大して表示します。</p>
+
+<div class="warn">画面は開発用データの表示例で、実際の得意先・金額とは異なります。</div>
+
+<nav class="toc"><b>このページの目次</b>
+<ol>
+  <li><a href="#premise">お客様は2種類</a></li>
+  <li><a href="#list">機能一覧</a>（受注・売上／請求／入金／元帳／月次／分析／マスタ管理／システム設定／全画面共通）</li>
+  <li><a href="#diff">一般的な販売管理ソフトとの違い</a></li>
+  <li><a href="#out">このシステムに無い機能</a></li>
+</ol>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="premise"><span class="no">1</span>お客様は2種類</h2>
+
+<p>お客様（得意先）は2種類に分かれ、<b>請求と入金のしかたが違います</b>。どちらにするかは得意先マスタの登録のときに決め、後から変えられません。</p>
+
+<table>
+  <tr><th>種類</th><th>主なお客様</th><th>請求</th><th>入金</th></tr>
+  <tr><td><b>締め取引</b>（締め得意先）</td><td>民間企業</td><td>20日締め・末日締めなどの締め日で、1か月分をまとめて請求書を出します（<a href="billing-closing.html">請求締め処理</a>）</td><td>古い請求から自動で消し込みます（<a href="receipt-entry.html">入金入力</a>）</td></tr>
+  <tr><td><b>都度請求</b>（都度得意先）</td><td>学校・官公庁など</td><td>締めは行わず、納品1件〜数件ごとに請求書を出します（<a href="detail-invoice.html">明細請求書発行</a>）</td><td>売上や請求書を指定して消し込みます（<a href="detail-receipt.html">明細入金</a>）</td></tr>
+</table>
+
+<p>このシステムで扱うのは「受注 → 売上 → 請求 → 入金 → 元帳 → 月次締め」です。在庫・発注・仕入伝票・買掛・支払は扱いません。ただし仕入先と仕入先ごとの原価は登録でき、粗利の計算に使います。</p>
+
+<p><span class="star">★</span>印は、一般的な販売管理ソフトと考え方が違う機能です。どう違うかは<a href="#diff">3章</a>で説明します。</p>
+
+<!-- ============================================================ -->
+<h2 id="list"><span class="no">2</span>機能一覧</h2>
+
+<h3>メニュー「受注・売上」</h3>
+<table>
+  <tr><th>機能名</th><th>使う場面・できること</th><th>画面</th></tr>
+  <tr>
+    <td class="name">受注入力<a href="order-entry.html">操作説明</a></td>
+    <td>注文を受けたが、まだ納品できない（入荷待ちなど）ときに、仮の伝票として登録します。この時点では売掛金になりません。後で売上入力から読み込んで売上にします。分納（一部だけ先に納品）にも対応し、受注ごとに「未売上／一部売上／売上完了／中止」がわかります。キャンセルは伝票ごとに中止します。過去の受注を複写して新しい受注を作れます。修正できるのは、まだ売上にしていない受注だけです。</td>
+    <td class="shot"><a href="images/order-07-filled.png"><img src="images/order-07-filled.png" alt="受注入力"></a></td>
+  </tr>
+  <tr>
+    <td class="name">売上入力 <span class="star">★</span><a href="sales-entry.html">操作説明</a></td>
+    <td>納品した売上を登録し、納品書を出します。次の操作をすべてこの画面で行います。
+      <ul><li>売上の直接入力</li><li>受注の読み込み（まだ売上にしていない数量を転記）</li><li>返品・値引（1枚の伝票の中で、行ごとに売上／返品／値引を選べます）</li><li>過去の伝票の複写</li><li>登録済みの伝票の訂正・取消</li></ul>
+      請求したか（未請求／請求済）、入金があったか（未消込／一部消込／消込完了）も表示します。締め済み・入金済みの伝票は直せず、直せない理由を表示します。</td>
+    <td class="shot"><a href="images/sales-03-from-order.png"><img src="images/sales-03-from-order.png" alt="売上入力"></a></td>
+  </tr>
+  <tr>
+    <td class="name">納品書一括発行<a href="delivery-note-bulk.html">操作説明</a></td>
+    <td>まだ納品書を出していない売上を、日付の範囲で一覧にします。選んだ伝票の納品書をまとめて印刷し、発行済みにします。</td>
+    <td class="shot"><a href="images/dnbulk-01-main.png"><img src="images/dnbulk-01-main.png" alt="納品書一括発行"></a></td>
+  </tr>
+  <tr>
+    <td class="name">コピー機売上CSV取込 <span class="star">★</span><a href="copier-csv-import.html">操作説明</a></td>
+    <td>コピー機メーカーが出す使用料のCSVを取り込み、売上を自動で登録します。機番からお客様を探し、機番・締日ごとに1枚の伝票にまとめます。同じデータを2回取り込むことはできません。取り込んだ後、納品書をまとめて印刷できます。</td>
+    <td class="shot"><a href="images/copier-02-preview.png"><img src="images/copier-02-preview.png" alt="コピー機売上CSV取込"></a></td>
+  </tr>
+</table>
+
+<h3>メニュー「請求」</h3>
+<table>
+  <tr><th>機能名</th><th>使う場面・できること</th><th>画面</th></tr>
+  <tr>
+    <td class="name">請求締め処理<a href="billing-closing.html">操作説明</a></td>
+    <td>締め取引のお客様について、締め日までの未請求の売上と、期間内の入金をまとめて請求書を作ります。締め日ごとに、お客様をまとめて処理します。締めた請求書は一覧から印刷し直せます。</td>
+    <td class="shot"><a href="images/bclose-01-main.png"><img src="images/bclose-01-main.png" alt="請求締め処理"></a></td>
+  </tr>
+  <tr>
+    <td class="name">締め解除処理 <span class="star">★</span><br>（管理者）<a href="billing-release.html">操作説明</a></td>
+    <td>締めた請求を取り消して、売上を未請求に戻します。締めた後に伝票を直す必要が出たときに使います。請求のデータは消さずに「解除済」として残ります。</td>
+    <td class="shot"><a href="images/brelease-01-main.png"><img src="images/brelease-01-main.png" alt="締め解除処理"></a></td>
+  </tr>
+  <tr>
+    <td class="name">明細請求書発行 <span class="star">★</span><a href="detail-invoice.html">操作説明</a></td>
+    <td>都度請求のお客様について、未請求で入金もまだの売上明細を選び、1枚の請求書にして出します。宛名（学校のクラス名・先生名など）は、出すたびに書き換えられます。出した請求書は取り消せます（売上は未請求に戻ります）。</td>
+    <td class="shot"><a href="images/dinvoice-02-added.png"><img src="images/dinvoice-02-added.png" alt="明細請求書発行"></a></td>
+  </tr>
+</table>
+
+<h3>メニュー「入金」</h3>
+<table>
+  <tr><th>機能名</th><th>使う場面・できること</th><th>画面</th></tr>
+  <tr>
+    <td class="name">入金入力 <span class="star">★</span><a href="receipt-entry.html">操作説明</a></td>
+    <td>締め取引のお客様の入金を登録します。現金・振込・手形などを、1回の入金の中で行に分けて入力できます。どの請求に充てるかは選ばず、古い請求から自動で充てます。画面にはお客様の請求残高を表示します。登録した入金の訂正・取消もこの画面で行います。</td>
+    <td class="shot"><a href="images/receipt-03-filled.png"><img src="images/receipt-03-filled.png" alt="入金入力"></a></td>
+  </tr>
+  <tr>
+    <td class="name">明細入金 <span class="star">★</span><a href="detail-receipt.html">操作説明</a></td>
+    <td>都度請求のお客様の入金を登録します。どの売上明細、またはどの明細請求書の入金かを指定して消し込みます。訂正・取消もこの画面で行います。</td>
+    <td class="shot"><a href="images/dreceipt-03-added.png"><img src="images/dreceipt-03-added.png" alt="明細入金"></a></td>
+  </tr>
+</table>
+
+<h3>メニュー「元帳」「月次」「分析」</h3>
+<table>
+  <tr><th>機能名</th><th>使う場面・できること</th><th>画面</th></tr>
+  <tr>
+    <td class="name">得意先元帳 <span class="star">★</span><a href="customer-ledger.html">操作説明</a></td>
+    <td>お客様ごとに、売上・消費税・入金を日付順に並べ、残高の移り変わりを表示します。期間とは別に、今日時点の残高も表示します。行から元の売上伝票・入金伝票を開いて確認できます。都度請求のお客様では、売上明細ごとに、どの入金で消し込まれたかも表示します。印刷・PDF保存ができます。</td>
+    <td class="shot"><a href="images/ledger-01-shown.png"><img src="images/ledger-01-shown.png" alt="得意先元帳"></a></td>
+  </tr>
+  <tr>
+    <td class="name">月次締め処理 <span class="star">★</span><a href="monthly-closing.html">操作説明</a></td>
+    <td>すべてのお客様について、月ごと（1日〜末日）の売上・入金・消費税・月末の売掛残高をまとめて確定します。確定した月の伝票は、登録も訂正もできなくなります。売掛金残高一覧表を印刷できます。</td>
+    <td class="shot"><a href="images/mclose-01-main.png"><img src="images/mclose-01-main.png" alt="月次締め処理"></a></td>
+  </tr>
+  <tr>
+    <td class="name">月次締め解除処理<br>（管理者）<a href="monthly-release.html">操作説明</a></td>
+    <td>確定した月次締めを、月ごとにまとめて解除します。新しい月から順にしか解除できません。</td>
+    <td class="shot"><a href="images/mrelease-01-main.png"><img src="images/mrelease-01-main.png" alt="月次締め解除処理"></a></td>
+  </tr>
+  <tr>
+    <td class="name">売上・粗利分析<a href="sales-analysis.html">操作説明</a></td>
+    <td>月ごとの売上・原価・粗利・粗利率を、担当者別／得意先別／商品別／仕入先別に切り替えて表示します。列の見出しで並べ替えができ、表示した内容をCSVに保存できます。開くたびに伝票から集計し直します。</td>
+    <td class="shot"><a href="images/sales-analysis-05-supplier.png"><img src="images/sales-analysis-05-supplier.png" alt="売上・粗利分析"></a></td>
+  </tr>
+</table>
+
+<h3>メニュー「マスタ管理」</h3>
+<table>
+  <tr><th>機能名</th><th>使う場面・できること</th><th>画面</th></tr>
+  <tr>
+    <td class="name">得意先マスタ <span class="star">★</span><a href="master-customer.html">操作説明</a></td>
+    <td>お客様を登録します。締め日（都度／日付／末日）・税区分（請求単位／伝票単位／内税明細単位）・端数区分（切捨／四捨五入／切上）は、登録した後は変えられません。ほかに営業担当・振込先口座（2つまで）・代表者を印字するか・請求をまとめる先（請求得意先）を登録します。</td>
+    <td class="shot"><a href="images/mcust-02-filled.png"><img src="images/mcust-02-filled.png" alt="得意先マスタ"></a></td>
+  </tr>
+  <tr>
+    <td class="name">商品マスタ<a href="master-product.html">操作説明</a></td>
+    <td>社内の商品コードで商品を登録します。JANコードは別の欄に入れます。外税単価・内税単価・定価・標準原価・税率の種類（標準税率／軽減税率／非課税）・主仕入先を登録します。</td>
+    <td class="shot"><a href="images/mprod-02-filled.png"><img src="images/mprod-02-filled.png" alt="商品マスタ"></a></td>
+  </tr>
+  <tr>
+    <td class="name">単価・掛率マスタ <span class="star">★</span><a href="master-price.html">操作説明</a></td>
+    <td>お客様ごとに、商品の特別な単価、または定価に対する掛率（%）を登録します。1件のお客様について、全商品を表計算ソフトのような一覧で入力します。</td>
+    <td class="shot"><a href="images/mprice-02-example.png"><img src="images/mprice-02-example.png" alt="単価・掛率マスタ"></a></td>
+  </tr>
+  <tr>
+    <td class="name">仕入先マスタ<a href="master-supplier.html">操作説明</a></td>
+    <td>仕入先を登録します。商品の主仕入先、仕入先ごとの原価、伝票の明細の仕入先に使います。</td>
+    <td class="shot"><a href="images/msupplier-01-filled.png"><img src="images/msupplier-01-filled.png" alt="仕入先マスタ"></a></td>
+  </tr>
+  <tr>
+    <td class="name">仕入先原価マスタ <span class="star">★</span><a href="master-supplier-cost.html">操作説明</a></td>
+    <td>同じ商品でも仕入先によって原価が違うときに、仕入先ごとの原価を登録します。1件の仕入先について、全商品を一覧で入力します。</td>
+    <td class="shot"><a href="images/msupcost-02-example.png"><img src="images/msupcost-02-example.png" alt="仕入先原価マスタ"></a></td>
+  </tr>
+  <tr>
+    <td class="name">コピー機マスタ<a href="master-copier.html">操作説明</a></td>
+    <td>コピー機の機番とお客様を結びつけます。コピー機売上CSV取込で使います。</td>
+    <td class="shot"><a href="images/mcopier-01-filled.png"><img src="images/mcopier-01-filled.png" alt="コピー機マスタ"></a></td>
+  </tr>
+  <tr>
+    <td class="name">社員マスタ<br>（管理者）<a href="master-employee.html">操作説明</a></td>
+    <td>システムを使う社員と、権限レベル（どのメニューを使えるか）を登録します。</td>
+    <td class="shot"><a href="images/memp-01-filled.png"><img src="images/memp-01-filled.png" alt="社員マスタ"></a></td>
+  </tr>
+  <tr>
+    <td class="name">銀行マスタ<a href="master-bank.html">操作説明</a></td>
+    <td>自社の銀行口座を登録します。請求書に印字する振込先や、振込でもらった入金の入金先に使います。</td>
+    <td class="shot"><a href="images/mbank-01-filled.png"><img src="images/mbank-01-filled.png" alt="銀行マスタ"></a></td>
+  </tr>
+  <tr>
+    <td class="name">入金方法マスタ<a href="master-deposit-method.html">操作説明</a></td>
+    <td>現金・振込・手形・相殺などの入金方法を、自由に追加・名前の変更ができます。口座や手形の期日を必ず入れるかどうかも、入金方法ごとに決めます。</td>
+    <td class="shot"><a href="images/mdep-01-filled.png"><img src="images/mdep-01-filled.png" alt="入金方法マスタ"></a></td>
+  </tr>
+</table>
+
+<h3>メニュー「システム設定」</h3>
+<table>
+  <tr><th>機能名</th><th>使う場面・できること</th><th>画面</th></tr>
+  <tr>
+    <td class="name">自社情報<br>（管理者）<a href="master-company.html">操作説明</a></td>
+    <td>自社名・住所・代表者名・インボイスの登録番号など、請求書などに印字する自社の情報を登録します。</td>
+    <td class="shot"><a href="images/mcomp-01-filled.png"><img src="images/mcomp-01-filled.png" alt="自社情報"></a></td>
+  </tr>
+  <tr>
+    <td class="name">プリンタ設定<a href="master-printer.html">操作説明</a></td>
+    <td>帳票（納品書・請求書・明細請求書・得意先元帳・売掛金残高一覧表）ごとに、使うプリンタをパソコンごとに決めます。</td>
+    <td class="shot"><a href="images/mprn-01.png"><img src="images/mprn-01.png" alt="プリンタ設定"></a></td>
+  </tr>
+  <tr>
+    <td class="name">メニューマスタ管理<br>（管理者）<a href="master-menu.html">操作説明</a></td>
+    <td>メインメニューの名前・並び順・使える人（権限レベル）を変えます。</td>
+    <td class="shot"><a href="images/mmenu-01-selected.png"><img src="images/mmenu-01-selected.png" alt="メニューマスタ管理"></a></td>
+  </tr>
+  <tr>
+    <td class="name">消費税率マスタ管理<br>（管理者）<a href="master-tax.html">操作説明</a></td>
+    <td>施行日ごとの標準税率・軽減税率を登録します。その期間の伝票がすでにある税率は変えられません。</td>
+    <td class="shot"><a href="images/mtax-01-selected.png"><img src="images/mtax-01-selected.png" alt="消費税率マスタ"></a></td>
+  </tr>
+  <tr>
+    <td class="name">Generic Query<br>（管理者）<a href="master-query.html">操作説明</a></td>
+    <td>あらかじめ用意した検索（SQL）を実行し、結果を表示・CSV保存します。マスタの一覧を出すときなどに使います。</td>
+    <td class="shot"><a href="images/mquery-01-result.png"><img src="images/mquery-01-result.png" alt="Generic Query"></a></td>
+  </tr>
+  <tr>
+    <td class="name">商品マスタExcel取込<br>（管理者）<a href="master-product-import.html">操作説明</a></td>
+    <td>Excelの商品一覧から、商品をまとめて登録・更新します。</td>
+    <td class="shot"><a href="images/product-import-01-preview.png"><img src="images/product-import-01-preview.png" alt="商品マスタExcel取込"></a></td>
+  </tr>
+</table>
+
+<h3>全画面共通</h3>
+<table>
+  <tr><th>機能名</th><th>使う場面・できること</th><th>画面</th></tr>
+  <tr>
+    <td class="name">メインメニュー <span class="star">★</span><a href="index.html">操作説明</a></td>
+    <td>起動用のショートカットに入れた社員コードで使う人を判断し、その人が使えるメニューだけを表示します。ログインの画面はありません。</td>
+    <td class="shot"><a href="images/menu.png"><img src="images/menu.png" alt="メインメニュー"></a></td>
+  </tr>
+  <tr>
+    <td class="name">得意先検索</td>
+    <td>得意先コードの欄で <kbd>Space</kbd> を押すと開きます。コード・名前・カナで探せます。</td>
+    <td class="shot"><a href="images/order-02b-customer-filtered.png"><img src="images/order-02b-customer-filtered.png" alt="得意先検索"></a></td>
+  </tr>
+  <tr>
+    <td class="name">商品検索 <span class="star">★</span></td>
+    <td>伝票の商品コードの欄で <kbd>Space</kbd> を押すと開きます。「マスタから」と「このお客様に過去に売ったものから」の2通りで探せ、6件までまとめて伝票に入れられます。</td>
+    <td class="shot"><a href="images/order-05-product-basket.png"><img src="images/order-05-product-basket.png" alt="商品検索"></a></td>
+  </tr>
+  <tr>
+    <td class="name">伝票検索</td>
+    <td>受注No.・売上No. などの欄で <kbd>Space</kbd> を押すと開き、登録済みの伝票を探して読み込みます。</td>
+    <td class="shot"><a href="images/sales-02b-order-selected.png"><img src="images/sales-02b-order-selected.png" alt="伝票検索"></a></td>
+  </tr>
+  <tr>
+    <td class="name">帳票</td>
+    <td>納品書・請求書・明細請求書・得意先元帳・売掛金残高一覧表をA4で印刷します。PDFにするときは、Windows に入っている「Microsoft Print to PDF」に印刷します。</td>
+    <td class="shot">—</td>
+  </tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="diff"><span class="no">3</span>一般的な販売管理ソフトとの違い</h2>
+
+<p>ここでいう「一般的なソフト」は、中小企業向けの市販の販売管理ソフトによくある作りのことです。製品によって違うので、よくある傾向として比べています。</p>
+
+<h3 id="diff-1">3-1. 締め請求と都度請求を、別々の流れで持っている</h3>
+<div class="cmp">
+  <div class="pkg"><span class="lbl">一般的なソフト</span>月1回の締め請求が基本で、都度請求は「締め日を『都度』にしたお客様」として、同じ仕組みで扱うことが多いです。</div>
+  <div class="ours"><span class="lbl">このシステム</span>締め取引と都度請求で、請求・入金・消込の仕組みそのものを分けています。
+    <ul>
+      <li>締め取引のお客様は、請求締めで請求を確定し、入金はその請求に充てます。</li>
+      <li>都度請求のお客様は締めをしません。売上明細を選んで明細請求書を出し、入金は明細ごとに消し込みます。</li>
+      <li>都度請求のお客様の税区分は「内税明細単位」と決まっています（得意先マスタで、締め日との組み合わせをチェックします）。</li>
+    </ul></div>
+</div>
+<p>学校・官公庁のように「この納品の分だけ請求書がほしい」「入金も納品ごとに来る」お客様を、締め取引のお客様と同じように正確に管理するための作りです。</p>
+
+<h3 id="diff-2">3-2. 明細請求書は、売上明細を選んで、宛名を変えて出せる</h3>
+<div class="cmp">
+  <div class="pkg"><span class="lbl">一般的なソフト</span>都度請求は「売上伝票1枚＝請求書1枚」で、宛名は得意先マスタの名前のまま、ということが多いです。</div>
+  <div class="ours"><span class="lbl">このシステム</span>
+    <ul>
+      <li>未請求の売上を<b>明細の行ごと</b>に選べます。何枚かの伝票の明細を1枚の請求書にまとめることも、1枚の伝票の明細を別々の請求書に分けることもできます。</li>
+      <li>選べるのは「未請求で、入金もまだ」の明細だけです。入金済みの売上は、請求書を出していなくても選べません。</li>
+      <li>同じ明細が2枚の請求書に載ることはありません（データベースでも防いでいます）。</li>
+      <li>出した請求書は取り消せます。取り消すと売上は未請求に戻ります（入金済みのものは取り消せません）。</li>
+      <li>宛名は出すたびに書き換えられます（3-3）。</li>
+    </ul></div>
+</div>
+<figure class="mid">
+  <div class="frame"><img src="images/dinvoice-01-candidates.png" alt="明細請求書発行（候補表示）"></div>
+  <figcaption>明細請求書発行：そのお客様の、未請求で入金もまだの売上明細が並びます。選んだ明細だけを1枚の請求書にします。</figcaption>
+</figure>
+
+<h3 id="diff-3">3-3. 宛名は伝票ごとに書き換える（クラスや先生ごとにお客様を分けない）</h3>
+<div class="cmp">
+  <div class="pkg"><span class="lbl">一般的なソフト</span>学校のクラスや先生ごとに請求書を分けたいときは、お客様を細かく分けて登録するか、「納品先」「請求先」を別に登録することが多いです。</div>
+  <div class="ours"><span class="lbl">このシステム</span>学校・学年・クラスのように分かれていても、得意先マスタは<b>1件のまま</b>にします。伝票を入力するときに得意先名の欄を書き換えて、宛名にします（受注・売上・明細請求書・入金の各画面でできます）。
+    <ul>
+      <li>お客様が細かく分かれないので、残高・元帳・分析は学校単位でまとまったままです。</li>
+      <li>宛名を書き換えても、代表者を印字するかどうかは得意先マスタの設定のままです。</li>
+      <li>同じように、明細の商品名も書き換えられます。書き換えた商品名の最後には「.」が付くので、マスタの名前のままの行と見分けられます。</li>
+    </ul></div>
+</div>
+
+<h3 id="diff-4">3-4. 本社にまとめて請求するときは、残高・入金も本社にまとめる</h3>
+<div class="cmp">
+  <div class="pkg"><span class="lbl">一般的なソフト</span>「請求先」を指定して、支店の売上を本社あての請求書に載せる機能があることが多いです。</div>
+  <div class="ours"><span class="lbl">このシステム</span>請求書だけでなく、残高・入金・元帳も、まとめる先（請求集約先。例：本社）に一本化します。
+    <ul>
+      <li>請求・入金・売掛残高は、まとめる先にだけ持ちます。まとめられる側（請求集約元。例：支店）で入金を入力しようとすると、エラーになります。</li>
+      <li>まとめられる側の得意先元帳は、売上の履歴だけを表示し、残高は表示しません。「請求・残高はまとめる先にまとめられています」と案内が出ます。</li>
+      <li>請求書には、まとめられる側のお客様ごとに、見出し・明細・小計を分けて印字します。</li>
+      <li>締め日・税区分・端数区分がまとめる先と違う、都度請求のお客様をまとめる、3段以上にする、といった設定はできません。</li>
+      <li>請求締めをした売上が1件でもあるお客様は、まとめる先を変えられません。</li>
+    </ul></div>
+</div>
+<p>3-3の「宛名の書き換え」とは別の仕組みです。</p>
+
+<h3 id="diff-5">3-5. 消費税は、お客様ごとの税区分どおりに、インボイスのルールで計算する</h3>
+<div class="cmp">
+  <div class="pkg"><span class="lbl">一般的なソフト</span>消費税の計算のしかた（伝票ごと・請求ごと・明細ごと）と端数処理を、お客様ごとに選べるものが多いです。ただし、後から設定を変えられることが多いです。</div>
+  <div class="ours"><span class="lbl">このシステム</span>
+    <ul>
+      <li>税区分（請求単位／伝票単位／内税明細単位）・端数区分・締め日は、<b>お客様を登録した後は変えられません</b>。変えられると、過去の伝票の消費税を同じ金額で計算し直せなくなり、請求の金額が合わなくなるためです。</li>
+      <li>端数処理は「標準・軽減の区分と税率の組み合わせ」ごとに1回です。税率が変わる前後で、軽減税率と古い標準税率が同じ%になっても、混ざりません。</li>
+      <li>返品・値引（マイナスの金額）は、プラスのときと同じ丸め方をしてからマイナスにします。同じ金額の返品・値引で、元の売上の消費税がぴったり打ち消されます。</li>
+      <li>明細の金額（数量×単価）も、お客様の端数区分で1円単位にしてから保存します。</li>
+      <li>伝票には、登録したときの税率を記録します。後で税率マスタが変わっても、登録済みの伝票の消費税は変わりません。その期間の伝票がある税率は、税率マスタで変えられません。</li>
+      <li>請求書・明細請求書は、インボイス（適格請求書）に必要なことを印字します。税率ごとの金額と消費税は確定した値として保存するので、印刷し直しても同じ金額になります。</li>
+    </ul></div>
+</div>
+<figure class="mid">
+  <div class="frame"><img src="images/mcust-02-filled.png" alt="得意先マスタ"></div>
+  <figcaption>得意先マスタ：締め日・税区分・端数区分は、新しく登録するときだけ選べます。</figcaption>
+</figure>
+
+<h3 id="diff-6">3-6. 訂正は「赤黒」ではなく元の伝票を直す。締め・入金で自動的に直せなくなる</h3>
+<div class="cmp">
+  <div class="pkg"><span class="lbl">一般的なソフト</span>締めた後の訂正は、マイナスの伝票（赤伝）と正しい伝票（黒伝）を作って行うことが多いです。</div>
+  <div class="ours"><span class="lbl">このシステム</span>訂正・取消は<b>元の伝票をそのまま直します</b>。そのかわり、次のどれかに当たる売上は直せません。
+    <ol>
+      <li>請求締めで締めた請求に入っている</li>
+      <li>明細請求書を出している</li>
+      <li>その月の月次締めが済んでいる</li>
+      <li>入金で全額消し込まれている</li>
+    </ol></div>
+</div>
+<ul>
+  <li>直せるかどうかは、締めや入金の状態からその都度判断します。締めを解除すれば、自動的に直せるようになります。</li>
+  <li>締めの解除（請求・月次）は管理者だけが使える、別のメニューにしています。</li>
+  <li>締めを解除しても請求のデータは消さず「解除済」として残し、いつ誰が締め・解除したかがわかります。締め直すと、新しい請求番号で作り直します。</li>
+  <li>締めの順番が逆になる操作はできません（新しい月を締めた後に古い月を締める、古い月から解除する、など）。</li>
+  <li>請求を締めた期間に、新しく売上・入金を登録することもできません（日付を締めた期間に変える訂正も同じです）。月次締めをした月も同じです。</li>
+  <li>取り消した伝票は消さずに、取消済みとして残ります。</li>
+</ul>
+
+<h3 id="diff-7">3-7. 締め取引の入金は「どの請求に充てたか」を見せず、残高だけを見せる</h3>
+<div class="cmp">
+  <div class="pkg"><span class="lbl">一般的なソフト</span>入金を入力するときに、どの請求（または売上）の入金かを選ぶものが多いです。</div>
+  <div class="ours"><span class="lbl">このシステム</span>
+    <ul>
+      <li>締め取引のお客様の入金は、充てる先を選びません。保存すると、古い請求から順に自動で充てます。画面には残高だけを表示します。大事なのは「どれに充てたか」ではなく「いくら残っているか」だからです。</li>
+      <li>都度請求のお客様の明細入金は逆に、売上明細か明細請求書を<b>指定して</b>消し込みます。両方を指定したときは、売上明細の指定を先に使います。</li>
+      <li>消し込みの状態（未消込／一部消込／消込完了）は、入金のデータから毎回計算し直します。入金を訂正・取消すると、売上の消し込みの状態も自動で戻ります。</li>
+      <li>多くもらった入金・前受けの入金は入金のほうに残り、売上の金額を超えて消し込まれることはありません。</li>
+      <li>振込手数料の差額は手で入力する方針で、自動計算はしません（入力する画面はまだありません）。</li>
+    </ul></div>
+</div>
+<figure class="mid">
+  <div class="frame"><img src="images/receipt-03-filled.png" alt="入金入力"></div>
+  <figcaption>入金入力（締め取引）：充てる先を選ぶ欄は無く、請求残高だけを表示します。</figcaption>
+</figure>
+<figure class="mid">
+  <div class="frame"><img src="images/dreceipt-03-added.png" alt="明細入金"></div>
+  <figcaption>明細入金（都度請求）：消し込む売上明細・明細請求書を指定します。</figcaption>
+</figure>
+
+<h3 id="diff-8">3-8. 残高は得意先元帳が正しく、残高を保存しない</h3>
+<div class="cmp">
+  <div class="pkg"><span class="lbl">一般的なソフト</span>毎月の繰越残高を保存し、そこに当月分を足し引きして残高を出すことが多いです。</div>
+  <div class="ours"><span class="lbl">このシステム</span>
+    <ul>
+      <li>残高はどこにも保存せず、表示するたびに、すべての期間の売上・入金から計算します。後から過去の日付の伝票が入っても、残高が食い違いません。</li>
+      <li>請求単位のお客様は、売上を入力した時点では消費税が決まりません。そのため元帳には、消費税を別の行として入れます（締めた期間は確定した消費税、まだ締めていない期間は仮に計算した消費税）。</li>
+      <li>月次締めの月末残高は、元帳で計算した残高をそのまま確定します。</li>
+    </ul></div>
+</div>
+<figure class="mid">
+  <div class="frame"><img src="images/ledger-01-shown.png" alt="得意先元帳"></div>
+  <figcaption>得意先元帳：売上・消費税・入金が日付順に並び、行ごとの残高と今日時点の残高を表示します。</figcaption>
+</figure>
+
+<h3 id="diff-9">3-9. 請求締めと月次締めが別になっている</h3>
+<div class="cmp">
+  <div class="pkg"><span class="lbl">一般的なソフト</span>締めは1種類で、月の確定は「末日締め」の請求締めで兼ねることが多いです。</div>
+  <div class="ours"><span class="lbl">このシステム</span>
+    <ul>
+      <li><b>請求締め</b>：お客様の締め日（20日など）ごとに、請求書を出すための締めです。</li>
+      <li><b>月次締め</b>：すべてのお客様（都度請求のお客様も含む）を、1日〜末日で区切って月末の売掛残高を確定する締めです。確定した月の伝票は直せなくなります。</li>
+    </ul>
+    20日締めのお客様でも、月末の残高を確定できます。</div>
+</div>
+
+<h3 id="diff-10">3-10. 単価と原価の決まり方</h3>
+<div class="cmp">
+  <div class="pkg"><span class="lbl">一般的なソフト</span>お客様ごとの単価や掛率を登録できるものは多いですが、原価は商品に1つ、ということが多いです。</div>
+  <div class="ours"><span class="lbl">このシステム</span>
+    <ul>
+      <li>商品を選んだときの単価は、次の順に、最初に見つかったものが入ります。どれも手で直せます。
+        <ol><li>そのお客様の特別な単価</li><li>定価 × そのお客様の掛率</li><li>商品マスタの単価（内税のお客様なら税込の単価）</li></ol></li>
+      <li>原価は<b>仕入先ごとに</b>登録できます。商品検索では同じ商品が仕入先ごとに別の行で並び、選んだ行の仕入先と原価が伝票に入ります。売上・粗利分析では、仕入先別の粗利も見られます。</li>
+      <li>返品は原価もマイナスにします（元の売上の粗利を打ち消すため）。値引は原価0にします（物が動かないため）。</li>
+      <li>商品検索の「過去に売ったものから」では、そのお客様に以前売ったときの単価をそのまま使えます。</li>
+    </ul></div>
+</div>
+<figure class="mid">
+  <div class="frame"><img src="images/mprice-03-search-closing.png" alt="商品検索の仕入先ごとの行"></div>
+  <figcaption>商品検索：同じ商品が仕入先ごとに別の行で並びます。単価の列には、そのお客様の単価・掛率を反映した金額が出ます。</figcaption>
+</figure>
+<figure class="mid">
+  <div class="frame"><img src="images/sales-04-supplier.png" alt="仕入先と原価が入った売上入力"></div>
+  <figcaption>売上入力：明細ごとに仕入先・原価が入り、粗利も表示されます。</figcaption>
+</figure>
+
+<h3 id="diff-11">3-11. 石山商店の業務に合わせた機能</h3>
+<ul>
+  <li><b>コピー機売上CSV取込</b>：コピー機の使用料（モノクロ・カラーの枚数）を、メーカーのCSVからそのまま売上にします。CSVの列は見出しの名前で探すので、列の並びが変わっても取り込めます。</li>
+  <li><b>納品書の3枚つづり印刷</b>：ミシン目で3つに分かれたA4用紙に、「納品書（控）」「請求書」「納品書」を同じ内容で印字します。複写式の伝票のかわりに、切り分けて渡します。左はしのパンチ穴に字がかからないよう、印字の位置をずらしています。</li>
+</ul>
+<figure class="mid">
+  <div class="frame"><img src="images/copier-02-preview.png" alt="コピー機売上CSV取込のプレビュー"></div>
+  <figcaption>コピー機売上CSV取込：取り込む前に、全行を「取込可／取込済／エラー／対象外」付きで確認できます。</figcaption>
+</figure>
+
+<h3 id="diff-12">3-12. 操作・使い方</h3>
+<ul>
+  <li><b>ログインの画面が無い</b>：デスクトップの起動用ショートカットに社員コードを入れておき、その人が使えるメニューだけを表示します。</li>
+  <li><b>キーボードだけで操作できる</b>：<kbd>Enter</kbd> で次の欄へ進み、<kbd>Space</kbd> で検索画面を開き、一覧は矢印キーと <kbd>Enter</kbd> で選びます。伝票No.の欄を空のまま <kbd>Enter</kbd> で新しい伝票、番号を入れて <kbd>Enter</kbd> で登録済みの伝票を呼び出します（<a href="index.html">共通のキー操作</a>）。</li>
+  <li><b>PDFのために別のソフトが要らない</b>：PDFは Windows に入っている機能で作ります。</li></ul>
+
+<!-- ============================================================ -->
+<h2 id="out"><span class="no">4</span>このシステムに無い機能</h2>
+<table>
+  <tr><th>機能</th><th>状況</th></tr>
+  <tr><td>在庫・発注・仕入伝票・買掛・支払</td><td>扱いません。将来つなげられるよう、受注に「引当数量」の欄だけ残しています（自動では変わりません）</td></tr>
+  <tr><td>受注・売上・入金をまとめて探す画面</td><td>まだありません</td></tr>
+  <tr><td>振込手数料の差額を入力する画面</td><td>まだありません</td></tr>
+  <tr><td>お客様の支払条件・与信限度額</td><td>登録する欄がありません</td></tr>
+  <tr><td>諸口（その場限りのお客様）</td><td>まだありません</td></tr>
+</table>
+
+<nav class="pager"><a href="index.html">← 目次</a><a href="order-entry.html">次：受注を登録する →</a></nav>
+</main>
+</body>
+</html>
